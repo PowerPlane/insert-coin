@@ -8,6 +8,8 @@
 //   4 = I2C scan (terminal — hangs blinking result pattern)
 //   5 = sleep / wake (terminal — measure current with multimeter)
 //   6 = mic brightness (all banks lit; PWM duty driven by loudness)
+//   7 = raw ADC indicator (banks lit = ADC value / 114; diagnostic for
+//       mic bias and signal -- see tests/test_mic_raw.h)
 
 #pragma once
 
