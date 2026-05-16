@@ -11,8 +11,11 @@ namespace test_mic_envelope {
 static constexpr uint16_t FRAME_PERIOD_MS = 1000 / MIC_FRAME_HZ;
 
 // Running estimate of the DC bias of the mic signal (10-bit ADC units).
-// Mic is AC-coupled around ~VCC/2 so this should settle near 512.
-static int16_t dc_ema = 512;
+// Initialized to -1 as a "not yet seeded" sentinel; seeded on the first
+// step_once() call from a real ADC sample. (Hardcoding 512 caused the
+// EMA to stall when the mic biased more than 12 % of VCC away from
+// VCC/2, since the >>7 update truncates to zero.)
+static int16_t dc_ema = -1;
 
 // Peak-and-decay envelope. Decay by 1 each frame; rises instantly with
 // new peaks.
@@ -48,8 +51,10 @@ void step_once() {
     int16_t peak = 0;
     while ((int32_t)(millis() - deadline) < 0) {
         int16_t x = (int16_t)adc_read();
-        // First-order EMA toward DC level (shift 7 ~ tau of ~128 samples).
-        dc_ema += (x - dc_ema) >> 7;
+        // Seed dc_ema from the first sample to avoid EMA stall when the
+        // mic biases far from VCC/2 (e.g. 0.6*VCC instead of 0.5*VCC).
+        if (dc_ema < 0) dc_ema = x;
+        else            dc_ema += (x - dc_ema) >> 7;
         int16_t a = x - dc_ema;
         if (a < 0) a = -a;
         if (a > peak) peak = a;
