@@ -47,3 +47,6 @@ __pycache__/
 # Editor
 *.swp
 *.swo
+
+# Claude Code worktrees (per-session, never useful in git)
+.claude/
