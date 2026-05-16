@@ -13,6 +13,7 @@
 
 #include "tests/test_full_low_pwm.h"
 #include "tests/test_i2c_scan.h"
+#include "tests/test_mic_brightness.h"
 #include "tests/test_mic_envelope.h"
 #include "tests/test_sleep_wake.h"
 #include "tests/test_walking_banks.h"
@@ -66,8 +67,10 @@ void setup() {
     test_i2c_scan::run();
 #elif BRINGUP_MODE == 5
     test_sleep_wake::run();
+#elif BRINGUP_MODE == 6
+    test_mic_brightness::run();
 #else
-#error "BRINGUP_MODE must be 0..5"
+#error "BRINGUP_MODE must be 0..6"
 #endif
 }
 
