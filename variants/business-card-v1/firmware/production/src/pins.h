@@ -41,6 +41,14 @@ constexpr uint8_t BANK_UNCERTAIN     = 6;
 constexpr uint8_t BANK_FIRE_ORANGE   = 7;
 constexpr uint8_t BANK_FIRE_RED      = 8;
 
+// Fortune indices returned by the lottery. Match the reveal dispatch
+// order in anim_run_reveal().
+constexpr uint8_t FORTUNE_GREAT     = 0;
+constexpr uint8_t FORTUNE_LITTLE    = 1;
+constexpr uint8_t FORTUNE_UNCERTAIN = 2;
+constexpr uint8_t FORTUNE_BAD       = 3;
+constexpr uint8_t FORTUNE_COUNT     = 4;
+
 // Microphone analog input.
 // On the ATtiny1616 txy6 pin map, PC0 is ADC1 AIN6 -- NOT ADC0 AIN6
 // (ADC0 AIN6 is PA6, which is LED bank 5). Sampling ADC0 here would

@@ -61,11 +61,16 @@ uint8_t anim_lottery() {
 #if FORCE_FORTUNE >= 0
     uint8_t fortune = (uint8_t)FORCE_FORTUNE & 0x3;
 #else
-    uint8_t fortune = rng_range(4);
+    uint8_t fortune = rng_range(FORTUNE_COUNT);
 #endif
     delay(LOTTERY_PAUSE_MS);
     return fortune;
 }
+
+// Static hold uses the 1 Hz RTC PIT; non-multiple-of-1000 hold durations
+// would silently round down.
+static_assert(REVEAL_HOLD_MS % 1000 == 0,
+              "REVEAL_HOLD_MS must be a whole number of seconds");
 
 static void blink_then_hold(uint8_t bank, uint8_t count) {
     for (uint8_t i = 0; i < count; i++) {
@@ -75,8 +80,8 @@ static void blink_then_hold(uint8_t bank, uint8_t count) {
         delay(BLINK_OFF_MS);
     }
     bank_set(bank, true);
-    // Static hold: GPIO output latches through SLEEP_MODE_PWR_DOWN so
-    // the bank stays lit while the CPU drops to <10 uA.
+    // GPIO output latches through SLEEP_MODE_PWR_DOWN so the bank stays
+    // lit while the CPU drops to <10 uA.
     sleep_timed_seconds(REVEAL_HOLD_MS / 1000);
     bank_set(bank, false);
 }
@@ -132,9 +137,9 @@ static void anim_reveal_fire() {
 
 void anim_run_reveal(uint8_t fortune) {
     switch (fortune) {
-        case 0: anim_reveal_great();     break;
-        case 1: anim_reveal_little();    break;
-        case 2: anim_reveal_uncertain(); break;
-        default: anim_reveal_fire();     break;
+        case FORTUNE_GREAT:     anim_reveal_great();     break;
+        case FORTUNE_LITTLE:    anim_reveal_little();    break;
+        case FORTUNE_UNCERTAIN: anim_reveal_uncertain(); break;
+        default:                anim_reveal_fire();      break;
     }
 }

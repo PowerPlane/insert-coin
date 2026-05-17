@@ -15,6 +15,7 @@
 #include "config.h"
 #include "leds.h"
 #include "mic.h"
+#include "pins.h"
 #include "pwm.h"
 #include "rng.h"
 #include "sleepy.h"
@@ -39,7 +40,7 @@ void setup() {
     uint8_t fortune = anim_lottery();
     // Only the fire reveal needs the mic. Disabling ADC1 here saves
     // ~25 uA across the great/little/uncertain reveal paths.
-    if (fortune != 3) {
+    if (fortune != FORTUNE_BAD) {
         mic_deinit();
     }
     anim_run_reveal(fortune);
