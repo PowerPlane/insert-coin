@@ -17,7 +17,15 @@ static constexpr uint8_t CYCLES_PER_FRAME = MIC_BRIGHTNESS_FRAME_MS;
 [[noreturn]] void run() {
     test_mic_envelope::init();
 
-    int16_t dc_ema = 512;  // mic DC bias estimate; settles near VCC/2
+    // Seed dc_ema with a real first ADC sample. The EMA update
+    // `dc_ema += (x - dc_ema) >> 7;` only converges when the gap is
+    // >= 128 ADC units, so if the mic biases more than ~12 % of VCC
+    // away from a hardcoded 512, the EMA gets stuck and the envelope
+    // saturates -- pinning duty at 100 %.
+    while (!(MIC_ADC.INTFLAGS & ADC_RESRDY_bm)) { /* spin */ }
+    int16_t dc_ema = (int16_t)MIC_ADC.RES;
+    MIC_ADC.INTFLAGS = ADC_RESRDY_bm;
+
     int16_t env    = 0;    // peak-and-decay envelope
     uint8_t duty   = 0;    // 0..100, % of PWM cycle banks are lit
 
