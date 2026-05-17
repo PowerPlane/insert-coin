@@ -37,6 +37,11 @@ void setup() {
     delay(POST_WALK_PAUSE_MS);
 
     uint8_t fortune = anim_lottery();
+    // Only the fire reveal needs the mic. Disabling ADC1 here saves
+    // ~25 uA across the great/little/uncertain reveal paths.
+    if (fortune != 3) {
+        mic_deinit();
+    }
     anim_run_reveal(fortune);
 
     sleep_forever();

@@ -64,10 +64,14 @@ constexpr uint8_t  FLAME_INTERP_STEP    = 3;
 constexpr uint8_t  FLAME_GUST_CHANCE    = 64;   // 25 %
 
 // -- Blow-out detector ----------------------------------------------------
-// Envelope must stay above this for BLOW_DWELL_MS continuous to count
-// as a "blow" (vs. a clap / single voice spike).
+// Raw |sample - dc| must stay above this for BLOW_DWELL_MS continuous
+// (tolerating up to BLOW_GAP_MS of below-threshold between loud samples
+// so AC zero-crossings don't reset the streak). The envelope's
+// peak-and-decay shape would let a single clap mimic a long blow, so
+// the detector uses raw samples instead.
 constexpr int16_t  BLOW_THRESHOLD_ADC   = 120;
 constexpr uint16_t BLOW_DWELL_MS        = 100;
+constexpr uint16_t BLOW_GAP_MS          = 20;
 // After this long without a blow, the fire times out and the card
 // goes to sleep anyway -- prevents face-down-in-a-drawer drain.
 constexpr uint32_t FIRE_TIMEOUT_MS      = 60000;

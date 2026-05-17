@@ -19,6 +19,12 @@ inline void configure_unused_pins() {
             *pinctrl = PORT_ISC_INPUT_DISABLE_gc;
         }
     }
-    // PA0 is owned by UPDI hardware; leave it alone.
-    // PC0 (mic) is left alone -- its input buffer is needed for the ADC.
+    // Production never touches I2C -- the ST25DV04K NFC tag is RF-
+    // powered for tap-to-URL independent of the MCU. PB0/PB1 have no
+    // external pull-ups, so their input buffers would float during the
+    // whole show without this.
+    PORTB.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc;
+    PORTB.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc;
+    // PA0 = UPDI -- owned by hardware, leave alone.
+    // PC0 = mic -- input buffer needed for the ADC.
 }

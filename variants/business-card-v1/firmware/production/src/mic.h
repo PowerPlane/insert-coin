@@ -16,6 +16,8 @@
 #include <stdint.h>
 
 void mic_init();
+// Disable ADC1 (~25 uA savings) once the mic is no longer needed.
+void mic_deinit();
 
 // Blocking read of one ADC sample (~25 us at PRESC/16, 10 MHz CPU).
 // Used by the RNG seeder. After mic_init() runs the ADC is free-running.
@@ -28,10 +30,11 @@ bool mic_pump_sample();
 // Current envelope value (ADC LSBs above the running DC bias).
 int16_t mic_envelope();
 
-// Reset the blow-debouncer's running timer. Call when entering fire mode
-// so prior loud sounds don't auto-extinguish.
+// Reset the blow-debouncer's running streak. Call when entering fire
+// mode so prior loud sounds don't auto-extinguish.
 void mic_blow_reset();
 
-// True if the envelope has stayed above BLOW_THRESHOLD_ADC for at least
-// BLOW_DWELL_MS continuous. Self-resets on each below-threshold sample.
+// True if raw above-threshold samples have streamed continuously for
+// at least BLOW_DWELL_MS, tolerating up to BLOW_GAP_MS of quiet between
+// loud samples (so AC zero-crossings don't break the streak).
 bool mic_blow_detected();

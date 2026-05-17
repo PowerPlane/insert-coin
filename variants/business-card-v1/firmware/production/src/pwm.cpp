@@ -31,15 +31,24 @@ uint8_t pwm_get(uint8_t bank) {
     return (bank < NUM_BANKS) ? s_duty[bank] : 0;
 }
 
-void pwm_tick_once() {
+static void run_phases(PhaseHook hook) {
     for (uint8_t phase = 0; phase < PWM_LEVELS; phase++) {
         uint16_t mask = 0;
         for (uint8_t i = 0; i < NUM_BANKS; i++) {
             if (s_duty[i] > phase) mask |= (1u << i);
         }
         bank_all_mask(mask);
+        if (hook) hook();
         delayMicroseconds(PWM_STEP_US);
     }
+}
+
+void pwm_tick_once() {
+    run_phases(nullptr);
+}
+
+void pwm_tick_once_with_hook(PhaseHook hook) {
+    run_phases(hook);
 }
 
 void pwm_hold(uint32_t ms) {

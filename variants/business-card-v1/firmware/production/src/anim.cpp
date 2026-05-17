@@ -8,6 +8,7 @@
 #include "pins.h"
 #include "pwm.h"
 #include "rng.h"
+#include "sleepy.h"
 
 void anim_boot_capture() {
     pwm_init();
@@ -74,7 +75,9 @@ static void blink_then_hold(uint8_t bank, uint8_t count) {
         delay(BLINK_OFF_MS);
     }
     bank_set(bank, true);
-    delay(REVEAL_HOLD_MS);
+    // Static hold: GPIO output latches through SLEEP_MODE_PWR_DOWN so
+    // the bank stays lit while the CPU drops to <10 uA.
+    sleep_timed_seconds(REVEAL_HOLD_MS / 1000);
     bank_set(bank, false);
 }
 

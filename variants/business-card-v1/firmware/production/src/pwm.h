@@ -44,8 +44,16 @@ void pwm_set_all(uint8_t duty);
 void pwm_all_off();
 uint8_t pwm_get(uint8_t bank);
 
+// Per-phase callback, called once per PWM phase. Use it to interleave
+// short work that benefits from running at PWM frequency (e.g. draining
+// the mic ADC) without breaking pwm.cpp's encapsulation.
+using PhaseHook = void (*)();
+
 // One PWM period at the current duty[] state.
 void pwm_tick_once();
+
+// One PWM period; `hook` (may be nullptr) runs each phase.
+void pwm_tick_once_with_hook(PhaseHook hook);
 
 // Hold the current duty[] for `ms` milliseconds.
 void pwm_hold(uint32_t ms);

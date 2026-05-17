@@ -5,16 +5,23 @@
 #include "config.h"
 #include "pins.h"
 
-// DC bias tracker. Seeded from first sample to avoid EMA stall when the
-// mic doesn't bias at exactly VCC/2 (the ZTS6156 on this board sits a
-// bit above mid-rail). See bringup test_mic_envelope.cpp:18 for the
-// same fix.
-static int16_t s_dc_ema   = -1;
-static int16_t s_envelope = 0;
+// DC bias tracker seeded from the first sample. The ZTS6156 biases
+// somewhat above mid-rail, and the EMA `>>7` update stalls if the
+// initial gap to a hardcoded center is < 128 -- see bringup
+// test_mic_envelope.cpp:18 for the same fix.
+static int16_t  s_dc_ema   = -1;
 
-// Blow debouncer: track when the envelope first crossed up.
-static uint32_t s_above_since_ms = 0;
-static bool     s_above          = false;
+// Peak-and-decay envelope -- kept available for diagnostics/visuals,
+// not used by the blow detector.
+static int16_t  s_envelope = 0;
+
+// Raw-sample blow streak. last_loud_ms is the most recent above-
+// threshold sample; blow_start_ms is when the current streak started.
+// Tolerating BLOW_GAP_MS of quiet between loud samples means AC
+// zero-crossings don't reset the streak, but a clap dies fast.
+static uint32_t s_last_loud_ms  = 0;
+static uint32_t s_blow_start_ms = 0;
+static bool     s_blow_active   = false;
 
 void mic_init() {
     PORTC.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc;
@@ -29,7 +36,11 @@ void mic_init() {
 
     s_dc_ema = -1;
     s_envelope = 0;
-    s_above = false;
+    s_blow_active = false;
+}
+
+void mic_deinit() {
+    MIC_ADC.CTRLA &= ~ADC_ENABLE_bm;
 }
 
 uint16_t mic_read_raw_blocking() {
@@ -50,11 +61,19 @@ bool mic_pump_sample() {
     int16_t a = x - s_dc_ema;
     if (a < 0) a = -a;
 
-    // Peak-and-decay envelope; rises instantly, decays slowly.
-    if (a > s_envelope) {
-        s_envelope = a;
-    } else if (s_envelope > 0) {
-        s_envelope--;
+    if (a > s_envelope) s_envelope = a;
+    else if (s_envelope > 0) s_envelope--;
+
+    uint32_t now = millis();
+    if (a >= BLOW_THRESHOLD_ADC) {
+        if (!s_blow_active) {
+            s_blow_active = true;
+            s_blow_start_ms = now;
+        }
+        s_last_loud_ms = now;
+    } else if (s_blow_active &&
+               (uint32_t)(now - s_last_loud_ms) > BLOW_GAP_MS) {
+        s_blow_active = false;
     }
     return true;
 }
@@ -64,20 +83,10 @@ int16_t mic_envelope() {
 }
 
 void mic_blow_reset() {
-    s_above = false;
-    s_above_since_ms = 0;
+    s_blow_active = false;
 }
 
 bool mic_blow_detected() {
-    uint32_t now = millis();
-    if (s_envelope >= BLOW_THRESHOLD_ADC) {
-        if (!s_above) {
-            s_above = true;
-            s_above_since_ms = now;
-            return false;
-        }
-        return (uint32_t)(now - s_above_since_ms) >= BLOW_DWELL_MS;
-    }
-    s_above = false;
-    return false;
+    if (!s_blow_active) return false;
+    return (uint32_t)(millis() - s_blow_start_ms) >= BLOW_DWELL_MS;
 }

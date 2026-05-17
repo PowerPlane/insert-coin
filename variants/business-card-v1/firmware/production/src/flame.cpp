@@ -75,6 +75,10 @@ void flame_tick(uint32_t now_ms) {
 uint8_t flame_current_orange() { return s_orange.cur; }
 uint8_t flame_current_red()    { return s_red.cur; }
 
+static void mic_phase_hook() {
+    (void)mic_pump_sample();
+}
+
 uint8_t flame_run_until_blow(uint32_t timeout_ms) {
     mic_blow_reset();
     flame_init();
@@ -85,11 +89,10 @@ uint8_t flame_run_until_blow(uint32_t timeout_ms) {
             return FLAME_RESULT_TIMEOUT;
         }
         flame_tick(now);
-        pwm_tick_once();
-        // Drain a handful of mic samples per tick. The free-running ADC
-        // generates ~70 samples per tick; we don't need every one, just
-        // enough to keep the envelope tracking real loudness.
-        for (uint8_t i = 0; i < 16; i++) (void)mic_pump_sample();
+        // Phase hook drains the ADC at PWM frequency; the ADC's natural
+        // ~21 us/sample at PRESC/16 lines up with every other phase, so
+        // we pick samples up as fast as they're produced.
+        pwm_tick_once_with_hook(mic_phase_hook);
         if (mic_blow_detected()) {
             return FLAME_RESULT_BLOWN;
         }
