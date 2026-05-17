@@ -26,27 +26,27 @@
 // 100 %. The original 8 % choice predated knowing the resistor value;
 // 100 % is fine and looks substantially brighter.
 #define FULL_PWM_DUTY_PCT 100
-#define FULL_PWM_TICK_HZ  1000
+#define FULL_PWM_TICK_HZ 1000
 
 // Test 3: mic envelope
-#define MIC_SAMPLE_HZ     8000
-#define MIC_FRAME_HZ      60
+#define MIC_SAMPLE_HZ 8000
+#define MIC_FRAME_HZ 60
 // Per-bank threshold (10-bit ADC units above DC). Tune after first listen.
-#define MIC_BANK_STEP     8
+#define MIC_BANK_STEP 8
 
 // Test 5: sleep / wake
 #define SLEEP_PIT_PERIOD_S 4
-#define SLEEP_BLINK_MS     50
+#define SLEEP_BLINK_MS 50
 
 // Test 6: mic-driven brightness
 // FULL_AT is the envelope value (10-bit ADC units above DC) that maps
 // to 100 % duty. Lower = more sensitive (saturates earlier). FLOOR is
 // the minimum duty even at silence -- a small value (~3 %) keeps the
 // LEDs faintly lit so the test is visibly running.
-#define MIC_BRIGHTNESS_FLOOR        3
-#define MIC_BRIGHTNESS_FULL_AT      80
-#define MIC_BRIGHTNESS_PWM_STEP_US  10   // 10 us/step × 100 steps = 1 kHz PWM
-#define MIC_BRIGHTNESS_FRAME_MS     17   // ~60 Hz envelope updates
+#define MIC_BRIGHTNESS_FLOOR 3
+#define MIC_BRIGHTNESS_FULL_AT 80
+#define MIC_BRIGHTNESS_PWM_STEP_US 10 // 10 us/step × 100 steps = 1 kHz PWM
+#define MIC_BRIGHTNESS_FRAME_MS 17    // ~60 Hz envelope updates
 
 // Auto-cycle mode: how long to dwell on each sub-test before moving on.
 #define AUTO_CYCLE_DWELL_MS 3000
