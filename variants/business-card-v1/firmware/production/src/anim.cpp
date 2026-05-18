@@ -67,22 +67,6 @@ uint8_t anim_lottery() {
     return fortune;
 }
 
-// Still used by little-luck (next commit converts it to a hiccup).
-static_assert(REVEAL_HOLD_MS % 1000 == 0,
-              "REVEAL_HOLD_MS must be a whole number of seconds");
-
-static void blink_then_hold(uint8_t bank, uint8_t count) {
-    for (uint8_t i = 0; i < count; i++) {
-        bank_set(bank, true);
-        delay(BLINK_ON_MS);
-        bank_set(bank, false);
-        delay(BLINK_OFF_MS);
-    }
-    bank_set(bank, true);
-    sleep_timed_seconds(REVEAL_HOLD_MS / 1000);
-    bank_set(bank, false);
-}
-
 // Symmetric outward ripple: origin stays at `peak`, neighbors light with
 // triangular envelopes centered on `distance * step_ms`. Wave radiates
 // to both ends in lockstep. Repeats `cycles` full passes.
@@ -131,7 +115,38 @@ static void anim_reveal_great() {
     bank_set(BANK_GREAT_LUCK, false);
 }
 
-static void anim_reveal_little() { blink_then_hold(BANK_LITTLE_LUCK, LITTLE_BLINK_COUNT); }
+static void anim_reveal_little() {
+    // Bounded random walk biased toward HIGH: subtle "neon flicker" that
+    // mostly sits at peak, occasionally dips, never goes dark.
+    pwm_init();
+    uint8_t current = LITTLE_HICCUP_HIGH;
+    uint8_t target  = current;
+    pwm_set(BANK_LITTLE_LUCK, current);
+
+    const uint32_t t0 = millis();
+    uint32_t next_target_ms = t0 + LITTLE_HICCUP_STEP_MS;
+    while ((uint32_t)(millis() - t0) < LITTLE_HICCUP_TOTAL_MS) {
+        const uint32_t now = millis();
+        if ((int32_t)(now - next_target_ms) >= 0) {
+            // delta in [-5..+10] -- asymmetric range pulls the running
+            // mean toward HIGH so "mostly bright, occasionally dips" holds.
+            const int8_t delta = (int8_t)(rng_next() & 0xF) - 5;
+            int16_t nt = (int16_t)target + delta;
+            if (nt < LITTLE_HICCUP_LOW)  nt = LITTLE_HICCUP_LOW;
+            if (nt > LITTLE_HICCUP_HIGH) nt = LITTLE_HICCUP_HIGH;
+            target = (uint8_t)nt;
+            next_target_ms += LITTLE_HICCUP_STEP_MS;
+        }
+        // One unit per PWM tick (~1.5 ms) -> ~27 units per step; easily
+        // tracks the random walk and reads as fluid, not stepped.
+        if      (current < target) current++;
+        else if (current > target) current--;
+        pwm_set(BANK_LITTLE_LUCK, current);
+        pwm_tick_once();
+    }
+    pwm_all_off();
+    bank_all_off();
+}
 
 static void anim_reveal_uncertain() {
     pwm_init();

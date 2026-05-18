@@ -45,9 +45,13 @@ constexpr uint8_t  GREAT_RIPPLE_CYCLES  = 5;
 constexpr uint8_t  GREAT_RIPPLE_PEAK    = 100;
 constexpr uint8_t  GREAT_HOLD_SECONDS   = 12;
 
-// -- Reveal: little luck blinks (legacy, still used until hiccup lands) ---
-constexpr uint8_t  LITTLE_BLINK_COUNT   = 2;
-constexpr uint16_t REVEAL_HOLD_MS       = 15000;
+// -- Reveal: little luck (bounded random-walk hiccup on bank 5 only) -----
+// Subtle "neon-sign jitter": brightness wanders in [LOW, HIGH] with a
+// small per-step delta. Never goes dark; doesn't touch nearby banks.
+constexpr uint8_t  LITTLE_HICCUP_LOW      = 75;
+constexpr uint8_t  LITTLE_HICCUP_HIGH     = 100;
+constexpr uint16_t LITTLE_HICCUP_STEP_MS  = 40;
+constexpr uint32_t LITTLE_HICCUP_TOTAL_MS = 15000;
 
 // -- Reveal: uncertain luck (breathing) -----------------------------------
 constexpr uint16_t BREATHE_RAMP_MS      = 1200;
