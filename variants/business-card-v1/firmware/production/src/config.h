@@ -45,15 +45,19 @@ constexpr uint8_t  GREAT_RIPPLE_CYCLES  = 5;
 constexpr uint8_t  GREAT_RIPPLE_PEAK    = 100;
 constexpr uint8_t  GREAT_HOLD_SECONDS   = 12;
 
-// -- Reveal: little luck (bounded random-walk hiccup on bank 5 only) -----
-// Active hiccup announces the fortune, then a sleep-latched static hold
-// fills the rest of the 15 s budget. Same shape as great-luck so the
-// CPU isn't pinned at 10 MHz for the whole reveal.
-constexpr uint8_t  LITTLE_HICCUP_LOW       = 75;
-constexpr uint8_t  LITTLE_HICCUP_HIGH      = 100;
-constexpr uint16_t LITTLE_HICCUP_STEP_MS   = 40;
-constexpr uint16_t LITTLE_HICCUP_ACTIVE_MS = 3000;
-constexpr uint16_t LITTLE_HICCUP_SETTLE_MS = 100;
+// -- Reveal: little luck (asymmetric strobing pulse on bank 5 only) ------
+// Slow ease-in to peak (anticipation), snap ease-out to a dim floor
+// (the "strobe hit"), brief dim hold, repeat. ~3 pulses / sec for the
+// LITTLE_PULSE_ACTIVE_MS active stretch, then a sleep-latched bright
+// hold for the rest of the reveal budget -- same handoff shape as
+// great-luck so the CPU isn't pinned at 10 MHz.
+constexpr uint8_t  LITTLE_PULSE_LOW        = 15;   // dim floor (never dark)
+constexpr uint8_t  LITTLE_PULSE_HIGH       = 100;
+constexpr uint16_t LITTLE_PULSE_RISE_MS    = 250;  // slow ease-in
+constexpr uint16_t LITTLE_PULSE_FALL_MS    = 50;   // snap ease-out
+constexpr uint16_t LITTLE_PULSE_DIM_MS     = 50;   // brief hold at floor
+constexpr uint16_t LITTLE_PULSE_ACTIVE_MS  = 3000;
+constexpr uint16_t LITTLE_PULSE_SETTLE_MS  = 100;
 constexpr uint8_t  LITTLE_HOLD_SECONDS     = 12;
 
 // -- Reveal: uncertain luck (breathing) -----------------------------------

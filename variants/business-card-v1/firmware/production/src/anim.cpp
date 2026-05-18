@@ -119,37 +119,24 @@ static void anim_reveal_great() {
 }
 
 static void anim_reveal_little() {
-    // Bounded random walk biased toward HIGH for the active hiccup, then
-    // a sleep-latched bright hold for the rest of the reveal budget.
+    // Asymmetric strobing pulse: slow ease-in to peak (anticipation),
+    // snap ease-out to a dim floor (the "strobe hit"), brief dim hold,
+    // repeat. ease_in_quad on the rise + ease_out_quad on the fall
+    // reinforce the slow-up / fast-down asymmetry beyond just duration.
     pwm_init();
-    uint8_t current = LITTLE_HICCUP_HIGH;
-    uint8_t target  = current;
-    pwm_set(BANK_LITTLE_LUCK, current);
+    pwm_set(BANK_LITTLE_LUCK, LITTLE_PULSE_LOW);
 
     const uint32_t t0 = millis();
-    uint32_t next_target_ms = t0 + LITTLE_HICCUP_STEP_MS;
-    while ((uint32_t)(millis() - t0) < LITTLE_HICCUP_ACTIVE_MS) {
-        const uint32_t now = millis();
-        if ((int32_t)(now - next_target_ms) >= 0) {
-            // delta in [-5..+10] -- asymmetric range pulls the running
-            // mean toward HIGH so "mostly bright, occasionally dips" holds.
-            const int8_t delta = (int8_t)(rng_next() & 0xF) - 5;
-            int16_t nt = (int16_t)target + delta;
-            if (nt < LITTLE_HICCUP_LOW)  nt = LITTLE_HICCUP_LOW;
-            if (nt > LITTLE_HICCUP_HIGH) nt = LITTLE_HICCUP_HIGH;
-            target = (uint8_t)nt;
-            next_target_ms += LITTLE_HICCUP_STEP_MS;
-        }
-        // One unit per PWM tick (~1.5 ms) -> ~27 units per step; easily
-        // tracks the random walk and reads as fluid, not stepped.
-        if      (current < target) current++;
-        else if (current > target) current--;
-        pwm_set(BANK_LITTLE_LUCK, current);
-        pwm_tick_once();
+    while ((uint32_t)(millis() - t0) < LITTLE_PULSE_ACTIVE_MS) {
+        pwm_fade(BANK_LITTLE_LUCK, LITTLE_PULSE_LOW, LITTLE_PULSE_HIGH,
+                 LITTLE_PULSE_RISE_MS, ease_in_quad);
+        pwm_fade(BANK_LITTLE_LUCK, LITTLE_PULSE_HIGH, LITTLE_PULSE_LOW,
+                 LITTLE_PULSE_FALL_MS, ease_out_quad);
+        pwm_hold(LITTLE_PULSE_DIM_MS);
     }
     // Settle smoothly to full so the digital-high handoff is seamless.
-    pwm_fade(BANK_LITTLE_LUCK, current, 100,
-             LITTLE_HICCUP_SETTLE_MS, ease_out_quad);
+    pwm_fade(BANK_LITTLE_LUCK, LITTLE_PULSE_LOW, 100,
+             LITTLE_PULSE_SETTLE_MS, ease_out_quad);
     pwm_all_off();
     // Latched digital-high for the sleep-through hold -- chip drops to
     // <10 uA while bank 5 stays lit (same trick as great-luck).
