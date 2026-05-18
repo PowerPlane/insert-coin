@@ -54,9 +54,11 @@ constexpr uint16_t LITTLE_HICCUP_STEP_MS  = 40;
 constexpr uint32_t LITTLE_HICCUP_TOTAL_MS = 15000;
 
 // -- Reveal: uncertain luck (breathing) -----------------------------------
+// Widened range (15 %, was 35 %) for a more dramatic breath; same 1.8 s
+// period so the pacing feels the same, just deeper.
 constexpr uint16_t BREATHE_RAMP_MS      = 1200;
 constexpr uint16_t BREATHE_PERIOD_MS    = 1800;
-constexpr uint8_t  BREATHE_LOW_DUTY     = 35;
+constexpr uint8_t  BREATHE_LOW_DUTY     = 15;
 constexpr uint8_t  BREATHE_HIGH_DUTY    = 100;
 // Total wall-clock for uncertain reveal (matches the 15 s budget).
 constexpr uint16_t UNCERTAIN_TOTAL_MS   = 15000;
