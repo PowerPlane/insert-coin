@@ -46,12 +46,15 @@ constexpr uint8_t  GREAT_RIPPLE_PEAK    = 100;
 constexpr uint8_t  GREAT_HOLD_SECONDS   = 12;
 
 // -- Reveal: little luck (bounded random-walk hiccup on bank 5 only) -----
-// Subtle "neon-sign jitter": brightness wanders in [LOW, HIGH] with a
-// small per-step delta. Never goes dark; doesn't touch nearby banks.
-constexpr uint8_t  LITTLE_HICCUP_LOW      = 75;
-constexpr uint8_t  LITTLE_HICCUP_HIGH     = 100;
-constexpr uint16_t LITTLE_HICCUP_STEP_MS  = 40;
-constexpr uint32_t LITTLE_HICCUP_TOTAL_MS = 15000;
+// Active hiccup announces the fortune, then a sleep-latched static hold
+// fills the rest of the 15 s budget. Same shape as great-luck so the
+// CPU isn't pinned at 10 MHz for the whole reveal.
+constexpr uint8_t  LITTLE_HICCUP_LOW       = 75;
+constexpr uint8_t  LITTLE_HICCUP_HIGH      = 100;
+constexpr uint16_t LITTLE_HICCUP_STEP_MS   = 40;
+constexpr uint16_t LITTLE_HICCUP_ACTIVE_MS = 3000;
+constexpr uint16_t LITTLE_HICCUP_SETTLE_MS = 100;
+constexpr uint8_t  LITTLE_HOLD_SECONDS     = 12;
 
 // -- Reveal: uncertain luck (breathing) -----------------------------------
 // Widened range (15 %, was 35 %) for a more dramatic breath; same 1.8 s

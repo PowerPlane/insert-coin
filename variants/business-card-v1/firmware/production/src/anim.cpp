@@ -116,8 +116,8 @@ static void anim_reveal_great() {
 }
 
 static void anim_reveal_little() {
-    // Bounded random walk biased toward HIGH: subtle "neon flicker" that
-    // mostly sits at peak, occasionally dips, never goes dark.
+    // Bounded random walk biased toward HIGH for the active hiccup, then
+    // a sleep-latched bright hold for the rest of the reveal budget.
     pwm_init();
     uint8_t current = LITTLE_HICCUP_HIGH;
     uint8_t target  = current;
@@ -125,7 +125,7 @@ static void anim_reveal_little() {
 
     const uint32_t t0 = millis();
     uint32_t next_target_ms = t0 + LITTLE_HICCUP_STEP_MS;
-    while ((uint32_t)(millis() - t0) < LITTLE_HICCUP_TOTAL_MS) {
+    while ((uint32_t)(millis() - t0) < LITTLE_HICCUP_ACTIVE_MS) {
         const uint32_t now = millis();
         if ((int32_t)(now - next_target_ms) >= 0) {
             // delta in [-5..+10] -- asymmetric range pulls the running
@@ -144,8 +144,15 @@ static void anim_reveal_little() {
         pwm_set(BANK_LITTLE_LUCK, current);
         pwm_tick_once();
     }
+    // Settle smoothly to full so the digital-high handoff is seamless.
+    pwm_fade(BANK_LITTLE_LUCK, current, 100,
+             LITTLE_HICCUP_SETTLE_MS, ease_out_quad);
     pwm_all_off();
-    bank_all_off();
+    // Latched digital-high for the sleep-through hold -- chip drops to
+    // <10 uA while bank 5 stays lit (same trick as great-luck).
+    bank_set(BANK_LITTLE_LUCK, true);
+    sleep_timed_seconds(LITTLE_HOLD_SECONDS);
+    bank_set(BANK_LITTLE_LUCK, false);
 }
 
 static void anim_reveal_uncertain() {
