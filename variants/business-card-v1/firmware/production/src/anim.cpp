@@ -67,9 +67,18 @@ uint8_t anim_lottery() {
     return fortune;
 }
 
-// Symmetric outward ripple: origin stays at `peak`, neighbors light with
-// triangular envelopes centered on `distance * step_ms`. Wave radiates
-// to both ends in lockstep. Repeats `cycles` full passes.
+// Triangular wave-front: peaks at t == center, falls linearly to zero
+// over |dt| == half_width. Shared by both ripple animations.
+static inline uint8_t triangle_envelope(int32_t t, int32_t center,
+                                        int32_t half_width, uint8_t peak) {
+    const int32_t dt = t - center;
+    if (dt <= -half_width || dt >= half_width) return 0;
+    const int32_t abs_dt = (dt < 0) ? -dt : dt;
+    return (uint8_t)((int32_t)peak * (half_width - abs_dt) / half_width);
+}
+
+// Symmetric outward ripple: origin stays at `peak`; the wave-front
+// radiates to both ends in lockstep. Repeats `cycles` full passes.
 static void ripple_outward(uint8_t origin, uint16_t step_ms,
                            uint8_t peak, uint8_t cycles) {
     const uint8_t far_left  = origin;
@@ -84,15 +93,9 @@ static void ripple_outward(uint8_t origin, uint16_t step_ms,
         for (uint8_t b = 0; b < NUM_BANKS; b++) {
             if (b == origin) continue;
             const uint8_t d = (b > origin) ? (b - origin) : (origin - b);
-            const int32_t center = (int32_t)d * step_ms;
-            const int32_t dt = (int32_t)in_cycle - center;
-            uint8_t duty = 0;
-            if (dt > -(int32_t)step_ms && dt < (int32_t)step_ms) {
-                const int32_t abs_dt = (dt < 0) ? -dt : dt;
-                duty = (uint8_t)((int32_t)peak * ((int32_t)step_ms - abs_dt)
-                                 / step_ms);
-            }
-            pwm_set(b, duty);
+            pwm_set(b, triangle_envelope((int32_t)in_cycle,
+                                         (int32_t)d * step_ms,
+                                         step_ms, peak));
         }
         pwm_tick_once();
     }
@@ -177,28 +180,23 @@ static void anim_reveal_uncertain() {
     bank_all_off();
 }
 
-// Air ripple after a successful blow: wave starts at the fire (banks 7+8
-// share distance 0) and travels one bank per step toward bank 0, each
-// bank lit with the same triangular envelope as the great-luck ripple.
+// Air ripple after a successful blow: wave starts at the fire (banks
+// 7+8 share distance 0) and travels one bank per step toward bank 0.
 static void ripple_blow(uint16_t step_ms) {
     const uint8_t fire_anchor = BANK_FIRE_ORANGE;  // bank 7 = inner fire
     const uint8_t max_dist    = fire_anchor;       // 7 - 0
     const uint32_t total_ms   = (uint32_t)(max_dist + 1) * step_ms;
     const uint32_t t0 = millis();
     while ((uint32_t)(millis() - t0) < total_ms) {
-        const uint32_t t = (uint32_t)(millis() - t0);
+        const int32_t t = (int32_t)(millis() - t0);
         for (uint8_t b = 0; b < NUM_BANKS; b++) {
             // Banks 7 and 8 share the source; banks 0..6 are progressively
             // farther from the fire so the wave-front moves toward bank 0.
-            const uint8_t dist = (b >= fire_anchor) ? 0 : (uint8_t)(fire_anchor - b);
-            const int32_t center = (int32_t)dist * step_ms;
-            const int32_t dt = (int32_t)t - center;
-            uint8_t duty = 0;
-            if (dt > -(int32_t)step_ms && dt < (int32_t)step_ms) {
-                const int32_t abs_dt = (dt < 0) ? -dt : dt;
-                duty = (uint8_t)(100 * ((int32_t)step_ms - abs_dt) / step_ms);
-            }
-            pwm_set(b, duty);
+            const uint8_t dist =
+                (b >= fire_anchor) ? 0 : (uint8_t)(fire_anchor - b);
+            pwm_set(b, triangle_envelope(t,
+                                         (int32_t)dist * step_ms,
+                                         step_ms, 100));
         }
         pwm_tick_once();
     }
