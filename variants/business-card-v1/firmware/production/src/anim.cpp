@@ -67,8 +67,7 @@ uint8_t anim_lottery() {
     return fortune;
 }
 
-// Static hold uses the 1 Hz RTC PIT; non-multiple-of-1000 hold durations
-// would silently round down.
+// Still used by little-luck (next commit converts it to a hiccup).
 static_assert(REVEAL_HOLD_MS % 1000 == 0,
               "REVEAL_HOLD_MS must be a whole number of seconds");
 
@@ -80,13 +79,58 @@ static void blink_then_hold(uint8_t bank, uint8_t count) {
         delay(BLINK_OFF_MS);
     }
     bank_set(bank, true);
-    // GPIO output latches through SLEEP_MODE_PWR_DOWN so the bank stays
-    // lit while the CPU drops to <10 uA.
     sleep_timed_seconds(REVEAL_HOLD_MS / 1000);
     bank_set(bank, false);
 }
 
-static void anim_reveal_great()  { blink_then_hold(BANK_GREAT_LUCK,  GREAT_BLINK_COUNT); }
+// Symmetric outward ripple: origin stays at `peak`, neighbors light with
+// triangular envelopes centered on `distance * step_ms`. Wave radiates
+// to both ends in lockstep. Repeats `cycles` full passes.
+static void ripple_outward(uint8_t origin, uint16_t step_ms,
+                           uint8_t peak, uint8_t cycles) {
+    const uint8_t far_left  = origin;
+    const uint8_t far_right = (uint8_t)(NUM_BANKS - 1 - origin);
+    const uint8_t max_dist  = (far_left > far_right) ? far_left : far_right;
+    const uint32_t cycle_ms = (uint32_t)step_ms * (max_dist + 2);
+    const uint32_t total_ms = cycle_ms * cycles;
+    const uint32_t t0 = millis();
+    while ((uint32_t)(millis() - t0) < total_ms) {
+        const uint32_t in_cycle = (uint32_t)(millis() - t0) % cycle_ms;
+        pwm_set(origin, peak);
+        for (uint8_t b = 0; b < NUM_BANKS; b++) {
+            if (b == origin) continue;
+            const uint8_t d = (b > origin) ? (b - origin) : (origin - b);
+            const int32_t center = (int32_t)d * step_ms;
+            const int32_t dt = (int32_t)in_cycle - center;
+            uint8_t duty = 0;
+            if (dt > -(int32_t)step_ms && dt < (int32_t)step_ms) {
+                const int32_t abs_dt = (dt < 0) ? -dt : dt;
+                duty = (uint8_t)((int32_t)peak * ((int32_t)step_ms - abs_dt)
+                                 / step_ms);
+            }
+            pwm_set(b, duty);
+        }
+        pwm_tick_once();
+    }
+}
+
+static void anim_reveal_great() {
+    pwm_init();
+    // Three confident blinks announce the win.
+    for (uint8_t i = 0; i < GREAT_BLINK_COUNT; i++) {
+        bank_set(BANK_GREAT_LUCK, true);  delay(BLINK_ON_MS);
+        bank_set(BANK_GREAT_LUCK, false); delay(BLINK_OFF_MS);
+    }
+    // Water-ripple radiates outward from bank 4 to both ends.
+    ripple_outward(BANK_GREAT_LUCK, GREAT_RIPPLE_STEP_MS,
+                   GREAT_RIPPLE_PEAK, GREAT_RIPPLE_CYCLES);
+    // Latched digital high so the long hold runs through PWR_DOWN.
+    bank_all_off();
+    bank_set(BANK_GREAT_LUCK, true);
+    sleep_timed_seconds(GREAT_HOLD_SECONDS);
+    bank_set(BANK_GREAT_LUCK, false);
+}
+
 static void anim_reveal_little() { blink_then_hold(BANK_LITTLE_LUCK, LITTLE_BLINK_COUNT); }
 
 static void anim_reveal_uncertain() {

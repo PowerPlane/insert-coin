@@ -34,11 +34,19 @@ constexpr uint16_t LOTTERY_DWELL_MS[LOTTERY_CYCLES] =
 // Dead beat between the last lottery cycle and the reveal.
 constexpr uint16_t LOTTERY_PAUSE_MS     = 300;
 
-// -- Reveal: great/little luck blinks --------------------------------------
+// -- Reveal: great luck (blinks + symmetric outward ripple + hold) -------
+// Total scene ~= 3*(BLINK_ON+OFF) + GREAT_RIPPLE_CYCLES*(MAX_DIST+2)*STEP
+//             + GREAT_HOLD_SECONDS*1000 ~= 15 s.
 constexpr uint8_t  GREAT_BLINK_COUNT    = 3;
-constexpr uint8_t  LITTLE_BLINK_COUNT   = 2;
 constexpr uint16_t BLINK_ON_MS          = 80;
 constexpr uint16_t BLINK_OFF_MS         = 80;
+constexpr uint16_t GREAT_RIPPLE_STEP_MS = 80;
+constexpr uint8_t  GREAT_RIPPLE_CYCLES  = 5;
+constexpr uint8_t  GREAT_RIPPLE_PEAK    = 100;
+constexpr uint8_t  GREAT_HOLD_SECONDS   = 12;
+
+// -- Reveal: little luck blinks (legacy, still used until hiccup lands) ---
+constexpr uint8_t  LITTLE_BLINK_COUNT   = 2;
 constexpr uint16_t REVEAL_HOLD_MS       = 15000;
 
 // -- Reveal: uncertain luck (breathing) -----------------------------------
