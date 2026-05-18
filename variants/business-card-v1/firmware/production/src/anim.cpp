@@ -168,22 +168,28 @@ static void anim_reveal_uncertain() {
 }
 
 // Air ripple after a successful blow: wave starts at the fire (banks
-// 7+8 share distance 0) and travels one bank per step toward bank 0.
+// 7+8 share distance 0) and travels toward bank 0. Arrival times are
+// quadratic in distance -- the wave whooshes past the inner banks and
+// decelerates into bank 0, matching how a real puff of air loses
+// momentum as it spreads. Total duration is preserved at
+// (max_dist + 1) * step_ms so the scene still ends in ~640 ms.
 static void ripple_blow(uint16_t step_ms) {
-    const uint8_t fire_anchor = BANK_FIRE_ORANGE;  // bank 7 = inner fire
-    const uint8_t max_dist    = fire_anchor;       // 7 - 0
-    const uint32_t total_ms   = (uint32_t)(max_dist + 1) * step_ms;
+    const uint8_t  fire_anchor   = BANK_FIRE_ORANGE;        // bank 7
+    const uint8_t  max_dist      = fire_anchor;             // 7 - 0
+    const uint32_t max_center_ms = (uint32_t)max_dist * step_ms;
+    const uint32_t max_dist_sq   = (uint32_t)max_dist * max_dist;
+    const uint32_t total_ms      = max_center_ms + step_ms; // tail fade-out
     const uint32_t t0 = millis();
     while ((uint32_t)(millis() - t0) < total_ms) {
         const int32_t t = (int32_t)(millis() - t0);
         for (uint8_t b = 0; b < NUM_BANKS; b++) {
-            // Banks 7 and 8 share the source; banks 0..6 are progressively
-            // farther from the fire so the wave-front moves toward bank 0.
             const uint8_t dist =
                 (b >= fire_anchor) ? 0 : (uint8_t)(fire_anchor - b);
-            pwm_set(b, triangle_envelope(t,
-                                         (int32_t)dist * step_ms,
-                                         step_ms, 100));
+            // Quadratic arrival -- center = max_center * (dist/max_dist)^2.
+            // dist=0 peaks at t=0; dist=max_dist peaks at t=max_center.
+            const int32_t center = (int32_t)(
+                (max_center_ms * dist * dist) / max_dist_sq);
+            pwm_set(b, triangle_envelope(t, center, step_ms, 100));
         }
         pwm_tick_once();
     }
