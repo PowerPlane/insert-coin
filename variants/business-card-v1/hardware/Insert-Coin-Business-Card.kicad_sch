@@ -5045,7 +5045,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 58.42 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -5088,7 +5088,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 58.42 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -5099,7 +5099,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 58.42 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -5198,7 +5198,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 58.42 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -5242,7 +5242,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 58.42 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -5253,7 +5253,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 58.42 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -5398,7 +5398,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 142.24 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -5441,7 +5441,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 142.24 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -5452,7 +5452,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 142.24 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -5551,7 +5551,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 142.24 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -5595,7 +5595,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 142.24 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -5606,7 +5606,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 142.24 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -6109,7 +6109,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 175.26 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -6152,7 +6152,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 175.26 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -6163,7 +6163,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 175.26 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -6262,7 +6262,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 175.26 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -6306,7 +6306,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 175.26 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -6317,7 +6317,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 175.26 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -8648,7 +8648,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 121.92 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -8691,7 +8691,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 121.92 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -8702,7 +8702,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 121.92 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -8801,7 +8801,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 121.92 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -8845,7 +8845,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 121.92 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -8856,7 +8856,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 121.92 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -9203,7 +9203,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 132.08 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -9246,7 +9246,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 132.08 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -9257,7 +9257,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 132.08 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -9356,7 +9356,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 132.08 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -9400,7 +9400,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 132.08 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -9411,7 +9411,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 132.08 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -10274,7 +10274,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 90.17 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -10317,7 +10317,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 90.17 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -10328,7 +10328,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 90.17 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -10427,7 +10427,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 90.17 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -10471,7 +10471,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 90.17 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -10482,7 +10482,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 90.17 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -12061,7 +12061,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 100.33 46.99 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -12104,7 +12104,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 100.33 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -12115,7 +12115,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 100.33 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -12214,7 +12214,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 100.33 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -12258,7 +12258,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 100.33 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -12269,7 +12269,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 100.33 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -12336,7 +12336,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 38.1 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -12379,7 +12379,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 38.1 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -12390,7 +12390,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 38.1 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -12489,7 +12489,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 38.1 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -12533,7 +12533,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 38.1 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -12544,7 +12544,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 38.1 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -12893,7 +12893,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 163.83 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -12936,7 +12936,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 163.83 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -12947,7 +12947,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 163.83 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -13046,7 +13046,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 163.83 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -13090,7 +13090,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 163.83 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -13101,7 +13101,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 163.83 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -13527,7 +13527,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 27.94 46.99 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -13570,7 +13570,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 27.94 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -13581,7 +13581,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 27.94 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -13680,7 +13680,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 27.94 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -13724,7 +13724,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 27.94 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -13735,7 +13735,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 27.94 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -14084,7 +14084,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 69.85 46.99 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -14127,7 +14127,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 69.85 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -14138,7 +14138,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 69.85 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -14237,7 +14237,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 69.85 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -14281,7 +14281,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 69.85 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -14292,7 +14292,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 69.85 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -16128,7 +16128,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 69.85 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -16171,7 +16171,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 69.85 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -16182,7 +16182,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 69.85 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -16281,7 +16281,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 69.85 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -16325,7 +16325,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 69.85 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -16336,7 +16336,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 69.85 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -16963,7 +16963,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 80.01 46.99 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -17006,7 +17006,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 80.01 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -17017,7 +17017,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 80.01 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -17116,7 +17116,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 80.01 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -17160,7 +17160,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 80.01 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -17171,7 +17171,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 80.01 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -17394,7 +17394,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 80.01 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -17437,7 +17437,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 80.01 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -17448,7 +17448,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 80.01 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -17547,7 +17547,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 80.01 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -17591,7 +17591,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 80.01 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -17602,7 +17602,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 80.01 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -18182,7 +18182,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 38.1 46.99 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -18225,7 +18225,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 38.1 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -18236,7 +18236,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 38.1 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -18335,7 +18335,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 38.1 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -18379,7 +18379,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 38.1 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -18390,7 +18390,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 38.1 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -18613,7 +18613,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 27.94 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -18656,7 +18656,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 27.94 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -18667,7 +18667,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 27.94 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -18766,7 +18766,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 27.94 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -18810,7 +18810,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 27.94 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -18821,7 +18821,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 27.94 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -18888,7 +18888,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 153.67 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -18931,7 +18931,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 153.67 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -18942,7 +18942,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 153.67 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -19041,7 +19041,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 153.67 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -19085,7 +19085,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 153.67 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -19096,7 +19096,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 153.67 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -19756,7 +19756,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 185.42 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -19799,7 +19799,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 185.42 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -19810,7 +19810,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 185.42 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -19909,7 +19909,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 185.42 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -19953,7 +19953,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 185.42 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -19964,7 +19964,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 185.42 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -21736,7 +21736,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 90.17 46.99 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -21779,7 +21779,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 90.17 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -21790,7 +21790,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 90.17 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -21889,7 +21889,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 90.17 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -21933,7 +21933,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 90.17 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -21944,7 +21944,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 90.17 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -22011,7 +22011,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 111.76 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -22054,7 +22054,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 111.76 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -22065,7 +22065,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 111.76 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -22164,7 +22164,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 111.76 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -22208,7 +22208,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 111.76 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -22219,7 +22219,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 111.76 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -23766,7 +23766,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 58.42 46.99 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -23809,7 +23809,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 58.42 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -23820,7 +23820,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 58.42 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -23919,7 +23919,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 58.42 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -23963,7 +23963,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 58.42 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -23974,7 +23974,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 58.42 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -24556,7 +24556,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 48.26 46.99 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -24599,7 +24599,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 48.26 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -24610,7 +24610,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 48.26 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -24709,7 +24709,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 48.26 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -24753,7 +24753,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 48.26 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -24764,7 +24764,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 48.26 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -25190,7 +25190,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 100.33 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -25233,7 +25233,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 100.33 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -25244,7 +25244,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 100.33 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -25343,7 +25343,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 100.33 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -25387,7 +25387,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 100.33 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -25398,7 +25398,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 100.33 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -25745,7 +25745,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10kΩ"
+		(property "Value" "220Ω"
 			(at 48.26 96.52 90)
 			(show_name no)
 			(do_not_autoplace yes)
@@ -25788,7 +25788,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25725"
+		(property "LCSC" "C25498"
 			(at 48.26 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -25799,7 +25799,7 @@
 				)
 			)
 		)
-		(property "Stock" "62997"
+		(property "Stock" ""
 			(at 48.26 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -25898,7 +25898,7 @@
 				)
 			)
 		)
-		(property "Resistance" "10kΩ"
+		(property "Resistance" "220Ω"
 			(at 48.26 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -25942,7 +25942,7 @@
 				)
 			)
 		)
-		(property "Tolerance" "±5%"
+		(property "Tolerance" ""
 			(at 48.26 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -25953,7 +25953,7 @@
 				)
 			)
 		)
-		(property "Temperature Coefficient" "±200ppm/°C"
+		(property "Temperature Coefficient" ""
 			(at 48.26 96.52 0)
 			(hide yes)
 			(show_name no)
