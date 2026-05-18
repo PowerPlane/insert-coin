@@ -34,17 +34,34 @@ constexpr uint16_t LOTTERY_DWELL_MS[LOTTERY_CYCLES] =
 // Dead beat between the last lottery cycle and the reveal.
 constexpr uint16_t LOTTERY_PAUSE_MS     = 300;
 
-// -- Reveal: great/little luck blinks --------------------------------------
+// -- Reveal: great luck (blinks + symmetric outward ripple + hold) -------
+// Total scene ~= 3*(BLINK_ON+OFF) + GREAT_RIPPLE_CYCLES*(MAX_DIST+2)*STEP
+//             + GREAT_HOLD_SECONDS*1000 ~= 15 s.
 constexpr uint8_t  GREAT_BLINK_COUNT    = 3;
-constexpr uint8_t  LITTLE_BLINK_COUNT   = 2;
 constexpr uint16_t BLINK_ON_MS          = 80;
 constexpr uint16_t BLINK_OFF_MS         = 80;
-constexpr uint16_t REVEAL_HOLD_MS       = 15000;
+constexpr uint16_t GREAT_RIPPLE_STEP_MS = 80;
+constexpr uint8_t  GREAT_RIPPLE_CYCLES  = 5;
+constexpr uint8_t  GREAT_RIPPLE_PEAK    = 100;
+constexpr uint8_t  GREAT_HOLD_SECONDS   = 12;
+
+// -- Reveal: little luck (bounded random-walk hiccup on bank 5 only) -----
+// Active hiccup announces the fortune, then a sleep-latched static hold
+// fills the rest of the 15 s budget. Same shape as great-luck so the
+// CPU isn't pinned at 10 MHz for the whole reveal.
+constexpr uint8_t  LITTLE_HICCUP_LOW       = 75;
+constexpr uint8_t  LITTLE_HICCUP_HIGH      = 100;
+constexpr uint16_t LITTLE_HICCUP_STEP_MS   = 40;
+constexpr uint16_t LITTLE_HICCUP_ACTIVE_MS = 3000;
+constexpr uint16_t LITTLE_HICCUP_SETTLE_MS = 100;
+constexpr uint8_t  LITTLE_HOLD_SECONDS     = 12;
 
 // -- Reveal: uncertain luck (breathing) -----------------------------------
+// Widened range (15 %, was 35 %) for a more dramatic breath; same 1.8 s
+// period so the pacing feels the same, just deeper.
 constexpr uint16_t BREATHE_RAMP_MS      = 1200;
 constexpr uint16_t BREATHE_PERIOD_MS    = 1800;
-constexpr uint8_t  BREATHE_LOW_DUTY     = 35;
+constexpr uint8_t  BREATHE_LOW_DUTY     = 15;
 constexpr uint8_t  BREATHE_HIGH_DUTY    = 100;
 // Total wall-clock for uncertain reveal (matches the 15 s budget).
 constexpr uint16_t UNCERTAIN_TOTAL_MS   = 15000;
@@ -75,9 +92,11 @@ constexpr uint16_t BLOW_GAP_MS          = 20;
 // After this long without a blow, the fire times out and the card
 // goes to sleep anyway -- prevents face-down-in-a-drawer drain.
 constexpr uint32_t FIRE_TIMEOUT_MS      = 60000;
-// Flare-up + fade animation after a successful blow.
+// Flare-up before the air-ripple kicks off on a successful blow.
 constexpr uint16_t FLARE_UP_MS          = 80;
-constexpr uint16_t FLARE_FADE_MS        = 220;
+// Air-ripple propagates from fire (banks 7+8) one bank inward per step
+// toward bank 0 -- ~7 steps total. 80 ms / step reads as "rush of air".
+constexpr uint16_t BLOW_RIPPLE_STEP_MS  = 80;
 // Fade-out used on fire timeout (no blow) -- a slower, sadder die.
 constexpr uint16_t FIRE_TIMEOUT_FADE_MS = 600;
 

@@ -67,27 +67,96 @@ uint8_t anim_lottery() {
     return fortune;
 }
 
-// Static hold uses the 1 Hz RTC PIT; non-multiple-of-1000 hold durations
-// would silently round down.
-static_assert(REVEAL_HOLD_MS % 1000 == 0,
-              "REVEAL_HOLD_MS must be a whole number of seconds");
-
-static void blink_then_hold(uint8_t bank, uint8_t count) {
-    for (uint8_t i = 0; i < count; i++) {
-        bank_set(bank, true);
-        delay(BLINK_ON_MS);
-        bank_set(bank, false);
-        delay(BLINK_OFF_MS);
-    }
-    bank_set(bank, true);
-    // GPIO output latches through SLEEP_MODE_PWR_DOWN so the bank stays
-    // lit while the CPU drops to <10 uA.
-    sleep_timed_seconds(REVEAL_HOLD_MS / 1000);
-    bank_set(bank, false);
+// Triangular wave-front: peaks at t == center, falls linearly to zero
+// over |dt| == half_width. Shared by both ripple animations.
+static inline uint8_t triangle_envelope(int32_t t, int32_t center,
+                                        int32_t half_width, uint8_t peak) {
+    const int32_t dt = t - center;
+    if (dt <= -half_width || dt >= half_width) return 0;
+    const int32_t abs_dt = (dt < 0) ? -dt : dt;
+    return (uint8_t)((int32_t)peak * (half_width - abs_dt) / half_width);
 }
 
-static void anim_reveal_great()  { blink_then_hold(BANK_GREAT_LUCK,  GREAT_BLINK_COUNT); }
-static void anim_reveal_little() { blink_then_hold(BANK_LITTLE_LUCK, LITTLE_BLINK_COUNT); }
+// Symmetric outward ripple: origin stays at `peak`; the wave-front
+// radiates to both ends in lockstep. Repeats `cycles` full passes.
+static void ripple_outward(uint8_t origin, uint16_t step_ms,
+                           uint8_t peak, uint8_t cycles) {
+    const uint8_t far_left  = origin;
+    const uint8_t far_right = (uint8_t)(NUM_BANKS - 1 - origin);
+    const uint8_t max_dist  = (far_left > far_right) ? far_left : far_right;
+    const uint32_t cycle_ms = (uint32_t)step_ms * (max_dist + 2);
+    const uint32_t total_ms = cycle_ms * cycles;
+    const uint32_t t0 = millis();
+    while ((uint32_t)(millis() - t0) < total_ms) {
+        const uint32_t in_cycle = (uint32_t)(millis() - t0) % cycle_ms;
+        pwm_set(origin, peak);
+        for (uint8_t b = 0; b < NUM_BANKS; b++) {
+            if (b == origin) continue;
+            const uint8_t d = (b > origin) ? (b - origin) : (origin - b);
+            pwm_set(b, triangle_envelope((int32_t)in_cycle,
+                                         (int32_t)d * step_ms,
+                                         step_ms, peak));
+        }
+        pwm_tick_once();
+    }
+}
+
+static void anim_reveal_great() {
+    pwm_init();
+    // Three confident blinks announce the win.
+    for (uint8_t i = 0; i < GREAT_BLINK_COUNT; i++) {
+        bank_set(BANK_GREAT_LUCK, true);  delay(BLINK_ON_MS);
+        bank_set(BANK_GREAT_LUCK, false); delay(BLINK_OFF_MS);
+    }
+    // Water-ripple radiates outward from bank 4 to both ends.
+    ripple_outward(BANK_GREAT_LUCK, GREAT_RIPPLE_STEP_MS,
+                   GREAT_RIPPLE_PEAK, GREAT_RIPPLE_CYCLES);
+    // Latched digital high so the long hold runs through PWR_DOWN.
+    bank_all_off();
+    bank_set(BANK_GREAT_LUCK, true);
+    sleep_timed_seconds(GREAT_HOLD_SECONDS);
+    bank_set(BANK_GREAT_LUCK, false);
+}
+
+static void anim_reveal_little() {
+    // Bounded random walk biased toward HIGH for the active hiccup, then
+    // a sleep-latched bright hold for the rest of the reveal budget.
+    pwm_init();
+    uint8_t current = LITTLE_HICCUP_HIGH;
+    uint8_t target  = current;
+    pwm_set(BANK_LITTLE_LUCK, current);
+
+    const uint32_t t0 = millis();
+    uint32_t next_target_ms = t0 + LITTLE_HICCUP_STEP_MS;
+    while ((uint32_t)(millis() - t0) < LITTLE_HICCUP_ACTIVE_MS) {
+        const uint32_t now = millis();
+        if ((int32_t)(now - next_target_ms) >= 0) {
+            // delta in [-5..+10] -- asymmetric range pulls the running
+            // mean toward HIGH so "mostly bright, occasionally dips" holds.
+            const int8_t delta = (int8_t)(rng_next() & 0xF) - 5;
+            int16_t nt = (int16_t)target + delta;
+            if (nt < LITTLE_HICCUP_LOW)  nt = LITTLE_HICCUP_LOW;
+            if (nt > LITTLE_HICCUP_HIGH) nt = LITTLE_HICCUP_HIGH;
+            target = (uint8_t)nt;
+            next_target_ms += LITTLE_HICCUP_STEP_MS;
+        }
+        // One unit per PWM tick (~1.5 ms) -> ~27 units per step; easily
+        // tracks the random walk and reads as fluid, not stepped.
+        if      (current < target) current++;
+        else if (current > target) current--;
+        pwm_set(BANK_LITTLE_LUCK, current);
+        pwm_tick_once();
+    }
+    // Settle smoothly to full so the digital-high handoff is seamless.
+    pwm_fade(BANK_LITTLE_LUCK, current, 100,
+             LITTLE_HICCUP_SETTLE_MS, ease_out_quad);
+    pwm_all_off();
+    // Latched digital-high for the sleep-through hold -- chip drops to
+    // <10 uA while bank 5 stays lit (same trick as great-luck).
+    bank_set(BANK_LITTLE_LUCK, true);
+    sleep_timed_seconds(LITTLE_HOLD_SECONDS);
+    bank_set(BANK_LITTLE_LUCK, false);
+}
 
 static void anim_reveal_uncertain() {
     pwm_init();
@@ -111,6 +180,28 @@ static void anim_reveal_uncertain() {
     bank_all_off();
 }
 
+// Air ripple after a successful blow: wave starts at the fire (banks
+// 7+8 share distance 0) and travels one bank per step toward bank 0.
+static void ripple_blow(uint16_t step_ms) {
+    const uint8_t fire_anchor = BANK_FIRE_ORANGE;  // bank 7 = inner fire
+    const uint8_t max_dist    = fire_anchor;       // 7 - 0
+    const uint32_t total_ms   = (uint32_t)(max_dist + 1) * step_ms;
+    const uint32_t t0 = millis();
+    while ((uint32_t)(millis() - t0) < total_ms) {
+        const int32_t t = (int32_t)(millis() - t0);
+        for (uint8_t b = 0; b < NUM_BANKS; b++) {
+            // Banks 7 and 8 share the source; banks 0..6 are progressively
+            // farther from the fire so the wave-front moves toward bank 0.
+            const uint8_t dist =
+                (b >= fire_anchor) ? 0 : (uint8_t)(fire_anchor - b);
+            pwm_set(b, triangle_envelope(t,
+                                         (int32_t)dist * step_ms,
+                                         step_ms, 100));
+        }
+        pwm_tick_once();
+    }
+}
+
 static void anim_reveal_fire() {
     pwm_init();
     uint8_t result = flame_run_until_blow(FIRE_TIMEOUT_MS);
@@ -118,13 +209,13 @@ static void anim_reveal_fire() {
     uint8_t red_now    = flame_current_red();
 
     if (result == FLAME_RESULT_BLOWN) {
-        // Flare-up then a fast die -- "you blew it out".
+        // Snap the fire up to peak first -- the blow "feeds" the flame
+        // for one moment before the air-ripple sweeps it (and the rest
+        // of the card) outward.
         pwm_fade2(BANK_FIRE_ORANGE, orange_now, 100,
                   BANK_FIRE_RED,    red_now,    100,
                   FLARE_UP_MS, ease_out_quad);
-        pwm_fade2(BANK_FIRE_ORANGE, 100, 0,
-                  BANK_FIRE_RED,    100, 0,
-                  FLARE_FADE_MS, ease_in_quad);
+        ripple_blow(BLOW_RIPPLE_STEP_MS);
     } else {
         // Timeout: nobody blew. Slower, sadder fade.
         pwm_fade2(BANK_FIRE_ORANGE, orange_now, 0,
