@@ -89,9 +89,11 @@ constexpr uint16_t BLOW_GAP_MS          = 20;
 // After this long without a blow, the fire times out and the card
 // goes to sleep anyway -- prevents face-down-in-a-drawer drain.
 constexpr uint32_t FIRE_TIMEOUT_MS      = 60000;
-// Flare-up + fade animation after a successful blow.
+// Flare-up before the air-ripple kicks off on a successful blow.
 constexpr uint16_t FLARE_UP_MS          = 80;
-constexpr uint16_t FLARE_FADE_MS        = 220;
+// Air-ripple propagates from fire (banks 7+8) one bank inward per step
+// toward bank 0 -- ~7 steps total. 80 ms / step reads as "rush of air".
+constexpr uint16_t BLOW_RIPPLE_STEP_MS  = 80;
 // Fade-out used on fire timeout (no blow) -- a slower, sadder die.
 constexpr uint16_t FIRE_TIMEOUT_FADE_MS = 600;
 

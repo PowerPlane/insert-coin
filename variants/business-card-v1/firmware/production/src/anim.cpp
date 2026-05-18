@@ -170,6 +170,33 @@ static void anim_reveal_uncertain() {
     bank_all_off();
 }
 
+// Air ripple after a successful blow: wave starts at the fire (banks 7+8
+// share distance 0) and travels one bank per step toward bank 0, each
+// bank lit with the same triangular envelope as the great-luck ripple.
+static void ripple_blow(uint16_t step_ms) {
+    const uint8_t fire_anchor = BANK_FIRE_ORANGE;  // bank 7 = inner fire
+    const uint8_t max_dist    = fire_anchor;       // 7 - 0
+    const uint32_t total_ms   = (uint32_t)(max_dist + 1) * step_ms;
+    const uint32_t t0 = millis();
+    while ((uint32_t)(millis() - t0) < total_ms) {
+        const uint32_t t = (uint32_t)(millis() - t0);
+        for (uint8_t b = 0; b < NUM_BANKS; b++) {
+            // Banks 7 and 8 share the source; banks 0..6 are progressively
+            // farther from the fire so the wave-front moves toward bank 0.
+            const uint8_t dist = (b >= fire_anchor) ? 0 : (uint8_t)(fire_anchor - b);
+            const int32_t center = (int32_t)dist * step_ms;
+            const int32_t dt = (int32_t)t - center;
+            uint8_t duty = 0;
+            if (dt > -(int32_t)step_ms && dt < (int32_t)step_ms) {
+                const int32_t abs_dt = (dt < 0) ? -dt : dt;
+                duty = (uint8_t)(100 * ((int32_t)step_ms - abs_dt) / step_ms);
+            }
+            pwm_set(b, duty);
+        }
+        pwm_tick_once();
+    }
+}
+
 static void anim_reveal_fire() {
     pwm_init();
     uint8_t result = flame_run_until_blow(FIRE_TIMEOUT_MS);
@@ -177,13 +204,13 @@ static void anim_reveal_fire() {
     uint8_t red_now    = flame_current_red();
 
     if (result == FLAME_RESULT_BLOWN) {
-        // Flare-up then a fast die -- "you blew it out".
+        // Snap the fire up to peak first -- the blow "feeds" the flame
+        // for one moment before the air-ripple sweeps it (and the rest
+        // of the card) outward.
         pwm_fade2(BANK_FIRE_ORANGE, orange_now, 100,
                   BANK_FIRE_RED,    red_now,    100,
                   FLARE_UP_MS, ease_out_quad);
-        pwm_fade2(BANK_FIRE_ORANGE, 100, 0,
-                  BANK_FIRE_RED,    100, 0,
-                  FLARE_FADE_MS, ease_in_quad);
+        ripple_blow(BLOW_RIPPLE_STEP_MS);
     } else {
         // Timeout: nobody blew. Slower, sadder fade.
         pwm_fade2(BANK_FIRE_ORANGE, orange_now, 0,
