@@ -1,0 +1,81 @@
+<!--
+  Insert Coin -- NFC ducky injector
+  Paste this whole block into Cargo.site:
+    Site Options  ->  Custom Code  ->  Body End  (or equivalent "end of <body>")
+  Replace the four ASSET_URL_* placeholders with the URLs Cargo gives you
+  after uploading the four duck SVGs to the Media Manager.
+-->
+<style>
+  .dy-ducky {
+    /* Match the cap-height of the heading; tweak if it looks off in print. */
+    height: 0.95em;
+    width: auto;
+    vertical-align: -0.1em;
+    margin-right: 0.4em;
+    display: inline-block;
+    animation: dy-ducky-bob 2.2s ease-in-out infinite;
+  }
+  @keyframes dy-ducky-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-0.18em); }
+  }
+</style>
+<script>
+(function () {
+  // d=1 great, d=2 little, d=3 uncertain, d=4 bad. d=0 (or missing/unknown)
+  // means "card hasn't been activated" -- show no ducky.
+  var DUCKIES = {
+    '1': 'ASSET_URL_GREAT',
+    '2': 'ASSET_URL_LITTLE',
+    '3': 'ASSET_URL_UNCERTAIN',
+    '4': 'ASSET_URL_BAD'
+  };
+
+  var params = new URLSearchParams(window.location.search);
+  var d = params.get('d');
+  if (!d || !DUCKIES[d]) return;
+
+  function inject() {
+    // Find the first element whose visible text begins with "DAVID YANG".
+    // Anchoring on text (not class) survives Cargo template regenerations.
+    var candidates = document.querySelectorAll(
+      'h1, h2, h3, .row, header, div, p'
+    );
+    for (var i = 0; i < candidates.length; i++) {
+      var el = candidates[i];
+      if (el.querySelector('.dy-ducky')) return; // already injected
+      var txt = (el.textContent || '').trim();
+      if (txt.indexOf('DAVID YANG') !== 0) continue;
+      // Skip wrappers that also contain the bio paragraph etc.
+      // Pick the tightest element by recursing into the first child
+      // that still matches.
+      var node = el;
+      while (true) {
+        var deeper = null;
+        for (var j = 0; j < node.children.length; j++) {
+          var c = node.children[j];
+          if ((c.textContent || '').trim().indexOf('DAVID YANG') === 0) {
+            deeper = c;
+            break;
+          }
+        }
+        if (!deeper) break;
+        node = deeper;
+      }
+      var img = document.createElement('img');
+      img.src = DUCKIES[d];
+      img.className = 'dy-ducky';
+      img.alt = '';                  // decorative
+      img.setAttribute('aria-hidden', 'true');
+      node.insertBefore(img, node.firstChild);
+      return;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inject);
+  } else {
+    inject();
+  }
+})();
+</script>
