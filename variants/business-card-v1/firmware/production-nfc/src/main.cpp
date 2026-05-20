@@ -52,6 +52,11 @@ void setup() {
     }
     anim_run_reveal(fortune);
 
+    // The bad-luck reveal kept ADC1 alive for its blow detector. Turn
+    // it off now so the 60 s URL-live sleep below isn't dominated by
+    // the ~25 uA ADC bias. Safe to call twice.
+    mic_deinit();
+
     // Reveal complete, all LEDs off. Patch the NDEF digit so the next
     // phone tap reflects the result.
     ndef_init();

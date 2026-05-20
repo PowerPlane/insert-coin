@@ -1,4 +1,9 @@
-# production firmware
+# production-nfc firmware
+
+(Same overall behavior as `production/`, plus a post-reveal I2C patch
+of the ST25DV04K NDEF EEPROM so a phone tap surfaces the fortune
+result. See `docs/nfc-ducky/` for the on-tag URL contract and the
+Cargo.site snippet.)
 
 Interactive firmware for business-card-v1. One coin insertion = one fortune.
 
@@ -51,8 +56,8 @@ src/
 
 ```
 cd insert-coin/variants/business-card-v1/firmware
-pio run -e production
-pio run -e production -t upload --upload-port /dev/cu.usbserial-XXXX
+pio run -e production-nfc
+pio run -e production-nfc -t upload --upload-port /dev/cu.usbserial-XXXX
 ```
 
 `FORCE_FORTUNE` (set in `config.h` or via `-DFORCE_FORTUNE=3` build flag) skips the lottery for blow-out tuning. Defaults to `-1` (real RNG).
