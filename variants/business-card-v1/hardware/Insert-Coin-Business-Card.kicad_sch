@@ -2977,6 +2977,26 @@
 		)
 		(uuid "b9970d42-e33a-419e-ae5b-ee60928fda9c")
 	)
+	(text_box "Note for V2 - Make the udpi and GND test pad ducky in a pond Test Pin with 2.54 minimum distance apart that still works."
+		(exclude_from_sim no)
+		(at 144.78 27.94 0)
+		(size 60.96 17.78)
+		(margins 0.9525 0.9525 0.9525 0.9525)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(type none)
+		)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "296f98c0-0652-4586-8089-1b9c8fe5ac55")
+	)
 	(junction
 		(at 27.94 113.03)
 		(diameter 0)
