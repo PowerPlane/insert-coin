@@ -22,8 +22,10 @@ static void disable_all_input_buffers() {
             digitalPinToBitPosition(LED_BANK_PINS[i]));
         if (pinctrl) *pinctrl = PORT_ISC_INPUT_DISABLE_gc;
     }
-    // I2C lines are already disabled by configure_unused_pins(), but
-    // belt-and-suspenders.
+    // I2C lines: by the time sleep_forever() runs we may have left
+    // them with PULLUPEN set (ndef_deinit() leaves them that way).
+    // Hard-disable here so terminal sleep doesn't pay for either the
+    // pullup current or a floating Schmitt input.
     PORTB.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc;
     PORTB.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc;
     PORTC.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc;

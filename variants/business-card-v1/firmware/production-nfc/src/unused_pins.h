@@ -19,10 +19,12 @@ inline void configure_unused_pins() {
             *pinctrl = PORT_ISC_INPUT_DISABLE_gc;
         }
     }
-    // Production never touches I2C -- the ST25DV04K NFC tag is RF-
-    // powered for tap-to-URL independent of the MCU. PB0/PB1 have no
-    // external pull-ups, so their input buffers would float during the
-    // whole show without this.
+    // PB0/PB1 = I2C SCL/SDA to the ST25DV04K. The show itself never
+    // touches I2C, so we input-disable them up front to keep the
+    // (externally un-pulled) lines from oscillating an enabled
+    // Schmitt trigger. ndef_init() flips them to pullup-on +
+    // TWI-driven after the reveal; sleep_forever() then drops them
+    // back to INPUT_DISABLE for terminal sleep.
     PORTB.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc;
     PORTB.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc;
     // PA0 = UPDI -- owned by hardware, leave alone.
