@@ -456,6 +456,196 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "KiCadPartFinder:LMA2718B381-OA7"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 8.89 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "LMA2718B381-OA7"
+				(at 0 -8.89 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "component:MIC-SMD_4P-L2.8-W1.9_LMA2718B381-OA7"
+				(at 0 -11.43 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "https://www.lcsc.com/datasheet/C5373222.pdf"
+				(at 0 -13.97 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Manufacturer" "LinkMems(聆麦声学)"
+				(at 0 -16.51 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "MPN" "LMA2718B381-OA7"
+				(at 0 -19.05 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "LCSC Part" "C5373222"
+				(at 0 -21.59 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "LMA2718B381-OA7_0_1"
+				(rectangle
+					(start -2.54 6.35)
+					(end 5.08 -6.35)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(circle
+					(center -1.27 5.08)
+					(radius 0.38)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin unspecified line
+					(at -5.08 3.81 0)
+					(length 2.54)
+					(name "OUT"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin unspecified line
+					(at -5.08 1.27 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin unspecified line
+					(at -5.08 -1.27 0)
+					(length 2.54)
+					(name "VDD"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin unspecified line
+					(at -5.08 -3.81 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "KiCadPartFinder:XL-1606SURC"
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -685,189 +875,6 @@
 						)
 					)
 					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
-		(symbol "KiCadPartFinder:ZTS6156"
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(in_pos_files yes)
-			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "MIC"
-				(at 0 6.35 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Value" "ZTS6156"
-				(at 0 -6.35 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" "component:MIC-SMD_3P-L2.8-W1.9_ZTS6056"
-				(at 0 -8.89 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Datasheet" "https://www.lcsc.com/datasheet/C481301.pdf"
-				(at 0 -11.43 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Description" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Manufacturer" "ZILLTEK(钰太)"
-				(at 0 -13.97 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "MPN" "ZTS6156"
-				(at 0 -16.51 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "LCSC Part" "C481301"
-				(at 0 -19.05 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_keywords" "MEMS Microphones"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "ZTS6156_0_1"
-				(rectangle
-					(start -6.35 3.81)
-					(end 6.35 -3.81)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type background)
-					)
-				)
-				(circle
-					(center -5.08 2.54)
-					(radius 0.38)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(pin unspecified line
-					(at -8.89 1.27 0)
-					(length 2.54)
-					(name "VDD"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin unspecified line
-					(at -8.89 -1.27 0)
-					(length 2.54)
-					(name "OUT"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin unspecified line
-					(at 8.89 0 180)
-					(length 2.54)
-					(name "GND"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "3"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1348,426 +1355,6 @@
 						)
 					)
 					(number "21"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
-		(symbol "PCM_JLCPCB-Resistors:0402x4,10kΩ"
-			(pin_numbers
-				(hide yes)
-			)
-			(pin_names
-				(offset 0)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(in_pos_files yes)
-			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "R"
-				(at 1.778 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify left)
-				)
-			)
-			(property "Value" "10kΩ"
-				(at 0 0 90)
-				(show_name no)
-				(do_not_autoplace yes)
-				(effects
-					(font
-						(size 0.8 0.8)
-					)
-				)
-			)
-			(property "Footprint" "PCM_JLCPCB:R_0402x4"
-				(at -1.778 0 90)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "LCSC" "C25725"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Stock" "62997"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Price" "0.018USD"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Process" "SMT"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Minimum Qty" "20"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Attrition Qty" "10"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Class" "Preferred Component"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Category" "Resistors,Resistor Networks & Arrays"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Part" "4D02WGJ0103TCE"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Resistance" "10kΩ"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Power(Watts)" "62.5mW"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Number of Resistors" "4"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Number of Pins" "8"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Tolerance" "±5%"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Temperature Coefficient" "±200ppm/°C"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_fp_filters" "R_*"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "0402x4,10kΩ_0_1"
-				(rectangle
-					(start -1.016 2.54)
-					(end 1.016 -2.54)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "0402x4,10kΩ_1_1"
-				(pin passive line
-					(at 0 3.81 270)
-					(length 1.27)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 -3.81 90)
-					(length 1.27)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "8"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(symbol "0402x4,10kΩ_2_1"
-				(pin passive line
-					(at 0 3.81 270)
-					(length 1.27)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 -3.81 90)
-					(length 1.27)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "7"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(symbol "0402x4,10kΩ_3_1"
-				(pin passive line
-					(at 0 3.81 270)
-					(length 1.27)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "3"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 -3.81 90)
-					(length 1.27)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "6"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(symbol "0402x4,10kΩ_4_1"
-				(pin passive line
-					(at 0 3.81 270)
-					(length 1.27)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "4"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 -3.81 90)
-					(length 1.27)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "5"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -2977,25 +2564,11 @@
 		)
 		(uuid "b9970d42-e33a-419e-ae5b-ee60928fda9c")
 	)
-	(text_box "Note for V2 - Make the udpi and GND test pad ducky in a pond Test Pin with 2.54 minimum distance apart that still works."
-		(exclude_from_sim no)
-		(at 144.78 27.94 0)
-		(size 60.96 17.78)
-		(margins 0.9525 0.9525 0.9525 0.9525)
-		(stroke
-			(width 0)
-			(type solid)
-		)
-		(fill
-			(type none)
-		)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left top)
-		)
-		(uuid "296f98c0-0652-4586-8089-1b9c8fe5ac55")
+	(junction
+		(at 31.75 182.88)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "09a71165-0ce5-4b46-b683-f94d7ca24c53")
 	)
 	(junction
 		(at 27.94 113.03)
@@ -3109,27 +2682,7 @@
 	)
 	(wire
 		(pts
-			(xy 121.92 100.33) (xy 121.92 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "037acbbe-b0b0-4f35-bdb3-f18c930f40ec")
-	)
-	(wire
-		(pts
-			(xy 90.17 100.33) (xy 90.17 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "04a12e87-d521-4230-9ae6-4d51b7e3fe7e")
-	)
-	(wire
-		(pts
-			(xy 58.42 100.33) (xy 58.42 101.6)
+			(xy 58.42 99.06) (xy 58.42 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3159,7 +2712,7 @@
 	)
 	(wire
 		(pts
-			(xy 163.83 92.71) (xy 163.83 91.44)
+			(xy 163.83 99.06) (xy 163.83 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3179,7 +2732,7 @@
 	)
 	(wire
 		(pts
-			(xy 80.01 92.71) (xy 80.01 91.44)
+			(xy 80.01 99.06) (xy 80.01 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3199,23 +2752,23 @@
 	)
 	(wire
 		(pts
-			(xy 90.17 92.71) (xy 90.17 91.44)
+			(xy 34.29 177.8) (xy 31.75 177.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0dfe6e0c-6b8b-4a88-9d10-3c448f73e39b")
+	)
+	(wire
+		(pts
+			(xy 90.17 99.06) (xy 90.17 101.6)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "0f64d7d1-a76f-4770-8663-c908d35e0ed5")
-	)
-	(wire
-		(pts
-			(xy 90.17 50.8) (xy 90.17 52.07)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "12233c7d-a1bd-4a6a-b1aa-fa607f90a621")
 	)
 	(wire
 		(pts
@@ -3249,17 +2802,7 @@
 	)
 	(wire
 		(pts
-			(xy 27.94 170.18) (xy 27.94 184.15)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "183c57e9-cbad-42bd-87ad-5b88b8a28ea3")
-	)
-	(wire
-		(pts
-			(xy 38.1 43.18) (xy 38.1 41.91)
+			(xy 38.1 49.53) (xy 38.1 52.07)
 		)
 		(stroke
 			(width 0)
@@ -3269,7 +2812,7 @@
 	)
 	(wire
 		(pts
-			(xy 69.85 43.18) (xy 69.85 41.91)
+			(xy 69.85 49.53) (xy 69.85 52.07)
 		)
 		(stroke
 			(width 0)
@@ -3289,7 +2832,17 @@
 	)
 	(wire
 		(pts
-			(xy 175.26 92.71) (xy 175.26 91.44)
+			(xy 31.75 182.88) (xy 34.29 182.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1c7ced09-a21e-4bd7-9852-e2023e5d947a")
+	)
+	(wire
+		(pts
+			(xy 175.26 99.06) (xy 175.26 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3309,23 +2862,13 @@
 	)
 	(wire
 		(pts
-			(xy 27.94 43.18) (xy 27.94 41.91)
+			(xy 27.94 49.53) (xy 27.94 52.07)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "20dc9571-e04c-48fa-9ee4-88ec6715e0a0")
-	)
-	(wire
-		(pts
-			(xy 27.94 186.69) (xy 30.48 186.69)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "211017f0-123b-46f9-a603-fe3b31ff72a8")
 	)
 	(wire
 		(pts
@@ -3359,27 +2902,7 @@
 	)
 	(wire
 		(pts
-			(xy 48.26 100.33) (xy 48.26 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "25ec7dc4-0bc9-4703-8c9b-21b8fca1e692")
-	)
-	(wire
-		(pts
-			(xy 38.1 92.71) (xy 38.1 91.44)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "2bed29fb-4f8f-437f-9881-d13d7424c6b4")
-	)
-	(wire
-		(pts
-			(xy 80.01 50.8) (xy 80.01 52.07)
+			(xy 80.01 49.53) (xy 80.01 52.07)
 		)
 		(stroke
 			(width 0)
@@ -3389,7 +2912,7 @@
 	)
 	(wire
 		(pts
-			(xy 27.94 92.71) (xy 27.94 91.44)
+			(xy 27.94 99.06) (xy 27.94 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3419,16 +2942,6 @@
 	)
 	(wire
 		(pts
-			(xy 58.42 43.18) (xy 58.42 41.91)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "3ef35ffc-af06-49fe-8f96-2b321346b943")
-	)
-	(wire
-		(pts
 			(xy 90.17 62.23) (xy 90.17 63.5)
 		)
 		(stroke
@@ -3446,16 +2959,6 @@
 			(type default)
 		)
 		(uuid "4171e8e8-3b2c-4f10-bf30-2a7ffc90f3af")
-	)
-	(wire
-		(pts
-			(xy 48.26 50.8) (xy 48.26 52.07)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "42ed9d1b-d09c-49d9-9dc1-aa61de413407")
 	)
 	(wire
 		(pts
@@ -3509,7 +3012,7 @@
 	)
 	(wire
 		(pts
-			(xy 48.26 92.71) (xy 48.26 91.44)
+			(xy 48.26 99.06) (xy 48.26 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3549,16 +3052,6 @@
 	)
 	(wire
 		(pts
-			(xy 27.94 100.33) (xy 27.94 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "5559fe6e-94e6-45f9-b041-f1c829804fe4")
-	)
-	(wire
-		(pts
 			(xy 69.85 113.03) (xy 80.01 113.03)
 		)
 		(stroke
@@ -3566,26 +3059,6 @@
 			(type default)
 		)
 		(uuid "55faae41-09c5-43ed-bc67-4ca9fb673187")
-	)
-	(wire
-		(pts
-			(xy 153.67 100.33) (xy 153.67 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "583aeae3-acf8-4ca0-ade3-fda6589da624")
-	)
-	(wire
-		(pts
-			(xy 100.33 100.33) (xy 100.33 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "59a9600b-d5eb-4fa5-b4ba-20ebf0164da9")
 	)
 	(wire
 		(pts
@@ -3629,17 +3102,7 @@
 	)
 	(wire
 		(pts
-			(xy 175.26 100.33) (xy 175.26 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6658bd87-d6d7-4d3c-ba84-03f6692dbbb7")
-	)
-	(wire
-		(pts
-			(xy 58.42 50.8) (xy 58.42 52.07)
+			(xy 58.42 49.53) (xy 58.42 52.07)
 		)
 		(stroke
 			(width 0)
@@ -3689,37 +3152,7 @@
 	)
 	(wire
 		(pts
-			(xy 142.24 92.71) (xy 142.24 91.44)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6df16688-a5c0-41e3-9a3d-01ba0d4dd22a")
-	)
-	(wire
-		(pts
-			(xy 163.83 100.33) (xy 163.83 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "715a7ce2-71ca-4a77-bdca-d57bc0e15719")
-	)
-	(wire
-		(pts
-			(xy 27.94 50.8) (xy 27.94 52.07)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "7343dc20-4db7-4a9e-8b05-21e9d62db1df")
-	)
-	(wire
-		(pts
-			(xy 100.33 92.71) (xy 100.33 91.44)
+			(xy 100.33 99.06) (xy 100.33 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3749,17 +3182,7 @@
 	)
 	(wire
 		(pts
-			(xy 100.33 50.8) (xy 100.33 52.07)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "7a4e87ae-5568-4a53-9793-c202837f139b")
-	)
-	(wire
-		(pts
-			(xy 90.17 43.18) (xy 90.17 41.91)
+			(xy 90.17 49.53) (xy 90.17 52.07)
 		)
 		(stroke
 			(width 0)
@@ -3789,7 +3212,7 @@
 	)
 	(wire
 		(pts
-			(xy 69.85 100.33) (xy 69.85 101.6)
+			(xy 69.85 99.06) (xy 69.85 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3819,7 +3242,7 @@
 	)
 	(wire
 		(pts
-			(xy 142.24 100.33) (xy 142.24 101.6)
+			(xy 142.24 99.06) (xy 142.24 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3889,7 +3312,7 @@
 	)
 	(wire
 		(pts
-			(xy 121.92 92.71) (xy 121.92 91.44)
+			(xy 121.92 99.06) (xy 121.92 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3899,7 +3322,7 @@
 	)
 	(wire
 		(pts
-			(xy 111.76 92.71) (xy 111.76 91.44)
+			(xy 111.76 99.06) (xy 111.76 101.6)
 		)
 		(stroke
 			(width 0)
@@ -3916,16 +3339,6 @@
 			(type default)
 		)
 		(uuid "945285cd-bf54-4962-9fa5-9410ae6634f4")
-	)
-	(wire
-		(pts
-			(xy 111.76 100.33) (xy 111.76 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "99344ad1-0281-4380-be59-5c90f5eade38")
 	)
 	(wire
 		(pts
@@ -3949,13 +3362,23 @@
 	)
 	(wire
 		(pts
-			(xy 132.08 100.33) (xy 132.08 101.6)
+			(xy 132.08 99.06) (xy 132.08 101.6)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "a97cf482-d531-46eb-acd9-00c01f018c59")
+	)
+	(wire
+		(pts
+			(xy 31.75 175.26) (xy 34.29 175.26)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "aaaba81c-e207-4d0d-87ef-c514bd9b560c")
 	)
 	(wire
 		(pts
@@ -3999,16 +3422,6 @@
 	)
 	(wire
 		(pts
-			(xy 80.01 43.18) (xy 80.01 41.91)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b5f8c3e6-e795-43b9-975c-8844d8293668")
-	)
-	(wire
-		(pts
 			(xy 58.42 62.23) (xy 58.42 63.5)
 		)
 		(stroke
@@ -4016,16 +3429,6 @@
 			(type default)
 		)
 		(uuid "b67966d3-d0fa-4fb3-93ae-d17977728aa6")
-	)
-	(wire
-		(pts
-			(xy 80.01 100.33) (xy 80.01 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b691c82b-22c7-43f3-bcf1-e617b92a524b")
 	)
 	(wire
 		(pts
@@ -4059,37 +3462,7 @@
 	)
 	(wire
 		(pts
-			(xy 69.85 50.8) (xy 69.85 52.07)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ba29d43d-386b-461a-bf52-19b491ef0a35")
-	)
-	(wire
-		(pts
-			(xy 132.08 92.71) (xy 132.08 91.44)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "bc6f37a7-54b1-4931-93e4-5b0864e05e25")
-	)
-	(wire
-		(pts
-			(xy 48.26 190.5) (xy 48.26 185.42)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "bddc3b2d-d14b-49b4-b148-bb1345fc11c0")
-	)
-	(wire
-		(pts
-			(xy 185.42 92.71) (xy 185.42 91.44)
+			(xy 185.42 99.06) (xy 185.42 101.6)
 		)
 		(stroke
 			(width 0)
@@ -4099,23 +3472,23 @@
 	)
 	(wire
 		(pts
-			(xy 271.78 72.39) (xy 271.78 73.66)
+			(xy 31.75 182.88) (xy 31.75 190.5)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "c0d5c783-c014-4385-a49e-e501152acea1")
+		(uuid "c33c264c-e8f7-4231-a7c3-b64a1a04b1dd")
 	)
 	(wire
 		(pts
-			(xy 69.85 92.71) (xy 69.85 91.44)
+			(xy 16.51 180.34) (xy 34.29 180.34)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "c5e10f42-a609-4018-8dd6-76b1ccbf4e30")
+		(uuid "c61a72ce-9785-486e-82d3-030a08de1f08")
 	)
 	(wire
 		(pts
@@ -4129,23 +3502,13 @@
 	)
 	(wire
 		(pts
-			(xy 48.26 43.18) (xy 48.26 41.91)
+			(xy 48.26 49.53) (xy 48.26 52.07)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "cc4d7a34-333c-4dce-9ff0-0a6f6500dbcb")
-	)
-	(wire
-		(pts
-			(xy 185.42 100.33) (xy 185.42 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "cd34157e-5287-4cbf-bbfe-fd51a11a41dc")
 	)
 	(wire
 		(pts
@@ -4199,16 +3562,6 @@
 	)
 	(wire
 		(pts
-			(xy 58.42 92.71) (xy 58.42 91.44)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "e44ceff5-2241-4f46-b0dc-179273a536ec")
-	)
-	(wire
-		(pts
 			(xy 153.67 127) (xy 153.67 128.27)
 		)
 		(stroke
@@ -4219,7 +3572,7 @@
 	)
 	(wire
 		(pts
-			(xy 100.33 43.18) (xy 100.33 41.91)
+			(xy 100.33 49.53) (xy 100.33 52.07)
 		)
 		(stroke
 			(width 0)
@@ -4256,26 +3609,6 @@
 			(type default)
 		)
 		(uuid "e96e0eb3-ed82-45e5-9fa7-1b4d97c90ef5")
-	)
-	(wire
-		(pts
-			(xy 27.94 184.15) (xy 30.48 184.15)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ec48711b-4111-4c96-b7d2-46c3769604a6")
-	)
-	(wire
-		(pts
-			(xy 38.1 50.8) (xy 38.1 52.07)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ef46dabd-cb58-4d75-8df0-cb60c18c22ad")
 	)
 	(wire
 		(pts
@@ -4319,7 +3652,7 @@
 	)
 	(wire
 		(pts
-			(xy 153.67 92.71) (xy 153.67 91.44)
+			(xy 153.67 99.06) (xy 153.67 101.6)
 		)
 		(stroke
 			(width 0)
@@ -4339,13 +3672,33 @@
 	)
 	(wire
 		(pts
-			(xy 38.1 100.33) (xy 38.1 101.6)
+			(xy 38.1 99.06) (xy 38.1 101.6)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "fbc88615-e387-4383-bc4e-fcb256c4c253")
+	)
+	(wire
+		(pts
+			(xy 31.75 177.8) (xy 31.75 182.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fd62805b-39ba-41f9-866f-c1921fd25f05")
+	)
+	(wire
+		(pts
+			(xy 16.51 170.18) (xy 16.51 180.34)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fd93e9f4-89df-4f59-9e35-63478147aa6a")
 	)
 	(label "LED9"
 		(at 167.64 121.92 180)
@@ -4518,7 +3871,7 @@
 		(uuid "970432dd-a33c-436e-b18c-511a4cb2e07a")
 	)
 	(label "MIC_ANALOG"
-		(at 27.94 186.69 180)
+		(at 31.75 175.26 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -4609,7 +3962,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 58.42 91.44 0)
+		(at 58.42 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -4620,7 +3973,7 @@
 		(fields_autoplaced yes)
 		(uuid "001379b9-0307-4e58-bcd4-7d7f2acd84ae")
 		(property "Reference" "#PWR018"
-			(at 58.42 95.25 0)
+			(at 58.42 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4631,7 +3984,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 58.42 87.63 0)
+			(at 58.42 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -4641,7 +3994,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 58.42 91.44 0)
+			(at 58.42 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4652,7 +4005,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 58.42 91.44 0)
+			(at 58.42 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4663,7 +4016,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 58.42 97.79 0)
+			(at 58.42 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5043,281 +4396,6 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 58.42 96.52 0)
-		(unit 4)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "08e0f201-8c6f-478a-9f4a-b4a81dec37f6")
-		(property "Reference" "R3"
-			(at 60.96 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 58.42 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 56.642 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 58.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "79e85937-f83d-4213-9097-8f44a4d21766")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a576")
-		)
-		(pin "4"
-			(uuid "9fb6e655-11df-4df8-ad64-6cf7799d7367")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04c5")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766e5")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-086907638597")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfde")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256455")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R3")
-					(unit 4)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-Connector:TestPoint_1.0mm")
 		(at 271.78 77.47 270)
 		(unit 1)
@@ -5350,7 +4428,7 @@
 				)
 			)
 		)
-		(property "Footprint" "PCM_SparkFun-Connector:TestPoint-1.0mm"
+		(property "Footprint" "DavidLib_Graphics:DUCKY_ICON_2.54_Spacing"
 			(at 265.43 77.47 0)
 			(hide yes)
 			(show_name no)
@@ -5396,283 +4474,8 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 142.24 96.52 0)
-		(unit 4)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "0adeaa75-8536-48b6-b5f4-a9872f0a5ff3")
-		(property "Reference" "R5"
-			(at 144.78 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 142.24 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 140.462 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 142.24 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "c685abeb-143b-4137-afd2-815785e91c5e")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a577")
-		)
-		(pin "4"
-			(uuid "52dff7a4-2949-4497-b898-93a622298562")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04c6")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766e6")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-086907638598")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfdf")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256456")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R5")
-					(unit 4)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 27.94 170.18 0)
+		(at 16.51 170.18 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -5683,7 +4486,7 @@
 		(fields_autoplaced yes)
 		(uuid "0cdc6628-0651-4e94-8a53-bb2ea6246957")
 		(property "Reference" "#PWR054"
-			(at 27.94 173.99 0)
+			(at 16.51 173.99 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5694,7 +4497,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 27.94 166.37 0)
+			(at 16.51 166.37 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -5704,7 +4507,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 27.94 170.18 0)
+			(at 16.51 170.18 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5715,7 +4518,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 27.94 170.18 0)
+			(at 16.51 170.18 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5726,7 +4529,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 27.94 176.53 0)
+			(at 16.51 176.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6061,7 +4864,7 @@
 				)
 			)
 		)
-		(property "Footprint" "PCM_SparkFun-Connector:TestPoint-1.0mm"
+		(property "Footprint" "DavidLib_Graphics:DUCKY_ICON_2.54_Spacing"
 			(at 265.43 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -6102,281 +4905,6 @@
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "TP3")
 					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 175.26 96.52 0)
-		(unit 3)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "20e24cb5-8a8b-4925-bc49-a9661a780621")
-		(property "Reference" "R6"
-			(at 177.8 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 175.26 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 173.482 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 175.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-72842337980d")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a578")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389257")
-		)
-		(pin "3"
-			(uuid "3cb0dc8b-e305-45da-bfdc-3a20fee937a3")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766e7")
-		)
-		(pin "6"
-			(uuid "fa5dbeff-acb2-457f-af06-90457c10e04f")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfe0")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256457")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R6")
-					(unit 3)
 				)
 			)
 		)
@@ -8335,7 +6863,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 175.26 91.44 0)
+		(at 175.26 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8346,7 +6874,7 @@
 		(fields_autoplaced yes)
 		(uuid "38238cfb-4f56-4dd9-995b-41c94807fb0f")
 		(property "Reference" "#PWR034"
-			(at 175.26 95.25 0)
+			(at 175.26 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8357,7 +6885,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 175.26 87.63 0)
+			(at 175.26 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -8367,7 +6895,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 175.26 91.44 0)
+			(at 175.26 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8378,7 +6906,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 175.26 91.44 0)
+			(at 175.26 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8389,7 +6917,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 175.26 97.79 0)
+			(at 175.26 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8413,7 +6941,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 27.94 41.91 0)
+		(at 27.94 49.53 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8424,7 +6952,7 @@
 		(fields_autoplaced yes)
 		(uuid "39cf4eb9-4560-4181-8433-771b35d6da26")
 		(property "Reference" "#PWR04"
-			(at 27.94 45.72 0)
+			(at 27.94 53.34 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8435,7 +6963,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 27.94 38.1 0)
+			(at 27.94 45.72 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -8445,7 +6973,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 27.94 41.91 0)
+			(at 27.94 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8456,7 +6984,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 27.94 41.91 0)
+			(at 27.94 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8467,7 +6995,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 27.94 48.26 0)
+			(at 27.94 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8490,8 +7018,128 @@
 		)
 	)
 	(symbol
+		(lib_id "KiCadPartFinder:LMA2718B381-OA7")
+		(at 39.37 179.07 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "3d7c8385-f49f-4d0c-87a1-8157afe7d495")
+		(property "Reference" "U3"
+			(at 36.83 168.148 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "LMA2718B381-OA7"
+			(at 36.83 170.688 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "KiCadPartFinder:MIC-SMD_4P-L2.8-W1.9_LMA2718B381-OA7"
+			(at 39.37 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C5373222.pdf"
+			(at 39.37 193.04 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 39.37 179.07 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "LinkMems(聆麦声学)"
+			(at 39.37 195.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "LMA2718B381-OA7"
+			(at 39.37 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C5373222"
+			(at 39.37 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "c118f14e-cc2d-4be2-b309-bb43a4deb499")
+		)
+		(pin "4"
+			(uuid "2163dee4-e66a-4c35-9920-3e7520a1427f")
+		)
+		(pin "3"
+			(uuid "c159f686-e775-45c3-9c20-dc4c09fafb7b")
+		)
+		(pin "2"
+			(uuid "f6ef6558-166c-459d-b647-fd5d96f4083e")
+		)
+		(instances
+			(project "Insert-Coin-Business-Card"
+				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
+					(reference "U3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 80.01 91.44 0)
+		(at 80.01 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8502,7 +7150,7 @@
 		(fields_autoplaced yes)
 		(uuid "410a3178-5334-4b18-96ef-28ce4d9c3107")
 		(property "Reference" "#PWR023"
-			(at 80.01 95.25 0)
+			(at 80.01 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8513,7 +7161,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 80.01 87.63 0)
+			(at 80.01 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -8523,7 +7171,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 80.01 91.44 0)
+			(at 80.01 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8534,7 +7182,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 80.01 91.44 0)
+			(at 80.01 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8545,7 +7193,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 80.01 97.79 0)
+			(at 80.01 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8641,281 +7289,6 @@
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR036")
 					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 121.92 96.52 0)
-		(unit 2)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "44610199-cb97-4671-8b0a-b1c9d36d6cc0")
-		(property "Reference" "R5"
-			(at 124.46 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 121.92 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 120.142 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 121.92 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-72842337980b")
-		)
-		(pin "7"
-			(uuid "0e5df670-2249-44a5-934e-7cd7e52adcd2")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389255")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04c4")
-		)
-		(pin "2"
-			(uuid "9de7bd4b-308c-432a-b5df-641fa74fbcd6")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-086907638596")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfdd")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256454")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R5")
-					(unit 2)
 				)
 			)
 		)
@@ -9201,283 +7574,8 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 132.08 96.52 0)
-		(unit 3)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "49b8283b-fcb0-4805-9dee-bef14cf677d3")
-		(property "Reference" "R5"
-			(at 134.62 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 132.08 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 130.302 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 132.08 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-72842337980e")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a579")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389258")
-		)
-		(pin "3"
-			(uuid "03b3b837-af8a-45fe-b4f5-be0473bf14d8")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766e8")
-		)
-		(pin "6"
-			(uuid "62e82d9f-f6be-46ca-902e-ef18718cb06c")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfe1")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256458")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R5")
-					(unit 3)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 153.67 91.44 0)
+		(at 153.67 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -9488,7 +7586,7 @@
 		(fields_autoplaced yes)
 		(uuid "4a3569df-9e35-452c-8ae2-32d94ee1e52e")
 		(property "Reference" "#PWR031"
-			(at 153.67 95.25 0)
+			(at 153.67 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9499,7 +7597,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 153.67 87.63 0)
+			(at 153.67 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -9509,7 +7607,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 153.67 91.44 0)
+			(at 153.67 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9520,7 +7618,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 153.67 91.44 0)
+			(at 153.67 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9531,7 +7629,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 153.67 97.79 0)
+			(at 153.67 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9915,7 +8013,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 69.85 41.91 0)
+		(at 69.85 49.53 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -9926,7 +8024,7 @@
 		(fields_autoplaced yes)
 		(uuid "4f7574ab-2eee-43ec-9ab3-e5333f1f2a77")
 		(property "Reference" "#PWR08"
-			(at 69.85 45.72 0)
+			(at 69.85 53.34 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9937,7 +8035,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 69.85 38.1 0)
+			(at 69.85 45.72 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -9947,7 +8045,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 69.85 41.91 0)
+			(at 69.85 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9958,7 +8056,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 69.85 41.91 0)
+			(at 69.85 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9969,7 +8067,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 69.85 48.26 0)
+			(at 69.85 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10272,283 +8370,8 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 90.17 96.52 0)
-		(unit 3)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "558de78b-9565-490a-858a-565180c97609")
-		(property "Reference" "R4"
-			(at 92.71 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 90.17 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 88.392 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 90.17 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-72842337980f")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a57a")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389259")
-		)
-		(pin "3"
-			(uuid "8a896e17-b609-45af-9ff4-d4af7d6875bc")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766e9")
-		)
-		(pin "6"
-			(uuid "ef1ca4ff-ae52-4d68-bf0c-351bdd062fd1")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfe2")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256459")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R4")
-					(unit 3)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 90.17 91.44 0)
+		(at 90.17 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10559,7 +8382,7 @@
 		(fields_autoplaced yes)
 		(uuid "585a6bc3-ff0f-4ce0-b0b2-fffafe867fc0")
 		(property "Reference" "#PWR024"
-			(at 90.17 95.25 0)
+			(at 90.17 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10570,7 +8393,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 90.17 87.63 0)
+			(at 90.17 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -10580,7 +8403,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 90.17 91.44 0)
+			(at 90.17 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10591,7 +8414,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 90.17 91.44 0)
+			(at 90.17 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10602,7 +8425,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 90.17 97.79 0)
+			(at 90.17 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10906,7 +8729,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 163.83 91.44 0)
+		(at 163.83 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10917,7 +8740,7 @@
 		(fields_autoplaced yes)
 		(uuid "5a4416f1-8eca-46ce-b985-4f3429f05db6")
 		(property "Reference" "#PWR033"
-			(at 163.83 95.25 0)
+			(at 163.83 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10928,7 +8751,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 163.83 87.63 0)
+			(at 163.83 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -10938,7 +8761,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 163.83 91.44 0)
+			(at 163.83 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10949,7 +8772,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 163.83 91.44 0)
+			(at 163.83 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10960,7 +8783,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 163.83 97.79 0)
+			(at 163.83 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11264,7 +9087,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 69.85 91.44 0)
+		(at 69.85 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -11275,7 +9098,7 @@
 		(fields_autoplaced yes)
 		(uuid "5bc3e347-b512-488b-938b-6c34b7058425")
 		(property "Reference" "#PWR019"
-			(at 69.85 95.25 0)
+			(at 69.85 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11286,7 +9109,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 69.85 87.63 0)
+			(at 69.85 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -11296,7 +9119,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 69.85 91.44 0)
+			(at 69.85 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11307,7 +9130,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 69.85 91.44 0)
+			(at 69.85 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11318,7 +9141,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 69.85 97.79 0)
+			(at 69.85 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11622,7 +9445,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 100.33 91.44 0)
+		(at 100.33 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -11633,7 +9456,7 @@
 		(fields_autoplaced yes)
 		(uuid "5e7152b1-4501-4818-8f6c-99a2733bd7c6")
 		(property "Reference" "#PWR026"
-			(at 100.33 95.25 0)
+			(at 100.33 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11644,7 +9467,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 100.33 87.63 0)
+			(at 100.33 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -11654,7 +9477,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 100.33 91.44 0)
+			(at 100.33 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11665,7 +9488,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 100.33 91.44 0)
+			(at 100.33 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11676,7 +9499,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 100.33 97.79 0)
+			(at 100.33 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12059,556 +9882,6 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 100.33 46.99 0)
-		(unit 4)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "6bf2786a-2add-4dce-a201-316b69635061")
-		(property "Reference" "R2"
-			(at 102.87 46.9899 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 100.33 46.99 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 98.552 46.99 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 100.33 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "521ee3d6-73b1-4382-9f71-249b0471babf")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a57b")
-		)
-		(pin "4"
-			(uuid "b7c940e1-34af-47f3-a5fa-1ba997ab8e8e")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04c7")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766ea")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-086907638599")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfe3")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a7847025645a")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R2")
-					(unit 4)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 38.1 96.52 0)
-		(unit 2)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "6e2938de-b3a1-40c3-9af3-ddd8e36793c4")
-		(property "Reference" "R3"
-			(at 40.64 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 38.1 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 36.322 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 38.1 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-72842337980c")
-		)
-		(pin "7"
-			(uuid "782de854-8032-45ab-8ec7-35511b2ab49a")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389256")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04c8")
-		)
-		(pin "2"
-			(uuid "16e0daf6-4366-476e-9417-bee9f416b577")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-08690763859a")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfe4")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a7847025645b")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R3")
-					(unit 2)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "KiCadPartFinder:CJ3400")
 		(at 109.22 121.92 0)
 		(unit 1)
@@ -12891,283 +10164,8 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 163.83 96.52 0)
-		(unit 2)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "700dd72c-3200-4d8d-854f-733e7f097985")
-		(property "Reference" "R6"
-			(at 166.37 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 163.83 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 162.052 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 163.83 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-728423379810")
-		)
-		(pin "7"
-			(uuid "85ea32f7-3473-4260-af02-6ccbe915a4b5")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c38925a")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04c9")
-		)
-		(pin "2"
-			(uuid "9ca5e5b8-3436-4a00-9159-2cefdf442cf4")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-08690763859b")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfe5")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a7847025645c")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R6")
-					(unit 2)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 132.08 91.44 0)
+		(at 132.08 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -13178,7 +10176,7 @@
 		(fields_autoplaced yes)
 		(uuid "71c246bc-74b8-434e-95b7-7e0d0323bf7a")
 		(property "Reference" "#PWR029"
-			(at 132.08 95.25 0)
+			(at 132.08 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13189,7 +10187,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 132.08 87.63 0)
+			(at 132.08 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -13199,7 +10197,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 132.08 91.44 0)
+			(at 132.08 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13210,7 +10208,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 132.08 91.44 0)
+			(at 132.08 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13221,7 +10219,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 132.08 97.79 0)
+			(at 132.08 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13238,562 +10236,6 @@
 			(project "Insert-Coin-Business-Card"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR029")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "KiCadPartFinder:ZTS6156")
-		(at 39.37 185.42 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "742bceaa-7cb0-4c19-85e9-203ee75c6674")
-		(property "Reference" "MIC1"
-			(at 39.37 176.53 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "ZTS6156"
-			(at 39.37 179.07 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "KiCadPartFinder:MIC-SMD_3P-L2.8-W1.9_ZTS6056"
-			(at 39.37 194.31 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/C481301.pdf"
-			(at 39.37 196.85 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "ZILLTEK(钰太)"
-			(at 39.37 199.39 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "MPN" "ZTS6156"
-			(at 39.37 201.93 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC Part" ""
-			(at 39.37 204.47 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C481301"
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Operating Temperature Range" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Overload Voltage (Max)" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Type" ""
-			(at 39.37 185.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "3"
-			(uuid "fbf5ec84-3685-4b8d-9ded-6c5551323a7e")
-		)
-		(pin "2"
-			(uuid "a841500f-e3bb-4880-9a65-30ee90b62137")
-		)
-		(pin "1"
-			(uuid "d4959880-8913-4c82-a5e4-17e6fa33c724")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "MIC1")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 27.94 46.99 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "77304680-e2b3-4c62-80ea-c5ae74cd7d35")
-		(property "Reference" "R1"
-			(at 30.48 46.9899 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 27.94 46.99 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 26.162 46.99 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 27.94 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-72842337980a")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a574")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389254")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04c3")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766e3")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-086907638595")
-		)
-		(pin "8"
-			(uuid "12bdb79c-4b2f-4a6e-89ac-bd6037137521")
-		)
-		(pin "1"
-			(uuid "e3164d1d-bb3a-4ddf-ab77-577fda7e0a11")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R1")
 					(unit 1)
 				)
 			)
@@ -14082,283 +10524,8 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 69.85 46.99 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "7bde111b-911d-4c74-8a2f-41c0eb00e8d7")
-		(property "Reference" "R2"
-			(at 72.39 46.9899 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 69.85 46.99 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 68.072 46.99 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 69.85 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-728423379811")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a575")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c38925b")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04ca")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766e4")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-08690763859c")
-		)
-		(pin "8"
-			(uuid "8876d14b-070e-4b53-bfa8-529a76aee42b")
-		)
-		(pin "1"
-			(uuid "c6f012ce-81c2-4d4a-a768-bdacacb756dc")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R2")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 100.33 41.91 0)
+		(at 100.33 49.53 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -14369,7 +10536,7 @@
 		(fields_autoplaced yes)
 		(uuid "7c868632-d534-4971-9d97-a404c3376a8a")
 		(property "Reference" "#PWR012"
-			(at 100.33 45.72 0)
+			(at 100.33 53.34 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14380,7 +10547,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 100.33 38.1 0)
+			(at 100.33 45.72 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -14390,7 +10557,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 100.33 41.91 0)
+			(at 100.33 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14401,7 +10568,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 100.33 41.91 0)
+			(at 100.33 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14412,7 +10579,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 100.33 48.26 0)
+			(at 100.33 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14514,7 +10681,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 121.92 91.44 0)
+		(at 121.92 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -14525,7 +10692,7 @@
 		(fields_autoplaced yes)
 		(uuid "7f04cb73-99d2-48b1-9f70-b5a6606af43b")
 		(property "Reference" "#PWR028"
-			(at 121.92 95.25 0)
+			(at 121.92 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14536,7 +10703,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 121.92 87.63 0)
+			(at 121.92 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -14546,7 +10713,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 121.92 91.44 0)
+			(at 121.92 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14557,7 +10724,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 121.92 91.44 0)
+			(at 121.92 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14568,7 +10735,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 121.92 97.79 0)
+			(at 121.92 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15457,7 +11624,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 185.42 91.44 0)
+		(at 185.42 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -15468,7 +11635,7 @@
 		(fields_autoplaced yes)
 		(uuid "87369290-85e7-495f-a27f-5bf466b08777")
 		(property "Reference" "#PWR035"
-			(at 185.42 95.25 0)
+			(at 185.42 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15479,7 +11646,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 185.42 87.63 0)
+			(at 185.42 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -15489,7 +11656,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 185.42 91.44 0)
+			(at 185.42 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15500,7 +11667,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 185.42 91.44 0)
+			(at 185.42 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15511,7 +11678,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 185.42 97.79 0)
+			(at 185.42 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15893,7 +12060,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 27.94 91.44 0)
+		(at 27.94 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -15904,7 +12071,7 @@
 		(fields_autoplaced yes)
 		(uuid "8afbea32-7df4-4db6-b509-5d68e7f76802")
 		(property "Reference" "#PWR013"
-			(at 27.94 95.25 0)
+			(at 27.94 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15915,7 +12082,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 27.94 87.63 0)
+			(at 27.94 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -15925,7 +12092,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 27.94 91.44 0)
+			(at 27.94 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15936,7 +12103,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 27.94 91.44 0)
+			(at 27.94 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15947,7 +12114,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 27.94 97.79 0)
+			(at 27.94 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16120,281 +12287,6 @@
 			(project "Insert-Coin-Business-Card"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR061")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 69.85 96.52 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "8f78c168-2721-418c-9ac5-1c9fe45b2db3")
-		(property "Reference" "R4"
-			(at 72.39 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 69.85 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 68.072 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 69.85 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-728423379812")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a57c")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c38925c")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04cb")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766eb")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-08690763859d")
-		)
-		(pin "8"
-			(uuid "fada7ea0-b006-4ec9-abfb-ea3ef4ccb3dc")
-		)
-		(pin "1"
-			(uuid "0d4aef9b-9a53-4cba-8ddd-30dbf7a09ed4")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R4")
 					(unit 1)
 				)
 			)
@@ -16961,283 +12853,8 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 80.01 46.99 0)
-		(unit 2)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "95715221-9ef5-476b-b43a-4491ed69b2c9")
-		(property "Reference" "R2"
-			(at 82.55 46.9899 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 80.01 46.99 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 78.232 46.99 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 80.01 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-728423379813")
-		)
-		(pin "7"
-			(uuid "fdb35f47-c25c-4fde-9bee-158d16af21c0")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c38925d")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04cc")
-		)
-		(pin "2"
-			(uuid "3b697195-4528-40b4-ba82-26cc6321a236")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-08690763859e")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfe6")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a7847025645d")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R2")
-					(unit 2)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:GND")
-		(at 48.26 190.5 0)
+		(at 31.75 190.5 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -17248,7 +12865,7 @@
 		(fields_autoplaced yes)
 		(uuid "9696252b-55d4-446d-bf2b-3226df4cc543")
 		(property "Reference" "#PWR055"
-			(at 48.26 196.85 0)
+			(at 31.75 196.85 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17259,7 +12876,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 48.26 194.31 0)
+			(at 31.75 194.31 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -17269,7 +12886,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 48.26 190.5 0)
+			(at 31.75 190.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17280,7 +12897,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 48.26 190.5 0)
+			(at 31.75 190.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17291,7 +12908,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 48.26 199.39 0)
+			(at 31.75 199.39 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17315,7 +12932,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 38.1 91.44 0)
+		(at 38.1 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -17326,7 +12943,7 @@
 		(fields_autoplaced yes)
 		(uuid "98352b50-e48b-4212-816c-5d7553f1a794")
 		(property "Reference" "#PWR015"
-			(at 38.1 95.25 0)
+			(at 38.1 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17337,7 +12954,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 38.1 87.63 0)
+			(at 38.1 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -17347,7 +12964,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 38.1 91.44 0)
+			(at 38.1 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17358,7 +12975,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 38.1 91.44 0)
+			(at 38.1 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17369,7 +12986,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 38.1 97.79 0)
+			(at 38.1 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17386,359 +13003,6 @@
 			(project "Insert-Coin-Business-Card"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR015")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 80.01 96.52 0)
-		(unit 2)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "991ab65b-d750-4d65-839c-0c0c2107f303")
-		(property "Reference" "R4"
-			(at 82.55 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 80.01 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 78.232 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 80.01 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-728423379814")
-		)
-		(pin "7"
-			(uuid "0d646728-dac6-4d01-8788-5eb0fda32e28")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c38925e")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04cd")
-		)
-		(pin "2"
-			(uuid "a4ff7b0d-62ed-4196-a5b3-fbaff3e52cf5")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-08690763859f")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfe7")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a7847025645e")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R4")
-					(unit 2)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 271.78 72.39 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "99ce1269-e35c-42f0-bf37-1cf194ce306e")
-		(property "Reference" "#PWR046"
-			(at 271.78 76.2 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "VCC"
-			(at 271.78 68.58 0)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 271.78 72.39 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 271.78 72.39 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 271.78 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "e4178f10-d740-4f91-86a9-90eaf3f68da2")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "#PWR046")
 					(unit 1)
 				)
 			)
@@ -18180,283 +13444,8 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 38.1 46.99 0)
-		(unit 2)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "9cea316f-3add-431e-94a7-d84f46f84bb6")
-		(property "Reference" "R1"
-			(at 40.64 46.9899 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 38.1 46.99 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 36.322 46.99 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 38.1 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-728423379815")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a57d")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c38925f")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04ce")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766ec")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-0869076385a0")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfe8")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a7847025645f")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R1")
-					(unit 2)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 111.76 91.44 0)
+		(at 111.76 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -18467,7 +13456,7 @@
 		(fields_autoplaced yes)
 		(uuid "9e5215e3-f086-48d0-be45-a4dc03d65b50")
 		(property "Reference" "#PWR025"
-			(at 111.76 95.25 0)
+			(at 111.76 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18478,7 +13467,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 111.76 87.63 0)
+			(at 111.76 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -18488,7 +13477,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 111.76 91.44 0)
+			(at 111.76 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18499,7 +13488,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 111.76 91.44 0)
+			(at 111.76 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18510,7 +13499,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 111.76 97.79 0)
+			(at 111.76 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18534,7 +13523,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 58.42 41.91 0)
+		(at 58.42 49.53 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -18545,7 +13534,7 @@
 		(fields_autoplaced yes)
 		(uuid "a165ccb2-4973-4432-ad49-33d7076e3a1d")
 		(property "Reference" "#PWR07"
-			(at 58.42 45.72 0)
+			(at 58.42 53.34 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18556,7 +13545,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 58.42 38.1 0)
+			(at 58.42 45.72 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -18566,7 +13555,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 58.42 41.91 0)
+			(at 58.42 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18577,7 +13566,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 58.42 41.91 0)
+			(at 58.42 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18588,7 +13577,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 58.42 48.26 0)
+			(at 58.42 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18611,636 +13600,8 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 27.94 96.52 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "a830b4b9-ee40-4d56-bdfe-cc33dd12c226")
-		(property "Reference" "R3"
-			(at 30.48 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 27.94 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 26.162 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 27.94 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-728423379816")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a57e")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389260")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04cf")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766ed")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-0869076385a1")
-		)
-		(pin "8"
-			(uuid "a6f4c2b9-d22e-4e71-acc8-20fecfc4a99e")
-		)
-		(pin "1"
-			(uuid "9bf245e7-3825-477e-9ae4-ac05557d47c2")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R3")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 153.67 96.52 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "a8a1c7da-f3b1-4133-8121-5258014cbf00")
-		(property "Reference" "R6"
-			(at 156.21 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 153.67 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 151.892 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 153.67 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-728423379817")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a57f")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389261")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04d0")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766ee")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-0869076385a2")
-		)
-		(pin "8"
-			(uuid "fd3b779c-972a-4f10-81b5-201b90a78807")
-		)
-		(pin "1"
-			(uuid "2c7690cd-60e0-48ed-8f03-bcef5bb0b69f")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R6")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_SparkFun-Connector:TestPoint_1.0mm")
-		(at 271.78 73.66 270)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board yes)
-		(in_pos_files no)
-		(dnp yes)
-		(fields_autoplaced yes)
-		(uuid "aabe1da5-69ce-4371-8fe6-8718234e9b4e")
-		(property "Reference" "TP2"
-			(at 276.86 73.66 0)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "1.0mm"
-			(at 267.97 73.66 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "PCM_SparkFun-Connector:TestPoint-1.0mm"
-			(at 265.43 73.66 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 264.16 73.66 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Test Point"
-			(at 261.62 73.66 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "d57d28b6-f9a1-4c68-9560-153d0be9e524")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "TP2")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 142.24 91.44 0)
+		(at 142.24 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -19251,7 +13612,7 @@
 		(fields_autoplaced yes)
 		(uuid "ab4d136b-c78a-46b0-873b-6022c83d5665")
 		(property "Reference" "#PWR030"
-			(at 142.24 95.25 0)
+			(at 142.24 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19262,7 +13623,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 142.24 87.63 0)
+			(at 142.24 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -19272,7 +13633,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 142.24 91.44 0)
+			(at 142.24 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19283,7 +13644,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 142.24 91.44 0)
+			(at 142.24 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19294,7 +13655,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 142.24 97.79 0)
+			(at 142.24 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19754,281 +14115,6 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 185.42 96.52 0)
-		(unit 4)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "bb29128c-c763-43e3-8d6d-2ad98427ad45")
-		(property "Reference" "R6"
-			(at 187.96 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 185.42 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 183.642 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 185.42 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "98bab9a7-3500-4f94-8e15-d80f54e4b339")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a580")
-		)
-		(pin "4"
-			(uuid "7a292cd7-6d06-4d43-aaef-b1d7de38cb2e")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04d1")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766ef")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-0869076385a3")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfe9")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256460")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R6")
-					(unit 4)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:GND")
 		(at 69.85 128.27 0)
 		(unit 1)
@@ -20388,7 +14474,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 80.01 41.91 0)
+		(at 80.01 49.53 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -20399,7 +14485,7 @@
 		(fields_autoplaced yes)
 		(uuid "c21fcf34-924b-4d6c-9ad0-9dc44c8b5771")
 		(property "Reference" "#PWR09"
-			(at 80.01 45.72 0)
+			(at 80.01 53.34 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20410,7 +14496,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 80.01 38.1 0)
+			(at 80.01 45.72 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -20420,7 +14506,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 80.01 41.91 0)
+			(at 80.01 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20431,7 +14517,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 80.01 41.91 0)
+			(at 80.01 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20442,7 +14528,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 80.01 48.26 0)
+			(at 80.01 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21062,7 +15148,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 90.17 41.91 0)
+		(at 90.17 49.53 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -21073,7 +15159,7 @@
 		(fields_autoplaced yes)
 		(uuid "cb40d1af-e0d8-4925-a6d9-d24b6a303eeb")
 		(property "Reference" "#PWR010"
-			(at 90.17 45.72 0)
+			(at 90.17 53.34 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21084,7 +15170,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 90.17 38.1 0)
+			(at 90.17 45.72 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -21094,7 +15180,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 90.17 41.91 0)
+			(at 90.17 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21105,7 +15191,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 90.17 41.91 0)
+			(at 90.17 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21116,7 +15202,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 90.17 48.26 0)
+			(at 90.17 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21728,556 +15814,6 @@
 			(project "Insert-Coin-Business-Card"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR047")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 90.17 46.99 0)
-		(unit 3)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "d0be98a1-1f36-4552-bf52-9e6fe40ed5d5")
-		(property "Reference" "R2"
-			(at 92.71 46.9899 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 90.17 46.99 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 88.392 46.99 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 90.17 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-728423379818")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a581")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389262")
-		)
-		(pin "3"
-			(uuid "562e49f5-1a8a-4651-ba40-e88836158871")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766f0")
-		)
-		(pin "6"
-			(uuid "ff4aa3de-2bf4-445c-a40b-8f0f9963aa29")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfea")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256461")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R2")
-					(unit 3)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 111.76 96.52 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "d2dbd8c4-8c2c-44cf-8fa4-f4e8dec21b9c")
-		(property "Reference" "R5"
-			(at 114.3 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 111.76 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 109.982 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 111.76 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-728423379819")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a582")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389263")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04d2")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766f1")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-0869076385a4")
-		)
-		(pin "8"
-			(uuid "29fd4c68-5aff-4c69-802c-cb81fbd1935f")
-		)
-		(pin "1"
-			(uuid "2771e233-b5d9-49a3-a891-cdece0c1b706")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R5")
 					(unit 1)
 				)
 			)
@@ -23764,281 +17300,6 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 58.42 46.99 0)
-		(unit 4)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "e23e28f8-4cf3-48e0-a1b1-20870ad7e99d")
-		(property "Reference" "R1"
-			(at 60.96 46.9899 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 58.42 46.99 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 56.642 46.99 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 58.42 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-72842337981a")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a583")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389264")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04d3")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766f2")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-0869076385a5")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfeb")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256462")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R1")
-					(unit 4)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:GND")
 		(at 128.27 190.5 0)
 		(unit 1)
@@ -24195,7 +17456,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 48.26 91.44 0)
+		(at 48.26 99.06 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -24206,7 +17467,7 @@
 		(fields_autoplaced yes)
 		(uuid "e7ffc368-b95c-4996-ac35-8200f167a304")
 		(property "Reference" "#PWR016"
-			(at 48.26 95.25 0)
+			(at 48.26 102.87 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -24217,7 +17478,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 48.26 87.63 0)
+			(at 48.26 95.25 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -24227,7 +17488,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 48.26 91.44 0)
+			(at 48.26 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -24238,7 +17499,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 48.26 91.44 0)
+			(at 48.26 99.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -24249,7 +17510,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 48.26 97.79 0)
+			(at 48.26 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -24554,283 +17815,8 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 48.26 46.99 0)
-		(unit 3)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "e9be395b-bef1-417b-b197-c4b253a5d878")
-		(property "Reference" "R1"
-			(at 50.8 46.9899 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 48.26 46.99 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 46.482 46.99 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 48.26 46.99 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-72842337981b")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a584")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389265")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04d4")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766f3")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-0869076385a6")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfec")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256463")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R1")
-					(unit 3)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 48.26 41.91 0)
+		(at 48.26 49.53 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -24841,7 +17827,7 @@
 		(fields_autoplaced yes)
 		(uuid "ec1c4a0c-b0af-475a-85ba-5f22ea81b792")
 		(property "Reference" "#PWR06"
-			(at 48.26 45.72 0)
+			(at 48.26 53.34 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -24852,7 +17838,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 48.26 38.1 0)
+			(at 48.26 45.72 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -24862,7 +17848,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 48.26 41.91 0)
+			(at 48.26 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -24873,7 +17859,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 48.26 41.91 0)
+			(at 48.26 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -24884,7 +17870,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 48.26 48.26 0)
+			(at 48.26 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -25188,281 +18174,6 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 100.33 96.52 0)
-		(unit 4)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "ee158ed1-2983-4c57-8cad-e4b96441a36a")
-		(property "Reference" "R4"
-			(at 102.87 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 100.33 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 98.552 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 100.33 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "a2852a6f-d928-4352-9e2d-a59d863f2551")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a585")
-		)
-		(pin "4"
-			(uuid "74ff7270-3473-43dd-9cb9-0338c262f3ca")
-		)
-		(pin "3"
-			(uuid "e7fc1ed5-939d-4d44-b3be-ae696eea04d5")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766f4")
-		)
-		(pin "6"
-			(uuid "094256d9-ec79-41d8-888d-0869076385a7")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfed")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256464")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R4")
-					(unit 4)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "KiCadPartFinder:XL-1606SURC")
 		(at 110.49 106.68 90)
 		(unit 1)
@@ -25743,281 +18454,6 @@
 		)
 	)
 	(symbol
-		(lib_id "PCM_JLCPCB-Resistors:0402x4,10kΩ")
-		(at 48.26 96.52 0)
-		(unit 3)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "ef7c7ab8-652f-47d8-a836-24968317a458")
-		(property "Reference" "R3"
-			(at 50.8 96.5199 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "220Ω"
-			(at 48.26 96.52 90)
-			(show_name no)
-			(do_not_autoplace yes)
-			(effects
-				(font
-					(size 0.8 0.8)
-				)
-			)
-		)
-		(property "Footprint" "PCM_Resistor_SMD_AKL:R_Array_Convex_4x0402"
-			(at 46.482 96.52 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2409272301_UNI-ROYAL-Uniroyal-Elec-4D02WGJ0103TCE_C25725.pdf"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4 ±5% 10kΩ 62.5mW ±200ppm/°C 0402x4 Resistor Networks, Arrays ROHS"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25498"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Stock" ""
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Price" "0.018USD"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Process" "SMT"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Minimum Qty" "20"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Attrition Qty" "10"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Class" "Preferred Component"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Category" "Resistors,Resistor Networks & Arrays"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Part" "4D02WGJ0103TCE"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Resistance" "220Ω"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Power(Watts)" "62.5mW"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Resistors" "4"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Number of Pins" "8"
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Tolerance" ""
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Temperature Coefficient" ""
-			(at 48.26 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "5"
-			(uuid "26b83461-87c6-4c91-a9db-72842337981c")
-		)
-		(pin "7"
-			(uuid "1a4bdaf7-7268-478c-8e1d-be59f6d4a586")
-		)
-		(pin "4"
-			(uuid "62dfde49-141a-456f-9dab-1b246c389266")
-		)
-		(pin "3"
-			(uuid "c2764d15-5f22-42ae-b619-656f563407d1")
-		)
-		(pin "2"
-			(uuid "c8b42779-f19f-4983-a783-40e1232766f5")
-		)
-		(pin "6"
-			(uuid "bdc01254-8cd0-40ca-9264-c0f33de7a556")
-		)
-		(pin "8"
-			(uuid "929faf6d-825d-4e68-afa9-38c0b7cabfee")
-		)
-		(pin "1"
-			(uuid "558cec00-b28c-44dc-93a9-a78470256465")
-		)
-		(instances
-			(project "Insert-Coin-Business-Card"
-				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
-					(reference "R3")
-					(unit 3)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
 		(at 73.66 170.18 0)
 		(unit 1)
@@ -26097,7 +18533,7 @@
 	)
 	(symbol
 		(lib_id "PCM_SparkFun-PowerSymbol:VCC")
-		(at 38.1 41.91 0)
+		(at 38.1 49.53 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -26108,7 +18544,7 @@
 		(fields_autoplaced yes)
 		(uuid "fc2f1310-4e10-4e73-aa28-6351b7f3b4f9")
 		(property "Reference" "#PWR05"
-			(at 38.1 45.72 0)
+			(at 38.1 53.34 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -26119,7 +18555,7 @@
 			)
 		)
 		(property "Value" "VCC"
-			(at 38.1 38.1 0)
+			(at 38.1 45.72 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -26129,7 +18565,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 38.1 41.91 0)
+			(at 38.1 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -26140,7 +18576,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 38.1 41.91 0)
+			(at 38.1 49.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -26151,7 +18587,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 38.1 48.26 0)
+			(at 38.1 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

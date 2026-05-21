@@ -737,7 +737,7 @@
       "default_line_thickness": 6.0,
       "default_text_size": 50.0,
       "field_names": [],
-      "hop_over_size_choice": 0,
+      "hop_over_size_choice": 2,
       "intersheets_ref_own_page": false,
       "intersheets_ref_prefix": "",
       "intersheets_ref_short": false,
@@ -770,7 +770,7 @@
         "uuid": "e088f94f-c07d-4aad-9ed5-0a552f1b9750"
       }
     ],
-    "used_designators": "",
+    "used_designators": "U3,MIC1",
     "variants": []
   },
   "sheets": [
