@@ -624,44 +624,70 @@ const ICONS={
         "........k","........k","......kkk","........."],
   clear:["..kkkkk..",".........","kkkkkkkkk",".k.....k.",".k.k.k.k.",
          ".k.k.k.k.",".k.k.k.k.",".kkkkkkk.","........."],
-  /* Bubble traced from the reference: a hollow rectangle whose right wall
-     keeps going past the floor to make the tail. The old one was a squat
-     5-row bubble with a 2px tail in a 9px box, so it sat high and left —
-     which is what read as "off centre". */
-  chat:[".kkkkkkkkkkk.","k...........k","k...........k","k...........k",
-        "k...........k","k...........k","k...........k",".kkkkkkkkkk.k",
-        "...........kk","............k"],
-  /* Gear in the icons8 pixel idiom: outer ring, four teeth, hollow square
-     hub. The reference is 26x26; reduced straight down it turns into a
-     mandala, so this is redrawn at 15 where a ring, a hub and a tooth each
-     still get their own pixel. */
-  gear:[".......k.......",".......k.......","....kk.k.kk....","...kkkkkkkkk...",
-        "...kk.....kk...","..k..kkkkk..k..","..k.kk...kk.k..","kkk.k.....k.kkk",
-        "..k.kk...kk.k..","..k..kkkkk..k..","...kk.....kk...","...kkkkkkkkk...",
-        "....kk.k.kk....",".......k.......",".......k......."],
+  /* The reference bubble at 3x: a hollow rectangle whose right wall keeps
+     going past the floor to make the tail. Authored on a 27 field with the
+     BUBBLE straddling the middle and the tail hanging below it — centre the
+     whole ink box instead and the bubble reads high and left, because the
+     tail is mass the eye does not count as part of the shape. */
+  chat:[
+        "...........................","...........................",
+        "...kkkkkkkkkkkkkkkkkkkkk...","...kkkkkkkkkkkkkkkkkkkkk...",
+        "...kkkkkkkkkkkkkkkkkkkkk...","kkk.....................kkk",
+        "kkk.....................kkk","kkk.....................kkk",
+        "kkk.....................kkk","kkk.....................kkk",
+        "kkk.....................kkk","kkk.....................kkk",
+        "kkk.....................kkk","kkk.....................kkk",
+        "kkk.....................kkk","kkk.....................kkk",
+        "kkk.....................kkk","...kkkkkkkkkkkkkkkkkk...kkk",
+        "...kkkkkkkkkkkkkkkkkk...kkk","...kkkkkkkkkkkkkkkkkk...kkk",
+        ".....................kkkkkk",".....................kkkkkk",
+        ".....................kkkkkk","........................kkk",
+        "........................kkk","........................kkk",
+        "..........................."],
+  /* The icons8 pixel gear, verbatim at its native 26x26 — eight teeth on a
+     stepped ring around a hollow square hub. Reducing it to 13 turns it into
+     a mandala and redrawing it at 15 turns it into a sun, so it is kept at
+     full size and the display size is set in CSS instead. */
+  gear:[
+        "............kk............","............kk............",
+        "..........kk..kk..........",".....kkk..kk..kk..kkk.....",
+        ".....kkk..kk..kk..kkk.....","...kk...kk......kk...kk...",
+        "...kk...kk......kk...kk...","...kk................kk...",
+        ".....kk............kk.....",".....kk....kkkk....kk.....",
+        "..kkk......kkkk......kkk..","..kkk....kk....kk....kkk..",
+        "kk.......kk....kk.......kk","kk.......kk....kk.......kk",
+        "..kkk....kk....kk....kkk..","..kkk......kkkk......kkk..",
+        ".....kk....kkkk....kk.....",".....kk............kk.....",
+        "...kk................kk...","...kk...kk......kk...kk...",
+        "...kk...kk......kk...kk...",".....kkk..kk..kk..kkk.....",
+        ".....kkk..kk..kk..kkk.....","..........kk..kk..........",
+        "............kk............","............kk............"],
   dice:["kkkkkkkkk","k.......k","k.k...k.k","k.......k","k...k...k",
         "k.......k","k.k...k.k","k.......k","kkkkkkkkk"],
 };
-/* Centre on the INK, not on the grid. A speech bubble's tail hangs off one
-   corner, so centring the 13x10 box would leave the bubble visibly high and
-   left inside a round button — the thing that looked wrong before. Glyphs
-   may now be any size; the canvas is square at the larger dimension. */
-function iconCanvas(name,px,colour){
-  const rows=ICONS[name], z=px||2;
+/* `size` is the DISPLAYED size in CSS px, not the pixel scale, so changing a
+   glyph's grid can never change how big it lands or push it out of its
+   button. Each glyph is authored centred in its own square field.
+   Two bugs lived here:
+     · the canvas was display:block inside a text-align:center button, and
+       text-align does not centre a block — so every glyph sat hard against
+       the left edge of a 46px button. margin:0 auto is the fix.
+     · the canvas was sized from the art grid, so growing the art from 9 to
+       27 grew the glyph past the button and clipped it.
+   The backing store is drawn at >=2x the display size so it stays crisp when
+   a phone renders it at 3x. */
+function iconCanvas(name,size,colour){
+  const rows=ICONS[name], target=size||22;
   const h=rows.length, w=rows[0].length, n=Math.max(w,h);
-  let minX=w,maxX=-1,minY=h,maxY=-1;
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++) if(rows[y][x]==="k"){
-    if(x<minX)minX=x; if(x>maxX)maxX=x;
-    if(y<minY)minY=y; if(y>maxY)maxY=y; }
-  const ox=Math.round((n-(maxX-minX+1))/2)-minX;
-  const oy=Math.round((n-(maxY-minY+1))/2)-minY;
+  const z=Math.max(1,Math.ceil((target*2)/n));
   const c=document.createElement("canvas");
   c.width=n*z; c.height=n*z;
   const x=c.getContext("2d");
   x.fillStyle=colour||"#2d6076";
   for(let y=0;y<h;y++)for(let i=0;i<w;i++) if(rows[y][i]==="k")
-    x.fillRect((i+ox)*z,(y+oy)*z,z,z);
-  c.style.cssText="image-rendering:pixelated;display:block";
+    x.fillRect(i*z,y*z,z,z);
+  c.style.cssText="image-rendering:pixelated;display:block;margin:0 auto;"+
+                  "width:"+target+"px;height:"+target+"px";
   return c;
 }
 
@@ -1193,11 +1219,11 @@ document.querySelector('[data-tool="erase"]').onclick=function(){
   erase=!erase; this.setAttribute("aria-pressed",String(erase)); syncSwatches(); };
 /* always-present editing controls — one history across all three tools */
 function syncEdit(){ document.getElementById("ed-undo").disabled=me.hist.length===0; }
-document.getElementById("say-open").appendChild(iconCanvas("chat",2));
-document.getElementById("pond-settings").appendChild(iconCanvas("gear",2));
-document.getElementById("ed-undo").appendChild(iconCanvas("undo",3));
-document.getElementById("ed-clear").appendChild(iconCanvas("clear",3));
-document.getElementById("ed-rand").appendChild(iconCanvas("dice",3));
+document.getElementById("say-open").appendChild(iconCanvas("chat",24));
+document.getElementById("pond-settings").appendChild(iconCanvas("gear",24));
+document.getElementById("ed-undo").appendChild(iconCanvas("undo",26));
+document.getElementById("ed-clear").appendChild(iconCanvas("clear",26));
+document.getElementById("ed-rand").appendChild(iconCanvas("dice",26));
 document.getElementById("ed-undo").onclick=undo;
 document.getElementById("ed-clear").onclick=()=>{ snap();
   me.paint=new Uint8Array(N*N); me.stickers=[]; me.tint="#FFCA00"; syncSwatches(); redrawAll(); };
