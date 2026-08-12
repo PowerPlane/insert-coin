@@ -4,8 +4,7 @@ The tracker. Tick things off here as they land; `BUILD-PLAN.md` is the
 detail behind each line.
 
 **Branch** `pond` · **PR** [#11](https://github.com/PowerPlane/insert-coin/pull/11)
-· **Tests** 90 passing · **Deployed** not yet — needs a Turso database and
-the CNAME
+· **Tests** 98 passing · **Live** <https://ducky.davidyang.work>
 
 ---
 
@@ -25,7 +24,7 @@ flashed identically, each giving itself an identity on first boot.
 | | Phase | State | Notes |
 | --- | --- | --- | --- |
 | **1a** | Turso adapter | ✅ **done** | D1-shaped interface, batch, `meta.changes`. |
-| **1b** | Port to Vercel | ✅ **done, undeployed** | Contract frozen, routes ported, 90 tests. Deploy is the one step left and it needs credentials. |
+| **1b** | Port to Vercel | ✅ **done, deployed** | Contract frozen, routes ported, 98 tests. Live and verified end to end. |
 | **2** | One real card | ⬜ next | Firmware serial + full NDEF write, `record-card.sh`, import. |
 | **3** | The client | ⬜ | Nine screens against the frozen API. The biggest piece. |
 | **4** | Admin | ⬜ | `/pondkeeper` — ducks, contacts, cards, CSV. |
@@ -34,50 +33,50 @@ flashed identically, each giving itself an identity on first boot.
 
 ---
 
-## What is left of 1b, and it is only this
+## Deployed, and verified end to end
 
-Everything buildable is built. What remains needs an account and a DNS
-record, so it is one sitting with the credentials to hand:
+Live at <https://ducky.davidyang.work> — Vercel Hobby, Turso remote primary,
+one CNAME at Cargo. Verified against the real domain, not a preview URL:
 
-```bash
-# 1 · a database
-turso db create pond
-turso db show pond --url            # → TURSO_URL
-turso db tokens create pond         # → TURSO_TOKEN
+| | |
+| --- | --- |
+| `GET /api/pond` | 200, `{"ducks":[],"now":…}` |
+| `npm run db:verify` | the contact is gone, the session released its reference |
+| `/?d=1` | sets `pond_s` — the tap really does become a session |
+| release → bump → report → delete | every step, through the live API |
+| `/d/<slug>` | server-rendered `og:title`, indexable |
+| `/e/<key>` | `x-robots-tag: noindex`, nothing about the duck in the document |
+| `/api/sweep` without a bearer token | 404 |
+| `accept-language: zh-TW` | `<html lang="zh-Hant">` |
 
-# 2 · the schema, once
-cd pond && TURSO_URL=... TURSO_TOKEN=... npm run db:apply
+The pond is empty on purpose: every duck made while testing was deleted
+through the API, which is itself the proof that deleting works.
 
-# 3 · secrets, in Vercel → Settings → Environment Variables (Production)
-#     TURSO_URL  TURSO_TOKEN  SESSION_SECRET  ADMIN_PASSWORD  CRON_SECRET
-#     SESSION_SECRET: openssl rand -hex 32
+### Two things only the deploy could find
 
-# 4 · deploy
-npx vercel link                     # creates the project — do this knowingly
-npx vercel --prod
+Both were invisible locally, and both now have a test that fails without
+having to deploy again.
 
-# 5 · the domain
-#     Vercel → Settings → Domains → ducky.davidyang.work
-#     THEN at Cargo: CNAME  ducky → cname.vercel-dns.com
-#     Do not touch the apex. Do not add an A record.
+**1 · Extensionless imports 500'd every route.** Vercel transpiles each file
+separately rather than bundling, and with `"type": "module"` Node's ESM
+loader treats `from "./env"` as a literal path. Every relative import now
+carries `.js`. The 90 tests passing at the time could not have caught it —
+Vitest loads through Vite, which resolves the way a bundler does, so **the
+test environment was more forgiving than production**, which is the one
+direction it must never differ in.
 
-# 6 · prove it
-curl https://ducky.davidyang.work/api/pond          # → {"ducks":[],"now":…}
-TURSO_URL=... TURSO_TOKEN=... npm run db:verify     # → the promise holds
-#     then open https://ducky.davidyang.work/?d=1 in a browser
-#     it must say "you have a fortune waiting"
-```
+**2 · Half the API was unreachable.** `api/[...path].ts` was chosen over a
+rewrite so the router would see the real path. It deployed cleanly and then
+matched exactly ONE path segment: `/api/pond` worked, `/api/duck/by-slug/…`
+returned Vercel's own `NOT_FOUND` without invoking our code. Zero-config
+`/api` does not expand a catch-all across segments. `/api/*` is a rewrite
+now, like every other route here, and `api/router.ts` reassembles the path
+from `__path`.
 
-**Done when** all three pass. Step 6 is the whole phase; the rest is
-plumbing.
-
-**The browser check is not decoration.** The 90 local tests call
-`pondPage()` directly, so the one link they structurally cannot reach is
-Vercel's rewrite layer: whether `/?d=1&c=X` → `/api/shell` keeps the query
-string, and whether the `Set-Cookie` survives it. Both curl checks can pass
-while `/` silently fails to mint — and a `/` that cannot mint is the failure
-that kills every duck at the submit button, which is the single most
-important thing in this app.
+`test/deploy-shape.test.ts` exists because of these: it asserts the things
+that are invisible locally and fatal in production — extensions on every
+relative import, the absence of `public/index.html`, that referenced assets
+exist, and that the `/api/*` rewrite is still there.
 
 ---
 

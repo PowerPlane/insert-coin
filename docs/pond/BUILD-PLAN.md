@@ -3,7 +3,7 @@
 Every decision, and the order to build in. This is the document to work from;
 where it disagrees with an older doc, this wins.
 
-Status: **Phases 1a and 1b built, nothing deployed.** Reviewed twice — once
+Status: **Phases 1a and 1b done and DEPLOYED** — <https://ducky.davidyang.work>. Reviewed twice — once
 for internal contradictions, once adversarially by Codex. What follows
 incorporates both, plus what building it actually taught us.
 
@@ -220,10 +220,11 @@ that deletes a duck and asserts the contact row is gone. ✅
 - Fire ignition moves into `GET /api/pond`.
 - Apply the §2 contract changes.
 - Replace the Wrangler/D1 scripts in `package.json`.
-- Deploy. Add the CNAME. Confirm the certificate. ← **the only step left**
+- Deploy. Add the CNAME. Confirm the certificate. ✅
 
 **Done when** `curl https://ducky.davidyang.work/api/pond` returns JSON *and*
-`npm run db:verify` reports the contact gone.
+`npm run db:verify` reports the contact gone. ✅ Both, plus the full
+tap → release → bump → report → delete flow, against the live domain.
 
 > The old "half a day for the whole port" was wrong, and I had been told so
 > once before publishing it. A day and a half was closer, and the shape of the
@@ -282,7 +283,7 @@ agrees with you.**
 Two of the three half-state windows §1a set out to close were closed by
 removing the second write, not by wrapping it.
 
-### Phase 2 — one real card *(a day, plus bench time)*
+### Phase 2 — one real card ⬅ NEXT *(a day, plus bench time)*
 
 Firmware first: it is the part that can surprise us.
 
