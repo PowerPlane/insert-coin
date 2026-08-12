@@ -21,7 +21,8 @@ and the decisions behind it.
 | 6 | [PROVISIONING.md](PROVISIONING.md) | Writing the NDEF record onto each card. |
 | 7 | [MOBILE.md](MOBILE.md) | iOS Safari and Android Chrome specifics. |
 | 8 | [POND-CAMERA.md](POND-CAMERA.md) | How the pond grows past the screen: zoom, pan, and the whistle. |
-| 9 | [BUILD-PLAN.md](BUILD-PLAN.md) | What exists, what does not, and the order to build it in. |
+| 9 | [PROGRESS.md](PROGRESS.md) | **Start here.** What is done, what is next, and the whole thing in a paragraph. |
+| 10 | [BUILD-PLAN.md](BUILD-PLAN.md) | What exists, what does not, and the order to build it in. |
 
 ## The prototype
 
