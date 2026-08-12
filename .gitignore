@@ -62,3 +62,9 @@ pond/*.db-journal
 # it. On Vercel it is the OUTPUT DIRECTORY — the CDN serves it verbatim and
 # nothing generates it — so ignoring it would deploy a site with no
 # stylesheet and no script, and the only symptom would be a blank page.
+
+# The firmware's claim-signing key. secrets.h.example is the template;
+# the real one never enters the repository, and the server's CARD_SECRET
+# must be set to the same sixteen bytes.
+**/production-pond/src/secrets.h
+variants/business-card-v1/cards.csv
