@@ -338,6 +338,10 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .k-check b{color:var(--p-ink)}
 .k-check input{flex:0 0 auto;width:22px;height:22px;margin:.1rem 0 0;accent-color:var(--field-900)}
 
+.k-duck{display:flex;gap:.6rem;align-items:center;
+  background:#dff2fb;padding:.5rem;clip-path:var(--px-corner)}
+.k-duck .a-thumb{background:#fff}
+.k-duck .a-main small{color:var(--p-soft)}
 .a-pane[hidden]{display:none}
 .a-bar{display:flex;gap:4px;flex-wrap:wrap;margin:.7rem 0 .2rem}
 .a-filt{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;
@@ -360,6 +364,7 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .mini{all:unset;box-sizing:border-box;cursor:pointer;
   min-height:44px;padding:0 .6rem;display:grid;place-items:center;
   font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;
+  white-space:nowrap;
   background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
 .mini.go{background:var(--field-900);color:#eaf7fc}
 .mini.bad{background:#ffe1e1;color:#8f2b20}
@@ -638,6 +643,27 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
             <input id="k-name" value="Sam" maxlength="18">
           </div>
           <p class="k-hint">Ducks released from this card will say <b>via Sam</b>.</p>
+
+          <div class="field">
+            <label id="k-duck-l">Your duck — optional</label>
+            <div id="k-duck-yes" class="k-duck">
+              <div class="a-thumb"><canvas id="k-duck-cv" width="48" height="48"></canvas></div>
+              <div class="a-main">
+                <b id="k-duck-name">Sam</b>
+                <small>/d/tidal-fern · released 9 Aug · found on this phone</small>
+              </div>
+              <button class="mini" type="button" id="k-duck-unlink">Not mine</button>
+            </div>
+            <div id="k-duck-no" hidden>
+              <div class="seg">
+                <button type="button" data-go="arrival">Make one now</button>
+                <button type="button" id="k-duck-paste">Paste my link</button>
+              </div>
+            </div>
+          </div>
+          <p class="k-hint">You don't need a duck to keep a card. Linking one lets
+            people <b>bump you back</b>, puts your duck on this card's page, and is
+            how two cards can say they belong to the same person.</p>
 
           <div class="field">
             <label id="k-lang-l">Language people see first</label>
@@ -1376,6 +1402,7 @@ function go(name){
   if(name==="arrival"||name==="sign"||name==="mine") drawStatics();
   if(name==="studio") redrawAll();
   if(name==="admin") buildAdmin();
+  if(name==="keeper") paintKeeperDuck();
   const v=screen.querySelector(".view.on"); if(v)v.scrollTop=0;
 }
 document.addEventListener("click",e=>{ const t=e.target.closest("[data-go]"); if(t)go(t.dataset.go); });
@@ -1694,6 +1721,31 @@ document.getElementById("cv-pond").addEventListener("pointerdown",e=>{
 });
 document.getElementById("say-open").onclick=()=>{ if(MINE){ MINE.msg=MINE.msg||"hello"; } };
 document.getElementById("pond-settings").onclick=()=>go("manage");
+
+/* Card Setup shows whichever duck this phone already holds a key for, so
+   the common path is one tap rather than a form. Either order has to work,
+   so neither claiming nor releasing is a precondition for the other. */
+function paintKeeperDuck(){
+  const cv=document.getElementById("k-duck-cv"); if(!cv)return;
+  const d=MINE||{fort:0,tint:"#FFCA00",paint:null,stickers:null};
+  const x=cv.getContext("2d"); x.imageSmoothingEnabled=false;
+  x.clearRect(0,0,cv.width,cv.height);
+  drawDuckInto(x,d,0,0,2,false);
+  document.getElementById("k-duck-name").textContent=(MINE&&MINE.name)||"Sam";
+  /* No duck on this phone yet -- offer to make one or paste the link,
+     rather than blocking the claim on it. */
+  const has=Boolean(MINE);
+  document.getElementById("k-duck-yes").hidden=!has;
+  document.getElementById("k-duck-no").hidden=has;
+}
+(function(){
+  const un=document.getElementById("k-duck-unlink");
+  const pa=document.getElementById("k-duck-paste");
+  if(un)un.onclick=()=>{ document.getElementById("k-duck-yes").hidden=true;
+    document.getElementById("k-duck-no").hidden=false; };
+  if(pa)pa.onclick=()=>{ document.getElementById("k-duck-yes").hidden=false;
+    document.getElementById("k-duck-no").hidden=true; };
+})();
 
 /* The admin duck list is built from the actual pond, so what you moderate
    here is what is floating out there -- a mock list would hide exactly the

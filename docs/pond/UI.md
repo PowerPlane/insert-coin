@@ -182,6 +182,9 @@ Water is Bayer-dithered brand blues, never a gradient.
 
 | Date | Change | Why |
 | --- | --- | --- |
+| 2026-08-12 | Keeper links their own duck | Claiming a card and having a duck are different things; either can come first, so neither is a precondition. Optional, and the link is how two cards say they belong to one person. |
+| 2026-08-12 | 44px audit across all nine screens | Writing this file down found six violations, three pre-existing: text inputs and studio tabs at 40px, the duck card's close at 28px, Bump/Report at 34px. |
+| 2026-08-12 | Card setup + Admin screens added | The keeper flow and moderation now exist as screens, not just a proposal. |
 | 2026-08-12 | Bump replaces wave | A wave was a number; a bump is an event you watch. Reuses the splash impulse. |
 | 2026-08-12 | Bump capped at 10 unreturned | The poke dynamic — it forces reciprocity instead of one-way spam. |
 | 2026-08-12 | One corner language | Pixel-cut two chips and rounding the rest read as a mistake. |
