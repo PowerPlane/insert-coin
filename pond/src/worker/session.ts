@@ -10,9 +10,9 @@
  * every duck dies on the submit button.
  */
 
-import { consume, mintBuckets, sweepRateLimits } from "./limits";
-import type { Env } from "./types";
-import { nowSec, randomId, timingSafeEqual } from "./util";
+import { consume, mintBuckets, sweepRateLimits } from "./limits.js";
+import type { Env } from "./types.js";
+import { nowSec, randomId, timingSafeEqual } from "./util.js";
 
 export const SESSION_COOKIE = "pond_s";
 export const SESSION_TTL_SEC = 30 * 60;

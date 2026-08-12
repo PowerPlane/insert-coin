@@ -18,10 +18,10 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { createClient } from "@libsql/client";
-import { LibsqlDb, connect } from "../src/db/libsql";
-import { statements } from "../src/db/schema";
-import type { Db } from "../src/db/types";
-import { count, fresh, freshWithoutForeignKeys, makeCard, makeDuck } from "./helpers";
+import { LibsqlDb, connect } from "../src/db/libsql.js";
+import { statements } from "../src/db/schema.js";
+import type { Db } from "../src/db/types.js";
+import { count, fresh, freshWithoutForeignKeys, makeCard, makeDuck } from "./helpers.js";
 
 let open: Db | null = null;
 afterEach(() => {

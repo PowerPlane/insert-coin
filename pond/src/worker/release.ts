@@ -18,10 +18,10 @@
  * their own module and their own password.
  */
 
-import type { ContactScope, ValidatedDuck } from "./ducks";
-import { freeSlug } from "./slug";
-import type { Env } from "./types";
-import { nowSec, randomId } from "./util";
+import type { ContactScope, ValidatedDuck } from "./ducks.js";
+import { freeSlug } from "./slug.js";
+import type { Env } from "./types.js";
+import { nowSec, randomId } from "./util.js";
 
 export interface CreatedDuck {
   id: string;

@@ -10,8 +10,8 @@
  * Vercel. That is the point of it.
  */
 
-import { loadEnv, guard } from "../src/worker/env";
-import { handle } from "../src/worker/index";
+import { loadEnv, guard } from "../src/worker/env.js";
+import { handle } from "../src/worker/index.js";
 
 export default {
   fetch: (req: Request): Promise<Response> => guard(async () => handle(req, await loadEnv())),

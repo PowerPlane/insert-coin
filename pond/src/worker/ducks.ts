@@ -14,9 +14,9 @@
  * one property that makes the privacy claim checkable.
  */
 
-import type { Env, PublicDuck } from "./types";
-import { normaliseSlug, slugTaken } from "./slug";
-import { cleanText, nowSec } from "./util";
+import type { Env, PublicDuck } from "./types.js";
+import { normaliseSlug, slugTaken } from "./slug.js";
+import { cleanText, nowSec } from "./util.js";
 
 export const MAX_STICKERS = 6;
 /** 24×24 @ 4bpp = 288 bytes → exactly 384 base64 characters. */

@@ -7,8 +7,8 @@
  * See src/worker/shell.ts.
  */
 
-import { loadEnv, guard } from "../src/worker/env";
-import { pondPage } from "../src/worker/pages";
+import { loadEnv, guard } from "../src/worker/env.js";
+import { pondPage } from "../src/worker/pages.js";
 
 export default {
   fetch: (req: Request): Promise<Response> => guard(async () => pondPage(req, await loadEnv())),

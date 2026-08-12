@@ -19,17 +19,17 @@
  * davidyang.work stays on Cargo.
  */
 
-import type { DuckInput } from "./ducks";
+import type { DuckInput } from "./ducks.js";
 import {
   deleteDuck, duckByEditKey, duckBySlug, listPond, renameDuck,
   topBumpers, updateDuck, validateDuck, validateScope,
-} from "./ducks";
-import { createDuck } from "./release";
-import { normaliseSlug, slugTaken } from "./slug";
-import { bump, extinguish, maybeIgnite, report, say } from "./social";
-import { loadSession, mintSession, readSessionCookie, sweep, visitorHash } from "./session";
-import type { Env } from "./types";
-import { badRequest, cleanText, intParam, json, notFound, nowSec, randomId, safeToken } from "./util";
+} from "./ducks.js";
+import { createDuck } from "./release.js";
+import { normaliseSlug, slugTaken } from "./slug.js";
+import { bump, extinguish, maybeIgnite, report, say } from "./social.js";
+import { loadSession, mintSession, readSessionCookie, sweep, visitorHash } from "./session.js";
+import type { Env } from "./types.js";
+import { badRequest, cleanText, intParam, json, notFound, nowSec, randomId, safeToken } from "./util.js";
 
 const VISITOR_COOKIE = "pond_v";
 

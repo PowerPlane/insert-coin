@@ -18,8 +18,8 @@
  *   TURSO_URL=... TURSO_TOKEN=... npm run db:verify
  */
 
-import { connect } from "../src/db/libsql";
-import type { Db } from "../src/db/types";
+import { connect } from "../src/db/libsql.js";
+import type { Db } from "../src/db/types.js";
 
 const url = process.env.TURSO_URL;
 if (!url) {

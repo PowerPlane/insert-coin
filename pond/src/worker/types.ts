@@ -1,4 +1,4 @@
-import type { Db } from "../db/types";
+import type { Db } from "../db/types.js";
 
 /**
  * Everything a request handler is given.

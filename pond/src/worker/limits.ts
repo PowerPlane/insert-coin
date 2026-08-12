@@ -19,8 +19,8 @@
  * both write 10.
  */
 
-import type { Env } from "./types";
-import { nowSec } from "./util";
+import type { Env } from "./types.js";
+import { nowSec } from "./util.js";
 
 /** Fixed windows, reset daily. Long enough that a burst is not the story. */
 export const RATE_WINDOW_SEC = 24 * 60 * 60;

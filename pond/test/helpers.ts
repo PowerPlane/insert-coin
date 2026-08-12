@@ -11,9 +11,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@libsql/client";
-import { LibsqlDb, connect } from "../src/db/libsql";
-import { statements } from "../src/db/schema";
-import type { Db } from "../src/db/types";
+import { LibsqlDb, connect } from "../src/db/libsql.js";
+import { statements } from "../src/db/schema.js";
+import type { Db } from "../src/db/types.js";
 
 const SCHEMA = readFileSync(
   join(__dirname, "..", "schema", "0001_init.sql"),

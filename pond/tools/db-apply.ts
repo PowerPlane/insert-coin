@@ -10,8 +10,8 @@
  */
 
 import { readFileSync } from "node:fs";
-import { connect } from "../src/db/libsql";
-import { statements } from "../src/db/schema";
+import { connect } from "../src/db/libsql.js";
+import { statements } from "../src/db/schema.js";
 
 const url = process.env.TURSO_URL;
 if (!url) {

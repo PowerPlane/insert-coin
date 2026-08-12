@@ -10,10 +10,10 @@
  * shows up in production.
  */
 
-import { duckBySlug } from "./ducks";
-import { ensureVisitor, mintFromQuery, securityHeaders } from "./index";
-import { duckShell, editShell, pickLanguage, pondShell } from "./shell";
-import type { Env } from "./types";
+import { duckBySlug } from "./ducks.js";
+import { ensureVisitor, mintFromQuery, securityHeaders } from "./index.js";
+import { duckShell, editShell, pickLanguage, pondShell } from "./shell.js";
+import type { Env } from "./types.js";
 
 function html(body: string, headers: Headers, status = 200): Response {
   headers.set("content-type", "text/html; charset=utf-8");

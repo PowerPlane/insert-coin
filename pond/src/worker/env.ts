@@ -14,9 +14,9 @@
  * race for no reason.
  */
 
-import { connect } from "../db/libsql";
-import type { Db } from "../db/types";
-import type { Env } from "./types";
+import { connect } from "../db/libsql.js";
+import type { Db } from "../db/types.js";
+import type { Env } from "./types.js";
 
 let connecting: Promise<Db> | null = null;
 

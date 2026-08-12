@@ -18,13 +18,13 @@
  */
 
 import { afterEach, describe, expect, it } from "vitest";
-import { handle } from "../src/worker/index";
-import { duckPage, editPage, pondPage } from "../src/worker/pages";
-import { MINT_PER_VISITOR } from "../src/worker/limits";
-import { BUMP_UNRETURNED_CAP } from "../src/worker/social";
-import type { Db } from "../src/db/types";
-import type { Env } from "../src/worker/types";
-import { count, fresh, makeCard } from "./helpers";
+import { handle } from "../src/worker/index.js";
+import { duckPage, editPage, pondPage } from "../src/worker/pages.js";
+import { MINT_PER_VISITOR } from "../src/worker/limits.js";
+import { BUMP_UNRETURNED_CAP } from "../src/worker/social.js";
+import type { Db } from "../src/db/types.js";
+import type { Env } from "../src/worker/types.js";
+import { count, fresh, makeCard } from "./helpers.js";
 
 let open: Db | null = null;
 afterEach(() => {

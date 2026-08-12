@@ -34,7 +34,7 @@
  */
 
 import { createClient, type Client, type InArgs, type InValue } from "@libsql/client";
-import type { AllResult, Db, Row, RunResult, Stmt } from "./types";
+import type { AllResult, Db, Row, RunResult, Stmt } from "./types.js";
 
 /** libSQL accepts a narrower value set than `unknown`. */
 function toArgs(args: unknown[]): InArgs {

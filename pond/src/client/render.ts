@@ -10,7 +10,7 @@
  *     reads as a hand.
  */
 
-import { decodePaint } from "./codec";
+import { decodePaint } from "./codec.js";
 import {
   BEAK_COLOUR,
   BURNING_TINT,
@@ -23,9 +23,9 @@ import {
   PAINT_COLOURS,
   TINTS,
   flameMask,
-} from "./sprites";
-import type { Sticker } from "./types";
-import { STICKERS, STICKER_PALETTE } from "./stickers";
+} from "./sprites.js";
+import type { Sticker } from "./types.js";
+import { STICKERS, STICKER_PALETTE } from "./stickers.js";
 
 /** The card's own uneven dwell pattern, normalised. */
 export const DWELL = [1.0, 1.45, 0.85, 1.25] as const;

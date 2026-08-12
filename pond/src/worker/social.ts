@@ -11,8 +11,8 @@
  * could, rather than the code growing a lock.
  */
 
-import type { Env } from "./types";
-import { cleanText, nowSec } from "./util";
+import type { Env } from "./types.js";
+import { cleanText, nowSec } from "./util.js";
 
 export const SAY_COOLDOWN_SEC = 10 * 60;
 export const SAY_MAX_CHARS = 60;

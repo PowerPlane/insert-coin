@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { SLUG_MAX, SLUG_MIN, SLUG_SPACE, normaliseSlug, randomSlug } from "../src/worker/slug";
+import { SLUG_MAX, SLUG_MIN, SLUG_SPACE, normaliseSlug, randomSlug } from "../src/worker/slug.js";
 
 describe("randomSlug", () => {
   it("produces a readable two-word name", () => {

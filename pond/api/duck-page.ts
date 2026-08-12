@@ -7,8 +7,8 @@
  * what the visitor typed.
  */
 
-import { loadEnv, guard } from "../src/worker/env";
-import { duckPage } from "../src/worker/pages";
+import { loadEnv, guard } from "../src/worker/env.js";
+import { duckPage } from "../src/worker/pages.js";
 
 export default {
   fetch: (req: Request): Promise<Response> =>

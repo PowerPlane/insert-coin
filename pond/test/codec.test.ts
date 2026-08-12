@@ -5,7 +5,7 @@ import {
   clampPaintValue,
   decodePaint,
   encodePaint,
-} from "../src/client/codec";
+} from "../src/client/codec.js";
 
 // atob/btoa exist in Workers and browsers; give Node the same surface.
 if (typeof globalThis.btoa === "undefined") {

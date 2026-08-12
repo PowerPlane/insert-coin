@@ -13,8 +13,8 @@
  * the repository knows its path.
  */
 
-import { loadEnv, guard } from "../src/worker/env";
-import { scheduled } from "../src/worker/index";
+import { loadEnv, guard } from "../src/worker/env.js";
+import { scheduled } from "../src/worker/index.js";
 
 function authorised(req: Request): boolean {
   const expected = process.env.CRON_SECRET;

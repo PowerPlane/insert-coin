@@ -6,8 +6,8 @@
  * already in a search index, at which point it is too late to fix.
  */
 
-import { loadEnv, guard } from "../src/worker/env";
-import { editPage } from "../src/worker/pages";
+import { loadEnv, guard } from "../src/worker/env.js";
+import { editPage } from "../src/worker/pages.js";
 
 export default {
   fetch: (req: Request): Promise<Response> =>

@@ -25,7 +25,7 @@
  *     hang on, and it costs nothing to get right now.
  */
 
-import type { PublicDuck } from "./types";
+import type { PublicDuck } from "./types.js";
 
 /** The languages the pond speaks. `en` is the fallback, never a choice. */
 export const LANGUAGES = ["en", "zh-Hant"] as const;

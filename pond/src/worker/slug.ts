@@ -19,7 +19,7 @@
  * all handle it.
  */
 
-import type { Env } from "./types";
+import type { Env } from "./types.js";
 
 /**
  * Pond-flavoured word lists. Adjective + noun is the pattern Docker, Heroku

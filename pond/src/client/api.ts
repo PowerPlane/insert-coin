@@ -7,7 +7,7 @@
  * server has confirmed, and a draft survives a reload.
  */
 
-import type { PondDuck } from "./types";
+import type { PondDuck } from "./types.js";
 
 const BASE = "/api";
 
