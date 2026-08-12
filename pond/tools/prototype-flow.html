@@ -289,15 +289,22 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .hud{position:absolute;top:0;left:0;right:0;z-index:30;pointer-events:none;
   display:flex;justify-content:space-between;padding:44px 16px 0;
   font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}
-.hud span,.hud button{position:relative;isolation:isolate;color:var(--p-ink);
+.hud span,.hud button,.hud a{position:relative;isolation:isolate;color:var(--p-ink);
   padding:.34rem .62rem}
+/* The one outbound link in the pond, and it is mine — hardcoded, never
+   keeper-set, so it carries none of the open-redirect risk that killed the
+   custom link. Opens in a new tab so nobody loses the pond by tapping it. */
+.hud a{pointer-events:auto;text-decoration:none;min-height:44px;
+  display:grid;place-items:center;padding:0 .8rem;
+  font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}
+.hud a:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 .hud button{all:unset;box-sizing:border-box;cursor:pointer;pointer-events:auto;
-  position:relative;isolation:isolate;min-height:38px;display:grid;place-items:center;
-  padding:0 .7rem;color:var(--p-ink);
+  position:relative;isolation:isolate;min-height:44px;display:grid;place-items:center;
+  padding:0 .8rem;color:var(--p-ink);
   font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}
 .hud button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
-.hud span::before,.hud button::before{content:"";position:absolute;inset:0;background:#fff;
-  clip-path:var(--px-corner);z-index:-1}
+.hud span::before,.hud button::before,.hud a::before{content:"";position:absolute;inset:0;
+  background:#fff;clip-path:var(--px-corner);z-index:-1}
 /* Only present while a whistle is active — the pond's default state is no
    chrome over the water beyond the count. */
 .whistle{position:absolute;top:86px;left:16px;z-index:31;
@@ -673,7 +680,8 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
                water. -->
           <div class="hud">
             <button type="button" id="hud-n" aria-haspopup="dialog">14 ducks</button>
-            <span>BY-002</span>
+            <a href="https://davidyang.work" target="_blank" rel="noopener"
+               aria-label="BY-002 — about this card. Opens davidyang.work in a new tab.">BY-002</a>
           </div>
           <!-- The whistle. In Mii Plaza you blow one and everybody lines up;
                here the card is already a thing you blow into, so the pond
@@ -1332,24 +1340,35 @@ function Scene(canvas,opts){
      can hold a duck close enough to matter -- that keeps this O(n) as the
      pond fills instead of O(n²), which is what would eventually make a big
      pond stutter. */
-  const SEP=N*0.86;
-  function separate(list,strength){
+  /* Two zones, because "not overlapping" and "not clumping" are different
+     problems. SEP is contact -- a hard push so two ducks are never in the
+     same place. ROOM is personal space -- a much weaker push that acts at
+     twice the distance, which is what actually keeps the pond evenly
+     occupied instead of letting ducks drift into loose huddles with empty
+     water beside them. The bucket grid is sized to ROOM so both zones are
+     found in one pass. */
+  const SEP=N*0.86, ROOM=N*1.75;
+  function separate(list,strength,roomy){
     const buckets=new Map(), key=(cx,cy)=>cx*100003+cy;
+    const G=roomy?ROOM:SEP;
     for(const d of list){
-      const k=key(Math.floor(d.x/SEP),Math.floor(d.y/SEP));
+      const k=key(Math.floor(d.x/G),Math.floor(d.y/G));
       let arr=buckets.get(k); if(!arr)buckets.set(k,arr=[]);
       arr.push(d);
     }
     for(const d of list){
-      const cx=Math.floor(d.x/SEP), cy=Math.floor(d.y/SEP);
+      const cx=Math.floor(d.x/G), cy=Math.floor(d.y/G);
       for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
         const arr=buckets.get(key(cx+ox,cy+oy)); if(!arr)continue;
         for(const o of arr){
           if(o===d)continue;
           const dx=o.x-d.x, dy=o.y-d.y;
           const dist=Math.hypot(dx,dy);
-          if(dist<=0.01||dist>=SEP)continue;
-          const f=(SEP-dist)/dist*strength;
+          if(dist<=0.01||dist>=G)continue;
+          const f = dist<SEP
+            ? (SEP-dist)/dist*strength                 // contact
+            : (roomy?(ROOM-dist)/dist*strength*0.16:0); // elbow room
+          if(!f)continue;
           d.vx-=dx*f; d.vy-=dy*f;
         }
       }
@@ -1464,10 +1483,17 @@ function Scene(canvas,opts){
        repel each other at close range so they arrive as a loose flock
        instead of a single pile you cannot tap individual ducks out of. */
     if(S.gather){
-      const gx=S.cam.x+vw()/2, gy=S.cam.y+vh()/2;
-      /* Just past the frame, not past the far corner: pushing harder than
-         that only jams ducks into a world corner in a heap. */
-      const clear=Math.max(vw(),vh())*0.52+N;
+      /* A FIXED point in the world, not the middle of the viewport. Using
+         the camera meant the target moved every time you panned, so the
+         flock chased you and the evicted ducks were shoved into whatever
+         corner you happened to be looking at — which is what wedged them
+         against the top-left. The middle of the world always has room on
+         all four sides. */
+      const g=S.gatherAt||(S.gatherAt={x:cw/2,y:ch/2});
+      const gx=g.x, gy=g.y;
+      /* Just past the frame — and never further than the world can absorb,
+         or "outside the frame" becomes "against the wall". */
+      const clear=Math.min(Math.max(vw(),vh())*0.52+N,Math.min(cw,ch)*0.42);
       const called=[];
       for(const d of S.ducks){
         if(d._dt)continue;
@@ -1501,7 +1527,8 @@ function Scene(canvas,opts){
          refills the pond instead of leaving a ring of them parked outside
          the frame waiting on ordinary drift, which would take minutes.
          Only ever applies to ducks the whistle actually moved. */
-      const gx=S.cam.x+vw()/2, gy=S.cam.y+vh()/2;
+      const g=S.gatherAt||{x:cw/2,y:ch/2};
+      const gx=g.x, gy=g.y;
       const inner=Math.hypot(vw(),vh())*0.42;
       for(const d of S.ducks){
         if(d._dt||!d._shoved)continue;
@@ -1510,8 +1537,9 @@ function Scene(canvas,opts){
         else d._shoved=false;
       }
     }
-    /* Always on, whistle or not — two ducks are never in the same place. */
-    separate(S.ducks,0.06);
+    /* Always on. Contact plus elbow room when nobody has been whistled
+       for, contact only while gathered — a flock is meant to be close. */
+    separate(S.ducks,0.06,!S.gather);
     for(const d of S.ducks){
       if(d._dt){
         const pr=reduce?1:Math.min(1,(now-d._dt)/DART_MS), e=1-Math.pow(1-pr,3);
@@ -1526,12 +1554,26 @@ function Scene(canvas,opts){
         }
         continue;
       }
+      /* Wander, not a fixed heading. A constant drift is a straight line,
+         and a straight line always ends at a wall — which is why ducks
+         used to accumulate along the edges. Letting each heading meander
+         keeps them milling about in open water. */
+      if(d.head===undefined)d.head=Math.random()*6.283;
+      d.head+=(Math.random()-0.5)*0.55;
+      d.dx=Math.cos(d.head)*0.14; d.dy=Math.sin(d.head)*0.11;
+      /* Steer off the walls before arriving at them, rather than bouncing:
+         a bounce puts the duck ON the edge, and it lingers there. */
+      const edge=N*1.1;
+      if(d.x<edge)        d.vx+=(edge-d.x)*0.03;
+      if(d.x>cw-edge)     d.vx-=(d.x-(cw-edge))*0.03;
+      if(d.y<edge+8)      d.vy+=(edge+8-d.y)*0.03;
+      if(d.y>ch-edge-10)  d.vy-=(d.y-(ch-edge-10))*0.03;
       d.vx*=0.86; d.vy*=0.86; d.x+=(d.vx+d.dx)*dt*8; d.y+=(d.vy+d.dy)*dt*8;
-      const m=N*0.5;
-      if(d.x<m){d.x=m;d.dx=Math.abs(d.dx);d.vx=Math.abs(d.vx);}
-      if(d.x>cw-m){d.x=cw-m;d.dx=-Math.abs(d.dx);d.vx=-Math.abs(d.vx);}
-      if(d.y<m+10){d.y=m+10;d.dy=Math.abs(d.dy);d.vy=Math.abs(d.vy);}
-      if(d.y>ch-m-14){d.y=ch-m-14;d.dy=-Math.abs(d.dy);d.vy=-Math.abs(d.vy);}
+      const m=N*0.5;   // hard stop, should now be rare
+      if(d.x<m)d.x=m;
+      if(d.x>cw-m)d.x=cw-m;
+      if(d.y<m+10)d.y=m+10;
+      if(d.y>ch-m-14)d.y=ch-m-14;
       const vx=d.vx+d.dx; if(Math.abs(vx)>0.12)d.flip=vx<0;
       if(d.burning&&now>d.burnUntil)d.burning=false;
     }
@@ -2125,6 +2167,11 @@ function keepersInPond(){
 function setGather(key){
   GATHER=key;
   P.gather = !key ? null : (key==="@" ? (d=>d.mine) : (d=>d.keeper===key));
+  /* Gather in the middle of the water and bring the camera along, so you
+     are always looking at the thing you just whistled for. */
+  if(key){ P.gatherAt={x:P.cw/2,y:P.ch/2};
+           P.glideTo(P.cw/2-P.vw()/2,P.ch/2-P.vh()/2); }
+  else P.gatherAt=null;
   const chip=document.getElementById("whistle");
   chip.hidden=!key;
   if(key) document.getElementById("whistle-what").textContent =
@@ -2298,8 +2345,12 @@ function releaseDuck(){
         y=P.cam.y+24+Math.random()*Math.max(20,P.vh()*0.42);
   P.onland=d=>{
     MINE=d; P.onland=null;
-    document.getElementById("hud-n").textContent=P.ducks.length+" ducks";
-    syncPondCta(); buildSr();
+    syncPondCount(); syncPondCta(); buildSr();
+    /* Close in on it. This is the moment the duck becomes yours, and in a
+       pond that may be far bigger than the screen, a duck landing at
+       arm's length is the difference between "there it is" and "somewhere
+       out there". The camera glides, so you see where it sits. */
+    P.focus(d,6);
     // Let the arrival finish before asking for anything.
     setTimeout(openKeep, me.fort===0 ? 1600 : 1200);
   };

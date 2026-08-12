@@ -182,6 +182,11 @@ Water is Bayer-dithered brand blues, never a gradient.
 
 | Date | Change | Why |
 | --- | --- | --- |
+| 2026-08-12 | Ducks keep personal space | Two zones: contact (never overlap) and elbow room at ~2x, which is what stops loose huddles forming. Measured: min gap 36→53px, edge-hugging 21→6. |
+| 2026-08-12 | Wander, not fixed drift | A constant heading is a straight line and a straight line ends at a wall, which is why ducks accumulated on edges. Headings meander; walls repel before contact. |
+| 2026-08-12 | Gather point is the world centre | It was the viewport centre, so it moved when you panned and shoved ducks into whatever corner you faced. |
+| 2026-08-12 | Arrival zooms to your duck | In a pond bigger than the screen, landing at arm's length is the difference between "there it is" and "somewhere out there". |
+| 2026-08-12 | BY-002 is a link | The only outbound link in the pond, hardcoded and mine — so it carries none of the risk that removed the keeper's custom link. New tab. |
 | 2026-08-12 | The count is the whistle | Tapping "113 ducks" opens the gather list; it reads "30 of 113" while filtered. Gathering costs no chrome over the water. |
 | 2026-08-12 | "Find my duck" removed | It asked the same question as the whistle's "your circle". Once your duck is in the pond there is no action you still owe it, so the CTA hides entirely. |
 | 2026-08-12 | Pond camera | Zoom is `CELL` restricted to {2,3,4,6}; world grows as `sqrt(ducks)`; camera is a translate. Verified: 13 ducks = world 172×370 (the screen), 113 = 362×779. |

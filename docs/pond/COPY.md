@@ -134,12 +134,12 @@ it is a different feature.
 ## 05 · The pond
 
 *The water itself.*  
-`38 strings · 98 words`
+`38 strings · 108 words`
 
 | # | Kind | String |
 | --- | --- | --- |
 | `pond.01` | Button | 14 ducks |
-| `pond.02` | Body | BY-002 |
+| `pond.02` | Screen reader | BY-002 — about this card. Opens davidyang.work in a new tab. |
 | `pond.03` | Screen reader | Show everyone again |
 | `pond.04` | Body | Whistle for |
 | `pond.05` | Screen reader | Zoom in |
@@ -322,13 +322,13 @@ it is a different feature.
 | Studio | 18 | 37 |
 | Sign it | 9 | 23 |
 | Contact | 8 | 52 |
-| The pond | 38 | 98 |
+| The pond | 38 | 108 |
 | Your duck, later | 7 | 29 |
 | Settings | 9 | 38 |
 | Card setup | 18 | 65 |
 | Admin | 32 | 90 |
 | Shared chrome | 3 | 14 |
 | Set from code | 6 | 28 |
-| **Total** | | **499** |
+| **Total** | | **509** |
 
 Anything over ~120 words on one phone screen is worth a second look.
