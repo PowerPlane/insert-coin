@@ -47,6 +47,13 @@
   --paper:#0d181e;--surface:#12222a;--sunk:#0a141a;--ink:#e6f2f7;--ink-soft:#9fbdc8;
   --ink-faint:#6d909d;--rule:#1e3540;--rule-hard:#2c4a58;--shell:#060f14;--shell-2:#04090c;}
 *{box-sizing:border-box}
+/* Any rule that sets `display` outrules the UA sheet's [hidden]{display:none},
+   so every component that sets display AND gets hidden needs a guard. That
+   has bitten seven separate times in this file — .bar, .k-duck, .a-pane, the
+   modal, the whistle, the gather sheet, and finally the pond's CTA, which
+   sat there saying "Finish my duck" after you had finished it. One rule
+   instead of seven, and the eighth cannot happen. */
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}   /* Safari inflates text in landscape */
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);
   font-size:16.5px;line-height:1.62;-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -1341,6 +1348,22 @@ function Scene(canvas,opts){
   S.zooms=ZOOMS;
   const vw=()=>W/S.cell, vh=()=>H/S.cell;
   S.vw=vw; S.vh=vh;
+  /* The canvas is drawn at 150% of its frame and clipped, so only the middle
+     two thirds is ever seen. Centring is unaffected — the overscan is
+     symmetric — but ANY fractional framing has to be measured against the
+     visible frame, not the canvas. Asking for "a third of the way down" in
+     canvas units put the duck 5% down the screen, behind the notch. */
+  const OVERSCAN=1.5;
+  const fw=()=>W/OVERSCAN/S.cell, fh=()=>H/OVERSCAN/S.cell;
+  S.fw=fw; S.fh=fh;
+  /* Top-left of the VISIBLE frame in world units. Anything that wants to
+     appear at a particular place on screen has to be positioned from here,
+     not from the camera — the camera addresses the overscanned canvas, a
+     third of which is never seen. */
+  S.frameX=()=>S.cam.x+(vw()-fw())/2;
+  S.frameY=()=>S.cam.y+(vh()-fh())/2;
+  /* A point at (fx,fy) as fractions of the visible frame. */
+  S.atFrame=(fx,fy)=>({x:S.frameX()+fw()*fx, y:S.frameY()+fh()*fy});
   S.setWorld=(w,h)=>{ cw=S.cw=w; ch=S.ch=h; S.clampCam(); };
   /* Never show void: if the world is smaller than the screen, centre it. */
   /* Wrapping is a property of the SPACE, not of the engine. The pond has no
@@ -1453,9 +1476,9 @@ function Scene(canvas,opts){
   S.focus=(d,minCell,yFrac,ms)=>{
     if(!d)return;
     const c1=(minCell&&S.cell<minCell)?minCell:S.cell;
-    /* yFrac places the duck up the frame; expressed as a centre, that is
-       the duck plus the offset from centre to that fraction. */
-    const cy=d.y+(H/c1)*(0.5-(yFrac==null?0.5:yFrac));
+    /* yFrac places the duck up the VISIBLE frame; expressed as a centre,
+       that is the duck plus the offset from centre to that fraction. */
+    const cy=d.y+(H/OVERSCAN/c1)*(0.5-(yFrac==null?0.5:yFrac));
     S.moveTo(d.x,cy,c1,ms||620);
   };
   S.zoomStep=(dir,sx,sy)=>{
@@ -1911,8 +1934,13 @@ function go(name){
        the fortune's effect need room — a 大吉 firework cropped to a
        close-up is not a firework. */
     A.resetCam();
-    A.place(86,78+(A.H/CELL)*(0.5-0.34),CELL);
-    A.drop(me.fort,86,78,{tint:me.tint,mine:true});
+    /* Drop it where it should APPEAR. Placing the camera to chase a fixed
+       drop point cannot work here: the stage has edges, so the camera
+       clamps at the top and the duck ends up against the notch however the
+       framing is expressed. Positioning from the visible frame has no such
+       failure — there is nothing to clamp. */
+    const dp=A.atFrame(0.5,0.34);
+    A.drop(me.fort,dp.x,dp.y,{tint:me.tint,mine:true});
     /* Then, once the effect has read, close in on the duck. This is the
        moment the card exists for, and a duck you have to look for is not a
        moment. Held off until the fireworks have said their piece. */
@@ -1939,7 +1967,7 @@ function go(name){
     P.growWorld();
     /* Arriving at a screen is not a camera move — animating in from
        wherever the camera happened to be last time reads as a lurch. */
-    if(MINE)P.place(MINE.x,MINE.y+(P.H/P.cell)*(0.5-DUCK_ABOVE_SHEET),P.cell);
+    if(MINE)P.place(MINE.x,MINE.y+P.fh()*(0.5-DUCK_ABOVE_SHEET),P.cell);
     else P.clampCam();
     syncPondCta();
     buildSr();
@@ -2576,8 +2604,8 @@ function releaseDuck(){
   if(MINE){ P.ducks.splice(P.ducks.indexOf(MINE),1); MINE=null; }
   /* Drop it where you are looking, not at the world origin. */
   P.growWorld();
-  const x=P.cam.x+20+Math.random()*Math.max(20,P.vw()-40),
-        y=P.cam.y+24+Math.random()*Math.max(20,P.vh()*0.42);
+  const near=P.atFrame(0.2+Math.random()*0.6, 0.18+Math.random()*0.30);
+  const x=near.x, y=near.y;
   P.onland=d=>{
     MINE=d; P.onland=null;
     syncPondCount(); syncPondCta(); buildSr();
