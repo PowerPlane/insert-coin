@@ -1053,6 +1053,11 @@ const SLOTS = {"hat":[15,2],"face":[15,5],"neck":[13,10],"body":[10,15],"float":
 (function(){
 "use strict";
 const N=24, CELL=4, DART_MS=420;
+/* Camera vocabulary. Two speeds, not five arbitrary numbers: a CONTROL
+   responds, a MOMENT is watched. And one framing constant, because "put the
+   duck above the sheet" is the same intent whether the sheet is the duck
+   card or the release sheet. */
+const CAM_UI=480, CAM_MOMENT=1100, DUCK_ABOVE_SHEET=0.32;
 const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
 const BEAK="#EF9F4E", EYE="#2B2B24";
 const TINTS=[["gold","#FFCA00"],["cream","#FFE9A8"],["apricot","#FFB068"],["coral","#FF8973"],
@@ -1441,7 +1446,7 @@ function Scene(canvas,opts){
     const c1=ZOOMS[Math.max(0,Math.min(ZOOMS.length-1,i+dir))];
     if(c1===S.cell)return;
     const c=S.centre();
-    S.moveTo(c.x,c.y,c1,460);
+    S.moveTo(c.x,c.y,c1,CAM_UI);
   };
   /* Ducks never overlap, whistle or no whistle. Bucketed on a uniform grid
      sized to the separation distance, so only the nine neighbouring buckets
@@ -1706,18 +1711,17 @@ function Scene(canvas,opts){
        scrolling it would be invisible and would cost a full re-tile. */
     water(ctx,Math.ceil(W/CELL),Math.ceil(H/CELL),CELL,S.frame,true);
     ctx.save();
-    /* While the camera is still, everything is quantised to the world grid,
-       which is what keeps ducks aligned with the water's dither. While it is
-       MOVING that alignment is the enemy: a duck can then only sit on
-       multiples of CELL, so at CELL 8 it jumps in 8px steps against a
-       smoothly sliding view. During a move we quantise to single canvas
-       pixels instead — still crisp, because the sprite's own pixels are
-       still CELL-sized squares on integer offsets, just no longer locked to
-       a grid nobody can see. */
-    const moving=S.moving();
-    const camPX=moving?S.cam.x*CELL:Math.round(S.cam.x*CELL);
-    const camPY=moving?S.cam.y*CELL:Math.round(S.cam.y*CELL);
-    const q=(v)=>moving?Math.round(v*CELL):Math.round(v)*CELL;
+    /* ONE quantisation, always: sprites land on whole canvas pixels.
+       Snapping them to the world grid instead (round(x)*CELL) locks them to
+       the water's dither, which looks marginally tidier at rest — but it
+       means a duck can only sit on multiples of CELL, so it jumps in
+       CELL-sized steps whenever the view moves, and worse, every camera
+       move ENDED with every duck snapping up to half a cell as the rule
+       changed. A rule that changes is worse than either rule. Sprites are
+       still crisp: their own pixels are CELL-sized squares on integer
+       offsets, they are simply not locked to a grid nobody can see. */
+    const camPX=S.cam.x*CELL, camPY=S.cam.y*CELL;
+    const q=(v)=>Math.round(v*CELL);
     ctx.save();
     ctx.translate(-camPX,-camPY);
     for(const r of S.rings){
@@ -1907,7 +1911,10 @@ function go(name){
     // thing you had not decided to publish yet.
     syncPondCount();
     P.growWorld();
-    if(MINE)P.focus(MINE); else P.clampCam();
+    /* Arriving at a screen is not a camera move — animating in from
+       wherever the camera happened to be last time reads as a lurch. */
+    if(MINE)P.place(MINE.x,MINE.y+(P.H/P.cell)*(0.5-DUCK_ABOVE_SHEET),P.cell);
+    else P.clampCam();
     syncPondCta();
     buildSr();
   }
@@ -2167,7 +2174,9 @@ function paintBumpers(d){
     drawDuckInto(x,who,0,0,2,false);
     const tag=document.createElement("i"); tag.textContent=b.n;
     btn.appendChild(c); btn.appendChild(tag);
-    btn.onclick=()=>openPanel(who,btn);
+    /* Same framing as tapping the duck in the water — three routes reach a
+       duck card and all three should leave you looking at the same thing. */
+    btn.onclick=()=>{ P.focus(who,CELL,DUCK_ABOVE_SHEET,CAM_UI); openPanel(who,btn); };
     row.appendChild(btn);
   }
 }
@@ -2245,7 +2254,7 @@ function buildSr(){
   const l=document.getElementById("sr-list"); l.innerHTML="";
   P.ducks.forEach(d=>{ const li=document.createElement("li"), b=document.createElement("button");
     b.type="button"; b.textContent=(d.name||"Anonymous")+"'s duck, "+FORT[d.fort].en;
-    b.onclick=()=>{ P.focus(d,CELL,0.3,760); openPanel(d,b); };
+    b.onclick=()=>{ P.focus(d,CELL,DUCK_ABOVE_SHEET,CAM_UI); openPanel(d,b); };
     li.appendChild(b); l.appendChild(li); });
 }
 /* Drag pans, two fingers zoom, and anything under 8px of travel is still
@@ -2290,7 +2299,7 @@ function buildSr(){
       /* Travel to it. The card covers the lower half, so the duck is
          placed a third of the way down where it stays visible, and if you
          were zoomed out we come in to the pond's home scale first. */
-      P.focus(d,CELL,0.3,760);
+      P.focus(d,CELL,DUCK_ABOVE_SHEET,CAM_UI);
       openPanel(d,null);
       return;
     }
@@ -2332,7 +2341,7 @@ document.getElementById("z-home").appendChild(iconCanvas("home",22));
 function pondHome(){
   if(P.cell===CELL)return;
   const c=P.centre();
-  P.moveTo(c.x,c.y,CELL,560);       // keeps your place, changes the scale
+  P.moveTo(c.x,c.y,CELL,CAM_UI);    // keeps your place, changes the scale
 }
 document.getElementById("z-home").onclick=pondHome;
 /* Show the way home only once there is one. Checked on the same rAF the
@@ -2363,7 +2372,7 @@ function setGather(key){
   /* Gather in the middle of the water and bring the camera along, so you
      are always looking at the thing you just whistled for. */
   if(key){ P.gatherAt={x:P.cw/2,y:P.ch/2};
-           P.moveTo(P.cw/2,P.ch/2,P.cell,820); }
+           P.moveTo(P.cw/2,P.ch/2,P.cell,CAM_UI); }
   else{
     P.gatherAt=null;
     /* "Everyone" is the show-me-everything action, so it is also the way
@@ -2552,7 +2561,7 @@ function releaseDuck(){
        out there". Wait for the splash and the fortune's effect to read
        first, then take almost a second to settle -- arriving instantly
        reads as a cut, and this is the one moment worth a slow one. */
-    setTimeout(()=>P.focus(d,6,0.42,1250), me.fort===0?950:700);
+    setTimeout(()=>P.focus(d,6,DUCK_ABOVE_SHEET,CAM_MOMENT), me.fort===0?950:700);
     // Let the arrival finish before asking for anything.
     setTimeout(openKeep, me.fort===0 ? 1600 : 1200);
   };
@@ -2568,9 +2577,6 @@ document.getElementById("release-skip").onclick=releaseDuck;
      mid-flow      → finish it (you tapped "just look around" on the way in)
      no session    → nothing to find; say what would get you one.
    The settings and say controls only make sense once a duck exists. */
-/* Now that the pond is bigger than the screen, finding your duck is a
-   camera move rather than a highlight. */
-function findMyDuck(){ if(MINE){ P.focus(MINE,4); } }
 function syncPondCta(){
   const cta=document.getElementById("pond-cta");
   const settings=document.getElementById("pond-settings");
