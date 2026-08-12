@@ -1,120 +1,71 @@
-# The Pond — build plan
+# Build plan
 
-Every part that has to exist for `ducky.davidyang.work` to work, what state each
-is in, and the order to build them. Companion to `DESIGN.md` (why) and
-`FLOW.md` (what the screens do).
-
-**Mobile-first is not a preference here, it's the only context.** Every
-visitor arrives by tapping a card with a phone. Desktop is a courtesy.
+Where this actually stands, and the order to build the rest in. Honest about
+what is designed versus what runs.
 
 ---
 
-## 1 · Firmware — `production-pond`
+## Done
 
-New PlatformIO environment. **`production` and `production-nfc` are never
-touched**; any card already flashed keeps working exactly as it does today.
+| | |
+| --- | --- |
+| **Design** | Nine screens, settled and reviewed. `pond/tools/prototype-flow.html`. |
+| **Copy** | All 434 words, reviewed and cut by about a third. Generated deck in [COPY.md](COPY.md). |
+| **UI rules** | [UI.md](UI.md), with a changelog. Its first audit found six tap-target violations, three of them pre-existing. |
+| **Schema** | `pond/schema/0001_init.sql`. Contacts isolated in their own table; `ON DELETE CASCADE` from ducks is load-bearing. |
+| **Server logic** | `pond/src/worker/` — sessions, ducks, slugs, bumps, fire, reports. Every high-frequency action is one atomic statement. |
+| **Client rendering** | `pond/src/client/` — sprites, flames, water, codec. |
+| **Tests** | 42, passing. Contact isolation is enforced by test, not by convention. |
+| **Firmware** | `production-pond` env builds. NDEF single-byte patch, `sleep_seconds_t` guard, bounded clear-on-exit. |
 
-| Item | State | Notes |
-| --- | --- | --- |
-| `production-pond/src/config.h` | **done** | New URL, new digit offset, 300 s expiry |
-| `production-pond/src/ndef.cpp` | **done** | Adds I²C write retry — the current version ignores a failed write |
-| `production-pond/src/main.cpp` | **done** | Same show, new post-reveal patch |
-| Shared drivers (`leds`, `anim`, `mic`, `pwm`, `rng`, `flame`) | **done** | Unchanged from `production-nfc` |
-| `platformio.ini` | **done** | Add one `[env:production-pond]` block |
+## Not done
 
-**The one constant that matters.** `ndef_patch_fortune()` writes to a fixed
-absolute offset, so the digit's position depends only on the bytes *before*
-it. `https://` is a 1-byte NDEF prefix code, so:
+### 1. Port the server from Cloudflare to Vercel — *half a day*
 
-```
-0x000B  "ducky.davidyang.work/?d="   19 bytes
-0x0023  the digit                ← NDEF_DIGIT_OFFSET
-0x0024  "&c=XXXXXX"              per-card, varies, moves nothing
-```
+The logic is written and tested; only the shell changes.
 
-Every card runs identical firmware. Only the NDEF text written once by a
-phone tag-writer differs.
+- `src/worker/index.ts` (one `fetch` handler) → `api/*.ts` files.
+- D1 bindings → Turso client. **SQL is unchanged** — both are SQLite, and the
+  atomic `INSERT … SELECT` patterns depend on SQLite's single writer.
+- **Move fire ignition into `GET /api/pond`.** Hobby crons are daily-only and
+  a `*/2` expression fails at deploy. This is not a workaround: nobody sees a
+  fire that starts while nobody is looking.
 
----
+### 2. Build the client for real — *the biggest piece*
 
-## 2 · Database — Cloudflare D1
+The prototype is one 400 KB HTML file with everything inlined. The real client
+is the same screens against the real API. `src/client/` already holds the
+rendering; what is missing is the screen shell, routing and state.
 
-| Item | State | Notes |
-| --- | --- | --- |
-| `schema/0001_init.sql` | **done** | Tables, indexes, constraints |
-| `ducks` | **done** | Public. Everything drawn in the pond. |
-| `contacts` | **done** | **Private. No public query ever joins it.** |
-| `cards` | **done** | One row per physical card, for rate limits and analytics |
-| `nonces` | **done** | Optional; enforces one duck per coin insert |
-| `waves`, `rescues` | **done** | Idempotent per person, not per tap |
-| `says` | **done** | Speech bubbles, 10-minute cooldown |
+### 3. Admin — *designed, not built*
 
-Storage per duck is ~310 bytes because the base sprite is *code, not data* —
-`fortune` is one integer and the artwork ships with the site. Improve the
-duck art later and every duck already in the pond improves with it.
+Three tabs, in the prototype as screen 09. Ducks (hide/show), Contacts (reply,
+postcard state), Cards (keepers). Plus CSV export.
 
----
+### 4. Card keepers — *designed, not built*
 
-## 3 · Worker — the API
+See the artifact. Needs `card_epochs`, the claim counter in firmware, and the
+Card setup screen. **Do the one-line fix first regardless:** the duck card
+must stop printing the card serial, because it publishes half of what a claim
+would be keyed on.
 
-| Route | Method | Purpose |
-| --- | --- | --- |
-| `/` | GET | The app. Reads `?d=`/`?c=`, mints the session, then never re-checks. |
-| `/api/pond` | GET | Public duck list. Structurally cannot return a contact. |
-| `/api/duck` | POST | Release a duck. Requires a valid session. |
-| `/api/duck/:id` | PATCH/DELETE | Edit or remove. Requires the private key. |
-| `/api/wave` | POST | Idempotent per visitor |
-| `/api/fire/:id/out` | POST | Extinguish. Idempotent; first writer wins. |
-| `/api/say` | POST | 10-minute cooldown, server-enforced |
-| `/d/:key` | GET | The private link — your duck, later |
-| `/admin` | GET | Secret path + password. Hide/unhide, contacts, CSV export. |
+### 5. Traditional Chinese — *designed, not built*
 
-Cross-cutting: signed-cookie sessions, per-card and per-IP rate limits,
-input validation on every field, and a test that asserts the public pond
-response can never contain a contact.
+About eighty strings, a CJK system-font stack, a correct `lang` attribute, and
+a non-tracked variant of the label style. The fortunes need no translation.
 
 ---
 
-## 4 · Client — the pond itself
+## Order
 
-| Item | State | Notes |
-| --- | --- | --- |
-| `sprites.ts` | **done** | Four 24×24 flat ducks, derived from `docs/nfc-ducky/assets/*.svg` |
-| `stickers.ts` | **done** (generated by `tools/gen-stickers.py`) | 32 accessories with slots |
-| `pond.ts` | to build | Canvas engine — dithered water, ripples, stop-motion tick |
-| `sparkle.ts` | to build | Ported from byproductlab.com with its constants intact |
-| `studio.ts` | to build | Colour, stickers, freehand paint |
-| `codec.ts` | **done** + tested | Paint layer ↔ base64, 4 bits/px |
-| `a11y.ts` | to build | The hidden per-duck button list — canvas alone is unreachable |
+1. Port to Vercel with the existing logic; deploy something that answers.
+2. DNS at Cargo; confirm the certificate.
+3. Build the client screens against it.
+4. Provision two cards and tap them for real.
+5. Admin.
+6. Keepers, then Chinese.
 
----
+## Open questions
 
-## 5 · Tools and docs
-
-| Item | State | Notes |
-| --- | --- | --- |
-| `tools/gen-sprites.py` | to build | Re-derives sprite data from the SVGs; art stays single-source |
-| `docs/pond/PROVISIONING.md` | **done** | Writing a card's NDEF, and the ID scheme |
-| `docs/pond/DESIGN.md` | to build | Why it looks and behaves this way |
-| `docs/pond/FLOW.md` | **done** | The ten screens |
-| `docs/pond/EDGE-CASES.md` | to build | Everything enumerated, with the handling |
-| `docs/pond/SECURITY.md` | **done** | Threat model, honest about what is and isn't defended |
-| Root `README.md` | to edit | Point at the pond |
-
----
-
-## Build order
-
-1. **Schema** — everything else is shaped by it.
-2. **Worker**, with the session model and the contact isolation test first.
-3. **Sprite generation**, so the client has real art from the start.
-4. **Client**: pond → studio → flow.
-5. **Firmware**, last, because it's the only part that can't be revised after
-   a card is handed out.
-
-## Deliberately not in v1
-
-- Real-time presence. Polling every 20 s is enough; a Durable Object only
-  earns its place if people should see each other's ducks arrive live.
-- Accounts. The private link is the only credential, on purpose.
-- Fire spreading. Decided against — funny once, then a chore.
+Listed in the handover — hosting and platform are settled, the rest are
+product calls that do not block starting.

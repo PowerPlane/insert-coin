@@ -1,111 +1,116 @@
-# Hosting the pond at ducky.davidyang.work
+# Hosting: Vercel + Cargo DNS
 
-The short version: **you have to move `davidyang.work`'s DNS to Cloudflare.**
-The Cargo site keeps working exactly as it does now — it just gets its DNS
-answered by Cloudflare instead of by Cargo.
+`ducky.davidyang.work` runs on Vercel. `davidyang.work` stays exactly where it
+is, on Cargo — nothing about the apex changes, and no nameservers move.
 
-You have already done this once, for `byproductlab.com`. Same procedure.
-
----
-
-## Why a subdomain and not `davidyang.work/p`
-
-A Cloudflare Worker can only claim a path if Cloudflare is answering DNS for
-that whole domain. Right now:
-
-```
-davidyang.work        →  ns1.cargo.site, ns2.cargo.site   (Cargo)
-byproductlab.com      →  ivan/iris.ns.cloudflare.com      (Cloudflare)
-```
-
-So `davidyang.work/p` is not available until the domain moves. And even
-after moving, putting the pond at a *path* means Cloudflare sits in front of
-the Cargo site for every request — more moving parts, more ways for the
-portfolio to break.
-
-A subdomain is cleaner: `ducky.davidyang.work` is entirely Cloudflare's,
-`davidyang.work` is entirely Cargo's, and neither can break the other.
+That last point is why this is Vercel and not Cloudflare Workers: a Workers
+custom domain needs the whole zone on Cloudflare, which would have meant
+moving the apex off Cargo. Vercel takes a plain CNAME from a DNS host it does
+not control, so the subdomain is the only thing that moves.
 
 ---
 
-## The steps
+## 1. DNS at Cargo
 
-**1 · Add the zone.** Cloudflare dashboard → Add a site → `davidyang.work`
-→ Free plan. Cloudflare scans the existing DNS.
+One record. The same shape as `invoice.davidyang.work`.
 
-**2 · Check the scan caught everything.** This is the only risky step, so do
-it carefully. Compare against what Cargo currently serves:
+| Type | Host | Value |
+| --- | --- | --- |
+| CNAME | `ducky` | `cname.vercel-dns.com` |
 
-```bash
-dig +short davidyang.work            # 3.215.100.79, 3.234.189.133
-dig +short www.davidyang.work
-dig +short TXT davidyang.work        # domain verifications
-dig +short MX davidyang.work         # email, if any
+Add the domain in Vercel first (Project → Settings → Domains →
+`ducky.davidyang.work`), then add the record at Cargo. Vercel issues the
+certificate automatically once it resolves; propagation is usually minutes.
+
+**Do not** add an A record, and do not touch the apex or `www`.
+
+---
+
+## 2. Plan: Hobby, and why it is legitimate
+
+The card is David's personal project, not something sold, so Vercel's
+[fair-use rule](https://vercel.com/docs/limits/fair-use-guidelines#commercial-usage)
+restricting Hobby to non-commercial use is satisfied. **If BY-002 ever
+becomes a product people buy, this needs to move to Pro ($20/mo)** — the
+companion site for a sold product is commercial use.
+
+Included on Hobby, against what this actually needs:
+
+| | Hobby gives | The pond needs |
+| --- | --- | --- |
+| Edge requests | 1,000,000 / mo | hundreds |
+| Function invocations | 1,000,000 / mo | hundreds |
+| Domains per project | 50 | 1 |
+| Function duration | 300 s | milliseconds |
+
+### The one real constraint: crons
+
+Hobby cron jobs **run once per day**, and a more frequent expression
+**fails at deploy time** — it is not a silent degradation. So the pond has no
+minute-scale scheduled work:
+
+- **Fire ignition happens on read.** `GET /api/pond` runs the ignition as one
+  atomic `INSERT … SELECT` in the same request. Nobody sees a fire that starts
+  while nobody is looking, so a timer was never doing real work.
+- **Fires go out by arithmetic.** `burning` is `now - lit_at < 90s`, computed,
+  not stored — so nothing has to run to extinguish one.
+- **The daily cron** (`0 4 * * *`) only sweeps expired sessions and nonces,
+  which genuinely does not care about latency.
+
+---
+
+## 3. Database
+
+Vercel Hobby includes Blob storage only, so the database is external.
+
+**Turso** (libSQL), because it is SQLite: the schema in `pond/schema/` and
+every query in `pond/src/worker/` port across unchanged, including the atomic
+`INSERT … SELECT` patterns that depend on SQLite's single writer. A Postgres
+host would mean rewriting those, and they are the load-bearing part of the
+concurrency design.
+
+Confirm Turso's current free-tier limits when wiring it up rather than
+trusting a number written here.
+
+---
+
+## 4. Secrets
+
+Set in Vercel → Settings → Environment Variables, Production scope:
+
+| Name | What it is |
+| --- | --- |
+| `SESSION_SECRET` | HMAC key for session cookies and visitor hashes. 32 random bytes. |
+| `ADMIN_PASSWORD` | The actual auth on `/admin`. The path is obscurity, this is the lock. |
+| `TURSO_URL` | libSQL connection URL. |
+| `TURSO_TOKEN` | libSQL auth token. |
+| `CRON_SECRET` | Vercel sends this as a bearer token on cron invocations; reject anything else. |
+
+None of these belong in the repo, and none are needed to run the prototype.
+
+---
+
+## 5. What the firmware writes
+
+The NDEF record is unchanged by any of this:
+
+```
+https://ducky.davidyang.work/?d=0&c=XXXXXX
+                              ^
+                              0x0023, the one patched byte
 ```
 
-Every record that exists today must exist in Cloudflare before you switch.
-**Missing MX records is how people accidentally turn off their email.**
+`&c=` is appended after the digit precisely so the patch offset never moves.
+See `docs/pond/PROVISIONING.md`.
 
-**3 · Set the Cargo records to DNS-only.** Click the orange cloud next to
-the apex and `www` records so they go grey. Cargo terminates its own TLS;
-proxying through Cloudflare would give you two certificate authorities
-arguing about the same hostname.
+---
 
-**4 · Change the nameservers at your registrar** to the two Cloudflare gives
-you. Propagation is usually minutes, occasionally a few hours. The Cargo
-site stays up throughout — you are changing who *answers* for the name, not
-where it points.
-
-**5 · Deploy the Worker.**
+## 6. Deploy
 
 ```bash
 cd pond
-wrangler d1 create pond          # put the id into wrangler.toml
-npm run db:remote                # apply the schema
-wrangler secret put SESSION_SECRET
-wrangler secret put ADMIN_PASSWORD
-wrangler deploy
+npx vercel link          # once
+npx vercel --prod
 ```
 
-`custom_domain = true` makes Cloudflare create the `ducky` DNS record and
-issue its certificate. Nothing to add by hand.
-
-**6 · Check both.**
-
-```bash
-curl -sI https://davidyang.work        | head -1   # Cargo, unchanged
-curl -sI https://ducky.davidyang.work  | head -1   # the pond
-```
-
----
-
-## If you would rather not move the domain
-
-Two alternatives, both worse:
-
-- **`ducky.byproductlab.com`** — works today, zero risk, no DNS change. But
-  the card is a *personal* card and the silkscreen says `WWW.DAVIDYANG.WORK`,
-  so the URL wouldn't match the object.
-- **`pond.pages.dev`** — a free Cloudflare subdomain. Fine for testing,
-  wrong on a business card.
-
----
-
-## What this changes in the firmware
-
-The URL is longer, so **the patched digit moves**:
-
-```
-before   https://davidyang.work/p?d=0        digit at 0x001E
-after    https://ducky.davidyang.work/?d=0   digit at 0x0023
-```
-
-`NDEF_DIGIT_OFFSET` in `production-pond/src/config.h` is already `0x0023`.
-
-The constant and the text a phone writes to the tag are two halves of one
-layout — **change them together or the patch lands in the middle of the URL
-and corrupts it.** `docs/pond/PROVISIONING.md` has the read-back check; do
-it on one card before flashing a batch.
-
-Note there is no `/p` any more: the pond owns the whole subdomain, so the
-tag URL is `ducky.davidyang.work/?d=0&c=XXXXXX`.
+Cron jobs only become active on a production deployment.

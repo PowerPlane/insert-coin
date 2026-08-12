@@ -1,0 +1,37 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "outputDirectory": "public",
+
+  "crons": [
+    {
+      "path": "/api/sweep",
+      "schedule": "0 4 * * *"
+    }
+  ],
+
+  "rewrites": [
+    { "source": "/d/:slug", "destination": "/api/duck-page?slug=:slug" },
+    { "source": "/e/:key", "destination": "/api/duck-edit?key=:key" },
+    { "source": "/admin/:path*", "destination": "/api/admin?path=:path*" }
+  ],
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "referrer-policy", "value": "no-referrer" },
+        { "key": "x-content-type-options", "value": "nosniff" },
+        { "key": "x-frame-options", "value": "DENY" }
+      ]
+    },
+    {
+      "source": "/e/(.*)",
+      "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/admin/(.*)",
+      "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }]
+    }
+  ]
+}
