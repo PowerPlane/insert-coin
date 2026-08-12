@@ -289,18 +289,42 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .hud{position:absolute;top:0;left:0;right:0;z-index:30;pointer-events:none;
   display:flex;justify-content:space-between;padding:44px 16px 0;
   font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}
-.hud span{position:relative;isolation:isolate;color:var(--p-ink);padding:.34rem .62rem}
-.hud span::before{content:"";position:absolute;inset:0;background:#fff;
+.hud span,.hud button{position:relative;isolation:isolate;color:var(--p-ink);
+  padding:.34rem .62rem}
+.hud button{all:unset;box-sizing:border-box;cursor:pointer;pointer-events:auto;
+  position:relative;isolation:isolate;min-height:38px;display:grid;place-items:center;
+  padding:0 .7rem;color:var(--p-ink);
+  font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}
+.hud button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
+.hud span::before,.hud button::before{content:"";position:absolute;inset:0;background:#fff;
   clip-path:var(--px-corner);z-index:-1}
-/* Sits under the HUD chips, over the water. */
-.whistle{position:absolute;top:86px;left:16px;right:16px;z-index:30;
-  display:flex;gap:5px;flex-wrap:wrap}
+/* Only present while a whistle is active — the pond's default state is no
+   chrome over the water beyond the count. */
+.whistle{position:absolute;top:86px;left:16px;z-index:31;
+  display:flex;align-items:center;gap:.2rem;
+  background:var(--p-ink);color:#eaf7fc;clip-path:var(--px-corner);
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase}
+.whistle[hidden]{display:none}
+.whistle span{padding:0 .2rem 0 .7rem}
 .whistle button{all:unset;box-sizing:border-box;cursor:pointer;
-  min-height:34px;padding:0 .6rem;display:grid;place-items:center;
-  font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;
-  background:#ffffffdd;color:var(--p-ink);clip-path:var(--px-corner)}
-.whistle button[aria-pressed="true"]{background:var(--p-ink);color:#eaf7fc}
+  width:38px;height:38px;display:grid;place-items:center;font-size:.8rem;color:#eaf7fc}
 .whistle button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
+/* The list. Rises from the bottom like every other sheet in the app, and is
+   scrollable because it has one row per card keeper — a fixed row of chips
+   would have run out of width at about five cards. */
+.gsheet{position:absolute;left:0;right:0;bottom:0;z-index:52;
+  background:var(--p-surface);padding:.9rem 16px calc(16px + env(safe-area-inset-bottom,0px));
+  max-height:62%;overflow-y:auto}
+.gsheet[hidden]{display:none}
+.glist{display:flex;flex-direction:column;gap:5px}
+.glist button{all:unset;box-sizing:border-box;cursor:pointer;
+  min-height:46px;padding:0 .8rem;display:flex;align-items:center;justify-content:space-between;
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;
+  background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
+.glist button i{font-style:normal;color:var(--p-soft)}
+.glist button[aria-pressed="true"]{background:var(--p-ink);color:#eaf7fc}
+.glist button[aria-pressed="true"] i{color:#9dc6d8}
+.glist button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 /* A phone held one-handed cannot pinch, so zoom is also a pair of buttons.
    They also let us skip double-tap, which would have forced every water tap
    to wait to see if a second one was coming. */
@@ -644,17 +668,25 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
         <!-- 08 POND -->
         <div class="view" data-v="pond">
           <canvas class="pix" id="cv-pond" width="688" height="1480"></canvas>
-          <div class="hud"><span id="hud-n">14 ducks</span><span>BY-002</span></div>
+          <!-- The count IS the whistle: the thing you tap is the thing you
+               are filtering, so gathering costs no extra chrome over the
+               water. -->
+          <div class="hud">
+            <button type="button" id="hud-n" aria-haspopup="dialog">14 ducks</button>
+            <span>BY-002</span>
+          </div>
           <!-- The whistle. In Mii Plaza you blow one and everybody lines up;
                here the card is already a thing you blow into, so the pond
                borrows the gesture. Matching ducks swim together rather than
                the others vanishing — hiding them would make this a filtered
                list instead of a place. -->
-          <div class="whistle" id="whistle" role="group" aria-label="Gather ducks">
-            <button type="button" aria-pressed="true"  data-g="">All</button>
-            <button type="button" aria-pressed="false" data-g="Sam">Sam's</button>
-            <button type="button" aria-pressed="false" data-g="Mika">Mika's</button>
-            <button type="button" aria-pressed="false" data-g="@">Mine</button>
+          <div class="whistle" id="whistle" hidden>
+            <span id="whistle-what"></span>
+            <button type="button" id="whistle-clear" aria-label="Show everyone again">✕</button>
+          </div>
+          <div class="gsheet" id="gsheet" hidden>
+            <p class="p-bumplbl">Whistle for</p>
+            <div class="glist" id="glist"></div>
           </div>
           <div class="zoomer">
             <button type="button" id="z-in"  aria-label="Zoom in">+</button>
@@ -1668,7 +1700,7 @@ function go(name){
     // Browsing must NEVER release a duck. Arriving at the pond used to
     // create one on the spot, so "just look around" quietly published the
     // thing you had not decided to publish yet.
-    document.getElementById("hud-n").textContent=P.ducks.length+" ducks";
+    syncPondCount();
     P.growWorld();
     if(MINE)P.focus(MINE); else P.clampCam();
     syncPondCta();
@@ -1909,7 +1941,7 @@ function openPanel(d,src){
 function closePanel(){ panel.dataset.open="false"; scrim.dataset.open="false";
   if(lastFocus)lastFocus.focus({preventScroll:true}); }
 document.getElementById("p-x").onclick=closePanel;
-scrim.onclick=closePanel;
+scrim.onclick=()=>{ closeGather(); closePanel(); };
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&panel.dataset.open==="true")closePanel(); });
 /* Who bumps this duck most, as ducks rather than names -- five at most,
    because a ranking longer than a row stops being a glance. Tapping one
@@ -2073,9 +2105,7 @@ document.getElementById("pond-settings").onclick=()=>go("manage");
         name:"Duck "+(i+1),msg:"",date:"today",
         keeper:KEEPERS[i%KEEPERS.length],bumps:(i*3)%9,bumpers:[]});
     }
-    P.growWorld(); say();
-    document.getElementById("hud-n").textContent=P.ducks.length+" ducks";
-    buildSr();
+    P.growWorld(); say(); syncPondCount(); buildSr();
   };
   document.getElementById("crowd-reset").onclick=()=>{ location.reload(); };
   setTimeout(say,300);
@@ -2084,15 +2114,53 @@ document.getElementById("pond-settings").onclick=()=>go("manage");
 document.getElementById("z-in").onclick=()=>P.zoomStep(1);
 document.getElementById("z-out").onclick=()=>P.zoomStep(-1);
 document.getElementById("cv-pond").addEventListener("dblclick",e=>e.preventDefault());
-(function(){
-  const w=document.getElementById("whistle");
-  w.addEventListener("click",e=>{
-    const b=e.target.closest("button[data-g]"); if(!b)return;
-    [...w.children].forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
-    const g=b.dataset.g;
-    P.gather = !g ? null : (g==="@" ? (d=>d.mine) : (d=>d.keeper===g));
-  });
-})();
+/* The whistle. Built from whoever is actually in the pond, so it grows with
+   the cards you hand out instead of being a hard-coded row. */
+let GATHER=null;
+function keepersInPond(){
+  const m=new Map();
+  for(const d of P.ducks) if(d.keeper) m.set(d.keeper,(m.get(d.keeper)||0)+1);
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]);
+}
+function setGather(key){
+  GATHER=key;
+  P.gather = !key ? null : (key==="@" ? (d=>d.mine) : (d=>d.keeper===key));
+  const chip=document.getElementById("whistle");
+  chip.hidden=!key;
+  if(key) document.getElementById("whistle-what").textContent =
+    key==="@" ? "Your circle" : key+"'s cards";
+  syncPondCount();
+  buildSr();
+}
+function syncPondCount(){
+  const n=P.ducks.length;
+  const shown=P.gather?P.ducks.filter(P.gather).length:n;
+  document.getElementById("hud-n").textContent =
+    P.gather ? shown+" of "+n : n+" ducks";
+}
+function openGather(){
+  const list=document.getElementById("glist");
+  list.innerHTML="";
+  const rows=[["","Everyone",P.ducks.length]];
+  if(MINE)rows.push(["@","Your circle",P.ducks.filter(d=>d.mine).length]);
+  for(const [k,c] of keepersInPond())rows.push([k,k+"'s cards",c]);
+  for(const [key,label,count] of rows){
+    const b=document.createElement("button");
+    b.type="button"; b.setAttribute("aria-pressed",String((GATHER||"")===key));
+    b.innerHTML=""; b.append(label);
+    const i=document.createElement("i"); i.textContent=count; b.appendChild(i);
+    b.onclick=()=>{ setGather(key||null); closeGather(); };
+    list.appendChild(b);
+  }
+  document.getElementById("gsheet").hidden=false;
+  scrim.dataset.open="true";
+}
+function closeGather(){
+  document.getElementById("gsheet").hidden=true;
+  if(panel.dataset.open!=="true")scrim.dataset.open="false";
+}
+document.getElementById("whistle-clear").onclick=()=>setGather(null);
+document.getElementById("hud-n").onclick=openGather;
 
 /* Card Setup shows whichever duck this phone already holds a key for, so
    the common path is one tap rather than a form. Either order has to work,
@@ -2261,15 +2329,17 @@ function syncPondCta(){
   say.hidden=!hasDuck;
 
   if(hasDuck){
-    cta.textContent="Find my duck";
-    /* Literally what the label says: move the camera to it. The pond is
-       bigger than the screen now, so this is a real action rather than a
-       link to another page. */
-    cta.onclick=findMyDuck;
+    /* Nothing. "Find my duck" asked the same question as the whistle's
+       "your circle", and once your duck is in the pond there is no action
+       you still owe it -- the pond is the destination, so the bar gets out
+       of the way and leaves two quiet glyphs. */
+    cta.hidden=true;
   }else if(hasSession){
+    cta.hidden=false;
     cta.textContent="Finish my duck";
     cta.onclick=()=>go("studio");
   }else{
+    cta.hidden=false;
     cta.textContent="Slide a coin in to get one";
     cta.onclick=()=>hintPond("Insert the coin, watch the lights, then tap again.");
   }

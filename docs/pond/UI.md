@@ -182,6 +182,8 @@ Water is Bayer-dithered brand blues, never a gradient.
 
 | Date | Change | Why |
 | --- | --- | --- |
+| 2026-08-12 | The count is the whistle | Tapping "113 ducks" opens the gather list; it reads "30 of 113" while filtered. Gathering costs no chrome over the water. |
+| 2026-08-12 | "Find my duck" removed | It asked the same question as the whistle's "your circle". Once your duck is in the pond there is no action you still owe it, so the CTA hides entirely. |
 | 2026-08-12 | Pond camera | Zoom is `CELL` restricted to {2,3,4,6}; world grows as `sqrt(ducks)`; camera is a translate. Verified: 13 ducks = world 172×370 (the screen), 113 = 362×779. |
 | 2026-08-12 | Camera renders off-tick | The world ticks at ~12fps for stop-motion, but a drag must track a finger at display rate, so the camera redraws on rAF while it is moving. Two clocks, one render. |
 | 2026-08-12 | Ducks never overlap | Separation on a uniform grid, O(n). Placement uses best-candidate sampling so the scatter is even without being a grid. |
