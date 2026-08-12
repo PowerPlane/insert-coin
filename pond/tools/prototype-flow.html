@@ -1332,7 +1332,8 @@ function Scene(canvas,opts){
      spoke in these, so they keep working and simply mean something bigger. */
   let cw=Math.ceil(W/CELL), ch=Math.ceil(H/CELL);
   const S={ctx,W,H,cw,ch,ducks:[],parts:[],rings:[],fx:[],petals:[],arrivals:[],
-    frame:0,tick:80,cell:CELL,cam:{x:0,y:0},camera:!!(opts&&opts.camera),gather:null};
+    frame:0,tick:80,cell:CELL,cam:{x:0,y:0},
+    camera:!!(opts&&opts.camera),wrap:!!(opts&&opts.wrap),gather:null};
   /* 4 is home -- the pond's native framing. 8 exists mainly for the arrival
      and release moments, where the duck should be close enough to look at
      rather than locate. */
@@ -1342,7 +1343,17 @@ function Scene(canvas,opts){
   S.vw=vw; S.vh=vh;
   S.setWorld=(w,h)=>{ cw=S.cw=w; ch=S.ch=h; S.clampCam(); };
   /* Never show void: if the world is smaller than the screen, centre it. */
+  /* Wrapping is a property of the SPACE, not of the engine. The pond has no
+     edges — pan far enough and you come back round. The arrival screen is a
+     single-duck stage: it has edges, and wrapping it sends the camera to the
+     far side of the world the moment the framing wants to sit slightly above
+     the top, which is exactly what broke it. */
+  const wrapDX=v=>{ if(!S.wrap)return v; v%=cw; if(v>cw/2)v-=cw; if(v<-cw/2)v+=cw; return v; };
+  const wrapDY=v=>{ if(!S.wrap)return v; v%=ch; if(v>ch/2)v-=ch; if(v<-ch/2)v+=ch; return v; };
+  S.wrapDX=wrapDX; S.wrapDY=wrapDY;
+  const wrapX=v=>S.wrap?((v%cw)+cw)%cw:v, wrapY=v=>S.wrap?((v%ch)+ch)%ch:v;
   S.clampCam=()=>{
+    if(S.wrap){ S.cam.x=wrapX(S.cam.x); S.cam.y=wrapY(S.cam.y); return; }
     S.cam.x = cw<=vw() ? (cw-vw())/2 : Math.max(0,Math.min(cw-vw(),S.cam.x));
     S.cam.y = ch<=vh() ? (ch-vh())/2 : Math.max(0,Math.min(ch-vh(),S.cam.y));
   };
@@ -1353,6 +1364,7 @@ function Scene(canvas,opts){
      still grows with the population from there so density stays constant. */
   S.growWorld=()=>{
     if(!S.camera)return;
+    if(!S.wrap){ S.setWorld(Math.ceil(W/CELL),Math.ceil(H/CELL)); return; }
     const side=Math.max(Math.ceil(W/CELL*2.4),
       Math.ceil(Math.sqrt(Math.max(1,S.ducks.length))*34));
     S.setWorld(side,Math.round(side*H/W));
@@ -1398,17 +1410,13 @@ function Scene(canvas,opts){
      tracking the interpolation the moment it touches a world edge, while
      the CSS scale carries on pivoting about the canvas centre — which is
      the size jump. */
-  S.legalCentre=(cx,cy,cell)=>{
-    const c=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],cell));
-    const vwc=W/c, vhc=H/c;
-    let x=cx-vwc/2, y=cy-vhc/2;
-    x = cw<=vwc ? (cw-vwc)/2 : Math.max(0,Math.min(cw-vwc,x));
-    y = ch<=vhc ? (ch-vhc)/2 : Math.max(0,Math.min(ch-vhc,y));
-    return {x:x+vwc/2, y:y+vhc/2};
-  };
+  /* Every centre is reachable now, so there is nothing to make legal. What
+     does matter is going the SHORT way: interpolating straight from 5 to
+     cw-5 would sail the long way across the whole pond. */
+  S.legalCentre=(cx,cy)=>({x:cx,y:cy});
   S.moveTo=(cx,cy,cell,ms)=>{
     const c=S.centre();
-    const dest=S.legalCentre(cx,cy,cell);
+    const dest={x:c.x+wrapDX(cx-c.x), y:c.y+wrapDY(cy-c.y)};
     if(reduce||!ms){ mv=null; canvas.style.transform=""; S.place(dest.x,dest.y,cell); render(); return; }
     mv={x0:c.x,y0:c.y,z0:S.cell,x:dest.x,y:dest.y,z:cell,t0:performance.now(),ms:ms};
   };
@@ -1428,11 +1436,20 @@ function Scene(canvas,opts){
     render();
     const k=z/n;
     canvas.style.transform = Math.abs(k-1)<0.002 ? "" : "scale("+k+")";
-    if(p>=1){ mv=null; S.place(mv?mv.x:mv,0,n); canvas.style.transform="";
-      S.place(mvEndX,mvEndY,mv?mv.z:n); }
+    if(p>=1){
+      /* Read the destination BEFORE clearing mv. The previous version nulled
+         mv first and then read from it, so it landed on S.place(0,0,n) —
+         the camera teleported to the world origin at the end of every single
+         move. One bug, and it was the pan jump, the misplaced duck, the lost
+         arrival framing and the drop that looked like it never happened. */
+      const ex=mv.x, ey=mv.y, ez=mv.z;
+      mv=null;
+      canvas.style.transform="";
+      S.place(ex,ey,ez);
+      render();
+    }
     return true;
   };
-  let mvEndX=0,mvEndY=0;
   S.focus=(d,minCell,yFrac,ms)=>{
     if(!d)return;
     const c1=(minCell&&S.cell<minCell)?minCell:S.cell;
@@ -1465,17 +1482,17 @@ function Scene(canvas,opts){
     const buckets=new Map(), key=(cx,cy)=>cx*100003+cy;
     const G=roomy?ROOM:SEP;
     for(const d of list){
-      const k=key(Math.floor(d.x/G),Math.floor(d.y/G));
+      const k=key(Math.floor(wrapX(d.x)/G),Math.floor(wrapY(d.y)/G));
       let arr=buckets.get(k); if(!arr)buckets.set(k,arr=[]);
       arr.push(d);
     }
     for(const d of list){
-      const cx=Math.floor(d.x/G), cy=Math.floor(d.y/G);
+      const cx=Math.floor(wrapX(d.x)/G), cy=Math.floor(wrapY(d.y)/G);
       for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
         const arr=buckets.get(key(cx+ox,cy+oy)); if(!arr)continue;
         for(const o of arr){
           if(o===d)continue;
-          const dx=o.x-d.x, dy=o.y-d.y;
+          const dx=wrapDX(o.x-d.x), dy=wrapDY(o.y-d.y);
           const dist=Math.hypot(dx,dy);
           if(dist<=0.01||dist>=G)continue;
           const f = dist<SEP
@@ -1543,7 +1560,7 @@ function Scene(canvas,opts){
      short so they touch instead of overlapping. */
   S.bump=(from,to)=>{
     if(!from||!to||from===to||from._dt)return false;
-    const dx=to.x-from.x, dy=to.y-from.y, dist=Math.hypot(dx,dy)||1;
+    const dx=wrapDX(to.x-from.x), dy=wrapDY(to.y-from.y), dist=Math.hypot(dx,dy)||1;
     const stop=Math.max(0,dist-N*0.7);
     from._d0={x:from.x,y:from.y};
     from._d1={x:from.x+dx/dist*stop,y:from.y+dy/dist*stop};
@@ -1627,13 +1644,13 @@ function Scene(canvas,opts){
              most of what "organic" is. */
           const ang=d._r*6.283, ring=(0.3+d._r*0.8)*N*1.9;
           const tx=gx+Math.cos(ang)*ring, ty=gy+Math.sin(ang)*ring*0.8;
-          const dx=tx-d.x, dy=ty-d.y, dist=Math.hypot(dx,dy)||1;
+          const dx=wrapDX(tx-d.x), dy=wrapDY(ty-d.y), dist=Math.hypot(dx,dy)||1;
           const pull=0.0075*(0.65+d._r*0.8);
           d.vx+=dx*pull; d.vy+=dy*pull;
           d.vx+=-dy/dist*0.10; d.vy+=dx/dist*0.10;      // swirl in
           called.push(d);
         }else{
-          const dx=d.x-gx, dy=d.y-gy, dist=Math.hypot(dx,dy)||1;
+          const dx=wrapDX(d.x-gx), dy=wrapDY(d.y-gy), dist=Math.hypot(dx,dy)||1;
           if(dist<clear){
             d.vx+=dx/dist*1.35; d.vy+=dy/dist*1.35;     // leave, and briskly
             d.vx+=-dy/dist*0.5; d.vy+=dx/dist*0.5;      // fan out around the rim
@@ -1652,7 +1669,7 @@ function Scene(canvas,opts){
       const inner=Math.hypot(vw(),vh())*0.42;
       for(const d of S.ducks){
         if(d._dt||!d._shoved)continue;
-        const dx=gx-d.x, dy=gy-d.y, dist=Math.hypot(dx,dy)||1;
+        const dx=wrapDX(gx-d.x), dy=wrapDY(gy-d.y), dist=Math.hypot(dx,dy)||1;
         if(dist>inner){ d.vx+=dx/dist*0.30; d.vy+=dy/dist*0.30; }
         else d._shoved=false;
       }
@@ -1681,19 +1698,10 @@ function Scene(canvas,opts){
       if(d.head===undefined)d.head=Math.random()*6.283;
       d.head+=(Math.random()-0.5)*0.55;
       d.dx=Math.cos(d.head)*0.14; d.dy=Math.sin(d.head)*0.11;
-      /* Steer off the walls before arriving at them, rather than bouncing:
-         a bounce puts the duck ON the edge, and it lingers there. */
-      const edge=N*1.1;
-      if(d.x<edge)        d.vx+=(edge-d.x)*0.03;
-      if(d.x>cw-edge)     d.vx-=(d.x-(cw-edge))*0.03;
-      if(d.y<edge+8)      d.vy+=(edge+8-d.y)*0.03;
-      if(d.y>ch-edge-10)  d.vy-=(d.y-(ch-edge-10))*0.03;
       d.vx*=0.86; d.vy*=0.86; d.x+=(d.vx+d.dx)*dt*8; d.y+=(d.vy+d.dy)*dt*8;
-      const m=N*0.5;   // hard stop, should now be rare
-      if(d.x<m)d.x=m;
-      if(d.x>cw-m)d.x=cw-m;
-      if(d.y<m+10)d.y=m+10;
-      if(d.y>ch-m-14)d.y=ch-m-14;
+      /* Off one side, on the other. No walls to steer away from, so the
+         wander no longer needs rescuing from corners it used to collect in. */
+      d.x=wrapX(d.x); d.y=wrapY(d.y);
       const vx=d.vx+d.dx; if(Math.abs(vx)>0.12)d.flip=vx<0;
       if(d.burning&&now>d.burnUntil)d.burning=false;
     }
@@ -1720,15 +1728,26 @@ function Scene(canvas,opts){
        changed. A rule that changes is worse than either rule. Sprites are
        still crisp: their own pixels are CELL-sized squares on integer
        offsets, they are simply not locked to a grid nobody can see. */
-    const camPX=S.cam.x*CELL, camPY=S.cam.y*CELL;
     const q=(v)=>Math.round(v*CELL);
+    /* The viewport can straddle the seam, so the scene is drawn once per
+       tile it touches. The world is at least 2.4x the frame, so that is at
+       most one seam per axis: four draws worst case, one almost always. */
+    const camX=wrapX(S.cam.x), camY=wrapY(S.cam.y);
+    const tilesX=(S.wrap&&camX+W/CELL>cw)?[0,cw]:[0];
+    const tilesY=(S.wrap&&camY+H/CELL>ch)?[0,ch]:[0];
     ctx.save();
-    ctx.translate(-camPX,-camPY);
+    for(const tx of tilesX)for(const ty of tilesY){
+    ctx.save();
+    ctx.translate(-(camX-tx)*CELL,-(camY-ty)*CELL);
     for(const r of S.rings){
       const p=(now-r.t)/RIPPLE; if(p>=1)continue;
       const rad=easeOut(p)*r.max,fade=1-p;
-      for(let y=Math.max(1,(r.y-rad-2)|0);y<=Math.min(ch-1,(r.y+rad+2)|0);y++)
-      for(let x=Math.max(1,(r.x-rad-2)|0);x<=Math.min(cw-1,(r.x+rad+2)|0);x++){
+      /* Iterate the ripple's own box, not the world's. Clamping to [1,cw-1]
+         made sense when the world WAS the screen; now it slices any ripple
+         that happens to sit near a world edge into an arc. Anything drawn
+         outside the canvas is clipped by the canvas, for free. */
+      for(let y=(r.y-rad-2)|0;y<=(r.y+rad+2)|0;y++)
+      for(let x=(r.x-rad-2)|0;x<=(r.x+rad+2)|0;x++){
         const d=Math.hypot(x-r.x,y-r.y)-rad; if(d<-1.6||d>1.1)continue;
         const lift=d<-0.4?(fade>0.45?2:1):(fade>0.3?1:0);
         if(lift){ ctx.fillStyle=WSH[Math.max(0,2-lift)]; ctx.fillRect(x*CELL,y*CELL,CELL,CELL); }
@@ -1751,7 +1770,8 @@ function Scene(canvas,opts){
     }
     for(const p of S.parts){ ctx.fillStyle=p.c;
       ctx.fillRect(Math.round(p.x)*CELL,Math.round(p.y)*CELL,CELL,CELL); }
-    const l=S.cam.x-N, r0=S.cam.x+W/CELL+N, t=S.cam.y-N, b=S.cam.y+H/CELL+N;
+    const l=(camX-tx)-N, r0=(camX-tx)+W/CELL+N,
+          t=(camY-ty)-N, b=(camY-ty)+H/CELL+N;
     for(const d of S.ducks){
       /* Culling is what makes a 400-duck pond cost what a 14-duck pond
          costs: the same number fit on screen either way. */
@@ -1778,6 +1798,7 @@ function Scene(canvas,opts){
                      Math.round(e.y+(p.y-e.rows/2)*e.cell/2)*CELL,CELL*(e.cell/2),CELL*(e.cell/2));
       } }
     ctx.restore();
+    }
     ctx.restore();
   }
   let acc=0,last=performance.now();
@@ -1808,7 +1829,8 @@ function Scene(canvas,opts){
   })(performance.now());
   /* Both in WORLD units now, so neither depends on where the camera is. */
   S.hit=(wx,wy)=>{ for(let i=S.ducks.length-1;i>=0;i--){ const d=S.ducks[i];
-    if(wx>=d.x-N/2&&wx<=d.x+N/2&&wy>=d.y-N/2&&wy<=d.y+N/2)return d; } return null; };
+    if(Math.abs(wrapDX(wx-d.x))<=N/2&&Math.abs(wrapDY(wy-d.y))<=N/2)return d; }
+    return null; };
   S.screen=ev=>{ const r=canvas.getBoundingClientRect();
     return [(ev.clientX-r.left)/r.width*W,(ev.clientY-r.top)/r.height*H]; };
   S.pos=ev=>{ const [sx,sy]=S.screen(ev);
@@ -1818,7 +1840,7 @@ function Scene(canvas,opts){
 
 /* ── scenes ── */
 const A=Scene(document.getElementById("cv-arrival"),{camera:true});
-const P=Scene(document.getElementById("cv-pond"),{camera:true});
+const P=Scene(document.getElementById("cv-pond"),{camera:true,wrap:true});
 /* name, message, fortune, date, bumps, whose card it came from.
    The keeper replaces the card serial on the duck's card: readable, and it
    stops publishing the id a card claim would be keyed on. */
