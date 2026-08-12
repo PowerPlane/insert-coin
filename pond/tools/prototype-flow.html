@@ -187,7 +187,7 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .field input,.field textarea{width:100%;font-family:var(--body);
   /* 16px is a hard floor: iOS Safari zooms the whole page when focusing an
      input with a smaller font, and never zooms back out. */
-  font-size:16px;padding:.65rem .7rem;
+  font-size:16px;padding:.7rem .7rem;min-height:44px;   /* the 44px floor applies to fields too */
   border:0;background:#fff;color:var(--p-ink);resize:none;clip-path:var(--px-corner)}
 .counter{font-family:var(--mono);font-size:.56rem;color:var(--p-faint);text-align:right;margin-top:.15rem}
 .priv{font-family:var(--mono);font-size:.64rem;line-height:1.65;color:var(--p-soft);
@@ -235,7 +235,7 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .s-tabs{display:flex;gap:4px;padding:8px 14px 0}
 .s-tabs button{all:unset;box-sizing:border-box;cursor:pointer;flex:1;text-align:center;
   font-family:var(--mono);font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;
-  padding:.55rem .2rem;min-height:40px;background:#dff2fb;color:var(--p-ink);
+  padding:.55rem .2rem;min-height:44px;background:#dff2fb;color:var(--p-ink);
   clip-path:var(--px-corner)}
 .s-tabs button[aria-selected="true"]{background:var(--p-ink);color:#eaf7fc}
 .s-body{flex:1 1 auto;overflow-y:auto;padding:8px 14px 4px;min-height:0}
@@ -320,6 +320,64 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .p-name{font-family:var(--serif);font-weight:400;font-size:1.3rem;line-height:1.1;margin:0 0 .12rem}
 .p-meta{font-family:var(--mono);font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--p-faint);margin:0}
 .p-msg{font-size:1.02rem;line-height:1.5;color:var(--p-soft);margin:.7rem 0 0}
+
+/* ── keeper + admin ────────────────────────────────────────────────────
+   Everything here uses the shared corner, the 44px floor and --p-ink for
+   labels; see docs/pond/UI.md. */
+.k-hint{font-size:.82rem;line-height:1.5;color:var(--p-soft);margin:-.35rem 0 .9rem}
+.k-hint b{color:var(--p-ink)}
+.seg{display:flex;gap:4px}
+.seg button{all:unset;box-sizing:border-box;cursor:pointer;flex:1;text-align:center;
+  min-height:44px;display:grid;place-items:center;
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;
+  background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
+.seg button[aria-pressed="true"]{background:var(--p-ink);color:#eaf7fc}
+.seg button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
+.k-check{display:flex;gap:.6rem;align-items:flex-start;margin:.9rem 0 0;min-height:44px;
+  font-size:.88rem;line-height:1.5;color:var(--p-soft);cursor:pointer}
+.k-check b{color:var(--p-ink)}
+.k-check input{flex:0 0 auto;width:22px;height:22px;margin:.1rem 0 0;accent-color:var(--field-900)}
+
+.a-pane[hidden]{display:none}
+.a-bar{display:flex;gap:4px;flex-wrap:wrap;margin:.7rem 0 .2rem}
+.a-filt{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;
+  padding:.34rem .55rem;background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
+.a-filt.on{background:var(--field-900);color:#eaf7fc}
+.a-row{display:flex;gap:.6rem;align-items:flex-start;
+  padding:.65rem 0;border-top:1px solid #cfe6f0}
+.a-row:last-child{border-bottom:1px solid #cfe6f0}
+.a-thumb{flex:0 0 auto;width:34px;height:34px;background:#dff2fb;clip-path:var(--px-corner);
+  display:grid;place-items:center}
+.a-thumb canvas{image-rendering:pixelated;width:30px;height:30px}
+.a-main{flex:1 1 auto;min-width:0}
+.a-main b{display:block;font-size:.94rem;color:var(--p-ink)}
+.a-main small{display:block;font-family:var(--mono);font-size:.6rem;color:var(--p-soft)}
+.a-sub{margin:.15rem 0 0;font-size:.84rem;color:var(--p-soft);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.a-row.flag{background:#fff1ee}
+.a-row.flag .a-sub{color:#a3352a}
+.a-act{flex:0 0 auto;display:flex;gap:.25rem;flex-wrap:wrap;justify-content:flex-end}
+.mini{all:unset;box-sizing:border-box;cursor:pointer;
+  min-height:44px;padding:0 .6rem;display:grid;place-items:center;
+  font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;
+  background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
+.mini.go{background:var(--field-900);color:#eaf7fc}
+.mini.bad{background:#ffe1e1;color:#8f2b20}
+.mini[disabled]{background:#e4f6ec;color:#1e6b47;cursor:default}
+.mini:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
+
+.a-c{padding:.8rem 0;border-top:1px solid #cfe6f0}
+.a-c:last-of-type{border-bottom:1px solid #cfe6f0}
+.a-cwho{margin:0;font-size:.98rem;font-weight:650;color:var(--p-ink)}
+.a-cwho span{font-family:var(--mono);font-size:.6rem;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--p-soft);font-weight:400}
+.a-cnote{margin:.2rem 0 .35rem;font-size:.88rem;font-style:italic;color:var(--p-soft)}
+.a-cval{margin:0 0 .5rem;font-family:var(--mono);font-size:.78rem;color:var(--p-ink);
+  word-break:break-word}
+/* Addresses get the warm block because these actually get posted. */
+.a-cval.post{background:#fff8e0;padding:.5rem .6rem;white-space:pre-line;line-height:1.55;
+  clip-path:var(--px-corner)}
+.a-cact{display:flex;gap:.3rem;flex-wrap:wrap}
 /* Who bumps this duck most. Ducks, not names — it reads at a glance and it
    stays playful; the name is on the label for anyone who needs it. */
 .p-bumpers{margin:.7rem 0 0}
@@ -336,12 +394,18 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .p-btn[disabled]{opacity:.5;cursor:default}
 .p-actions{display:flex;gap:.5rem;margin-top:.9rem;flex-wrap:wrap}
 .p-btn{all:unset;box-sizing:border-box;cursor:pointer;font-family:var(--mono);font-size:.64rem;
-  letter-spacing:.09em;text-transform:uppercase;padding:.55rem .8rem;border-radius:7px;
-  background:#dff2fb;color:var(--p-ink);box-shadow:0 3px 0 #b9d9e6}
-.p-btn.hot{background:var(--duck);color:#4a3a06;box-shadow:0 3px 0 var(--duck-shadow)}
-.p-x{all:unset;box-sizing:border-box;cursor:pointer;position:absolute;top:.7rem;right:.8rem;
-  width:28px;height:28px;text-align:center;line-height:28px;border-radius:6px;
-  font-family:var(--mono);font-size:.8rem;color:var(--p-soft);background:#dff2fb}
+  letter-spacing:.09em;text-transform:uppercase;padding:0 .85rem;
+  min-height:44px;display:inline-grid;place-items:center;   /* the 44px floor */
+  background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
+.p-btn.hot{background:var(--duck);color:#4a3a06}
+.p-btn:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
+/* Closing a sheet on a phone is a thumb action, so it gets the same 44px
+   as everything else rather than the 28px a desktop x would take. */
+.p-x{all:unset;box-sizing:border-box;cursor:pointer;position:absolute;top:.45rem;right:.55rem;
+  width:44px;height:44px;display:grid;place-items:center;
+  font-family:var(--mono);font-size:.9rem;color:var(--p-ink);background:#dff2fb;
+  clip-path:var(--px-corner)}
+.p-x:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 .scrim{position:absolute;inset:0;z-index:45;background:#0b3d5233;opacity:0;pointer-events:none;
   transition:opacity .18s steps(3,end)}
 .modal{position:absolute;inset:0;z-index:60;display:grid;place-items:end center;
@@ -385,6 +449,10 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
       <div class="grp">Coming back — the gap</div>
       <button data-go="mine"><span class="n">06</span> Your duck, later</button>
       <button data-go="manage"><span class="n">07</span> Settings</button>
+      <div class="grp">The card's keeper</div>
+      <button data-go="keeper"><span class="n">08</span> Card setup</button>
+      <div class="grp">Yours only</div>
+      <button data-go="admin"><span class="n">09</span> Admin</button>
     </div>
 
     <div class="dev">
@@ -557,6 +625,151 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
           </div>
         </div>
 
+
+        <!-- 10 CARD SETUP — reached by blowing four times, not by a link -->
+        <div class="view" data-v="keeper"><div class="v-pad">
+          <p class="v-eyebrow">Four blows · this card</p>
+          <h2 class="v-h">This card is yours</h2>
+          <p class="v-sub">Nobody can change any of this without holding the card
+            and blowing into it again.</p>
+
+          <div class="field">
+            <label for="k-name">Whose card is it</label>
+            <input id="k-name" value="Sam" maxlength="18">
+          </div>
+          <p class="k-hint">Ducks released from this card will say <b>via Sam</b>.</p>
+
+          <div class="field">
+            <label id="k-lang-l">Language people see first</label>
+            <div class="seg" role="group" aria-labelledby="k-lang-l" id="k-lang">
+              <button type="button" aria-pressed="true">English</button>
+              <button type="button" aria-pressed="false" lang="zh-Hant">繁體中文</button>
+            </div>
+          </div>
+          <p class="k-hint">Someone whose phone asks for another language still gets
+            their own. This sets the default, not a lock.</p>
+
+          <div class="field">
+            <label for="k-link">Your link — optional</label>
+            <input id="k-link" inputmode="url" placeholder="https://">
+          </div>
+          <div class="seg" role="group" aria-label="When your link is shown" id="k-mode">
+            <button type="button" aria-pressed="true">Fortune first</button>
+            <button type="button" aria-pressed="false">Straight to my link</button>
+          </div>
+          <p class="priv">Your link is never an automatic redirect. Visitors land on a
+            page with <b>your name on it</b> and choose — which is what keeps this
+            domain from being a redirector. <b>https only.</b></p>
+
+          <label class="k-check">
+            <input type="checkbox" id="k-adopt" checked>
+            <span>Adopt the <b>12 ducks</b> that came from this card before you
+              claimed it</span>
+          </label>
+
+          <div class="spacer"></div>
+          <div class="btn-row">
+            <button class="btn" data-go="pond">Save</button>
+            <button class="btn g" data-go="pond">Not now</button>
+          </div>
+        </div></div>
+
+        <!-- 11 ADMIN — one reader, stays in English -->
+        <div class="view" data-v="admin"><div class="v-pad">
+          <p class="v-eyebrow">ducky.davidyang.work/admin</p>
+          <h2 class="v-h">Admin</h2>
+          <div class="s-tabs" id="a-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected="true"  data-a="ducks">Ducks</button>
+            <button type="button" role="tab" aria-selected="false" data-a="contacts">Contacts</button>
+            <button type="button" role="tab" aria-selected="false" data-a="cards">Cards</button>
+          </div>
+
+          <div class="a-pane" data-a="ducks">
+            <div class="a-bar">
+              <span class="a-filt on">All</span>
+              <span class="a-filt">Reported 1</span>
+              <span class="a-filt">Hidden</span>
+            </div>
+            <div id="a-ducklist"></div>
+          </div>
+
+          <div class="a-pane" data-a="contacts" hidden>
+            <div class="a-bar">
+              <span class="a-filt on">To reply 2</span>
+              <span class="a-filt">Replied</span>
+              <span class="a-filt">Postcards 1</span>
+            </div>
+
+            <div class="a-c">
+              <p class="a-cwho">Mika <span>· shared with you · 4 Aug</span></p>
+              <p class="a-cnote">"found this card at the bar"</p>
+              <p class="a-cval">mika.tanaka@example.com</p>
+              <div class="a-cact">
+                <button class="mini go" type="button">Reply</button>
+                <button class="mini" type="button">Mark done</button>
+              </div>
+            </div>
+
+            <div class="a-c">
+              <p class="a-cwho">Shuang <span>· shared with Sam and you · 12 Jul</span></p>
+              <p class="a-cnote">"clover duck"</p>
+              <p class="a-cval post">Shuang Li
+14 Bishopsgate, Flat 6
+London EC2N 3AR</p>
+              <div class="a-cact">
+                <button class="mini go" type="button">Copy address</button>
+                <button class="mini" type="button">Postcard sent</button>
+              </div>
+            </div>
+
+            <div class="a-c">
+              <p class="a-cwho">Ren <span>· shared with you · 5 Aug</span></p>
+              <p class="a-cnote">"insert coin → insert duck"</p>
+              <p class="a-cval">+44 7700 900142</p>
+              <div class="a-cact">
+                <button class="mini" type="button" disabled>✓ Replied 6 Aug</button>
+              </div>
+            </div>
+
+            <div class="spacer"></div>
+            <button class="btn g" type="button" id="a-csv">Download CSV</button>
+          </div>
+
+          <div class="a-pane" data-a="cards" hidden>
+            <div class="a-bar">
+              <span class="a-filt on">All 100</span>
+              <span class="a-filt">Claimed 12</span>
+              <span class="a-filt">Never tapped 43</span>
+            </div>
+            <div class="a-row">
+              <div class="a-main">
+                <b>Sam → Mika</b>
+                <small>7F3A9K · 39 ducks · claimed 3 Nov · counter 1C</small>
+                <p class="a-sub">繁體中文 · links to mika.example.com · fortune first</p>
+              </div>
+              <div class="a-act">
+                <button class="mini" type="button">Unclaim</button>
+                <button class="mini bad" type="button">Kill link</button>
+              </div>
+            </div>
+            <div class="a-row">
+              <div class="a-main">
+                <b>Jo</b>
+                <small>B2K7QX · 6 ducks · claimed 12 Jul · counter 03</small>
+                <p class="a-sub">English · no link set</p>
+              </div>
+              <div class="a-act"><button class="mini" type="button">Unclaim</button></div>
+            </div>
+            <div class="a-row">
+              <div class="a-main">
+                <b>Unclaimed</b>
+                <small>4M9PLT · 2 ducks · never claimed</small>
+              </div>
+              <div class="a-act"></div>
+            </div>
+          </div>
+        </div></div>
+
         <!-- 09 MINE -->
         <div class="view" data-v="mine"><div class="v-pad">
           <p class="v-eyebrow">Welcome back</p>
@@ -589,8 +802,8 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
             <textarea id="m-contact" rows="2">@samwork</textarea>
           </div>
           <div class="field">
-            <label for="m-link">Your private link</label>
-            <input id="m-link" value="ducky.davidyang.work/d/8k3f-sam" readonly>
+            <label for="m-link">Your private link — the only key that exists</label>
+            <input id="m-link" value="ducky.davidyang.work/e/9fQ2xK7pLm" readonly>
           </div>
           <p class="priv">Removing your duck deletes its message and your contact <b>at the same time</b>. Nothing is kept.</p>
           <div class="spacer"></div>
@@ -1162,6 +1375,7 @@ function go(name){
   }
   if(name==="arrival"||name==="sign"||name==="mine") drawStatics();
   if(name==="studio") redrawAll();
+  if(name==="admin") buildAdmin();
   const v=screen.querySelector(".view.on"); if(v)v.scrollTop=0;
 }
 document.addEventListener("click",e=>{ const t=e.target.closest("[data-go]"); if(t)go(t.dataset.go); });
@@ -1419,8 +1633,17 @@ function paintBumpers(d){
   }
 }
 
-/* Four states, and only one of them is "press me". */
-const BUMP_COOLDOWN_MS=8000;   // an hour in production; short here to review
+/* Facebook's poke worked because it had to come back. You can get up to
+   ten bumps ahead of someone; after that it is their turn, and the button
+   says so rather than silently failing. Bumping back clears the debt.
+   The cooldown is only long enough for the dart to land, so a bump war
+   stays fast -- the cap is what stops it being spam, not the wait. */
+const BUMP_COOLDOWN_MS=2000, BUMP_MAX_AHEAD=10;
+function bumpsBetween(a,b){          // how many times a has bumped b
+  const ai=P.ducks.indexOf(a);
+  const rec=(b.bumpers||[]).find(x=>x.i===ai);
+  return rec?rec.n:0;
+}
 function syncBumpBtn(d){
   const b=document.getElementById("p-bump");
   /* Every branch rewrites the whole label including the count span, so no
@@ -1435,9 +1658,12 @@ function syncBumpBtn(d){
     b.classList.remove("hot"); return; }
   if(d._bumpedAt&&performance.now()-d._bumpedAt<BUMP_COOLDOWN_MS){
     label("Bumped ✓ ·",false); return; }
-  /* If they have bumped you, say so — reciprocity is the whole charm. */
-  const backs=(MINE.bumpers||[]).some(x=>P.ducks[x.i]===d);
-  label(backs?"Bump back ·":"Bump ·",true);
+  const mine=bumpsBetween(MINE,d), theirs=bumpsBetween(d,MINE);
+  if(mine-theirs>=BUMP_MAX_AHEAD){
+    b.innerHTML=(d.name||"They")+"'s turn";
+    b.disabled=true; b.classList.remove("hot"); return; }
+  /* If they are ahead of you, say so — reciprocity is the whole charm. */
+  label(theirs>mine?"Bump back ·":"Bump ·",true);
 }
 
 document.getElementById("p-bump").onclick=()=>{
@@ -1468,6 +1694,54 @@ document.getElementById("cv-pond").addEventListener("pointerdown",e=>{
 });
 document.getElementById("say-open").onclick=()=>{ if(MINE){ MINE.msg=MINE.msg||"hello"; } };
 document.getElementById("pond-settings").onclick=()=>go("manage");
+
+/* The admin duck list is built from the actual pond, so what you moderate
+   here is what is floating out there -- a mock list would hide exactly the
+   rendering bugs this screen exists to catch. */
+function buildAdmin(){
+  const host=document.getElementById("a-ducklist"); if(!host)return;
+  host.innerHTML="";
+  P.ducks.forEach((d,i)=>{
+    const row=document.createElement("div");
+    row.className="a-row"+(i===4?" flag":"");
+    const th=document.createElement("div"); th.className="a-thumb";
+    const c=document.createElement("canvas"); c.width=c.height=N*2;
+    const x=c.getContext("2d"); x.imageSmoothingEnabled=false;
+    drawDuckInto(x,d,0,0,2,false);
+    th.appendChild(c);
+    const main=document.createElement("div"); main.className="a-main";
+    const b=document.createElement("b"); b.textContent=d.name||"— no name —";
+    const sm=document.createElement("small");
+    sm.textContent="/d/"+SLUGS[i%SLUGS.length]+" · "+FORT[d.fort].jp+" · "+(d.date||"")+
+      (d.keeper?" · via "+d.keeper:" · unclaimed card");
+    const sub=document.createElement("p"); sub.className="a-sub";
+    sub.textContent=i===4?"reported once · pending review":(d.msg||"— left no message —");
+    main.appendChild(b); main.appendChild(sm); main.appendChild(sub);
+    const act=document.createElement("div"); act.className="a-act";
+    const hide=document.createElement("button");
+    hide.type="button"; hide.className="mini"; hide.textContent=i===4?"Show":"Hide";
+    hide.setAttribute("aria-label",(i===4?"Show ":"Hide ")+(d.name||"this duck")+"'s duck");
+    act.appendChild(hide);
+    row.appendChild(th); row.appendChild(main); row.appendChild(act);
+    host.appendChild(row);
+  });
+}
+const SLUGS=["quiet-reed","misty-weir","plucky-otter","silver-lagoon","golden-shoal",
+  "dappled-cove","brisk-minnow","sleepy-jetty","amber-rush","velvet-eddy",
+  "hazy-lilypad","bonny-drift","tidal-fern","lucky-skiff"];
+
+/* Tabs. aria-selected drives both the styling and the panes, so the two
+   can never disagree. */
+(function(){
+  const tabs=document.getElementById("a-tabs"); if(!tabs)return;
+  tabs.addEventListener("click",e=>{
+    const b=e.target.closest("button[data-a]"); if(!b)return;
+    [...tabs.querySelectorAll("button")].forEach(x=>
+      x.setAttribute("aria-selected",String(x===b)));
+    document.querySelectorAll('.view[data-v="admin"] .a-pane').forEach(p=>
+      p.hidden=p.dataset.a!==b.dataset.a);
+  });
+})();
 
 /* ── fire ──────────────────────────────────────────────────────────────
    凶 ducks occasionally catch light. Only the server ever ignites, so
