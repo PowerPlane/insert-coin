@@ -162,6 +162,7 @@ ul.clean li::before{content:"";position:absolute;left:0;top:.62em;width:6px;heig
    sitting next to it. */
 .p-fortune b{font-size:1.05rem;line-height:1;letter-spacing:.02em}
 .p-fortune span{font-weight:700;letter-spacing:.13em;font-size:.72rem}
+.p-fortune i{font-style:normal;opacity:.5;margin:0 .18rem}
 .v-p{font-size:.92rem;line-height:1.6;color:var(--p-soft);margin:0 0 1.25rem}
 .spacer{flex:1;min-height:.4rem}
 canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
@@ -442,7 +443,8 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .p-actions{display:flex;gap:.5rem;margin-top:.9rem;flex-wrap:wrap}
 .p-btn{all:unset;box-sizing:border-box;cursor:pointer;font-family:var(--mono);font-size:.64rem;
   letter-spacing:.09em;text-transform:uppercase;padding:0 .85rem;
-  min-height:44px;display:inline-grid;place-items:center;   /* the 44px floor */
+  min-height:44px;display:inline-flex;align-items:center;justify-content:center;
+  white-space:nowrap;   /* "Bumped ✓ · 11" was breaking before the count */
   background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
 .p-btn.hot{background:var(--duck);color:#4a3a06}
 /* Reporting someone is not a neutral act, so it does not look like one. */
@@ -514,12 +516,12 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
           <div class="sheet" id="arrival-sheet">
             <div class="panel-edge" aria-hidden="true"><i class="d25"></i><i class="d50"></i><i class="d75"></i></div>
             <div class="sheet-body">
-              <p class="v-eyebrow">The card dealt you</p>
+              <p class="v-eyebrow">Your fortune</p>
               <h2 class="v-h" id="rv-jp">大吉 · Great luck</h2>
-              <p class="v-p" style="margin-bottom:.9rem">Nobody else got this one today.
-                Make it look like you, or drop it in as it is.</p>
+              <p class="v-p" style="margin-bottom:.9rem">No one else got this duck today.
+                Decorate it or release it as is.</p>
               <div class="btn-row">
-                <button class="btn" data-go="studio">Make it mine</button>
+                <button class="btn" data-go="studio">Decorate it</button>
                 <button class="btn g" data-go="pond">Just look around</button>
               </div>
             </div>
@@ -529,9 +531,9 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
         <!-- 03 STUDIO -->
         <div class="view" data-v="studio">
           <div class="s-nav">
-            <button data-go="arrival">← Back</button>
+            <button data-go="arrival">Back</button>
             <span class="s-title">Make it yours</span>
-            <button data-go="sign">Skip →</button>
+            <button data-go="sign">Skip</button>
           </div>
           <div style="padding:0 14px">
             <canvas class="pix" id="hero" width="576" height="528" style="border-radius:10px;cursor:crosshair"
@@ -564,29 +566,29 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
             </div>
           </div>
           <div class="s-foot">
-            <button class="btn" data-go="sign">Looks good</button>
-            <p class="s-hint" id="hint">Drag a sticker to move it · nothing is required</p>
+            <button class="btn" data-go="sign">Next</button>
+            <p class="s-hint" id="hint">Drag stickers to move them. Nothing is required.</p>
           </div>
         </div>
 
         <!-- 04 SIGN -->
         <div class="view" data-v="sign"><div class="v-pad">
           <p class="v-eyebrow">Sign it</p>
-          <h2 class="v-h">Who's this duck?</h2>
+          <h2 class="v-h">Name your duck</h2>
           <div style="display:grid;place-items:center;margin:.2rem 0 .7rem">
             <canvas class="pix" id="cv-sign" width="384" height="384" style="width:104px"></canvas>
           </div>
           <div class="field">
-            <label for="f-name">Name on the duck</label>
+            <label for="f-name">Name</label>
             <input id="f-name" maxlength="18" placeholder="Sam" autocomplete="off">
             <div class="counter"><span id="c-name">0</span>/18</div>
           </div>
           <div class="field">
-            <label for="f-msg">Leave a message</label>
-            <textarea id="f-msg" rows="3" maxlength="90" placeholder="tell the pond something"></textarea>
+            <label for="f-msg">Message</label>
+            <textarea id="f-msg" rows="3" maxlength="90" placeholder="Say something"></textarea>
             <div class="counter"><span id="c-msg">0</span>/90</div>
           </div>
-          <p class="priv">Your name and message are <b>visible to everyone</b> who taps a card.</p>
+          <p class="priv">Everyone who taps a card can see <b>your name and message</b>.</p>
           <div class="spacer"></div>
           <div class="btn-row"><button class="btn" data-go="contact">Next</button></div>
         </div></div>
@@ -594,24 +596,23 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
         <!-- 05 CONTACT -->
         <div class="view" data-v="contact"><div class="v-pad">
           <p class="v-eyebrow">Optional</p>
-          <h2 class="v-h">Want David to write back?</h2>
-          <p class="v-p">Skip it and your duck still swims. This changes nothing about the pond.</p>
+          <h2 class="v-h">Want David to reply?</h2>
+          <p class="v-p">Skip this and your duck still goes in.</p>
           <div class="field">
-            <label for="f-contact">Email, phone, @handle — or a postal address</label>
+            <label for="f-contact">Email, phone, @handle, or address</label>
             <textarea id="f-contact" rows="3"
               placeholder="@yourhandle&#10;or 12 Somewhere St, Brooklyn NY 11211"
               autocomplete="off"></textarea>
           </div>
           <p class="postcard">
             <span class="pc-mark" aria-hidden="true"></span>
-            I like mailing postcards. Leave an address and I'll send you one.
-            I won't share it with anyone.
+            Leave an address if you want a postcard. David will not share it.
           </p>
-          <p class="priv"><b>Only David sees this.</b> Never drawn in the pond, never returned by the public API, stored apart from everything else — and deleted the moment you take your duck out.</p>
+          <p class="priv"><b>Only David sees this.</b> It is not shown in the pond, and it is deleted when you take your duck out.</p>
           <div class="spacer"></div>
           <div class="btn-row">
             <button class="btn" id="release-go">Release my duck</button>
-            <button class="btn g" id="release-skip">Skip — no contact</button>
+            <button class="btn g" id="release-skip">Skip contact</button>
           </div>
         </div></div>
 
@@ -635,16 +636,15 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
             <div class="modal-card">
               <p class="v-eyebrow">Your duck is in</p>
               <h2 class="v-h" id="keep-h" style="font-size:1.3rem">Keep this link</h2>
-              <p class="v-p" style="font-size:.86rem">There are no accounts. It's the only way back
-                to change your message, redecorate, or take it out.</p>
+              <p class="v-p" style="font-size:.86rem">No accounts. Use this to edit, redecorate, or take your duck out.</p>
               <div class="field" style="margin-bottom:.6rem">
-                <label for="k-link">Your private link — the only key that exists</label>
+                <label for="k-link">Your private link</label>
                 <input id="k-link" value="ducky.davidyang.work/e/9fQ2xK7pLm" readonly>
               </div>
               <div class="keep-actions">
                 <button class="p-btn" id="k-copy">Copy</button>
-                <button class="p-btn" id="k-text">Text it</button>
-                <button class="p-btn" id="k-mail">Email it</button>
+                <button class="p-btn" id="k-text">Text</button>
+                <button class="p-btn" id="k-mail">Email</button>
               </div>
               <button class="btn" id="k-done" style="margin-top:.7rem">Done</button>
             </div>
@@ -656,14 +656,14 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
               <div class="panel-hd">
                 <canvas id="p-duck" width="216" height="216"></canvas>
                 <div style="min-width:0">
-                  <p class="p-fortune"><b id="p-jp">小吉</b><span id="p-en">Little luck</span></p>
+                  <p class="p-fortune"><b id="p-jp">小吉</b><i aria-hidden="true">·</i><span id="p-en">Little luck</span></p>
                   <p class="p-name" id="p-name">Mika</p>
                   <p class="p-meta" id="p-meta">via Sam · 4 Aug</p>
                 </div>
               </div>
               <p class="p-msg" id="p-msg">found this card at the bar</p>
               <div class="p-bumpers" id="p-bumpers" hidden>
-                <p class="p-bumplbl">Bumped most by</p>
+                <p class="p-bumplbl">Most bumps from</p>
                 <div class="p-bumprow" id="p-bumprow"></div>
               </div>
               <div class="p-report" id="p-reportbox" hidden>
@@ -693,66 +693,63 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
 
         <!-- 10 CARD SETUP — reached by blowing four times, not by a link -->
         <div class="view" data-v="keeper"><div class="v-pad">
-          <p class="v-eyebrow">Four blows · this card</p>
-          <h2 class="v-h">This card is yours</h2>
-          <p class="v-sub">Nobody can change this without holding the card and
-            blowing into it again.</p>
+          <p class="v-eyebrow">Card setup</p>
+          <h2 class="v-h">Set up this card</h2>
+          <p class="v-sub">To change it, hold the card and blow again.</p>
 
           <div class="field">
-            <label for="k-name">Whose card is it</label>
+            <label for="k-name">Card name</label>
             <input id="k-name" value="Sam" maxlength="18">
           </div>
-          <p class="k-hint">Ducks released from this card will say <b>via Sam</b>.</p>
+          <p class="k-hint">Ducks from this card say <b>via Sam</b>.</p>
 
           <div class="field">
-            <label id="k-duck-l">Your duck — optional</label>
+            <label id="k-duck-l">Link your duck</label>
             <div id="k-duck-yes" class="k-duck">
               <div class="a-thumb"><canvas id="k-duck-cv" width="48" height="48"></canvas></div>
               <div class="a-main">
                 <b id="k-duck-name">Sam</b>
                 <small>/d/tidal-fern · on this phone</small>
               </div>
-              <button class="a-btn" type="button" id="k-duck-unlink">Not mine</button>
+              <button class="a-btn" type="button" id="k-duck-unlink">Remove link</button>
             </div>
             <div id="k-duck-no" hidden>
               <div class="seg">
-                <button type="button" data-go="arrival">Make one now</button>
-                <button type="button" id="k-duck-paste">Paste my link</button>
+                <button type="button" data-go="arrival">Make a duck</button>
+                <button type="button" id="k-duck-paste">Paste duck link</button>
               </div>
             </div>
           </div>
-          <p class="k-hint">Linking your duck lets people <b>bump you back</b>.</p>
+          <p class="k-hint">People can <b>bump you back</b>.</p>
 
           <div class="field">
-            <label id="k-lang-l">Language people see first</label>
+            <label id="k-lang-l">Default language</label>
             <div class="seg" role="group" aria-labelledby="k-lang-l" id="k-lang">
               <button type="button" aria-pressed="true">English</button>
               <button type="button" aria-pressed="false" lang="zh-Hant">繁體中文</button>
             </div>
           </div>
-          <p class="k-hint">A default, not a lock — a phone that asks for another
-            language still gets it.</p>
+          <p class="k-hint">A visitor's phone can still choose another language.</p>
 
           <div class="field">
-            <label for="k-link">Your link — optional</label>
-            <input id="k-link" inputmode="url" placeholder="https://">
+            <label for="k-link2">Link to show</label>
+            <input id="k-link2" inputmode="url" placeholder="https://">
           </div>
           <div class="seg" role="group" aria-label="When your link is shown" id="k-mode">
-            <button type="button" aria-pressed="true">Fortune first</button>
-            <button type="button" aria-pressed="false">Straight to my link</button>
+            <button type="button" aria-pressed="true">Show fortune first</button>
+            <button type="button" aria-pressed="false">Link first</button>
           </div>
-          <p class="priv">Never an automatic redirect. Visitors land on a page with
-            <b>your name on it</b> and choose. <b>https only.</b></p>
+          <p class="priv">Visitors always choose before opening your link.
+            <b>https only.</b></p>
 
           <label class="k-check">
             <input type="checkbox" id="k-adopt" checked>
-            <span>Adopt the <b>12 ducks</b> that came from this card before you
-              claimed it</span>
+            <span>Add the <b>12 earlier ducks</b> to this card</span>
           </label>
 
           <div class="spacer"></div>
           <div class="btn-row">
-            <button class="btn" data-go="pond">Save</button>
+            <button class="btn" data-go="pond">Save setup</button>
             <button class="btn g" data-go="pond">Not now</button>
           </div>
         </div></div>
@@ -789,7 +786,7 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
               <p class="a-cval">mika.tanaka@example.com</p>
               <div class="a-cact">
                 <button class="a-btn go" type="button">Reply</button>
-                <button class="a-btn" type="button">Mark done</button>
+                <button class="a-btn" type="button">Mark replied</button>
               </div>
             </div>
 
@@ -832,7 +829,7 @@ London EC2N 3AR</p>
               </div>
               <div class="a-act">
                 <button class="a-btn" type="button">Unclaim</button>
-                <button class="a-btn bad" type="button">Kill link</button>
+                <button class="a-btn bad" type="button">Disable link</button>
               </div>
             </div>
             <div class="a-row noflag">
@@ -856,13 +853,13 @@ London EC2N 3AR</p>
         <!-- 09 MINE -->
         <div class="view" data-v="mine"><div class="v-pad">
           <p class="v-eyebrow">Welcome back</p>
-          <h2 class="v-h">Still floating</h2>
-          <p class="v-p">Your duck has been in the pond for <b>six days</b>. Four people bumped it.</p>
+          <h2 class="v-h">Your duck</h2>
+          <p class="v-p">In the pond for <b>six days</b>. Four people bumped your duck.</p>
           <div style="display:grid;place-items:center;flex:1">
             <canvas class="pix" id="cv-orbit" width="620" height="620" style="width:100%;max-width:290px"></canvas>
           </div>
           <p class="v-p" style="text-align:center;font-size:.8rem;margin:-.2rem 0 .8rem">
-            Mika, Jo, Lu and Sam bumped you.</p>
+            Mika, Jo, Lu, and Sam bumped your duck.</p>
           <div class="btn-row">
             <button class="btn" data-go="pond">Back to the pond</button>
             <div style="display:flex;gap:.5rem">
@@ -881,14 +878,14 @@ London EC2N 3AR</p>
             <textarea id="m-msg" rows="3" maxlength="90">tapped this at david's desk. nice board</textarea>
           </div>
           <div class="field">
-            <label for="m-contact">Email, phone, @handle — or a postal address</label>
+            <label for="m-contact">Email, phone, @handle, or address</label>
             <textarea id="m-contact" rows="2">@samwork</textarea>
           </div>
           <div class="field">
-            <label for="m-link">Your private link — the only key that exists</label>
+            <label for="m-link">Your private link</label>
             <input id="m-link" value="ducky.davidyang.work/e/9fQ2xK7pLm" readonly>
           </div>
-          <p class="priv">Removing your duck deletes its message and your contact <b>at the same time</b>. Nothing is kept.</p>
+          <p class="priv">Taking your duck out deletes its message and contact <b>at the same time</b>. Nothing is kept.</p>
           <div class="spacer"></div>
           <div class="btn-row">
             <button class="btn" data-go="pond">Save changes</button>
@@ -897,7 +894,7 @@ London EC2N 3AR</p>
         </div></div>
 
       </div></div>
-      <p class="s-hint" style="color:#7fa8b8;margin-top:.7rem">Tap ducks in the pond · drag stickers in the studio</p>
+      <p class="s-hint" style="color:#7fa8b8;margin-top:.7rem">Tap ducks in the pond. Drag stickers in the studio.</p>
     </div>
   </div>
 </div>

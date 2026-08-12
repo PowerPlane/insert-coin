@@ -182,6 +182,8 @@ Water is Bayer-dithered brand blues, never a gradient.
 
 | Date | Change | Why |
 | --- | --- | --- |
+| 2026-08-12 | Codex copy review applied | ~30% shorter across every screen; glossary reworked (keeper → card keeper, dropped the "only key that exists" metaphor, banned first person). |
+| 2026-08-12 | Copy extractor rewritten | It read only `.view`, so it missed the duck card, the sheets, every aria-label and every string the JS writes. 141 strings now, not 96. |
 | 2026-08-12 | Copy deck added ([COPY.md](COPY.md)) | Every string in one reviewable place. Its first run caught "waved" surviving the bump rename, and the keep sheet handing out /d/<slug> as the private link. |
 | 2026-08-12 | Card setup trimmed 169 → 124 words | It was nearly double the next longest screen. |
 | 2026-08-12 | Keeper links their own duck | Claiming a card and having a duck are different things; either can come first, so neither is a precondition. Optional, and the link is how two cards say they belong to one person. |
