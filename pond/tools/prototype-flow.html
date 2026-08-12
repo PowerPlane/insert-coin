@@ -167,6 +167,15 @@ ul.clean li::before{content:"";position:absolute;left:0;top:.62em;width:6px;heig
 .spacer{flex:1;min-height:.4rem}
 canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   touch-action:none;overscroll-behavior:contain}
+/* OVERSCAN. The camera transform can translate the canvas as well as scale
+   it, and a translate slides an edge off the box no matter how large the
+   scale is — which is the last way the surface behind the pond could show
+   through. So the water canvas is drawn larger than the frame and clipped:
+   there is always real, rendered water outside the visible edge for the
+   camera to move into. Costs nothing to draw, because ducks outside the
+   view are culled anyway. */
+.pondwrap{position:absolute;inset:0;overflow:hidden}
+.pondwrap canvas{position:absolute;left:-18%;top:-18%;width:136%;height:136%}
 .btn{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;text-align:center;
   font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
   padding:.85rem;min-height:44px;      /* 44px = the Apple/WCAG floor */
@@ -314,7 +323,7 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .whistle[hidden]{display:none}
 .whistle span{padding:0 .2rem 0 .7rem}
 .whistle button{all:unset;box-sizing:border-box;cursor:pointer;
-  width:38px;height:38px;display:grid;place-items:center;font-size:.8rem;color:#eaf7fc}
+  width:44px;height:44px;display:grid;place-items:center;font-size:.85rem;color:#eaf7fc}
 .whistle button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 /* The list. Rises from the bottom like every other sheet in the app, and is
    scrollable because it has one row per card keeper — a fixed row of chips
@@ -490,7 +499,7 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   text-transform:uppercase;color:var(--p-soft);margin:0 0 .45rem}
 .p-bumprow{display:flex;gap:.3rem;flex-wrap:wrap}
 .p-bumper{all:unset;box-sizing:border-box;cursor:pointer;position:relative;
-  width:40px;height:40px;display:grid;place-items:center;
+  width:44px;height:44px;display:grid;place-items:center;
   background:#dff2fb;clip-path:var(--px-corner)}
 .p-bumper canvas{image-rendering:pixelated;width:32px;height:32px}
 .p-bumper i{position:absolute;right:1px;bottom:0;font-family:var(--mono);
@@ -569,7 +578,7 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
 
         <!-- 01 ARRIVAL — the drop and the reveal, one screen -->
         <div class="view" data-v="arrival">
-          <canvas class="pix" id="cv-arrival" width="688" height="1480"></canvas>
+          <div class="pondwrap"><canvas class="pix" id="cv-arrival" width="688" height="1480"></canvas></div>
           <div class="sheet" id="arrival-sheet">
             <div class="panel-edge" aria-hidden="true"><i class="d25"></i><i class="d50"></i><i class="d75"></i></div>
             <div class="sheet-body">
@@ -675,7 +684,7 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
 
         <!-- 08 POND -->
         <div class="view" data-v="pond">
-          <canvas class="pix" id="cv-pond" width="688" height="1480"></canvas>
+          <div class="pondwrap"><canvas class="pix" id="cv-pond" width="688" height="1480"></canvas></div>
           <!-- The count IS the whistle: the thing you tap is the thing you
                are filtering, so gathering costs no extra chrome over the
                water. -->
@@ -1312,7 +1321,7 @@ function spawnShape(list,x,y,shape,petal,core,cell,delay){
 /* ── a small pond engine, reused by arrival / release / pond ── */
 function Scene(canvas,opts){
   const ctx=canvas.getContext("2d"); ctx.imageSmoothingEnabled=false;
-  const W=canvas.width,H=canvas.height;
+  let W=canvas.width,H=canvas.height;
   /* cw/ch are the WORLD in sprite units, no longer the viewport. Everything
      downstream -- edge bounces, ripple clamps, release positions -- already
      spoke in these, so they keep working and simply mean something bigger. */
@@ -1355,30 +1364,49 @@ function Scene(canvas,opts){
   S.dollyTo=(c1,x1,y1,ms)=>{
     c1=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],Math.round(c1)));
     const c0=S.cell, x0=S.cam.x, y0=S.cam.y;
-    const commit=()=>{ S.cell=c1; S.cam.x=x1; S.cam.y=y1; S.clampCam();
-      canvas.style.transition=""; canvas.style.transform="";
-      canvas.style.pointerEvents=""; dollying=0; render(); };
+    const set=(c,x,y)=>{ S.cell=c; S.cam.x=x; S.cam.y=y; S.clampCam(); };
+    const clear=()=>{ canvas.style.transition=""; canvas.style.transform="";
+      canvas.style.pointerEvents=""; dollying=0; };
     const rect=canvas.getBoundingClientRect();
     if(reduce||!rect.width||(c0===c1&&Math.abs(x0-x1)<0.01&&Math.abs(y0-y1)<0.01)){
-      commit(); return; }
+      set(c1,x1,y1); clear(); render(); return; }
     ms=ms||420;
     const disp=rect.width/W;
-    const k=c1/c0;
-    const tx=(x0-x1)*c1*disp, ty=(y0-y1)*c1*disp;
+    const ease=ms>=900?"cubic-bezier(.45,.02,.25,1)":"cubic-bezier(.4,0,.2,1)";
     clearTimeout(dollying);
     canvas.style.transformOrigin="0 0";
-    canvas.style.transition="none";
-    canvas.style.transform="";
     canvas.style.pointerEvents="none";      // coords are wrong mid-flight
+
+    /* The canvas always paints its whole box at any cell, so the ONLY way
+       the surface behind the pond shows is a CSS scale below 1. Both
+       directions therefore have to be arranged to scale UP -- which
+       overflows and is clipped -- and they need opposite treatment to get
+       there. Fixing only one of them is how the white edge survived. */
+    let from, to, commitFirst;
+    if(c1>c0){
+      /* Zooming IN: hold the old, wider render and grow into the new
+         framing. Scale runs 1 -> c1/c0. */
+      commitFirst=false;
+      from=""; 
+      to="translate("+((x0-x1)*c1*disp)+"px,"+((y0-y1)*c1*disp)+"px) scale("+(c1/c0)+")";
+    }else{
+      /* Zooming OUT: commit the new, wider render immediately and start it
+         blown up to look like the old close framing, then relax to fit.
+         Scale runs c0/c1 -> 1. */
+      commitFirst=true;
+      from="translate("+((x1-x0)*c0*disp)+"px,"+((y1-y0)*c0*disp)+"px) scale("+(c0/c1)+")";
+      to="";
+    }
+    if(commitFirst){ set(c1,x1,y1); render(); }
+    canvas.style.transition="none";
+    canvas.style.transform=from;
     requestAnimationFrame(()=>{
-      /* Eased at both ends: a camera does not start at full speed. The
-         long "moment" zooms get a gentler entry and a longer settle; the
-         short UI ones stay closer to a standard ease-in-out so buttons
-         still feel responsive. */
-      canvas.style.transition="transform "+ms+"ms "+
-        (ms>=900?"cubic-bezier(.45,.02,.25,1)":"cubic-bezier(.4,0,.2,1)");
-      canvas.style.transform="translate("+tx+"px,"+ty+"px) scale("+k+")";
-      dollying=setTimeout(commit,ms+30);
+      canvas.style.transition="transform "+ms+"ms "+ease;
+      canvas.style.transform=to;
+      dollying=setTimeout(()=>{
+        if(!commitFirst){ set(c1,x1,y1); }
+        clear(); render();
+      },ms+30);
     });
   };
   /* Anchor-preserving: the point under your fingers stays under them. */
@@ -1471,20 +1499,54 @@ function Scene(canvas,opts){
   /* A glide target the loop eases toward. Buttons and "find my duck" set
      one; dragging clears it, because a finger should never be argued with. */
   S.target=null;
-  S.glideTo=(x,y)=>{ S.target={x,y}; };
+  /* A timed tween, not exponential decay. `cam += (target-cam)*k` only ever
+     eases OUT -- it starts at full speed, which is what made pans feel like
+     they lurched and then crept. This eases in and out. */
+  S.glideTo=(x,y,ms)=>{ S.target={x0:S.cam.x,y0:S.cam.y,x,y,
+    t0:performance.now(),ms:ms||620}; };
   /* yFrac places the duck up or down the frame: the arrival sheet covers
      the bottom 40%, so centring there would hide the thing you just got. */
   S.focus=(d,minCell,yFrac,ms)=>{
     if(!d)return;
     const c1=(minCell&&S.cell<minCell)?minCell:S.cell;
     const tx=d.x-(W/c1)/2, ty=d.y-(H/c1)*(yFrac==null?0.5:yFrac);
-    /* Zoom and move as ONE motion — a glide running alongside the zoom
-       transform is two easings fighting. */
-    if(c1!==S.cell){ S.target=null; S.dollyTo(c1,tx,ty,ms); }
-    else if(reduce){ S.cam.x=tx; S.cam.y=ty; S.clampCam(); S.target=null; }
-    else S.glideTo(tx,ty);
+    if(reduce){ S.cell=c1; S.cam.x=tx; S.cam.y=ty; S.clampCam(); S.target=null; render(); return; }
+    if(c1===S.cell){ S.glideTo(tx,ty,ms); return; }
+    /* Travel first, then zoom — and never both in one transform.
+       A CSS transform can only borrow the water that is actually rendered
+       outside the frame, so a journey across the pond slides an edge into
+       view no matter how much overscan there is. The glide re-renders every
+       frame and is safe at any distance; the zoom then happens about the
+       centre, where its translate is near zero. Reads as "go there, then
+       look closer", which is also the right order for tapping a duck. */
+    const travel=Math.hypot(d.x-(S.cam.x+(W/S.cell)/2),d.y-(S.cam.y+(H/S.cell)/2));
+    const far=travel>Math.max(W,H)/S.cell*0.12;
+    const zoomAboutCentre=()=>{
+      const wx=S.cam.x+(W/2)/S.cell, wy=S.cam.y+(H/2)/S.cell;
+      S.dollyTo(c1,wx-(W/2)/c1,wy-(H/2)/c1,ms);
+      /* settle the final framing once the scale has committed */
+      setTimeout(()=>S.glideTo(tx,ty,Math.round((ms||420)*0.6)),(ms||420)+50);
+    };
+    if(!far){ S.target=null; zoomAboutCentre(); return; }
+    S.glideTo(d.x-(W/S.cell)/2,d.y-(H/S.cell)*(yFrac==null?0.5:yFrac),ms);
+    setTimeout(zoomAboutCentre,(ms||420)+40);
   };
   S.resetCam=()=>{ S.cell=CELL; S.cam.x=0; S.cam.y=0; S.target=null; S.growWorld(); S.clampCam(); };
+  /* The canvas has to match its container's ASPECT, not just its width.
+     With width:100% and height:auto a 688x1480 buffer in a 326x740 box
+     renders 326x701 -- 39px short -- and that shortfall is the white band
+     around the pond. It was there all along; zooming only drew attention
+     to it. Height snaps to a multiple of CELL so the water grid stays
+     whole. */
+  S.fit=()=>{
+    const box=canvas.getBoundingClientRect();   // the overscanned box
+    if(!box.width||!box.height)return;
+    const h=Math.max(CELL*8,Math.round(W*box.height/box.width/CELL)*CELL);
+    if(h===H)return;
+    canvas.height=h; H=S.H=h;
+    ctx.imageSmoothingEnabled=false;
+    S.growWorld(); S.clampCam(); render();
+  };
   const RIPPLE=480, easeOut=p=>1-Math.pow(1-p,3);
   S.ring=(x,y,a)=>{S.rings.push({x,y,t:performance.now(),max:14+a*7});if(S.rings.length>12)S.rings.shift();};
   S.emit=(x,y,vx,vy,c,l,rise)=>S.parts.push({x,y,vx,vy,c,life:l,l0:l,rise:rise||0});
@@ -1735,11 +1797,12 @@ function Scene(canvas,opts){
   (function loop(now){
     const dt=Math.min(0.25,(now-last)/1000); last=now; acc+=dt*1000;
     if(S.target){
-      const k=reduce?1:0.24;
-      S.cam.x+=(S.target.x-S.cam.x)*k; S.cam.y+=(S.target.y-S.cam.y)*k;
-      if(Math.hypot(S.target.x-S.cam.x,S.target.y-S.cam.y)<0.3){
-        S.cam.x=S.target.x; S.cam.y=S.target.y; S.target=null; }
+      const t=S.target;
+      const pr=reduce?1:Math.min(1,(now-t.t0)/t.ms);
+      const e=pr<0.5?4*pr*pr*pr:1-Math.pow(-2*pr+2,3)/2;   // easeInOutCubic
+      S.cam.x=t.x0+(t.x-t.x0)*e; S.cam.y=t.y0+(t.y-t.y0)*e;
       S.clampCam();
+      if(pr>=1)S.target=null;
     }
     const wait=S.tick*DWELL[S.frame%DWELL.length];
     let drew=false;
@@ -1797,6 +1860,11 @@ P.ducks.forEach((d,i)=>{
 });
 let MINE=null;
 
+/* Fit before anything is drawn, and again whenever the frame changes. */
+function fitScenes(){ A.fit(); P.fit(); }
+addEventListener("resize",fitScenes);
+requestAnimationFrame(fitScenes);
+
 /* ── router ── */
 let arrivalTimer=0;
 const screen=document.getElementById("screen");
@@ -1827,6 +1895,9 @@ function go(name){
   } else {
     document.getElementById("arrival-sheet").dataset.in="false";
   }
+  /* Fit AFTER the view is visible. A hidden view measures 0x0, so fitting
+     at load silently did nothing and the canvas kept its authored aspect. */
+  if(name==="pond"||name==="arrival"){ (name==="pond"?P:A).fit(); }
   if(name==="pond"){
     // Browsing must NEVER release a duck. Arriving at the pond used to
     // create one on the spot, so "just look around" quietly published the
@@ -2171,7 +2242,8 @@ function buildSr(){
   const l=document.getElementById("sr-list"); l.innerHTML="";
   P.ducks.forEach(d=>{ const li=document.createElement("li"), b=document.createElement("button");
     b.type="button"; b.textContent=(d.name||"Anonymous")+"'s duck, "+FORT[d.fort].en;
-    b.onclick=()=>openPanel(d,b); li.appendChild(b); l.appendChild(li); });
+    b.onclick=()=>{ P.focus(d,CELL,0.3,760); openPanel(d,b); };
+    li.appendChild(b); l.appendChild(li); });
 }
 /* Drag pans, two fingers zoom, and anything under 8px of travel is still
    a tap -- so ripples and duck cards behave exactly as they did. There is
@@ -2211,7 +2283,14 @@ function buildSr(){
     const wx=P.cam.x+sx/P.cell, wy=P.cam.y+sy/P.cell;
     const d=P.hit(wx,wy);
     if(d&&d.burning){ douse(d); return; }   // put it out before reading its card
-    if(d){ openPanel(d,null); return; }
+    if(d){
+      /* Travel to it. The card covers the lower half, so the duck is
+         placed a third of the way down where it stays visible, and if you
+         were zoomed out we come in to the pond's home scale first. */
+      P.focus(d,CELL,0.3,760);
+      openPanel(d,null);
+      return;
+    }
     P.splash(wx,wy,2.4);
   };
   cv.addEventListener("pointerup",lift);

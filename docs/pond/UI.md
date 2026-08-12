@@ -182,6 +182,11 @@ Water is Bayer-dithered brand blues, never a gradient.
 
 | Date | Change | Why |
 | --- | --- | --- |
+| 2026-08-12 | Canvas fits its frame | Backing was 688x1480 (0.465) in a 326x740 box (0.441), so it rendered 39px short — that white band was always there. Fitted on view entry, since a hidden view measures 0. |
+| 2026-08-12 | Water canvas is overscanned | Drawn 136% of the frame and clipped, so a camera transform always has real rendered water to move into. |
+| 2026-08-12 | Travel and zoom are separate motions | A CSS transform can only borrow rendered water, so a journey across the pond slid an edge into view. Long moves glide (re-rendered, safe at any distance); the zoom then happens about the centre where its translate is ~0. |
+| 2026-08-12 | Pans ease in and out | `cam += (target-cam)*k` only eases out — it starts at full speed. Now a timed easeInOutCubic. |
+| 2026-08-12 | Tapping a duck travels to it | Both the canvas tap and the screen-reader list, so the two routes agree. |
 | 2026-08-12 | Smooth zoom without fractional cells | Render stays on the OLD integer framing and the canvas scales UP to the new one, committing at the end. Scaling *down* to fake the old framing exposed the surface behind the pond. |
 | 2026-08-12 | Zoom home button | Returns to CELL 4 anchored on what you are looking at — home is the zoom, not the place. Hidden when already there. |
 | 2026-08-12 | Zoom level 8 added | For the arrival and release moments, where the duck should be close enough to look at rather than locate. |
