@@ -19,23 +19,44 @@
 
 #define ROTL64(x, b) (uint64_t)(((x) << (b)) | ((x) >> (64 - (b))))
 
-#define SIPROUND               \
-    do {                       \
-        v0 += v1;              \
-        v1 = ROTL64(v1, 13);   \
-        v1 ^= v0;              \
-        v0 = ROTL64(v0, 32);   \
-        v2 += v3;              \
-        v3 = ROTL64(v3, 16);   \
-        v3 ^= v2;              \
-        v0 += v3;              \
-        v3 = ROTL64(v3, 21);   \
-        v3 ^= v0;              \
-        v2 += v1;              \
-        v1 = ROTL64(v1, 17);   \
-        v1 ^= v2;              \
-        v2 = ROTL64(v2, 32);   \
-    } while (0)
+/*
+ * One SipHash round, as a real function rather than a macro.
+ *
+ * ══ WHY noinline, WHICH LOOKS BACKWARDS ══
+ * The reference implementation uses a macro, and on a 64-bit host inlining
+ * eight copies of it is free and fast. On an 8-bit AVR it is neither: every
+ * 64-bit add, XOR and rotate is synthesised from byte operations, so each
+ * inlined round is hundreds of bytes of flash. Measured on the real build,
+ * the inlined version cost 4,466 bytes — thirty-five per cent of a
+ * 16 KB part — for a function that runs twice, at boot, where nothing is
+ * waiting on it.
+ *
+ * Forcing one shared copy trades microseconds nobody can perceive for
+ * kilobytes Phase 5 needs. The correctness is unchanged and the reference
+ * vectors prove it.
+ */
+#if defined(__AVR__)
+#define SIP_NOINLINE __attribute__((noinline))
+#else
+#define SIP_NOINLINE
+#endif
+
+static SIP_NOINLINE void sipround(uint64_t v[4]) {
+    v[0] += v[1];
+    v[1] = ROTL64(v[1], 13);
+    v[1] ^= v[0];
+    v[0] = ROTL64(v[0], 32);
+    v[2] += v[3];
+    v[3] = ROTL64(v[3], 16);
+    v[3] ^= v[2];
+    v[0] += v[3];
+    v[3] = ROTL64(v[3], 21);
+    v[3] ^= v[0];
+    v[2] += v[1];
+    v[1] = ROTL64(v[1], 17);
+    v[1] ^= v[2];
+    v[2] = ROTL64(v[2], 32);
+}
 
 static uint64_t load64_le(const uint8_t *p) {
     uint64_t out = 0;
@@ -44,23 +65,24 @@ static uint64_t load64_le(const uint8_t *p) {
 }
 
 uint64_t siphash24(const uint8_t key[16], const uint8_t *msg, size_t len) {
-    uint64_t k0 = load64_le(key);
-    uint64_t k1 = load64_le(key + 8);
+    const uint64_t k0 = load64_le(key);
+    const uint64_t k1 = load64_le(key + 8);
 
-    uint64_t v0 = 0x736f6d6570736575ULL ^ k0;
-    uint64_t v1 = 0x646f72616e646f6dULL ^ k1;
-    uint64_t v2 = 0x6c7967656e657261ULL ^ k0;
-    uint64_t v3 = 0x7465646279746573ULL ^ k1;
+    uint64_t v[4];
+    v[0] = 0x736f6d6570736575ULL ^ k0;
+    v[1] = 0x646f72616e646f6dULL ^ k1;
+    v[2] = 0x6c7967656e657261ULL ^ k0;
+    v[3] = 0x7465646279746573ULL ^ k1;
 
     const size_t left = len & 7;
     const uint8_t *end = msg + len - left;
 
     for (; msg != end; msg += 8) {
-        uint64_t m = load64_le(msg);
-        v3 ^= m;
-        SIPROUND;
-        SIPROUND;
-        v0 ^= m;
+        const uint64_t m = load64_le(msg);
+        v[3] ^= m;
+        sipround(v);
+        sipround(v);
+        v[0] ^= m;
     }
 
     /* The final block carries the length in its top byte, which is what
@@ -68,18 +90,18 @@ uint64_t siphash24(const uint8_t key[16], const uint8_t *msg, size_t len) {
     uint64_t b = ((uint64_t)len) << 56;
     for (size_t i = 0; i < left; i++) b |= ((uint64_t)msg[i]) << (8 * i);
 
-    v3 ^= b;
-    SIPROUND;
-    SIPROUND;
-    v0 ^= b;
+    v[3] ^= b;
+    sipround(v);
+    sipround(v);
+    v[0] ^= b;
 
-    v2 ^= 0xff;
-    SIPROUND;
-    SIPROUND;
-    SIPROUND;
-    SIPROUND;
+    v[2] ^= 0xff;
+    sipround(v);
+    sipround(v);
+    sipround(v);
+    sipround(v);
 
-    return v0 ^ v1 ^ v2 ^ v3;
+    return v[0] ^ v[1] ^ v[2] ^ v[3];
 }
 
 /* ── The serial ────────────────────────────────────────────────────────

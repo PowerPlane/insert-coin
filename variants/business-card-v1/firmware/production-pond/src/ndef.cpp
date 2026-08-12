@@ -61,3 +61,37 @@ bool ndef_patch_fortune(uint8_t fortune) {
 bool ndef_patch_default() {
     return ndef_write_byte(NDEF_DIGIT_OFFSET, (uint8_t)'0');
 }
+
+bool ndef_write_record(const uint8_t *record, size_t len) {
+    // One byte at a time through the retry wrapper. Slower than a page
+    // write and much harder to get subtly wrong: this is the code path
+    // already proved against a phone resting on the antenna.
+    for (size_t i = 0; i < len; i++) {
+        if (!ndef_write_byte(static_cast<uint16_t>(i), record[i])) return false;
+    }
+    return true;
+}
+
+bool ndef_read_record(uint8_t *out, size_t len) {
+    // Read in chunks: Wire's buffer is smaller than the record, and asking
+    // for more than it holds silently truncates.
+    constexpr uint8_t CHUNK = 16;
+    for (size_t at = 0; at < len; at += CHUNK) {
+        const uint8_t want = static_cast<uint8_t>((len - at) < CHUNK ? (len - at) : CHUNK);
+
+        Wire.beginTransmission(ST25DV_I2C_ADDR_USER);
+        Wire.write(static_cast<uint8_t>(at >> 8));
+        Wire.write(static_cast<uint8_t>(at & 0xFF));
+        // No stop: the read that follows re-addresses without releasing.
+        if (Wire.endTransmission(false) != 0) return false;
+
+        if (Wire.requestFrom(static_cast<uint8_t>(ST25DV_I2C_ADDR_USER), want) != want) {
+            return false;
+        }
+        for (uint8_t i = 0; i < want; i++) {
+            if (!Wire.available()) return false;
+            out[at + i] = static_cast<uint8_t>(Wire.read());
+        }
+    }
+    return true;
+}

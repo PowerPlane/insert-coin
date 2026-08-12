@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 void ndef_init();
@@ -24,3 +25,20 @@ bool ndef_patch_fortune(uint8_t fortune);
 
 // Restore '0' (no fortune). Same retry behaviour.
 bool ndef_patch_default();
+
+// ── Whole-record write, for first-boot provisioning ─────────────────────
+//
+// The card writes its own record now, instead of a phone tag-writer doing
+// it and the MCU patching one byte. 68 bytes at NDEF_EEPROM_WRITE_MS is
+// ~408 ms, once, on the first boot that succeeds.
+//
+// Byte at a time, reusing the same retry wrapper the digit patch uses,
+// because that path is already proved against the ST25DV's RF-wins-
+// arbitration behaviour. Page writes would be several times faster and are
+// worth doing AFTER two cards work, not before.
+bool ndef_write_record(const uint8_t *record, size_t len);
+
+// Read `len` bytes back from the start of user memory, so the write can be
+// compared against what was meant. This is the difference between a card
+// that verified and a card that believes it did.
+bool ndef_read_record(uint8_t *out, size_t len);

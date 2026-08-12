@@ -1,0 +1,12 @@
+{
+  "name": "card-identity",
+  "version": "1.0.0",
+  "description": "How a card works out who it is, and proves it. Shared between the ATtiny1616 firmware and the host, because deriving it twice is what would make every card unknown to the server at once.",
+  "keywords": ["nfc", "ndef", "siphash", "attiny"],
+  "frameworks": "*",
+  "platforms": "*",
+  "srcFilterComment": "test_card_identity.c is a HOST test runner. Without this exclusion PlatformIO compiles it into the card firmware, dragging in snprintf and vfprintf with it — roughly 2 KB of printf machinery on a part with 16 KB of flash, to run tests that could never execute there. The linker cannot drop it because the test file defines main().",
+  "build": {
+    "srcFilter": ["+<*.c>", "-<test_*.c>"]
+  }
+}

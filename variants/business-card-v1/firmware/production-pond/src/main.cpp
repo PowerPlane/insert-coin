@@ -43,6 +43,7 @@
 #include "leds.h"
 #include "mic.h"
 #include "ndef.h"
+#include "provision.h"
 #include "pins.h"
 #include "pwm.h"
 #include "rng.h"
@@ -77,7 +78,20 @@ void setup() {
     // visible against a multi-second LED show, and software PWM hasn't
     // started ramping yet so there's no flicker risk.
     ndef_init();
-    const bool patched = ndef_patch_fortune(fortune);
+
+    // First boot writes the WHOLE record from this chip's own SIGROW
+    // serial; every boot after that this is one EEPROM read and returns.
+    // It has to happen before the digit is patched, because on a virgin
+    // card there is nothing to patch yet.
+    //
+    // A card that fails to verify stays unprovisioned and retries on the
+    // next power-up. It still runs the show — a visitor should not be
+    // punished for a bad solder joint — but the tag will not resolve, and
+    // the LED confirmation is what tells whoever is flashing it. See
+    // docs/pond/PROVISIONING.md.
+    const bool identified = provision_ensure();
+
+    const bool patched = identified && ndef_patch_fortune(fortune);
     ndef_deinit();
 
     anim_run_reveal(fortune);
