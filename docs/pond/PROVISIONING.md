@@ -59,9 +59,23 @@ programmer is reading the chip anyway.
 
 ```bash
 # one card, start to finish
-pio run -e production-pond -t upload      # same binary every time
-./tools/record-card.sh                    # reads SIGROW, appends to cards.csv
+export PATH="$HOME/.platformio/penv/bin:$PATH"
+pio run -e production-pond -t upload           # same binary every time
+../tools/record-card.sh "the one for Sam"      # reads SIGROW, appends cards.csv
+
+# once the batch is done
+cd ../../../pond && npm run cards:import -- ../variants/business-card-v1/cards.csv
 ```
+
+`record-card.sh` reads `sernum` with **avrdude**, which ships with
+PlatformIO's atmelmegaavr platform and knows it as a named memory on UPDI
+parts — so there is nothing extra to install. (An earlier draft called
+`pymcuprog`, which is *not* bundled. Corrected after trying it.)
+
+It records the derived serial **and** the raw SERNUM. That redundancy is
+the point: `cards:import` re-derives from the SERNUM column and refuses the
+whole file if any row disagrees, which is the only automatic check that the
+flashing host and the firmware still agree.
 
 ---
 
