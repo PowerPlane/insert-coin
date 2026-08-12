@@ -142,11 +142,13 @@ ul.clean li::before{content:"";position:absolute;left:0;top:.62em;width:6px;heig
   background:#000;border-radius:12px;z-index:60;pointer-events:none}
 .view{position:absolute;inset:0;display:none;flex-direction:column;z-index:10}
 .view.on{display:flex}
-.v-pad{padding:44px 16px 16px;display:flex;flex-direction:column;height:100%}
-.v-eyebrow{font-family:var(--mono);font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;
-  color:var(--p-faint);margin:0 0 .35rem}
-.v-h{font-family:var(--serif);font-weight:400;font-size:1.55rem;line-height:1.08;
-  margin:0 0 .5rem;color:var(--p-ink)}
+/* 20px sides, not 16 — at 16 the text runs to the bezel and every screen
+   reads as full. The extra 8px is most of what "crowded" was. */
+.v-pad{padding:46px 20px 22px;display:flex;flex-direction:column;height:100%}
+.v-eyebrow{font-family:var(--mono);font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--p-soft);margin:0 0 .55rem}
+.v-h{font-family:var(--serif);font-weight:400;font-size:1.55rem;line-height:1.12;
+  margin:0 0 .75rem;color:var(--p-ink)}
 /* The fortune is a stamp on a ticket, so it is set like one. text-transform
    leaves 大吉 alone — Japanese has no case. */
 /* Display sizes only — this is where Dela earns its weight. */
@@ -159,8 +161,8 @@ ul.clean li::before{content:"";position:absolute;left:0;top:.62em;width:6px;heig
    their own, larger, size. The Latin goes bold to balance the extra weight
    sitting next to it. */
 .p-fortune b{font-size:1.05rem;line-height:1;letter-spacing:.02em}
-.p-fortune span{font-weight:700;letter-spacing:.13em}
-.v-p{font-size:.9rem;line-height:1.5;color:var(--p-soft);margin:0 0 1rem}
+.p-fortune span{font-weight:700;letter-spacing:.13em;font-size:.72rem}
+.v-p{font-size:.92rem;line-height:1.6;color:var(--p-soft);margin:0 0 1.25rem}
 .spacer{flex:1;min-height:.4rem}
 canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   touch-action:none;overscroll-behavior:contain}
@@ -180,18 +182,25 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .btn.g{color:var(--p-ink)}
 .btn.g::before{background:#dff2fb}
 .btn.g::after{background:#b9d9e6}
-.btn-row{display:flex;flex-direction:column;gap:.5rem}
-.field{margin-bottom:.7rem}
-.field label{display:block;font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--p-faint);margin-bottom:.28rem}
+/* Destructive. Must be a class: an inline background now sits behind the
+   ::before face and never shows. */
+.btn.danger{color:#8f2b20}
+.btn.danger::before{background:#ffdcd6}
+.btn.danger::after{background:#efb0a5}
+.btn-row{display:flex;flex-direction:column;gap:.6rem}
+/* A label belongs to the field under it, so it sits close; fields belong
+   to each other loosely, so they sit far apart. */
+.field{margin-bottom:1.2rem}
+.field label{display:block;font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--p-soft);margin-bottom:.45rem}
 .field input,.field textarea{width:100%;font-family:var(--body);
   /* 16px is a hard floor: iOS Safari zooms the whole page when focusing an
      input with a smaller font, and never zooms back out. */
   font-size:16px;padding:.7rem .7rem;min-height:44px;   /* the 44px floor applies to fields too */
   border:0;background:#fff;color:var(--p-ink);resize:none;clip-path:var(--px-corner)}
-.counter{font-family:var(--mono);font-size:.56rem;color:var(--p-faint);text-align:right;margin-top:.15rem}
-.priv{font-family:var(--mono);font-size:.64rem;line-height:1.65;color:var(--p-soft);
-  background:#fff;padding:.65rem .75rem;clip-path:var(--px-corner)}
+.counter{font-family:var(--mono);font-size:.66rem;color:var(--p-soft);text-align:right;margin-top:.3rem}
+.priv{font-family:var(--mono);font-size:.7rem;line-height:1.7;color:var(--p-soft);
+  background:#fff;padding:.85rem .9rem;clip-path:var(--px-corner);margin:.2rem 0 1.1rem}
 /* The postcard offer is the warmest thing on the screen, so it gets the
    duck yellow rather than the system grey the privacy note uses. */
 .postcard{display:flex;gap:.55rem;align-items:flex-start;
@@ -232,15 +241,15 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .icon-btn:active{background:#c9e7f4}
 .icon-btn[disabled]{opacity:.35;cursor:default}
 .icon-btn:focus-visible{outline:2px solid var(--field-500);outline-offset:2px}
-.s-tabs{display:flex;gap:4px;padding:8px 14px 0}
+.s-tabs{display:flex;gap:5px;padding:10px 14px 0}
 .s-tabs button{all:unset;box-sizing:border-box;cursor:pointer;flex:1;text-align:center;
-  font-family:var(--mono);font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;
+  font-family:var(--mono);font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;
   padding:.55rem .2rem;min-height:44px;background:#dff2fb;color:var(--p-ink);
   clip-path:var(--px-corner)}
 .s-tabs button[aria-selected="true"]{background:var(--p-ink);color:#eaf7fc}
 .s-body{flex:1 1 auto;overflow-y:auto;padding:8px 14px 4px;min-height:0}
 .s-foot{padding:8px 14px calc(14px + env(safe-area-inset-bottom, 0px))}
-.s-hint{font-family:var(--mono);font-size:.55rem;letter-spacing:.05em;color:var(--p-faint);
+.s-hint{font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;color:var(--p-soft);
   text-align:center;margin:.4rem 0 0}
 .swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 /* Cut to the grid like everything else. The selected ring goes inside,
@@ -251,8 +260,10 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   inset 0 0 0 6px #ffffffcc}
 .slotrow{display:flex;gap:4px;margin-bottom:7px;overflow-x:auto;padding-bottom:2px}
 .slotrow button{all:unset;box-sizing:border-box;cursor:pointer;white-space:nowrap;
-  font-family:var(--mono);font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;
-  padding:.35rem .55rem;border-radius:99px;background:#dff2fb;color:var(--p-soft)}
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;
+  min-height:44px;display:inline-grid;place-items:center;padding:0 .7rem;
+  background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
+.slotrow button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 .slotrow button[aria-pressed="true"]{background:var(--p-ink);color:#eaf7fc}
 .stick-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .stick-grid button{all:unset;box-sizing:border-box;cursor:pointer;aspect-ratio:1;border-radius:7px;
@@ -261,15 +272,17 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .stick-grid canvas{width:100%;height:auto;image-rendering:pixelated}
 .tools{display:flex;gap:5px;margin-top:7px}
 .tools button{all:unset;box-sizing:border-box;cursor:pointer;flex:1;text-align:center;
-  font-family:var(--mono);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;
-  padding:.42rem .2rem;border-radius:6px;background:#dff2fb;color:var(--p-soft)}
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;
+  min-height:44px;display:grid;place-items:center;padding:0 .2rem;
+  background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
+.tools button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 .tools button[aria-pressed="true"]{background:var(--p-ink);color:#eaf7fc}
-.mini{font-family:var(--mono);font-size:.55rem;letter-spacing:.06em;color:var(--p-faint);
-  text-transform:uppercase;margin:.5rem 0 .28rem}
+.mini{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;color:var(--p-soft);
+  text-transform:uppercase;margin:1rem 0 .45rem}
 /* pond chrome */
 .hud{position:absolute;top:0;left:0;right:0;z-index:30;pointer-events:none;
   display:flex;justify-content:space-between;padding:44px 16px 0;
-  font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase}
+  font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}
 .hud span{position:relative;isolation:isolate;color:var(--p-ink);padding:.34rem .62rem}
 .hud span::before{content:"";position:absolute;inset:0;background:#fff;
   clip-path:var(--px-corner);z-index:-1}
@@ -290,7 +303,7 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   clip-path:var(--px-corner);z-index:-2}
 .say-btn:active::before{background:#eaf7fd}
 .urlbar{position:absolute;bottom:0;left:0;right:0;z-index:30;background:#ffffff55;
-  font-family:var(--mono);font-size:.55rem;color:var(--p-faint);padding:.38rem .8rem;text-align:center}
+  font-family:var(--mono);font-size:.62rem;color:var(--p-soft);padding:.42rem .8rem;text-align:center}
 /* The arrival sheet. Rises AFTER the duck lands, so the moment is never
    interrupted by chrome appearing on top of it. Same dithered edge as the
    duck card, because it is the same kind of object: a surface meeting water. */
@@ -318,76 +331,105 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   color:var(--p-soft);background:#dff2fb;padding:.22rem .5rem;border-radius:99px}
 .p-fortune b{font-family:var(--body);font-size:.9rem;letter-spacing:0;color:var(--p-ink)}
 .p-name{font-family:var(--serif);font-weight:400;font-size:1.3rem;line-height:1.1;margin:0 0 .12rem}
-.p-meta{font-family:var(--mono);font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--p-faint);margin:0}
+.p-meta{font-family:var(--mono);font-size:.66rem;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--p-soft);margin:.2rem 0 0}
 .p-msg{font-size:1.02rem;line-height:1.5;color:var(--p-soft);margin:.7rem 0 0}
 
 /* ── keeper + admin ────────────────────────────────────────────────────
    Everything here uses the shared corner, the 44px floor and --p-ink for
    labels; see docs/pond/UI.md. */
-.k-hint{font-size:.82rem;line-height:1.5;color:var(--p-soft);margin:-.35rem 0 .9rem}
+/* A hint explains the field above it, so it is pulled up against it and
+   pushed away from whatever comes next. */
+.k-hint{font-size:.86rem;line-height:1.55;color:var(--p-soft);margin:-.7rem 0 1.35rem}
 .k-hint b{color:var(--p-ink)}
-.seg{display:flex;gap:4px}
+.seg{display:flex;gap:5px}
 .seg button{all:unset;box-sizing:border-box;cursor:pointer;flex:1;text-align:center;
   min-height:44px;display:grid;place-items:center;
   font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;
   background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
 .seg button[aria-pressed="true"]{background:var(--p-ink);color:#eaf7fc}
 .seg button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
-.k-check{display:flex;gap:.6rem;align-items:flex-start;margin:.9rem 0 0;min-height:44px;
-  font-size:.88rem;line-height:1.5;color:var(--p-soft);cursor:pointer}
+.k-check{display:flex;gap:.7rem;align-items:flex-start;margin:.3rem 0 0;min-height:44px;
+  font-size:.9rem;line-height:1.55;color:var(--p-soft);cursor:pointer}
 .k-check b{color:var(--p-ink)}
 .k-check input{flex:0 0 auto;width:22px;height:22px;margin:.1rem 0 0;accent-color:var(--field-900)}
 
-.k-duck{display:flex;gap:.6rem;align-items:center;
-  background:#dff2fb;padding:.5rem;clip-path:var(--px-corner)}
+.k-duck{display:flex;gap:.7rem;align-items:center;
+  background:#dff2fb;padding:.65rem;clip-path:var(--px-corner)}
+/* display:flex beats [hidden]{display:none} from the UA sheet, so without
+   this the linked duck and the "no duck yet" buttons both showed at once. */
+.k-duck[hidden]{display:none}
 .k-duck .a-thumb{background:#fff}
 .k-duck .a-main small{color:var(--p-soft)}
 .a-pane[hidden]{display:none}
-.a-bar{display:flex;gap:4px;flex-wrap:wrap;margin:.7rem 0 .2rem}
-.a-filt{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;
-  padding:.34rem .55rem;background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
+.a-bar{display:flex;gap:5px;flex-wrap:wrap;margin:.9rem 0 .5rem}
+.a-filt{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;
+  padding:.42rem .62rem;background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
+/* the last control in a pane was sitting against the bottom of the frame */
+.a-pane{padding-bottom:1.6rem}
 .a-filt.on{background:var(--field-900);color:#eaf7fc}
-.a-row{display:flex;gap:.6rem;align-items:flex-start;
-  padding:.65rem 0;border-top:1px solid #cfe6f0}
+/* Two columns, and the action drops to its own row underneath rather than
+   taking 44px off the width of every line of text. On a 390px phone that
+   is the difference between meta on one line and meta on three. */
+.a-row{display:grid;grid-template-columns:38px 1fr;gap:.45rem .7rem;
+  padding:.95rem .1rem;border-top:1px solid #cfe6f0}
 .a-row:last-child{border-bottom:1px solid #cfe6f0}
-.a-thumb{flex:0 0 auto;width:34px;height:34px;background:#dff2fb;clip-path:var(--px-corner);
+.a-row.noflag{grid-template-columns:1fr}
+.a-thumb{width:38px;height:38px;background:#dff2fb;clip-path:var(--px-corner);
   display:grid;place-items:center}
-.a-thumb canvas{image-rendering:pixelated;width:30px;height:30px}
-.a-main{flex:1 1 auto;min-width:0}
-.a-main b{display:block;font-size:.94rem;color:var(--p-ink)}
-.a-main small{display:block;font-family:var(--mono);font-size:.6rem;color:var(--p-soft)}
-.a-sub{margin:.15rem 0 0;font-size:.84rem;color:var(--p-soft);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.a-row.flag{background:#fff1ee}
-.a-row.flag .a-sub{color:#a3352a}
-.a-act{flex:0 0 auto;display:flex;gap:.25rem;flex-wrap:wrap;justify-content:flex-end}
-.mini{all:unset;box-sizing:border-box;cursor:pointer;
-  min-height:44px;padding:0 .6rem;display:grid;place-items:center;
-  font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;
+.a-thumb canvas{image-rendering:pixelated;width:32px;height:32px}
+.a-main{min-width:0}
+.a-main b{display:block;font-size:1rem;line-height:1.3;color:var(--p-ink)}
+.a-main small{display:block;font-family:var(--mono);font-size:.68rem;line-height:1.6;
+  color:var(--p-soft);margin-top:.1rem}
+/* Never truncate in admin — this screen exists to show information. */
+.a-sub{margin:.3rem 0 0;font-size:.88rem;line-height:1.45;color:var(--p-soft)}
+.a-row.flag{background:#fff1ee;padding-left:.5rem;padding-right:.5rem}
+.a-row.flag .a-sub{color:var(--p-ink)}
+.a-rep{margin:.35rem 0 0;font-family:var(--mono);font-size:.68rem;line-height:1.55;
+  color:#a3352a}
+.a-act{grid-column:2;display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.15rem}
+.a-row.noflag .a-act{grid-column:1}
+/* .a-btn, not .mini — .mini is already the studio's section label, and a
+   button style silently inheriting a label's name is how the studio's
+   "Body" and "Colour" ended up shaped like chips. */
+.a-btn{all:unset;box-sizing:border-box;cursor:pointer;
+  min-height:44px;padding:0 .75rem;display:grid;place-items:center;
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;
   white-space:nowrap;
   background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
-.mini.go{background:var(--field-900);color:#eaf7fc}
-.mini.bad{background:#ffe1e1;color:#8f2b20}
-.mini[disabled]{background:#e4f6ec;color:#1e6b47;cursor:default}
-.mini:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
+.a-btn.go{background:var(--field-900);color:#eaf7fc}
+.a-btn.bad{background:#ffe1e1;color:#8f2b20}
+.a-btn[disabled]{background:#e4f6ec;color:#1e6b47;cursor:default}
+.a-btn:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 
-.a-c{padding:.8rem 0;border-top:1px solid #cfe6f0}
+.a-c{padding:1.05rem 0;border-top:1px solid #cfe6f0}
 .a-c:last-of-type{border-bottom:1px solid #cfe6f0}
-.a-cwho{margin:0;font-size:.98rem;font-weight:650;color:var(--p-ink)}
-.a-cwho span{font-family:var(--mono);font-size:.6rem;letter-spacing:.05em;
+.a-cwho{margin:0;font-size:1rem;line-height:1.4;font-weight:650;color:var(--p-ink)}
+.a-cwho span{font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;
   text-transform:uppercase;color:var(--p-soft);font-weight:400}
-.a-cnote{margin:.2rem 0 .35rem;font-size:.88rem;font-style:italic;color:var(--p-soft)}
-.a-cval{margin:0 0 .5rem;font-family:var(--mono);font-size:.78rem;color:var(--p-ink);
+.a-cnote{margin:.35rem 0 .5rem;font-size:.9rem;line-height:1.5;
+  font-style:italic;color:var(--p-soft)}
+.a-cval{margin:0 0 .65rem;font-family:var(--mono);font-size:.82rem;color:var(--p-ink);
   word-break:break-word}
 /* Addresses get the warm block because these actually get posted. */
 .a-cval.post{background:#fff8e0;padding:.5rem .6rem;white-space:pre-line;line-height:1.55;
   clip-path:var(--px-corner)}
-.a-cact{display:flex;gap:.3rem;flex-wrap:wrap}
+.a-cact{display:flex;gap:.4rem;flex-wrap:wrap}
 /* Who bumps this duck most. Ducks, not names — it reads at a glance and it
    stays playful; the name is on the label for anyone who needs it. */
+/* The report form lives inside the card rather than in its own screen:
+   you are looking at the thing you are reporting, which is the context the
+   decision needs. */
+.p-report{margin:.8rem 0 0}
+.p-reasons{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.6rem}
+.p-reasons .a-btn[aria-pressed="true"]{background:#8f2b20;color:#fff}
+.p-report textarea{width:100%;font-family:var(--body);font-size:16px;
+  padding:.7rem;min-height:44px;border:0;background:#fff;color:var(--p-ink);
+  resize:none;clip-path:var(--px-corner);margin-bottom:.6rem}
 .p-bumpers{margin:.7rem 0 0}
-.p-bumplbl{font-family:var(--mono);font-size:.58rem;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--p-faint);margin:0 0 .3rem}
+.p-bumplbl{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--p-soft);margin:0 0 .45rem}
 .p-bumprow{display:flex;gap:.3rem;flex-wrap:wrap}
 .p-bumper{all:unset;box-sizing:border-box;cursor:pointer;position:relative;
   width:40px;height:40px;display:grid;place-items:center;
@@ -403,6 +445,8 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   min-height:44px;display:inline-grid;place-items:center;   /* the 44px floor */
   background:#dff2fb;color:var(--p-ink);clip-path:var(--px-corner)}
 .p-btn.hot{background:var(--duck);color:#4a3a06}
+/* Reporting someone is not a neutral act, so it does not look like one. */
+.p-btn.danger{background:#ffdcd6;color:#8f2b20}
 .p-btn:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 /* Closing a sheet on a phone is a thumb action, so it gets the same 44px
    as everything else rather than the 28px a desktop x would take. */
@@ -622,9 +666,25 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
                 <p class="p-bumplbl">Bumped most by</p>
                 <div class="p-bumprow" id="p-bumprow"></div>
               </div>
-              <div class="p-actions">
+              <div class="p-report" id="p-reportbox" hidden>
+                <p class="p-bumplbl">What's wrong with it?</p>
+                <div class="p-reasons" id="p-reasons">
+                  <button type="button" class="a-btn" data-r="Rude or abusive">Rude or abusive</button>
+                  <button type="button" class="a-btn" data-r="Someone's private details">Private details</button>
+                  <button type="button" class="a-btn" data-r="Spam">Spam</button>
+                  <button type="button" class="a-btn" data-r="Something else">Something else</button>
+                </div>
+                <label class="sr" for="p-rnote">Anything to add</label>
+                <textarea id="p-rnote" rows="2" maxlength="140"
+                  placeholder="Anything to add — optional"></textarea>
+                <div class="p-actions">
+                  <button class="p-btn danger" type="button" id="p-rsend">Send report</button>
+                  <button class="p-btn" type="button" id="p-rcancel">Cancel</button>
+                </div>
+              </div>
+              <div class="p-actions" id="p-mainactions">
                 <button class="p-btn hot" id="p-bump">Bump · <span id="p-bumps">6</span></button>
-                <button class="p-btn" id="p-report">Report</button>
+                <button class="p-btn danger" id="p-report">Report</button>
               </div>
             </div>
           </div>
@@ -650,9 +710,9 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
               <div class="a-thumb"><canvas id="k-duck-cv" width="48" height="48"></canvas></div>
               <div class="a-main">
                 <b id="k-duck-name">Sam</b>
-                <small>/d/tidal-fern · released 9 Aug · found on this phone</small>
+                <small>/d/tidal-fern · on this phone</small>
               </div>
-              <button class="mini" type="button" id="k-duck-unlink">Not mine</button>
+              <button class="a-btn" type="button" id="k-duck-unlink">Not mine</button>
             </div>
             <div id="k-duck-no" hidden>
               <div class="seg">
@@ -728,8 +788,8 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
               <p class="a-cnote">"found this card at the bar"</p>
               <p class="a-cval">mika.tanaka@example.com</p>
               <div class="a-cact">
-                <button class="mini go" type="button">Reply</button>
-                <button class="mini" type="button">Mark done</button>
+                <button class="a-btn go" type="button">Reply</button>
+                <button class="a-btn" type="button">Mark done</button>
               </div>
             </div>
 
@@ -740,8 +800,8 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
 14 Bishopsgate, Flat 6
 London EC2N 3AR</p>
               <div class="a-cact">
-                <button class="mini go" type="button">Copy address</button>
-                <button class="mini" type="button">Postcard sent</button>
+                <button class="a-btn go" type="button">Copy address</button>
+                <button class="a-btn" type="button">Postcard sent</button>
               </div>
             </div>
 
@@ -750,7 +810,7 @@ London EC2N 3AR</p>
               <p class="a-cnote">"insert coin → insert duck"</p>
               <p class="a-cval">+44 7700 900142</p>
               <div class="a-cact">
-                <button class="mini" type="button" disabled>✓ Replied 6 Aug</button>
+                <button class="a-btn" type="button" disabled>✓ Replied 6 Aug</button>
               </div>
             </div>
 
@@ -764,29 +824,29 @@ London EC2N 3AR</p>
               <span class="a-filt">Claimed 12</span>
               <span class="a-filt">Never tapped 43</span>
             </div>
-            <div class="a-row">
+            <div class="a-row noflag">
               <div class="a-main">
                 <b>Sam → Mika</b>
-                <small>7F3A9K · 39 ducks · claimed 3 Nov · counter 1C</small>
-                <p class="a-sub">繁體中文 · links to mika.example.com · fortune first</p>
+                <small>7F3A9K · 39 ducks · claimed 3 Nov</small>
+                <p class="a-sub">繁體中文 · mika.example.com</p>
               </div>
               <div class="a-act">
-                <button class="mini" type="button">Unclaim</button>
-                <button class="mini bad" type="button">Kill link</button>
+                <button class="a-btn" type="button">Unclaim</button>
+                <button class="a-btn bad" type="button">Kill link</button>
               </div>
             </div>
-            <div class="a-row">
+            <div class="a-row noflag">
               <div class="a-main">
                 <b>Jo</b>
-                <small>B2K7QX · 6 ducks · claimed 12 Jul · counter 03</small>
-                <p class="a-sub">English · no link set</p>
+                <small>B2K7QX · 6 ducks · claimed 12 Jul</small>
+                <p class="a-sub">English · no link</p>
               </div>
-              <div class="a-act"><button class="mini" type="button">Unclaim</button></div>
+              <div class="a-act"><button class="a-btn" type="button">Unclaim</button></div>
             </div>
-            <div class="a-row">
+            <div class="a-row noflag">
               <div class="a-main">
                 <b>Unclaimed</b>
-                <small>4M9PLT · 2 ducks · never claimed</small>
+                <small>4M9PLT · 2 ducks</small>
               </div>
               <div class="a-act"></div>
             </div>
@@ -832,7 +892,7 @@ London EC2N 3AR</p>
           <div class="spacer"></div>
           <div class="btn-row">
             <button class="btn" data-go="pond">Save changes</button>
-            <button class="btn g" id="m-del" style="background:#ffe1e1;box-shadow:0 4px 0 #f0b8b8">Take my duck out</button>
+            <button class="btn danger" id="m-del">Take my duck out</button>
           </div>
         </div></div>
 
@@ -1702,7 +1762,30 @@ document.getElementById("p-bump").onclick=()=>{
   closePanel();
   P.bump(MINE,d);
 };
-document.getElementById("p-report").onclick=function(){ this.textContent="Reported ✓"; };
+/* Reporting flow. A report with no reason is not a record — it is a flag
+   with no way to judge it later. */
+(function(){
+  const box=document.getElementById("p-reportbox");
+  const main=document.getElementById("p-mainactions");
+  const reasons=document.getElementById("p-reasons");
+  const note=document.getElementById("p-rnote");
+  let picked=null;
+  const open=(on)=>{ box.hidden=!on; main.hidden=on;
+    if(on){ picked=null; note.value="";
+      [...reasons.children].forEach(b=>b.setAttribute("aria-pressed","false")); } };
+  document.getElementById("p-report").onclick=()=>open(true);
+  document.getElementById("p-rcancel").onclick=()=>open(false);
+  reasons.onclick=e=>{ const b=e.target.closest("button[data-r]"); if(!b)return;
+    picked=b.dataset.r;
+    [...reasons.children].forEach(x=>x.setAttribute("aria-pressed",String(x===b))); };
+  document.getElementById("p-rsend").onclick=()=>{
+    const d=panel._d; if(!d)return;
+    d.reported={reason:picked||"Something else",note:note.value.trim(),at:"just now"};
+    open(false);
+    const rb=document.getElementById("p-report");
+    rb.textContent="Reported ✓"; rb.disabled=true;
+  };
+})();
 function buildSr(){
   const l=document.getElementById("sr-list"); l.innerHTML="";
   P.ducks.forEach(d=>{ const li=document.createElement("li"), b=document.createElement("button");
@@ -1752,7 +1835,9 @@ function buildAdmin(){
   host.innerHTML="";
   P.ducks.forEach((d,i)=>{
     const row=document.createElement("div");
-    row.className="a-row"+(i===4?" flag":"");
+    if(i===4&&!d.reported)d.reported={reason:"Rude or abusive",
+      note:"the message is aimed at someone by name",at:"7 Aug"};
+    row.className="a-row"+(d.reported?" flag":"");
     const th=document.createElement("div"); th.className="a-thumb";
     const c=document.createElement("canvas"); c.width=c.height=N*2;
     const x=c.getContext("2d"); x.imageSmoothingEnabled=false;
@@ -1761,15 +1846,25 @@ function buildAdmin(){
     const main=document.createElement("div"); main.className="a-main";
     const b=document.createElement("b"); b.textContent=d.name||"— no name —";
     const sm=document.createElement("small");
-    sm.textContent="/d/"+SLUGS[i%SLUGS.length]+" · "+FORT[d.fort].jp+" · "+(d.date||"")+
-      (d.keeper?" · via "+d.keeper:" · unclaimed card");
+    /* Name, address, when, whose card. The fortune is not what you moderate
+       on, so it comes off the row. */
+    sm.textContent="/d/"+SLUGS[i%SLUGS.length]+" · "+(d.date||"")+
+      (d.keeper?" · via "+d.keeper:"");
     const sub=document.createElement("p"); sub.className="a-sub";
-    sub.textContent=i===4?"reported once · pending review":(d.msg||"— left no message —");
+    sub.textContent=d.msg||"— no message —";
+    /* Who, where, what they said — then why someone objected. The decision
+       cannot be made from either the message or the report alone. */
     main.appendChild(b); main.appendChild(sm); main.appendChild(sub);
+    if(d.reported){
+      const rep=document.createElement("p"); rep.className="a-rep";
+      rep.textContent="Reported "+d.reported.at+" · "+d.reported.reason+
+        (d.reported.note?" — \u201c"+d.reported.note+"\u201d":"");
+      main.appendChild(rep);
+    }
     const act=document.createElement("div"); act.className="a-act";
     const hide=document.createElement("button");
-    hide.type="button"; hide.className="mini"; hide.textContent=i===4?"Show":"Hide";
-    hide.setAttribute("aria-label",(i===4?"Show ":"Hide ")+(d.name||"this duck")+"'s duck");
+    hide.type="button"; hide.className="a-btn"; hide.textContent=d.reported?"Show":"Hide";
+    hide.setAttribute("aria-label",(d.reported?"Show ":"Hide ")+(d.name||"this duck")+"'s duck");
     act.appendChild(hide);
     row.appendChild(th); row.appendChild(main); row.appendChild(act);
     host.appendChild(row);

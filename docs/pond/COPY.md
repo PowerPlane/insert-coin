@@ -123,7 +123,7 @@ wonder whether it is a different feature.
 ## 05 · The pond
 
 *Includes the keep-link sheet and the duck card.*  
-`18 strings · 66 words`
+`27 strings · 89 words`
 
 | # | Kind | String |
 | --- | --- | --- |
@@ -143,8 +143,17 @@ wonder whether it is a different feature.
 | `pond.14` | Body | via Sam · 4 Aug |
 | `pond.15` | Body | found this card at the bar |
 | `pond.16` | Body | Bumped most by |
-| `pond.17` | Button | Bump · 6 |
-| `pond.18` | Button | Report |
+| `pond.17` | Body | What's wrong with it? |
+| `pond.18` | Button | Rude or abusive |
+| `pond.19` | Button | Private details |
+| `pond.20` | Button | Spam |
+| `pond.21` | Button | Something else |
+| `pond.22` | Field label | Anything to add |
+| `pond.23` | Placeholder | Anything to add — optional |
+| `pond.24` | Button | Send report |
+| `pond.25` | Button | Cancel |
+| `pond.26` | Button | Bump · 6 |
+| `pond.27` | Button | Report |
 
 ---
 
@@ -221,7 +230,7 @@ wonder whether it is a different feature.
 ## 09 · Admin
 
 *One reader. Stays English.*  
-`25 strings · 87 words`
+`25 strings · 81 words`
 
 | # | Kind | String |
 | --- | --- | --- |
@@ -245,10 +254,10 @@ wonder whether it is a different feature.
 | `admin.18` | Body | +44 7700 900142 |
 | `admin.19` | Button | ✓ Replied 6 Aug |
 | `admin.20` | Button | Download CSV |
-| `admin.21` | Body | 繁體中文 · links to mika.example.com · fortune first |
+| `admin.21` | Body | 繁體中文 · mika.example.com |
 | `admin.22` | Button | Unclaim |
 | `admin.23` | Button | Kill link |
-| `admin.24` | Body | English · no link set |
+| `admin.24` | Body | English · no link |
 | `admin.25` | Button | Unclaim |
 
 ---
@@ -261,12 +270,12 @@ wonder whether it is a different feature.
 | Studio | 25 |
 | Sign it | 30 |
 | Contact | 90 |
-| The pond | 66 |
+| The pond | 89 |
 | Your duck, later | 31 |
 | Settings | 58 |
 | Card setup | 123 |
-| Admin | 87 |
-| **Total** | **542** |
+| Admin | 81 |
+| **Total** | **559** |
 
 Card setup was 169 words on 12 Aug — nearly double the next screen — which
 is what prompted this deck. Trimmed to 124 by cutting three explanations
