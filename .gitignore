@@ -50,3 +50,9 @@ __pycache__/
 
 # Claude Code worktrees (per-session, never useful in git)
 .claude/
+
+# Pond web app
+pond/node_modules/
+pond/.wrangler/
+pond/public/
+pond/.dev.vars

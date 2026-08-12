@@ -1,0 +1,32 @@
+name = "pond"
+main = "src/worker/index.ts"
+compatibility_date = "2025-01-15"
+
+# The pond lives at davidyang.work/p — the same domain already printed on
+# the card's silkscreen, so the URL in the tag and the URL on the object
+# finally agree.
+[[routes]]
+pattern = "davidyang.work/p*"
+zone_name = "davidyang.work"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pond"
+database_id = "REPLACE_ME"   # wrangler d1 create pond
+
+# Fires are lit by the server, never by a client — so there is nothing to
+# farm and no griefing vector. This is the only thing that lights one.
+[triggers]
+crons = ["*/2 * * * *"]
+
+[observability]
+enabled = true
+
+# Secrets (wrangler secret put <NAME>):
+#   SESSION_SECRET  — HMAC key for session cookies and visitor hashes
+#   ADMIN_PASSWORD  — the actual admin auth. The secret path is obscurity;
+#                     URLs leak through history, logs and referrers.

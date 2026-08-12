@@ -1,0 +1,22 @@
+{
+  "name": "insert-coin-pond",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The pond — davidyang.work/p, the web half of the BY-002 Insert Coin card",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:local": "wrangler d1 execute pond --local --file=schema/0001_init.sql",
+    "db:remote": "wrangler d1 execute pond --remote --file=schema/0001_init.sql",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "sprites": "python3 tools/gen-sprites.py"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.99.0"
+  }
+}
