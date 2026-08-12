@@ -35,7 +35,9 @@ describe("contacts are structurally isolated", () => {
   it("the pond query selects only from ducks and its own derived tables", () => {
     const src = read("ducks.ts");
     const listPond = src.slice(src.indexOf("export async function listPond"));
-    const tables = [...listPond.matchAll(/\bFROM\s+(\w+)/gi)].map((m) => m[1].toLowerCase());
+    const tables = [...listPond.matchAll(/\bFROM\s+(\w+)/gi)]
+      .map((m) => (m[1] ?? "").toLowerCase())
+      .filter(Boolean);
     // fires and says are public state (is it burning, is it speaking).
     expect(new Set(tables)).toEqual(new Set(["ducks", "fires", "says"]));
   });

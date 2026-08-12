@@ -11,6 +11,7 @@
  *     the honest threat model is in docs/pond/SECURITY.md.
  */
 
+import type { DuckInput } from "./ducks";
 import { createDuck, deleteDuck, duckByEditKey, listPond, updateDuck, validateDuck } from "./ducks";
 import { extinguish, maybeIgnite, say, wave } from "./social";
 import {
@@ -53,7 +54,7 @@ async function ensureVisitor(
 ): Promise<{ visitor: string; setCookie: string | null }> {
   const cookies = req.headers.get("cookie") ?? "";
   const match = cookies.match(/(?:^|;\s*)pond_v=([A-Za-z0-9]{8,64})/);
-  if (match) return { visitor: await visitorHash(env, match[1]), setCookie: null };
+  if (match?.[1]) return { visitor: await visitorHash(env, match[1]), setCookie: null };
 
   const raw = randomId(24);
   const setCookie = [
@@ -152,7 +153,7 @@ export default {
 
       // The fortune comes from the SESSION, never from the client — the
       // browser can ask for a duck, it cannot choose which fortune it got.
-      const checked = validateDuck({ ...(body as never), fortune: s.fortune });
+      const checked = validateDuck({ ...body, fortune: s.fortune } as DuckInput);
       if ("error" in checked) return badRequest(checked.error);
 
       const made = await createDuck(env, s.id, s.cardId, checked);
@@ -209,7 +210,7 @@ export default {
       if (req.method === "PATCH") {
         const body = await readJson(req);
         if (!body) return badRequest("bad body");
-        const checked = validateDuck({ ...(body as never), fortune: Number(duck.fortune) });
+        const checked = validateDuck({ ...body, fortune: Number(duck.fortune) } as DuckInput);
         if ("error" in checked) return badRequest(checked.error);
         const ok = await updateDuck(env, editKey, checked);
         return ok ? json({ ok: true }, { headers }) : notFound();
