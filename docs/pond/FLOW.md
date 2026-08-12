@@ -19,7 +19,7 @@ because of that.
 | 05 | **Contact** | Optional, skippable. Privacy stated at the point of asking. |
 | 06 | **Release** | The duck enters with its fortune's animation. |
 | 07 | **Keep the link** | Text or email it to yourself. This is the only key that exists. |
-| 08 | **The pond** | Everyone's ducks. Tap one for its card, wave, say something. |
+| 08 | **The pond** | Everyone's ducks. Tap one for its card, bump it, say something. |
 
 Decorating comes *before* signing on purpose. By the time someone is asked
 for their name they have already spent minutes making something, so the ask
@@ -29,11 +29,11 @@ lands as signing your own work rather than filling in a form.
 
 | # | Screen | What it does |
 | --- | --- | --- |
-| 09 | **Your duck, later** | Days floating, who waved. The wavers orbit your duck, named. |
+| 09 | **Your duck, later** | Days floating, who bumped it. The bumpers orbit your duck, named. |
 | 10 | **Message & settings** | Edit message and contact — or take the duck out entirely. |
 
 Reached by the private link, or from the pond's settings control. There are
-no accounts and no notifications: **you find out someone waved by coming
+no accounts and no notifications: **you find out someone bumped you by coming
 back**, which is the entire job of the link.
 
 Redecorating routes into the same studio but saves quietly — the arrival
@@ -84,7 +84,7 @@ be told that.
 
 ## In the pond
 
-- **Tap a duck** → its card: fortune, name, card id, date, message, wave, report.
+- **Tap a duck** → its card: fortune, name, `via <keeper>`, date, message, bump, report.
 - **Wave** — once per person, not per tap.
 - **Say something** — 60 characters, 45 s on screen, one per 10 minutes. The
   cooldown is the design: it keeps the pond ambient rather than a chat room,

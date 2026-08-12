@@ -54,8 +54,11 @@ minute-scale scheduled work:
   while nobody is looking, so a timer was never doing real work.
 - **Fires go out by arithmetic.** `burning` is `now - lit_at < 90s`, computed,
   not stored — so nothing has to run to extinguish one.
-- **The daily cron** (`0 4 * * *`) only sweeps expired sessions and nonces,
-  which genuinely does not care about latency.
+- **The daily cron** (`0 4 * * *`) only sweeps expired sessions, nonces and
+  spent rate-limit windows, which genuinely does not care about latency. It
+  sits behind a `CRON_SECRET` bearer check: without one it is a public
+  endpoint that deletes rows, and its path is in `vercel.json` for anyone to
+  read.
 
 ---
 
@@ -71,6 +74,17 @@ concurrency design.
 
 Confirm Turso's current free-tier limits when wiring it up rather than
 trusting a number written here.
+
+**Apply the schema with `npm run db:apply`, not a shell pipeline.** The
+schema contains a trigger, and a trigger body is `BEGIN … ; … ; END` — a
+`split on semicolon` cuts the deletion promise into fragments that fail to
+parse, and the failure mode is a database that looks fine until someone asks
+to be removed. `src/db/schema.ts` splits it properly and has a test.
+
+**Then run `npm run db:verify` once.** It writes a duck with a contact and a
+live session, deletes the duck, and checks the contact is gone — against the
+real database, which is the only place that question can be answered. Phase
+1a ended with exactly this unresolved; the script is how it gets resolved.
 
 ---
 
@@ -109,8 +123,25 @@ See `docs/pond/PROVISIONING.md`.
 
 ```bash
 cd pond
-npx vercel link          # once
+npx vercel link          # once — this creates the project on the account
 npx vercel --prod
 ```
 
 Cron jobs only become active on a production deployment.
+
+**There is no build step and no `public/index.html`.** `public/` is served
+verbatim by the CDN, and the HTML for `/`, `/d/<slug>` and `/e/<key>` is
+rendered by functions. That is not a stylistic choice: the CDN answers a
+static file before any function runs, so an index.html would mean `/` could
+never exchange a tap for a session — and that exchange gets exactly one
+chance. `public/` is therefore committed, not generated, and not gitignored.
+
+### Checking it worked
+
+```bash
+curl https://ducky.davidyang.work/api/pond     # → {"ducks":[],"now":…}
+npm run db:verify                              # → the promise holds
+```
+
+Opening `/` should show a duck count. That single number proves the database
+is reachable, the session cookie survived the CDN, and the API is answering.

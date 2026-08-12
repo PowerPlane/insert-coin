@@ -3,9 +3,12 @@
 Every decision, and the order to build in. This is the document to work from;
 where it disagrees with an older doc, this wins.
 
-Status: **design complete, nothing deployed.** Reviewed twice — once for
-internal contradictions, once adversarially by Codex. What follows already
-incorporates both.
+Status: **Phases 1a and 1b built, nothing deployed.** Reviewed twice — once
+for internal contradictions, once adversarially by Codex. What follows
+incorporates both, plus what building it actually taught us.
+
+Where a decision changed during the build, it is marked **REVISED** and says
+why. `PROGRESS.md` is the tracker; this is the reasoning behind it.
 
 ---
 
@@ -19,17 +22,24 @@ incorporates both.
 | **One CNAME at Cargo** | `ducky` → `cname.vercel-dns.com` | The apex never moves. That is the whole reason this is not Cloudflare Workers. |
 | **Turso (libSQL)** | the database | It is SQLite, so the schema and SQL dialect carry over. **The client API does not** — see §3. |
 | **Remote primary only. No embedded replicas.** | | Embedded replicas read locally and write remotely, so a fire ignited during one request can be invisible to the next. Read-your-writes is load-bearing here, not a nicety. |
-| **No minute-scale cron** | Hobby crons are daily, and a finer expression fails at deploy | Fire ignites **on read**; `burning` is `now - lit_at < 90s`, computed, so nothing runs to put one out. The daily cron only sweeps sessions and nonces. |
+| **No minute-scale cron** | Hobby crons are daily, and a finer expression fails at deploy | Fire ignites **on read**; `burning` is `now - lit_at < 90s`, computed, so nothing runs to put one out. The daily cron only sweeps sessions, nonces and spent rate-limit windows. |
 
 ### Routes
 
 ```
-/                 the pond
-/d/<slug>         public duck page — SERVER-RENDERED, for link previews
-/e/<key>          private edit page — noindex
-/pondkeeper       admin — password, noindex
-/api/*            everything else
+/                 the pond            → api/shell.ts
+/d/<slug>         public duck page    → api/duck-page.ts   SERVER-RENDERED
+/e/<key>          private edit page   → api/duck-edit.ts   noindex
+/pondkeeper       admin               → Phase 4; not routed yet
+/api/*            everything else     → api/[...path].ts
 ```
+
+**There is no `public/index.html`, deliberately.** Vercel's CDN serves a
+static file before any function runs, so an index.html would mean `/` could
+never exchange a tap for a session — and that exchange has exactly one
+chance to happen. The shell is rendered by `src/worker/shell.ts`, which is
+also what gives `/d/<slug>` real link previews and `<html lang>` a correct
+value before Phase 6 needs one.
 
 ### Card identity
 
@@ -125,7 +135,9 @@ opens Card setup, carrying the signed claim above.
   rewrite the tag. Removing it deletes an open-redirect risk on this domain.
 - Contact scope is **nobody / the keeper / the keeper and David**, named as
   people, scoped to the epoch — consent was given to Sam, so Mika never
-  inherits it.
+  inherits it. **In the schema "nobody" is the absence of a row**, not a
+  third value: choosing it means nothing is stored, which is a stronger
+  promise than storing a flag that says not to look.
 
 ### Language — in the first build
 
@@ -137,30 +149,37 @@ translated.**
 
 ### Privacy, non-negotiable
 
-- The duck card **never** shows the card serial.
+- The duck card **never** shows the card serial. It shows `via <keeper>`,
+  resolved through the epoch, or nothing.
 - Contacts live in their own table the public read module never names,
-  enforced by test.
-- "Take my duck out" deletes the duck and its contact **in one transaction** —
-  see the foreign-key note in §3, because this promise depends on it.
+  enforced by test. The one module that may write to it is `release.ts`, and
+  nothing reads a contact back out until Phase 4.
+- "Take my duck out" deletes the duck and its contact **in one statement**.
+  **REVISED:** this used to rest on `ON DELETE CASCADE`, and therefore on a
+  per-connection pragma that cannot be verified without a deployed database.
+  It is now a trigger, `ducks_before_delete`, which fires either way — see
+  §3, Phase 1b.
 
 ---
 
-## 2. Freeze the contract before the client starts
+## 2. The contract — FROZEN as of Phase 1b ✅
 
 Phase 3 builds nine screens against this. Changing it afterwards means
-changing them twice. **Nothing is deployed, so `0001_init.sql` gets edited
-directly — no migration file.** Writing a migration against a database that
-has never existed is cargo cult.
+changing them twice. Nothing was deployed, so `0001_init.sql` was edited
+directly — writing a migration against a database that has never existed is
+cargo cult.
 
-| Area | What is missing today |
-| --- | --- |
-| **Bumps** | `waves` table and `wave` in `social.ts` are wave-shaped. Needs per-pair `(from_duck, to_duck)` counts, the ten-unreturned cap **server-side**, and "bump back" derivable from the pair. |
-| **Keepers** | `card_epochs` does not exist. Ducks and contacts need a nullable `epoch_id`. |
-| **`via <keeper>`** | `PublicDuck` has no keeper field. |
-| **Contact scope** | `contacts` has only `duck_id`, `value`, `created`. Needs a scope column; the client API sends only `contact?: string`. |
-| **Reports** | Schema stores neither reason nor note; the prototype collects both. |
-| **Language** | No column on `card_epochs`. |
-| **Card serial** | Must come **out** of the duck payload. One line, and it closes a live hole. |
+**From the first deploy onward this file is closed and `0002_*.sql` opens.**
+
+| Area | Was missing | Landed as |
+| --- | --- | --- |
+| **Bumps** | `waves` was wave-shaped — a number on a duck. | `bumps(from_duck, to_duck, total)`. The cap is one upsert: `WHERE sent − received < 10`. "Bump back" is the reverse row; "Most bumps from" is a query. **Authenticated by the bumper's edit key** — an unauthenticated cap lets anyone spend a stranger's allowance, which makes it a weapon rather than a courtesy. |
+| **Keepers** | `card_epochs` did not exist. | It does. Ducks and contacts carry a nullable `epoch_id`, `ON DELETE SET NULL`, never CASCADE — ending a tenure must never delete a stranger's duck. A partial unique index enforces one current keeper per card. |
+| **`via <keeper>`** | `PublicDuck` had no keeper field. | `keeper: string \| null`, resolved through the epoch. |
+| **Contact scope** | `contacts` had only `duck_id`, `value`, `created`. | `scope` ∈ `keeper` / `keeper_and_david`, plus `epoch_id` so consent expires with the keeper it was given to. **"Nobody" is spelled *no row at all*** — nothing stored is nothing to leak. |
+| **Reports** | Stored neither reason nor note. | Both, `CHECK`ed against the four buttons in COPY.md, one per visitor per duck so the button is idempotent. |
+| **Language** | No column on `card_epochs`. | `lang`, and `pickLanguage()` already negotiates it against the visitor's phone. |
+| **Card serial** | Had to come **out** of the duck payload. | It was never in it — the real work was making sure it never gets in. `card_id` is admin-only, the public read resolves the epoch, and a test greps for both. |
 
 ---
 
@@ -175,35 +194,81 @@ Before any route is ported. This is where the port's real risk lives.
 - Map D1 shapes: `.prepare().bind().run()/first()/all()` and **`meta.changes`**,
   which the extinguish and rename paths depend on for correctness, onto
   libSQL's `execute` / `batch` / `transaction`.
-- **`PRAGMA foreign_keys = ON` per connection.** Turso defaults it *off* for
-  SQLite compatibility. `ON DELETE CASCADE` from ducks to contacts is what
-  makes "take my duck out deletes everything" true — without this the privacy
-  promise fails silently, with no error. **Assert it at startup and refuse to
-  serve if it is off.**
+- **`PRAGMA foreign_keys = ON` per connection.** SQLite defaults it *off* and
+  it is per-connection, so a pooled Turso HTTP connection can arrive without
+  it. **REVISED — this is no longer what the promise rests on.** See Phase 1b.
 - Multi-statement writes become `batch`, not two awaits. The known offenders:
   bump insert + counter, extinguish + rescue credit, release + session claim +
   contact. Each currently has a window where a crash leaves a half-state.
+  **Two of the three were deleted rather than batched** — see Phase 1b.
 
-**Done when** the existing tests pass against a real Turso database with FKs
-provably on — including a test that deletes a duck and asserts the contact row
-is gone.
+**Done when** the existing tests pass against real libSQL — including a test
+that deletes a duck and asserts the contact row is gone. ✅
 
-### Phase 1b — the port *(a day)*
+### Phase 1b — the port and the freeze ✅ *(built; deploy outstanding)*
 
-- `src/worker/index.ts` (`fetch` + `scheduled`) → `api/*.ts`. Static serving
-  loses `env.ASSETS.fetch`.
-- `api/sweep.ts` for the daily cron — declared in `vercel.json`, does not exist.
+- `src/worker/index.ts` becomes `handle(req, env)`, which knows nothing about
+  Vercel; `api/[...path].ts` hands it a `Request`. A catch-all **by filename,
+  not a rewrite** — a rewrite gives a function its destination path, and the
+  router dispatches on the path.
+- `api/sweep.ts` for the daily cron, behind the `CRON_SECRET` bearer check.
 - Fire ignition moves into `GET /api/pond`.
 - Apply the §2 contract changes.
 - Replace the Wrangler/D1 scripts in `package.json`.
-- Deploy. Add the CNAME. Confirm the certificate.
+- Deploy. Add the CNAME. Confirm the certificate. ← **the only step left**
 
-**Done when** `curl https://ducky.davidyang.work/api/pond` returns JSON.
+**Done when** `curl https://ducky.davidyang.work/api/pond` returns JSON *and*
+`npm run db:verify` reports the contact gone.
 
 > The old "half a day for the whole port" was wrong, and I had been told so
-> once before publishing it. `Env.DB` is typed `D1Database`, `Env.ASSETS` is a
-> Worker `Fetcher`, and Phase 1 also carries four product changes. A day and a
-> half total, and only if the worker modules are left alone.
+> once before publishing it. A day and a half was closer, and the shape of the
+> time was not what the estimate assumed: the routing was mechanical, and the
+> schema freeze was where the thinking went.
+
+#### REVISED: the deletion promise is a trigger, not a cascade
+
+The plan said `connect()` should assert the pragma and refuse to serve if it
+was off. Building it made the flaw obvious: **that gate cannot be verified
+without deploying, and if the answer were "off" the site would not boot.**
+Downtime, in exchange for no safety — because the promise was resting on the
+pragma either way.
+
+So the promise moved into the schema. `ducks_before_delete` deletes the
+contact, the bumps in both directions, the fires, the says and the reports,
+and releases the references that would otherwise pin the row. **A trigger
+fires whether or not foreign keys are on.** Every deletion test now runs
+twice, once with the pragma deliberately off, and `npm run db:verify` proves
+it against the real database in ten seconds.
+
+It also covers every delete path that will ever exist — including the admin
+screens in Phase 4 — without anyone having to remember this file.
+
+#### The bug the freeze was for
+
+`sessions.spent_duck` referenced `ducks(id)` with **no ON DELETE action**, so
+it pinned the duck it pointed at. "Take my duck out", inside the 30-minute
+session window, raised a foreign key violation and left the contact behind.
+With foreign keys off it silently succeeded. Two environments, two behaviours,
+and the failing one was the ordinary case: release a duck, change your mind.
+
+Phase 1a's tests missed it because the fixture built ducks by hand rather than
+through a session. **A fixture that skips the real write path is a test that
+agrees with you.**
+
+#### REVISED: two things deleted rather than built
+
+- **The denormalised counters.** `ducks.wave_count` and `rescue_count` are
+  gone; bumps and rescues are derived at read time. A stored total beside the
+  per-pair table it is supposed to equal is a drift waiting to happen, and
+  keeping them in step needed a second write with a window in the middle.
+- **The `rescues` table.** Credit belongs to whoever won the `out_at IS NULL`
+  race — one person — and `fires.out_by` already recorded exactly that. The
+  table could only ever hold one row per fire saying the same thing.
+  Deleting it collapsed `extinguish()` to a **single atomic statement** whose
+  `meta.changes` is both "you won" and "you are credited".
+
+Two of the three half-state windows §1a set out to close were closed by
+removing the second write, not by wrapping it.
 
 ### Phase 2 — one real card *(a day, plus bench time)*
 
@@ -282,9 +347,11 @@ untracked label variant.
 
 ## 5. Known gaps, carried deliberately
 
-- **Rate limits are documented but not implemented.** `SECURITY.md` describes
-  per-card and per-visitor limits; `mintSession()` has no check. Needed before
-  the claim endpoint exists, so: Phase 1b.
+- ~~**Rate limits are documented but not implemented.**~~ **Done in 1b.**
+  `src/worker/limits.ts`, a fixed window in a single upsert. 60/day per card
+  (a card gets passed round a table — that is the point) and 10/day per
+  visitor. Both numbers are guesses and should be revisited after the first
+  evening a card is actually used.
 - **Payload at scale.** Every duck carries a 384-character paint layer, so a
   thousand ducks is ~400 KB. Fine at a hundred cards; the fix is fetch by
   region and recency. Written down, not built.

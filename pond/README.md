@@ -15,31 +15,45 @@ with a phone. Desktop is a courtesy.
 
 ```
 pond/
-  schema/0001_init.sql     tables; read the comments before changing them
-  src/worker/              the API
-    index.ts               routes, security headers, the one-time ?d= exchange
+  schema/0001_init.sql     THE FROZEN CONTRACT. Read the comments first.
+  api/                     Vercel entry points. Three lines each, on purpose.
+    [...path].ts           everything under /api
+    sweep.ts               the daily cron, behind CRON_SECRET
+    shell.ts               /            duck-page.ts  /d/<slug>
+    duck-edit.ts           /e/<key>
+  src/db/                  the D1-shaped adapter. The whole port lives here.
+  src/worker/              the API, knowing nothing about Vercel
+    index.ts               handle(req, env) — routes and security headers
     session.ts             tap → ticket. The single most important file.
-    ducks.ts               public reads and writes. Must never name `contacts`.
-    social.ts              waves, fires, speech. All atomic SQL, no read-modify-write.
+    ducks.ts               public reads. Must never name `contacts`.
+    release.ts             the one write that may. Duck + contact, one batch.
+    social.ts              bumps, fires, speech, reports. Atomic SQL only.
+    limits.ts              rate limits, because SECURITY.md promised them
+    shell.ts / pages.ts    the server-rendered HTML
     util.ts                text cleaning, ids, constant-time compare
   src/client/              the pond itself (canvas)
   test/                    contact isolation is enforced here, not promised
-  tools/                   sprite generation + the approved prototypes
-public/                    built client assets
+  tools/                   db-apply, db-verify, sprites, the prototypes
+  public/                  served verbatim by the CDN. NOT generated, not ignored.
 ```
 
 ## Running it
 
 ```bash
 npm install
-wrangler d1 create pond           # put the id in wrangler.toml
-npm run db:local                  # apply the schema
-wrangler secret put SESSION_SECRET
-wrangler secret put ADMIN_PASSWORD
-npm run dev
+export TURSO_URL=file:local.db    # a real Turso URL works the same way
+export SESSION_SECRET=dev-secret
+export ADMIN_PASSWORD=dev-admin
+npm run db:apply                  # apply the schema
+npm run dev                       # vercel dev
 ```
 
-Then open `http://localhost:8787/p?d=1&c=TESTCARD`.
+Then open `http://localhost:3000/?d=1&c=TESTCARD`.
+
+`npm run db:verify` proves, against whatever `TURSO_URL` points at, that
+deleting a duck really does take its contact with it. Run it once after the
+first deploy: it is the one thing about a hosted database that cannot be
+checked from here.
 
 ## Tests
 
@@ -51,21 +65,30 @@ npm test
 if the public read path ever learns the `contacts` table exists. If it starts
 failing, the fix is almost never to loosen the test.
 
-## The two decisions worth knowing
+## The three decisions worth knowing
 
 **Freshness is checked once.** The card's `?d=` digit is only live for 300
 seconds, but decorating takes minutes. `session.ts` exchanges the digit for a
 30-minute session on the *first* request and never looks at it again. Check
 late and every duck dies on the submit button.
 
-**`?d=` is forgeable.** Anyone can type `/p?d=1`. It proves a fortune was
+**`?d=` is forgeable.** Anyone can type `/?d=1`. It proves a fortune was
 requested, not that a coin was inserted. What actually holds the line is in
 `docs/pond/SECURITY.md`, which is written to be honest rather than
 reassuring.
 
+**The deletion promise is a trigger, not a cascade.** The contact screen
+promises, in writing, that taking your duck out deletes the contact.
+`ON DELETE CASCADE` would do that — if foreign keys were being enforced, and
+the pragma is per-connection and off by default. So `ducks_before_delete` in
+the schema does the deleting instead, and the tests run every deletion twice:
+once with foreign keys on, once with them off.
+
 ## Related
 
-- `docs/pond/BUILD-PLAN.md` — every part, and what state it's in
+- `docs/pond/PROGRESS.md` — the tracker. Start here.
+- `docs/pond/BUILD-PLAN.md` — every decision, and the order to build in
+- `docs/pond/HOSTING.md` — Vercel, Turso, and the CNAME at Cargo
 - `docs/pond/SECURITY.md` — threat model
 - `variants/business-card-v1/firmware/production-pond/` — the firmware that
   points a card here
