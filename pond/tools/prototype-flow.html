@@ -25,6 +25,20 @@
   --hand:'Knewave',cursive;--gutter:clamp(1.15rem,4vw,2.5rem);
   --shell:#0e2630;--shell-2:#081820;
   --p-ink:#0b3d52;--p-soft:#2d6076;--p-faint:#5b8699;--p-surface:#f2fbfe;
+  /* Pixel-art corners: a two-step 3px staircase instead of a radius, so a
+     label floating on the water shares the water's edge vocabulary. A 99px
+     pill next to a 24x24 sprite is the one shape in the pond that could not
+     have been drawn on the grid. Painted onto a ::before rather than the
+     element, because clip-path also clips the focus ring. */
+  --px-corner:polygon(
+    0 6px, 3px 6px, 3px 3px, 6px 3px, 6px 0,
+    calc(100% - 6px) 0, calc(100% - 6px) 3px, calc(100% - 3px) 3px,
+    calc(100% - 3px) 6px, 100% 6px,
+    100% calc(100% - 6px), calc(100% - 3px) calc(100% - 6px),
+    calc(100% - 3px) calc(100% - 3px), calc(100% - 6px) calc(100% - 3px),
+    calc(100% - 6px) 100%,
+    6px 100%, 6px calc(100% - 3px), 3px calc(100% - 3px),
+    3px calc(100% - 6px), 0 calc(100% - 6px));
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#0d181e;--surface:#12222a;--sunk:#0a141a;--ink:#e6f2f7;--ink-soft:#9fbdc8;
@@ -63,6 +77,11 @@ strong{font-weight:620}
 code{font-family:var(--mono);font-size:.85em;background:var(--sunk);padding:.1em .38em;
   border-radius:2px;border:1px solid var(--rule)}
 :focus-visible{outline:2px solid var(--field-500);outline-offset:2px;border-radius:2px}
+/* clip-path clips an outline away, so anything cut to the pixel grid shows
+   its focus ring on the inside instead, where the stepped edge keeps it. */
+.icon-btn:focus-visible,.s-tabs button:focus-visible,.field input:focus-visible,
+.field textarea:focus-visible,.s-nav button:focus-visible,.say-btn:focus-visible,
+.btn:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 .marker{font-family:var(--hand);font-size:1.22rem;color:var(--field-500);
   transform:rotate(-.7deg);display:inline-block}
 figure{margin:1.6rem 0}
@@ -147,11 +166,20 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   touch-action:none;overscroll-behavior:contain}
 .btn{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;text-align:center;
   font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
-  padding:.85rem;min-height:44px;border-radius:10px;      /* 44px = the Apple/WCAG floor */
-  background:var(--duck);color:#4a3a06;box-shadow:0 4px 0 var(--duck-shadow)}
-.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--duck-shadow)}
-.btn.g{background:#dff2fb;color:var(--p-ink);box-shadow:0 4px 0 #b9d9e6}
-.btn.g:active{box-shadow:0 1px 0 #b9d9e6}
+  padding:.85rem;min-height:44px;      /* 44px = the Apple/WCAG floor */
+  position:relative;isolation:isolate;color:#4a3a06}
+/* Face and 3D shadow are two clipped layers rather than a background and a
+   box-shadow, because clip-path would leave a square shadow behind a
+   stepped edge. Both sit on the grid. */
+.btn::before{content:"";position:absolute;inset:0;background:var(--duck);
+  clip-path:var(--px-corner);z-index:-1}
+.btn::after{content:"";position:absolute;inset:4px 0 -4px 0;background:var(--duck-shadow);
+  clip-path:var(--px-corner);z-index:-2}
+.btn:active{transform:translateY(3px)}
+.btn:active::after{inset:1px 0 -1px 0}
+.btn.g{color:var(--p-ink)}
+.btn.g::before{background:#dff2fb}
+.btn.g::after{background:#b9d9e6}
 .btn-row{display:flex;flex-direction:column;gap:.5rem}
 .field{margin-bottom:.7rem}
 .field label{display:block;font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;
@@ -160,10 +188,10 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   /* 16px is a hard floor: iOS Safari zooms the whole page when focusing an
      input with a smaller font, and never zooms back out. */
   font-size:16px;padding:.65rem .7rem;
-  border:0;border-radius:9px;background:#fff;color:var(--p-ink);resize:none;box-shadow:0 2px 0 #b9d9e6}
+  border:0;background:#fff;color:var(--p-ink);resize:none;clip-path:var(--px-corner)}
 .counter{font-family:var(--mono);font-size:.56rem;color:var(--p-faint);text-align:right;margin-top:.15rem}
-.priv{font-family:var(--mono);font-size:.6rem;line-height:1.6;color:var(--p-soft);
-  background:#fff;border-radius:8px;padding:.6rem .7rem}
+.priv{font-family:var(--mono);font-size:.64rem;line-height:1.65;color:var(--p-soft);
+  background:#fff;padding:.65rem .75rem;clip-path:var(--px-corner)}
 /* The postcard offer is the warmest thing on the screen, so it gets the
    duck yellow rather than the system grey the privacy note uses. */
 .postcard{display:flex;gap:.55rem;align-items:flex-start;
@@ -174,35 +202,53 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   background:var(--duck);box-shadow:inset 0 0 0 2px #fff8e0, inset 0 0 0 3px var(--duck-shadow)}
 .priv b{color:var(--p-ink)}
 /* studio */
-.s-nav{display:flex;justify-content:space-between;align-items:center;padding:42px 14px 4px;
-  font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--p-soft)}
-.s-nav button{all:unset;cursor:pointer;padding:.3rem .1rem;color:var(--p-soft)}
-.s-strip{margin:6px 14px 0;border-radius:8px;overflow:hidden;position:relative}
+/* This row was the worst thing in the studio to use: 10px labels in a soft
+   grey with a 20px-tall hit area and no surface, so Back and Skip neither
+   read as buttons nor could be hit reliably. Now they are chips with a 44px
+   target, and the screen title is the largest, darkest thing in the row so
+   the hierarchy reads title-first instead of three equal whispers. */
+.s-nav{display:flex;justify-content:space-between;align-items:center;gap:.45rem;
+  padding:40px 12px 6px;
+  font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.s-nav .s-title{flex:1;text-align:center;font-size:.8rem;font-weight:700;
+  color:var(--p-ink);letter-spacing:.12em}
+.s-nav button{all:unset;box-sizing:border-box;cursor:pointer;flex:0 0 auto;
+  position:relative;isolation:isolate;
+  min-height:44px;display:inline-flex;align-items:center;justify-content:center;
+  padding:0 .72rem;font-size:.68rem;letter-spacing:.08em;color:var(--p-ink)}
+.s-nav button::before{content:"";position:absolute;inset:0;background:#dff2fb;
+  clip-path:var(--px-corner);z-index:-1}
+.s-nav button:active::before{background:#c9e7f4}
+.s-strip{margin:6px 14px 0;overflow:hidden;position:relative;clip-path:var(--px-corner)}
 .s-strip .cap{position:absolute;top:4px;left:6px;font-family:var(--mono);font-size:.5rem;
-  letter-spacing:.1em;text-transform:uppercase;color:#0b3d52;background:#ffffffcc;padding:.1rem .3rem;border-radius:3px}
+  letter-spacing:.1em;text-transform:uppercase;color:#0b3d52;background:#ffffffe6;padding:.16rem .34rem}
 /* Utility controls sit next to the thing they act on, not in a row of
    equal-weight buttons competing with the primary action. Icon-only keeps
    them quiet; 44px keeps them tappable. */
 .s-tools{display:flex;gap:6px;justify-content:flex-end;padding:6px 14px 0}
 .icon-btn{all:unset;box-sizing:border-box;cursor:pointer;
   width:44px;height:44px;display:grid;place-items:center;
-  border-radius:9px;background:#dff2fb}
+  background:#dff2fb;clip-path:var(--px-corner)}
 .icon-btn:active{background:#c9e7f4}
 .icon-btn[disabled]{opacity:.35;cursor:default}
 .icon-btn:focus-visible{outline:2px solid var(--field-500);outline-offset:2px}
 .s-tabs{display:flex;gap:4px;padding:8px 14px 0}
 .s-tabs button{all:unset;box-sizing:border-box;cursor:pointer;flex:1;text-align:center;
   font-family:var(--mono);font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;
-  padding:.5rem .2rem;border-radius:7px;background:#dff2fb;color:var(--p-soft)}
+  padding:.55rem .2rem;min-height:40px;background:#dff2fb;color:var(--p-ink);
+  clip-path:var(--px-corner)}
 .s-tabs button[aria-selected="true"]{background:var(--p-ink);color:#eaf7fc}
 .s-body{flex:1 1 auto;overflow-y:auto;padding:8px 14px 4px;min-height:0}
 .s-foot{padding:8px 14px calc(14px + env(safe-area-inset-bottom, 0px))}
 .s-hint{font-family:var(--mono);font-size:.55rem;letter-spacing:.05em;color:var(--p-faint);
   text-align:center;margin:.4rem 0 0}
 .swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
-.swatches button{all:unset;box-sizing:border-box;cursor:pointer;aspect-ratio:1;border-radius:7px;
-  box-shadow:inset 0 0 0 1px #0b3d5222}
-.swatches button[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--p-ink),0 0 0 3px #ffca0088}
+/* Cut to the grid like everything else. The selected ring goes inside,
+   because clip-path removes anything drawn outside the shape. */
+.swatches button{all:unset;box-sizing:border-box;cursor:pointer;aspect-ratio:1;
+  clip-path:var(--px-corner);box-shadow:inset 0 0 0 1px #0b3d5222}
+.swatches button[aria-pressed="true"]{box-shadow:inset 0 0 0 3px var(--p-ink),
+  inset 0 0 0 6px #ffffffcc}
 .slotrow{display:flex;gap:4px;margin-bottom:7px;overflow-x:auto;padding-bottom:2px}
 .slotrow button{all:unset;box-sizing:border-box;cursor:pointer;white-space:nowrap;
   font-family:var(--mono);font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;
@@ -223,13 +269,26 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 /* pond chrome */
 .hud{position:absolute;top:0;left:0;right:0;z-index:30;pointer-events:none;
   display:flex;justify-content:space-between;padding:44px 16px 0;
-  font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase}
-.hud span{background:#fff;color:var(--p-ink);padding:.28rem .55rem;border-radius:99px}
+  font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase}
+.hud span{position:relative;isolation:isolate;color:var(--p-ink);padding:.34rem .62rem}
+.hud span::before{content:"";position:absolute;inset:0;background:#fff;
+  clip-path:var(--px-corner);z-index:-1}
 .bar{position:absolute;left:16px;right:16px;bottom:28px;z-index:30;display:flex;gap:.4rem}
 .bar[hidden]{display:none}
 .bar .btn{flex:1}
-.say-btn{all:unset;box-sizing:border-box;cursor:pointer;width:46px;flex:0 0 auto;text-align:center;
-  background:#fff;border-radius:10px;padding:.85rem 0;font-size:.95rem;box-shadow:0 3px 0 #b9d9e6;line-height:1}
+/* Also on the water, so also pixel-cornered. The drop shadow is a second
+   clipped layer offset 3px rather than a box-shadow, because clip-path would
+   either clip a real shadow away or leave a square one behind a stepped
+   edge. Two layers, both on the grid. */
+.say-btn{all:unset;box-sizing:border-box;cursor:pointer;width:46px;flex:0 0 auto;
+  position:relative;isolation:isolate;
+  display:flex;align-items:center;justify-content:center;
+  min-height:46px;padding:.72rem 0;font-size:.95rem;line-height:1}
+.say-btn::before{content:"";position:absolute;inset:0;background:#fff;
+  clip-path:var(--px-corner);z-index:-1}
+.say-btn::after{content:"";position:absolute;inset:3px 0 -3px 0;background:#b9d9e6;
+  clip-path:var(--px-corner);z-index:-2}
+.say-btn:active::before{background:#eaf7fd}
 .urlbar{position:absolute;bottom:0;left:0;right:0;z-index:30;background:#ffffff55;
   font-family:var(--mono);font-size:.55rem;color:var(--p-faint);padding:.38rem .8rem;text-align:center}
 /* The arrival sheet. Rises AFTER the duck lands, so the moment is never
@@ -339,8 +398,9 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
         <!-- 03 STUDIO -->
         <div class="view" data-v="studio">
           <div class="s-nav">
-            <button data-go="arrival">← Back</button><span>Make it yours</span>
-            <button data-go="sign">Skip</button>
+            <button data-go="arrival">← Back</button>
+            <span class="s-title">Make it yours</span>
+            <button data-go="sign">Skip →</button>
           </div>
           <div style="padding:0 14px">
             <canvas class="pix" id="hero" width="576" height="528" style="border-radius:10px;cursor:crosshair"
