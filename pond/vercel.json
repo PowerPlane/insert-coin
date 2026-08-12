@@ -13,7 +13,8 @@
   "rewrites": [
     { "source": "/d/:slug", "destination": "/api/duck-page?slug=:slug" },
     { "source": "/e/:key", "destination": "/api/duck-edit?key=:key" },
-    { "source": "/admin/:path*", "destination": "/api/admin?path=:path*" }
+    { "source": "/pondkeeper", "destination": "/api/admin" },
+    { "source": "/pondkeeper/:path*", "destination": "/api/admin?path=:path*" }
   ],
 
   "headers": [
@@ -30,7 +31,7 @@
       "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }]
     },
     {
-      "source": "/admin/(.*)",
+      "source": "/pondkeeper(.*)",
       "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }]
     }
   ]
