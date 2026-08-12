@@ -250,6 +250,11 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .s-tabs button[aria-selected="true"]{background:var(--p-ink);color:#eaf7fc}
 .s-body{flex:1 1 auto;overflow-y:auto;padding:8px 14px 4px;min-height:0}
 .s-foot{padding:8px 14px calc(14px + env(safe-area-inset-bottom, 0px))}
+.crowd{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:.6rem;
+  font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;color:#7fa8b8}
+.crowd button{all:unset;box-sizing:border-box;cursor:pointer;padding:.42rem .7rem;
+  text-transform:uppercase;background:#16323f;color:#bcdcea;clip-path:var(--px-corner)}
+.crowd button:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--field-500)}
 .s-hint{font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;color:var(--p-soft);
   text-align:center;margin:.4rem 0 0}
 .swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
@@ -287,6 +292,26 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .hud span{position:relative;isolation:isolate;color:var(--p-ink);padding:.34rem .62rem}
 .hud span::before{content:"";position:absolute;inset:0;background:#fff;
   clip-path:var(--px-corner);z-index:-1}
+/* Sits under the HUD chips, over the water. */
+.whistle{position:absolute;top:86px;left:16px;right:16px;z-index:30;
+  display:flex;gap:5px;flex-wrap:wrap}
+.whistle button{all:unset;box-sizing:border-box;cursor:pointer;
+  min-height:34px;padding:0 .6rem;display:grid;place-items:center;
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;
+  background:#ffffffdd;color:var(--p-ink);clip-path:var(--px-corner)}
+.whistle button[aria-pressed="true"]{background:var(--p-ink);color:#eaf7fc}
+.whistle button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
+/* A phone held one-handed cannot pinch, so zoom is also a pair of buttons.
+   They also let us skip double-tap, which would have forced every water tap
+   to wait to see if a second one was coming. */
+.zoomer{position:absolute;right:16px;bottom:92px;z-index:30;
+  display:flex;flex-direction:column;gap:5px}
+.zoomer button{all:unset;box-sizing:border-box;cursor:pointer;
+  width:44px;height:44px;display:grid;place-items:center;
+  font-family:var(--mono);font-size:1.05rem;line-height:1;
+  background:#ffffffee;color:var(--p-ink);clip-path:var(--px-corner)}
+.zoomer button:active{background:#dff2fb}
+.zoomer button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 .bar{position:absolute;left:16px;right:16px;bottom:28px;z-index:30;display:flex;gap:.4rem}
 .bar[hidden]{display:none}
 .bar .btn{flex:1}
@@ -620,6 +645,21 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
         <div class="view" data-v="pond">
           <canvas class="pix" id="cv-pond" width="688" height="1480"></canvas>
           <div class="hud"><span id="hud-n">14 ducks</span><span>BY-002</span></div>
+          <!-- The whistle. In Mii Plaza you blow one and everybody lines up;
+               here the card is already a thing you blow into, so the pond
+               borrows the gesture. Matching ducks swim together rather than
+               the others vanishing — hiding them would make this a filtered
+               list instead of a place. -->
+          <div class="whistle" id="whistle" role="group" aria-label="Gather ducks">
+            <button type="button" aria-pressed="true"  data-g="">All</button>
+            <button type="button" aria-pressed="false" data-g="Sam">Sam's</button>
+            <button type="button" aria-pressed="false" data-g="Mika">Mika's</button>
+            <button type="button" aria-pressed="false" data-g="@">Mine</button>
+          </div>
+          <div class="zoomer">
+            <button type="button" id="z-in"  aria-label="Zoom in">+</button>
+            <button type="button" id="z-out" aria-label="Zoom out">−</button>
+          </div>
           <div class="bar" id="bar">
             <button class="say-btn" id="say-open" aria-label="Say something"></button>
             <button class="btn g" id="pond-cta">Find my duck</button>
@@ -731,17 +771,6 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
           </div>
           <p class="k-hint">A visitor's phone can still choose another language.</p>
 
-          <div class="field">
-            <label for="k-link2">Link to show</label>
-            <input id="k-link2" inputmode="url" placeholder="https://">
-          </div>
-          <div class="seg" role="group" aria-label="When your link is shown" id="k-mode">
-            <button type="button" aria-pressed="true">Show fortune first</button>
-            <button type="button" aria-pressed="false">Link first</button>
-          </div>
-          <p class="priv">Visitors always choose before opening your link.
-            <b>https only.</b></p>
-
           <label class="k-check">
             <input type="checkbox" id="k-adopt" checked>
             <span>Add the <b>12 earlier ducks</b> to this card</span>
@@ -825,18 +854,17 @@ London EC2N 3AR</p>
               <div class="a-main">
                 <b>Sam → Mika</b>
                 <small>7F3A9K · 39 ducks · claimed 3 Nov</small>
-                <p class="a-sub">繁體中文 · mika.example.com</p>
+                <p class="a-sub">繁體中文</p>
               </div>
               <div class="a-act">
                 <button class="a-btn" type="button">Unclaim</button>
-                <button class="a-btn bad" type="button">Disable link</button>
               </div>
             </div>
             <div class="a-row noflag">
               <div class="a-main">
                 <b>Jo</b>
                 <small>B2K7QX · 6 ducks · claimed 12 Jul</small>
-                <p class="a-sub">English · no link</p>
+                <p class="a-sub">English</p>
               </div>
               <div class="a-act"><button class="a-btn" type="button">Unclaim</button></div>
             </div>
@@ -895,6 +923,14 @@ London EC2N 3AR</p>
 
       </div></div>
       <p class="s-hint" style="color:#7fa8b8;margin-top:.7rem">Tap ducks in the pond. Drag stickers in the studio.</p>
+      <!-- Review scaffolding, deliberately OUTSIDE the device frame: the
+           camera only does anything once the pond outgrows the screen, and
+           with a dozen ducks it never does. -->
+      <div class="crowd">
+        <button type="button" id="crowd-add">Add 100 ducks</button>
+        <button type="button" id="crowd-reset">Reset</button>
+        <span id="crowd-n"></span>
+      </div>
     </div>
   </div>
 </div>
@@ -1216,8 +1252,105 @@ function spawnShape(list,x,y,shape,petal,core,cell,delay){
 /* ── a small pond engine, reused by arrival / release / pond ── */
 function Scene(canvas,opts){
   const ctx=canvas.getContext("2d"); ctx.imageSmoothingEnabled=false;
-  const W=canvas.width,H=canvas.height,cw=Math.ceil(W/CELL),ch=Math.ceil(H/CELL);
-  const S={ctx,W,H,cw,ch,ducks:[],parts:[],rings:[],fx:[],petals:[],arrivals:[],frame:0,tick:80};
+  const W=canvas.width,H=canvas.height;
+  /* cw/ch are the WORLD in sprite units, no longer the viewport. Everything
+     downstream -- edge bounces, ripple clamps, release positions -- already
+     spoke in these, so they keep working and simply mean something bigger. */
+  let cw=Math.ceil(W/CELL), ch=Math.ceil(H/CELL);
+  const S={ctx,W,H,cw,ch,ducks:[],parts:[],rings:[],fx:[],petals:[],arrivals:[],
+    frame:0,tick:80,cell:CELL,cam:{x:0,y:0},camera:!!(opts&&opts.camera),gather:null};
+  const ZOOMS=[2,3,4,6];
+  S.zooms=ZOOMS;
+  const vw=()=>W/S.cell, vh=()=>H/S.cell;
+  S.vw=vw; S.vh=vh;
+  S.setWorld=(w,h)=>{ cw=S.cw=w; ch=S.ch=h; S.clampCam(); };
+  /* Never show void: if the world is smaller than the screen, centre it. */
+  S.clampCam=()=>{
+    S.cam.x = cw<=vw() ? (cw-vw())/2 : Math.max(0,Math.min(cw-vw(),S.cam.x));
+    S.cam.y = ch<=vh() ? (ch-vh())/2 : Math.max(0,Math.min(ch-vh(),S.cam.y));
+  };
+  /* Anchor-preserving: the point under your fingers stays under them. */
+  S.setZoom=(cell,sx,sy)=>{
+    const c=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],Math.round(cell)));
+    if(c===S.cell)return;
+    sx=(sx==null?W/2:sx); sy=(sy==null?H/2:sy);
+    const wx=S.cam.x+sx/S.cell, wy=S.cam.y+sy/S.cell;
+    S.cell=c;
+    S.cam.x=wx-sx/S.cell; S.cam.y=wy-sy/S.cell;
+    S.clampCam();
+  };
+  S.zoomStep=(dir,sx,sy)=>{
+    const i=ZOOMS.indexOf(S.cell);
+    S.setZoom(ZOOMS[Math.max(0,Math.min(ZOOMS.length-1,i+dir))],sx,sy);
+  };
+  S.panBy=(dxScreen,dyScreen)=>{
+    S.target=null;                       // the finger wins
+    S.cam.x-=dxScreen/S.cell; S.cam.y-=dyScreen/S.cell; S.clampCam();
+  };
+  /* Density, not size, is what should stay constant: more cards means a
+     bigger pond, never a more crowded one. */
+  S.growWorld=()=>{
+    if(!S.camera)return;
+    const side=Math.max(Math.ceil(W/CELL),
+      Math.ceil(Math.sqrt(Math.max(1,S.ducks.length))*34));
+    S.setWorld(side,Math.max(Math.ceil(H/CELL),Math.round(side*H/W)));
+  };
+  /* Ducks never overlap, whistle or no whistle. Bucketed on a uniform grid
+     sized to the separation distance, so only the nine neighbouring buckets
+     can hold a duck close enough to matter -- that keeps this O(n) as the
+     pond fills instead of O(n²), which is what would eventually make a big
+     pond stutter. */
+  const SEP=N*0.86;
+  function separate(list,strength){
+    const buckets=new Map(), key=(cx,cy)=>cx*100003+cy;
+    for(const d of list){
+      const k=key(Math.floor(d.x/SEP),Math.floor(d.y/SEP));
+      let arr=buckets.get(k); if(!arr)buckets.set(k,arr=[]);
+      arr.push(d);
+    }
+    for(const d of list){
+      const cx=Math.floor(d.x/SEP), cy=Math.floor(d.y/SEP);
+      for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
+        const arr=buckets.get(key(cx+ox,cy+oy)); if(!arr)continue;
+        for(const o of arr){
+          if(o===d)continue;
+          const dx=o.x-d.x, dy=o.y-d.y;
+          const dist=Math.hypot(dx,dy);
+          if(dist<=0.01||dist>=SEP)continue;
+          const f=(SEP-dist)/dist*strength;
+          d.vx-=dx*f; d.vy-=dy*f;
+        }
+      }
+    }
+  }
+  /* Mitchell's best-candidate. For each duck try a handful of random spots
+     and keep the one furthest from everyone already placed: evenly spread,
+     but without the regularity of a grid. Random scatter alone clumps. */
+  S.scatter=(n)=>{
+    const placed=S.ducks.slice(), out=[];
+    for(let i=0;i<n;i++){
+      let best=null,bestD=-1;
+      for(let k=0;k<12;k++){
+        const x=N*0.6+Math.random()*Math.max(1,cw-N*1.2),
+              y=N*0.6+Math.random()*Math.max(1,ch-N*1.2);
+        let near=1e9;
+        for(const q of placed){ const dd=Math.hypot(q.x-x,q.y-y); if(dd<near)near=dd; }
+        if(near>bestD){ bestD=near; best={x,y}; }
+      }
+      placed.push(best); out.push(best);
+    }
+    return out;
+  };
+  /* A glide target the loop eases toward. Buttons and "find my duck" set
+     one; dragging clears it, because a finger should never be argued with. */
+  S.target=null;
+  S.glideTo=(x,y)=>{ S.target={x,y}; };
+  S.focus=(d,minCell)=>{
+    if(!d)return;
+    if(minCell&&S.cell<minCell)S.setZoom(minCell);
+    if(reduce){ S.cam.x=d.x-vw()/2; S.cam.y=d.y-vh()/2; S.clampCam(); S.target=null; }
+    else S.glideTo(d.x-vw()/2,d.y-vh()/2);
+  };
   const RIPPLE=480, easeOut=p=>1-Math.pow(1-p,3);
   S.ring=(x,y,a)=>{S.rings.push({x,y,t:performance.now(),max:14+a*7});if(S.rings.length>12)S.rings.shift();};
   S.emit=(x,y,vx,vy,c,l,rise)=>S.parts.push({x,y,vx,vy,c,life:l,l0:l,rise:rise||0});
@@ -1292,6 +1425,61 @@ function Scene(canvas,opts){
             vx:(Math.random()-0.5)*0.5,vy:(Math.random()-0.5)*0.4,born:now,life:180000}); });
         S.fx.splice(i,1);
       } }
+    /* The whistle. Three forces, no new rendering.
+       Called ducks are pulled in; everyone else is pushed clear of the
+       frame rather than dimmed, because a faded duck still reads as "in
+       the way" while an absent one reads as room; and the called ducks
+       repel each other at close range so they arrive as a loose flock
+       instead of a single pile you cannot tap individual ducks out of. */
+    if(S.gather){
+      const gx=S.cam.x+vw()/2, gy=S.cam.y+vh()/2;
+      /* Just past the frame, not past the far corner: pushing harder than
+         that only jams ducks into a world corner in a heap. */
+      const clear=Math.max(vw(),vh())*0.52+N;
+      const called=[];
+      for(const d of S.ducks){
+        if(d._dt)continue;
+        if(d._r===undefined)d._r=Math.random();   // stable per-duck character
+        if(S.gather(d)){
+          /* Each duck aims at its own spot on a loose ring rather than all
+             at one pixel, and arcs in instead of beelining. A crowd
+             converging on a single point packs into a hexagonal lattice —
+             which is what made the first version read as a crystal rather
+             than a flock. Varied pull means they arrive raggedly, which is
+             most of what "organic" is. */
+          const ang=d._r*6.283, ring=(0.3+d._r*0.8)*N*1.9;
+          const tx=gx+Math.cos(ang)*ring, ty=gy+Math.sin(ang)*ring*0.8;
+          const dx=tx-d.x, dy=ty-d.y, dist=Math.hypot(dx,dy)||1;
+          const pull=0.0075*(0.65+d._r*0.8);
+          d.vx+=dx*pull; d.vy+=dy*pull;
+          d.vx+=-dy/dist*0.10; d.vy+=dx/dist*0.10;      // swirl in
+          called.push(d);
+        }else{
+          const dx=d.x-gx, dy=d.y-gy, dist=Math.hypot(dx,dy)||1;
+          if(dist<clear){
+            d.vx+=dx/dist*1.35; d.vy+=dy/dist*1.35;     // leave, and briskly
+            d.vx+=-dy/dist*0.5; d.vy+=dx/dist*0.5;      // fan out around the rim
+            d._shoved=true;
+          }
+        }
+      }
+      separate(called,0.13);
+    }else{
+      /* Whistle cleared. Ducks that were shoved out come back, so releasing
+         refills the pond instead of leaving a ring of them parked outside
+         the frame waiting on ordinary drift, which would take minutes.
+         Only ever applies to ducks the whistle actually moved. */
+      const gx=S.cam.x+vw()/2, gy=S.cam.y+vh()/2;
+      const inner=Math.hypot(vw(),vh())*0.42;
+      for(const d of S.ducks){
+        if(d._dt||!d._shoved)continue;
+        const dx=gx-d.x, dy=gy-d.y, dist=Math.hypot(dx,dy)||1;
+        if(dist>inner){ d.vx+=dx/dist*0.30; d.vy+=dy/dist*0.30; }
+        else d._shoved=false;
+      }
+    }
+    /* Always on, whistle or not — two ducks are never in the same place. */
+    separate(S.ducks,0.06);
     for(const d of S.ducks){
       if(d._dt){
         const pr=reduce?1:Math.min(1,(now-d._dt)/DART_MS), e=1-Math.pow(1-pr,3);
@@ -1324,7 +1512,12 @@ function Scene(canvas,opts){
   }
   function render(){
     const now=performance.now();
-    water(ctx,cw,ch,CELL,S.frame,true);
+    const CELL=S.cell;                      // zoom, shadowing the global
+    /* Water stays outside the camera: it is a uniform dither field, so
+       scrolling it would be invisible and would cost a full re-tile. */
+    water(ctx,Math.ceil(W/CELL),Math.ceil(H/CELL),CELL,S.frame,true);
+    ctx.save();
+    ctx.translate(-Math.round(S.cam.x*CELL),-Math.round(S.cam.y*CELL));
     for(const r of S.rings){
       const p=(now-r.t)/RIPPLE; if(p>=1)continue;
       const rad=easeOut(p)*r.max,fade=1-p;
@@ -1352,17 +1545,23 @@ function Scene(canvas,opts){
     }
     for(const p of S.parts){ ctx.fillStyle=p.c;
       ctx.fillRect(Math.round(p.x)*CELL,Math.round(p.y)*CELL,CELL,CELL); }
+    const l=S.cam.x-N, r0=S.cam.x+W/CELL+N, t=S.cam.y-N, b=S.cam.y+H/CELL+N;
     for(const d of S.ducks){
+      /* Culling is what makes a 400-duck pond cost what a 14-duck pond
+         costs: the same number fit on screen either way. */
+      if(d.x<l||d.x>r0||d.y<t||d.y>b){ d._vis=false; continue; }
+      d._vis=true;
       const px=Math.round(d.x-N/2)*CELL, py=Math.round(d.y-N/2)*CELL;
       drawDuckInto(ctx,d,px,py,CELL,d.flip,S.frame);
-      if(d.mine){
+      /* A 4px-tall label is not text. Zoomed out you read the shape of the
+         crowd; names come back when you are close enough to read them. */
+      if(d.mine&&CELL>=3){
         ctx.fillStyle="#FFCA00"; ctx.fillRect(px+4*CELL,Math.max(0,py-6*CELL),16*CELL,5*CELL);
         ctx.fillStyle="#4A3A06";
         ctx.font="bold "+(4*CELL)+"px 'IBM Plex Mono',monospace";
         ctx.textAlign="center"; ctx.textBaseline="middle";
-        ctx.fillText("YOU",px+12*CELL,Math.max(0,py-6*CELL)+2.5*CELL);
+        ctx.fillText("YOU",px+12*CELL,py-6*CELL+2.5*CELL);
       }
-      d._px=px; d._py=py;
     }
     for(const e of S.fx){ const el=now-e.t0;
       for(const p of e.px){
@@ -1372,24 +1571,44 @@ function Scene(canvas,opts){
         ctx.fillRect(Math.round(e.x+(p.x-e.cols/2)*e.cell/2)*CELL,
                      Math.round(e.y+(p.y-e.rows/2)*e.cell/2)*CELL,CELL*(e.cell/2),CELL*(e.cell/2));
       } }
+    ctx.restore();
   }
   let acc=0,last=performance.now();
+  const seen={x:NaN,y:NaN,c:NaN};
   (function loop(now){
     const dt=Math.min(0.25,(now-last)/1000); last=now; acc+=dt*1000;
+    if(S.target){
+      const k=reduce?1:0.24;
+      S.cam.x+=(S.target.x-S.cam.x)*k; S.cam.y+=(S.target.y-S.cam.y)*k;
+      if(Math.hypot(S.target.x-S.cam.x,S.target.y-S.cam.y)<0.3){
+        S.cam.x=S.target.x; S.cam.y=S.target.y; S.target=null; }
+      S.clampCam();
+    }
     const wait=S.tick*DWELL[S.frame%DWELL.length];
-    if(acc>=wait){ acc=0; S.frame++; step(wait/1000); if(S.live)render(); }
+    let drew=false;
+    if(acc>=wait){ acc=0; S.frame++; step(wait/1000); if(S.live){ render(); drew=true; } }
+    /* Two clocks, one render. The world ticks at ~12fps because stop-motion
+       is the look; the CAMERA is direct manipulation and has to track a
+       finger at display rate or dragging feels broken. So: redraw off-tick,
+       but only while the camera is actually moving -- an idle pond still
+       costs exactly one draw per stop-motion frame. */
+    if(!drew&&S.live&&(S.cam.x!==seen.x||S.cam.y!==seen.y||S.cell!==seen.c))render();
+    seen.x=S.cam.x; seen.y=S.cam.y; seen.c=S.cell;
     requestAnimationFrame(loop);
   })(performance.now());
-  S.hit=(cx,cy)=>{ for(let i=S.ducks.length-1;i>=0;i--){ const d=S.ducks[i];
-    if(cx>=d._px&&cx<=d._px+N*CELL&&cy>=d._py&&cy<=d._py+N*CELL)return d; } return null; };
-  S.pos=ev=>{ const r=canvas.getBoundingClientRect();
+  /* Both in WORLD units now, so neither depends on where the camera is. */
+  S.hit=(wx,wy)=>{ for(let i=S.ducks.length-1;i>=0;i--){ const d=S.ducks[i];
+    if(wx>=d.x-N/2&&wx<=d.x+N/2&&wy>=d.y-N/2&&wy<=d.y+N/2)return d; } return null; };
+  S.screen=ev=>{ const r=canvas.getBoundingClientRect();
     return [(ev.clientX-r.left)/r.width*W,(ev.clientY-r.top)/r.height*H]; };
+  S.pos=ev=>{ const [sx,sy]=S.screen(ev);
+    return [S.cam.x+sx/S.cell,S.cam.y+sy/S.cell]; };
   return S;
 }
 
 /* ── scenes ── */
 const A=Scene(document.getElementById("cv-arrival"),{});
-const P=Scene(document.getElementById("cv-pond"),{});
+const P=Scene(document.getElementById("cv-pond"),{camera:true});
 /* name, message, fortune, date, bumps, whose card it came from.
    The keeper replaces the card serial on the duck's card: readable, and it
    stops publishing the id a card claim would be keyed on. */
@@ -1450,6 +1669,8 @@ function go(name){
     // create one on the spot, so "just look around" quietly published the
     // thing you had not decided to publish yet.
     document.getElementById("hud-n").textContent=P.ducks.length+" ducks";
+    P.growWorld();
+    if(MINE)P.focus(MINE); else P.clampCam();
     syncPondCta();
     buildSr();
   }
@@ -1789,15 +2010,89 @@ function buildSr(){
     b.type="button"; b.textContent=(d.name||"Anonymous")+"'s duck, "+FORT[d.fort].en;
     b.onclick=()=>openPanel(d,b); li.appendChild(b); l.appendChild(li); });
 }
-document.getElementById("cv-pond").addEventListener("pointerdown",e=>{
-  if(panel.dataset.open==="true")return;
-  const [x,y]=P.pos(e), d=P.hit(x,y);
-  if(d&&d.burning){ douse(d); return; }   // put it out before reading its card
-  if(d){ openPanel(d,null); return; }
-  P.splash(x/CELL,y/CELL,2.4);
-});
+/* Drag pans, two fingers zoom, and anything under 8px of travel is still
+   a tap -- so ripples and duck cards behave exactly as they did. There is
+   no double-tap: it would force every water tap to wait ~300ms to find out
+   whether a second one was coming, and the ripple's snappiness is the
+   thing people notice first. Zoom buttons cover it instead. */
+(function(){
+  const cv=document.getElementById("cv-pond");
+  const pts=new Map();
+  let travel=0, pinch0=0, cell0=0;
+  cv.addEventListener("pointerdown",e=>{
+    cv.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId,P.screen(e));
+    if(pts.size===1)travel=0;
+    if(pts.size===2){ const [a,b]=[...pts.values()];
+      pinch0=Math.hypot(a[0]-b[0],a[1]-b[1])||1; cell0=P.cell; travel=99; }
+  });
+  cv.addEventListener("pointermove",e=>{
+    if(!pts.has(e.pointerId))return;
+    const prev=pts.get(e.pointerId), now=P.screen(e);
+    pts.set(e.pointerId,now);
+    if(pts.size===1){
+      travel+=Math.hypot(now[0]-prev[0],now[1]-prev[1]);
+      if(travel>8)P.panBy(now[0]-prev[0],now[1]-prev[1]);
+    }else if(pts.size===2){
+      const [a,b]=[...pts.values()];
+      const d=Math.hypot(a[0]-b[0],a[1]-b[1]);
+      P.setZoom(cell0*(d/pinch0),(a[0]+b[0])/2,(a[1]+b[1])/2);
+    }
+  });
+  const lift=e=>{
+    if(!pts.has(e.pointerId))return;
+    const [sx,sy]=pts.get(e.pointerId);
+    pts.delete(e.pointerId);
+    if(pts.size>0||travel>8)return;
+    if(panel.dataset.open==="true")return;
+    const wx=P.cam.x+sx/P.cell, wy=P.cam.y+sy/P.cell;
+    const d=P.hit(wx,wy);
+    if(d&&d.burning){ douse(d); return; }   // put it out before reading its card
+    if(d){ openPanel(d,null); return; }
+    P.splash(wx,wy,2.4);
+  };
+  cv.addEventListener("pointerup",lift);
+  cv.addEventListener("pointercancel",e=>{ pts.delete(e.pointerId); });
+})();
 document.getElementById("say-open").onclick=()=>{ if(MINE){ MINE.msg=MINE.msg||"hello"; } };
 document.getElementById("pond-settings").onclick=()=>go("manage");
+
+/* Zoom and gather. Both are two lines because the scene owns the maths. */
+/* Review only. Grows the pond so the camera has something to do. */
+(function(){
+  const KEEPERS=["Sam","Mika","",""];
+  const n=document.getElementById("crowd-n");
+  const say=()=>{ n.textContent=P.ducks.length+" ducks · world "+P.cw+"×"+P.ch+" units"; };
+  document.getElementById("crowd-add").onclick=()=>{
+    P.growWorld();
+    const spots=P.scatter(100);
+    for(let i=0;i<100;i++){
+      const f=(i*7)%4;
+      P.add({fort:f,tint:TINTS[(i*5)%TINTS.length][1],
+        x:spots[i].x,y:spots[i].y,vx:0,vy:0,
+        name:"Duck "+(i+1),msg:"",date:"today",
+        keeper:KEEPERS[i%KEEPERS.length],bumps:(i*3)%9,bumpers:[]});
+    }
+    P.growWorld(); say();
+    document.getElementById("hud-n").textContent=P.ducks.length+" ducks";
+    buildSr();
+  };
+  document.getElementById("crowd-reset").onclick=()=>{ location.reload(); };
+  setTimeout(say,300);
+})();
+
+document.getElementById("z-in").onclick=()=>P.zoomStep(1);
+document.getElementById("z-out").onclick=()=>P.zoomStep(-1);
+document.getElementById("cv-pond").addEventListener("dblclick",e=>e.preventDefault());
+(function(){
+  const w=document.getElementById("whistle");
+  w.addEventListener("click",e=>{
+    const b=e.target.closest("button[data-g]"); if(!b)return;
+    [...w.children].forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+    const g=b.dataset.g;
+    P.gather = !g ? null : (g==="@" ? (d=>d.mine) : (d=>d.keeper===g));
+  });
+})();
 
 /* Card Setup shows whichever duck this phone already holds a key for, so
    the common path is one tap rather than a form. Either order has to work,
@@ -1929,7 +2224,10 @@ function douse(d){
 function releaseDuck(){
   go("pond");
   if(MINE){ P.ducks.splice(P.ducks.indexOf(MINE),1); MINE=null; }
-  const x=20+Math.random()*(P.cw-40), y=34+Math.random()*(P.ch*0.42);
+  /* Drop it where you are looking, not at the world origin. */
+  P.growWorld();
+  const x=P.cam.x+20+Math.random()*Math.max(20,P.vw()-40),
+        y=P.cam.y+24+Math.random()*Math.max(20,P.vh()*0.42);
   P.onland=d=>{
     MINE=d; P.onland=null;
     document.getElementById("hud-n").textContent=P.ducks.length+" ducks";
@@ -1949,6 +2247,9 @@ document.getElementById("release-skip").onclick=releaseDuck;
      mid-flow      → finish it (you tapped "just look around" on the way in)
      no session    → nothing to find; say what would get you one.
    The settings and say controls only make sense once a duck exists. */
+/* Now that the pond is bigger than the screen, finding your duck is a
+   camera move rather than a highlight. */
+function findMyDuck(){ if(MINE){ P.focus(MINE,4); } }
 function syncPondCta(){
   const cta=document.getElementById("pond-cta");
   const settings=document.getElementById("pond-settings");
@@ -1961,7 +2262,10 @@ function syncPondCta(){
 
   if(hasDuck){
     cta.textContent="Find my duck";
-    cta.onclick=()=>go("mine");
+    /* Literally what the label says: move the camera to it. The pond is
+       bigger than the screen now, so this is a real action rather than a
+       link to another page. */
+    cta.onclick=findMyDuck;
   }else if(hasSession){
     cta.textContent="Finish my duck";
     cta.onclick=()=>go("studio");

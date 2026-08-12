@@ -182,6 +182,10 @@ Water is Bayer-dithered brand blues, never a gradient.
 
 | Date | Change | Why |
 | --- | --- | --- |
+| 2026-08-12 | Pond camera | Zoom is `CELL` restricted to {2,3,4,6}; world grows as `sqrt(ducks)`; camera is a translate. Verified: 13 ducks = world 172×370 (the screen), 113 = 362×779. |
+| 2026-08-12 | Camera renders off-tick | The world ticks at ~12fps for stop-motion, but a drag must track a finger at display rate, so the camera redraws on rAF while it is moving. Two clocks, one render. |
+| 2026-08-12 | Ducks never overlap | Separation on a uniform grid, O(n). Placement uses best-candidate sampling so the scatter is even without being a grid. |
+| 2026-08-12 | Keeper's custom link removed | A keeper who wants their card to point elsewhere can rewrite the tag. Deletes an open-redirect risk, an interstitial and a moderation surface. |
 | 2026-08-12 | Codex copy review applied | ~30% shorter across every screen; glossary reworked (keeper → card keeper, dropped the "only key that exists" metaphor, banned first person). |
 | 2026-08-12 | Copy extractor rewritten | It read only `.view`, so it missed the duck card, the sheets, every aria-label and every string the JS writes. 141 strings now, not 96. |
 | 2026-08-12 | Copy deck added ([COPY.md](COPY.md)) | Every string in one reviewable place. Its first run caught "waved" surviving the bump rename, and the keep sheet handing out /d/<slug> as the private link. |
