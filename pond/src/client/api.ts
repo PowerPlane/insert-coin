@@ -59,6 +59,19 @@ export interface SessionState {
   spent?: boolean;
 }
 
+/**
+ * Who a contact may be read by.
+ *
+ * Stated to the person in NAMES on every screen it appears on — "shared
+ * with Sam and David", never "scope: 2". Choosing nobody is not a value
+ * here: it means no contact is sent at all, so there is no row and nothing
+ * to leak. See docs/pond/UI.md § 9.
+ */
+export type ContactScope = "keeper" | "keeper_and_david";
+
+/** The four buttons on the report sheet, in the order they appear. */
+export type ReportReason = "rude" | "private" | "spam" | "other";
+
 export const api = {
   session: () => request<SessionState>("/session"),
 
@@ -71,14 +84,35 @@ export const api = {
     name: string;
     message: string;
     contact?: string;
+    scope?: ContactScope;
   }) =>
-    request<{ id: string; editKey: string }>("/duck", {
+    request<{ id: string; slug: string; editKey: string }>("/duck", {
       method: "POST",
       body: JSON.stringify(duck),
     }),
 
-  wave: (id: string) =>
-    request<{ waves: number }>("/wave", { method: "POST", body: JSON.stringify({ id }) }),
+  /**
+   * Bump another duck.
+   *
+   * Takes YOUR edit key as well as their id, because a bump is a thing one
+   * duck does to another — "Make a duck to bump" is not a nag, it is the
+   * shape of the feature. The server refuses an unauthenticated `from`, so
+   * nobody can spend your ten unreturned bumps for you.
+   *
+   * A 409 means the cap: bump them back to free a slot.
+   */
+  bump: (editKey: string, id: string) =>
+    request<{ ok: true; bumps: number; unreturned: number }>("/bump", {
+      method: "POST",
+      body: JSON.stringify({ editKey, id }),
+    }),
+
+  /** Idempotent: reporting twice is the same report, and says so. */
+  report: (id: string, reason: ReportReason, note?: string) =>
+    request<{ ok: true; filed: boolean }>("/report", {
+      method: "POST",
+      body: JSON.stringify({ id, reason, note }),
+    }),
 
   /** Being late is not an error — the server says so explicitly. */
   extinguish: (id: string) =>
@@ -125,6 +159,7 @@ export interface Draft {
   name: string;
   message: string;
   contact: string;
+  scope: ContactScope;
   savedAt: number;
 }
 

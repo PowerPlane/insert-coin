@@ -1,10 +1,14 @@
 /**
- * Waves, fires and speech.
+ * Bumps, fires, speech and reports.
  *
  * Every one of these is a high-frequency action from many clients at once,
  * so nothing here is read-then-write. Each is a single atomic statement
  * whose WHERE clause is the check — two parallel requests race and exactly
  * one wins, without a transaction.
+ *
+ * That constraint is why the schema looks the way it does. Where a rule
+ * could not be expressed in one statement, the schema changed until it
+ * could, rather than the code growing a lock.
  */
 
 import type { Env } from "./types";
@@ -16,40 +20,88 @@ export const FIRE_BURN_SEC = 90;
 export const FIRE_MIN_GAP_SEC = 45;
 export const FIRE_REIGNITE_SEC = 10 * 60;
 export const FIRE_MAX_CONCURRENT = 2;
+/**
+ * Ten unreturned bumps and it is their turn.
+ *
+ * The poke dynamic: it forces reciprocity instead of one-way spam. Counted
+ * as sent-minus-received for the PAIR, so a bump back always frees up room
+ * to bump again, and nobody can be silenced by someone else's enthusiasm.
+ */
+export const BUMP_UNRETURNED_CAP = 10;
+
+export const REPORT_REASONS = ["rude", "private", "spam", "other"] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
+export const REPORT_NOTE_MAX = 200;
+
+export type BumpResult =
+  | { ok: true; bumps: number; unreturned: number }
+  | { ok: false; reason: "unknown" | "self" | "capped" };
 
 /**
- * Wave once per person per duck.
+ * Bump another duck.
  *
- * `INSERT OR IGNORE` against the (duck_id, visitor) primary key gives the
- * idempotency, and the counter only moves when the insert actually
- * inserted — so hammering the button earns nothing.
+ * Directional and per-pair, so "bump back" is derivable and the cap is
+ * expressible. The whole rule lives in one upsert:
  *
- * The INSERT ... SELECT form matters: `OR IGNORE` does not swallow foreign
- * key violations, so a plain insert with a well-shaped but nonexistent duck
- * id would raise instead of returning a clean 404.
+ *   * the target must exist and be visible,
+ *   * sent-minus-received for this pair must be under the cap,
+ *   * and on conflict the existing row increments.
+ *
+ * The caller has already proved it owns `fromDuck` by presenting that
+ * duck's private edit key. That matters more than it looks: with a
+ * forgeable `from`, anyone could burn through a stranger's ten unreturned
+ * bumps on their behalf and lock them out of bumping someone. An
+ * unauthenticated cap is not a cap, it is a weapon.
  */
-export async function wave(env: Env, duckId: string, visitor: string): Promise<number | null> {
-  const ins = await env.DB.prepare(
-    `INSERT OR IGNORE INTO waves (duck_id, visitor, created)
-     SELECT ?1, ?2, ?3 WHERE EXISTS (SELECT 1 FROM ducks WHERE id = ?1)`,
+export async function bump(
+  env: Env,
+  fromDuck: string,
+  toDuck: string,
+): Promise<BumpResult> {
+  if (fromDuck === toDuck) return { ok: false, reason: "self" };
+  const ts = nowSec();
+
+  const res = await env.DB.prepare(
+    `INSERT INTO bumps (from_duck, to_duck, total, first_at, last_at)
+     SELECT ?1, ?2, 1, ?3, ?3
+      WHERE EXISTS (SELECT 1 FROM ducks WHERE id = ?2 AND hidden = 0)
+        AND (COALESCE((SELECT b.total FROM bumps b
+                        WHERE b.from_duck = ?1 AND b.to_duck = ?2), 0)
+             - COALESCE((SELECT b.total FROM bumps b
+                          WHERE b.from_duck = ?2 AND b.to_duck = ?1), 0)) < ?4
+        ON CONFLICT (from_duck, to_duck) DO UPDATE
+           SET total = bumps.total + 1, last_at = ?3`,
   )
-    .bind(duckId, visitor, nowSec())
+    .bind(fromDuck, toDuck, ts, BUMP_UNRETURNED_CAP)
     .run();
 
-  if (ins.meta.changes) {
-    // += 1 in SQL, never read-modify-write in JS: concurrent waves would
-    // otherwise both read N and both write N+1.
-    await env.DB.prepare(
-      `UPDATE ducks SET wave_count = wave_count + 1 WHERE id = ?1`,
+  if (!res.meta.changes) {
+    // Nothing happened, and the two reasons need different words on screen:
+    // a duck that is gone or hidden is "that duck isn't in the pond", a cap
+    // is "bump them back first".
+    const exists = await env.DB.prepare(
+      `SELECT 1 AS x FROM ducks WHERE id = ?1 AND hidden = 0`,
     )
-      .bind(duckId)
-      .run();
+      .bind(toDuck)
+      .first<{ x: number }>();
+    return { ok: false, reason: exists ? "capped" : "unknown" };
   }
 
-  const row = await env.DB.prepare(`SELECT wave_count FROM ducks WHERE id = ?1`)
-    .bind(duckId)
-    .first<{ wave_count: number }>();
-  return row ? row.wave_count : null;
+  const totals = await env.DB.prepare(
+    `SELECT (SELECT COALESCE(SUM(b.total), 0) FROM bumps b WHERE b.to_duck = ?2) AS bumps,
+            COALESCE((SELECT b.total FROM bumps b
+                       WHERE b.from_duck = ?1 AND b.to_duck = ?2), 0)
+            - COALESCE((SELECT b.total FROM bumps b
+                         WHERE b.from_duck = ?2 AND b.to_duck = ?1), 0) AS unreturned`,
+  )
+    .bind(fromDuck, toDuck)
+    .first<{ bumps: number; unreturned: number }>();
+
+  return {
+    ok: true,
+    bumps: Number(totals?.bumps ?? 0),
+    unreturned: Number(totals?.unreturned ?? 0),
+  };
 }
 
 /**
@@ -92,13 +144,18 @@ export async function say(
 
 /**
  * Ignite a 凶 duck. Server-only — no client can start a fire, so there is
- * nothing to farm and no griefing vector. Called from a scheduled handler.
+ * nothing to farm and no griefing vector.
+ *
+ * Called from GET /api/pond, not from a timer. Vercel Hobby crons run once
+ * a day and a finer expression fails at deploy time, but that turned out to
+ * be a better design anyway: nobody sees a fire that starts while nobody is
+ * looking, so the timer was never doing real work.
  */
 export async function maybeIgnite(env: Env): Promise<boolean> {
   const ts = nowSec();
 
-  // One statement, so two overlapping cron invocations can't both pass the
-  // caps and light three fires at once. Every guard lives in the WHERE:
+  // One statement, so two overlapping requests can't both pass the caps and
+  // light three fires at once. Every guard lives in the WHERE:
   //   * fewer than FIRE_MAX_CONCURRENT currently burning
   //   * at least FIRE_MIN_GAP_SEC since the last ignition
   //   * the duck is a visible 凶 that isn't burning and hasn't burned recently
@@ -128,10 +185,14 @@ export async function maybeIgnite(env: Env): Promise<boolean> {
 /**
  * Put a fire out.
  *
- * `UPDATE ... WHERE out_at IS NULL` is the race: the first writer wins and
- * gets changes=1, everyone else gets 0. A late tap is not an error — the
- * client animates the extinguish either way and simply isn't credited.
- * Nobody should see a failure message for being a second slow.
+ * ONE statement. `WHERE … out_at IS NULL` is the race: the first writer
+ * wins and gets `changes = 1`, everyone else gets 0. Winning and being
+ * credited are the same event — `out_by` records who did it — so there is
+ * no second write to keep in step and no window to crash inside.
+ *
+ * A late tap is not an error. The client animates the extinguish either way
+ * and simply isn't credited; nobody should see a failure message for being
+ * a second slow.
  */
 export async function extinguish(
   env: Env,
@@ -140,40 +201,58 @@ export async function extinguish(
 ): Promise<{ alreadyOut: boolean; credited: boolean }> {
   const ts = nowSec();
 
-  const fire = await env.DB.prepare(
-    `SELECT id FROM fires
-      WHERE duck_id = ?1 AND out_at IS NULL AND burns_until > ?2
-      ORDER BY lit_at DESC LIMIT 1`,
+  const res = await env.DB.prepare(
+    `UPDATE fires
+        SET out_at = ?1, out_by = ?2
+      WHERE id = (SELECT id FROM fires
+                   WHERE duck_id = ?3 AND out_at IS NULL AND burns_until > ?1
+                   ORDER BY lit_at DESC LIMIT 1)`,
   )
-    .bind(duckId, ts)
-    .first<{ id: number }>();
-  if (!fire) return { alreadyOut: true, credited: false };
-
-  const won = await env.DB.prepare(
-    `UPDATE fires SET out_at = ?1, out_by = ?2 WHERE id = ?3 AND out_at IS NULL`,
-  )
-    .bind(ts, visitor, fire.id)
+    .bind(ts, visitor, duckId)
     .run();
 
-  // Credit belongs to whoever actually put it out. Crediting on every tap
-  // would hand a rescue to people who arrived after the fire was already
-  // out, which makes the number on someone's duck card a lie.
-  if (!won.meta.changes) return { alreadyOut: true, credited: false };
+  const won = Boolean(res.meta.changes);
+  return { alreadyOut: !won, credited: won };
+}
 
-  // Per person per fire, so spamming taps still earns nothing.
-  const credit = await env.DB.prepare(
-    `INSERT OR IGNORE INTO rescues (fire_id, visitor, created) VALUES (?1, ?2, ?3)`,
-  )
-    .bind(fire.id, visitor, ts)
-    .run();
-
-  if (credit.meta.changes) {
-    await env.DB.prepare(
-      `UPDATE ducks SET rescue_count = rescue_count + 1 WHERE id = ?1`,
-    )
-      .bind(duckId)
-      .run();
+/**
+ * Report a duck.
+ *
+ * Anyone can file; only the admin acts. A reason is required and a note is
+ * optional, because a report that arrives as a bare row tells David nothing
+ * he can act on — "Rude or abusive" and "Private details" need different
+ * responses, and the second one needs answering quickly.
+ *
+ * One report per visitor per duck, enforced by a UNIQUE index rather than a
+ * check, so the button is idempotent ("Reported ✓") and the queue cannot be
+ * flooded by one person tapping repeatedly. Filing twice is not an error to
+ * show anybody — it is the same report.
+ */
+export async function report(
+  env: Env,
+  duckId: string,
+  visitor: string,
+  reason: unknown,
+  note: unknown,
+): Promise<{ ok: true; filed: boolean } | { ok: false; reason: "unknown" | "bad reason" }> {
+  if (!REPORT_REASONS.includes(reason as ReportReason)) {
+    return { ok: false, reason: "bad reason" };
   }
 
-  return { alreadyOut: false, credited: Boolean(credit.meta.changes) };
+  const res = await env.DB.prepare(
+    `INSERT OR IGNORE INTO reports (duck_id, visitor, reason, note, created)
+     SELECT ?1, ?2, ?3, ?4, ?5
+      WHERE EXISTS (SELECT 1 FROM ducks WHERE id = ?1)`,
+  )
+    .bind(duckId, visitor, reason, cleanText(note, REPORT_NOTE_MAX), nowSec())
+    .run();
+
+  if (res.meta.changes) return { ok: true, filed: true };
+
+  // Either the duck is gone, or this visitor already reported it. Only the
+  // first is worth telling anyone about.
+  const exists = await env.DB.prepare(`SELECT 1 AS x FROM ducks WHERE id = ?1`)
+    .bind(duckId)
+    .first<{ x: number }>();
+  return exists ? { ok: true, filed: false } : { ok: false, reason: "unknown" };
 }

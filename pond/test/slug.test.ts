@@ -110,7 +110,7 @@ describe("a slug is an address, not a credential", () => {
   });
 
   it("the edit key is generated independently of the slug", () => {
-    const src = read("ducks.ts");
+    const src = read("release.ts");
     const fn = src.slice(src.indexOf("export async function createDuck"));
     const body = fn.slice(0, fn.indexOf("\n}"));
     expect(body).toMatch(/const editKey = randomId\(32\)/);
@@ -119,12 +119,32 @@ describe("a slug is an address, not a credential", () => {
   });
 
   it("the public and private pages live on different paths", () => {
-    const src = read("index.ts");
-    expect(src).toMatch(/path\.startsWith\("\/d\/"\)/); // public, readable
-    expect(src).toMatch(/path\.startsWith\("\/e\/"\)/); // private, secret
+    const routes = readFileSync(join(__dirname, "..", "vercel.json"), "utf8");
+    expect(routes).toMatch(/"\/d\/:slug"/); // public, readable, indexable
+    expect(routes).toMatch(/"\/e\/:key"/); // private, secret, noindex
+
     // Only the credential path may be marked noindex; making the public
     // page noindex would mean nobody could ever share a duck.
-    const eBlock = src.slice(src.indexOf('path.startsWith("/e/")'));
-    expect(eBlock.slice(0, 400)).toMatch(/x-robots-tag/);
+    const src = read("pages.ts");
+    const editPage = src.slice(src.indexOf("export async function editPage"));
+    expect(editPage).toMatch(/x-robots-tag/);
+    const duckPage = src.slice(
+      src.indexOf("export async function duckPage"),
+      src.indexOf("export async function editPage"),
+    );
+    expect(duckPage).not.toMatch(/noindex/);
+  });
+
+  it("the private page never server-renders the duck it is for", () => {
+    // /e/<key> is a bearer URL. Anything baked into that document is
+    // sitting in a browser cache, a screenshot, or a shoulder-surfer's
+    // view — so the page ships the key and fetches the rest over the API.
+    const src = read("shell.ts");
+    const editShell = src.slice(src.indexOf("export function editShell"));
+    expect(editShell).toMatch(/noindex: true/);
+    // It cannot render what it is never given: the signature takes a key,
+    // not a duck. `duckShell` takes one; this must not.
+    expect(editShell).toMatch(/editShell\(lang: Language, editKey: string\)/);
+    expect(editShell).not.toMatch(/PublicDuck/);
   });
 });

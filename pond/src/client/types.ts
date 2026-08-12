@@ -4,7 +4,15 @@ export interface Sticker {
   y: number;
 }
 
-/** A duck as the pond endpoint returns it. Note what is absent. */
+/**
+ * A duck as the pond endpoint returns it.
+ *
+ * Must stay in step with `PublicDuck` in src/worker/types.ts — that is the
+ * server's copy of this shape and the one the tests assert against.
+ *
+ * Note what is absent: no contact, and no card serial. What a duck shows of
+ * the card it came from is `keeper`, a name.
+ */
 export interface PondDuck {
   id: string;
   slug: string;
@@ -15,10 +23,12 @@ export interface PondDuck {
   name: string;
   message: string;
   created: number;
-  waves: number;
+  bumps: number;
   rescues: number;
   burning: boolean;
   say: { text: string; at: number } | null;
+  /** "via Sam", or nothing at all. */
+  keeper: string | null;
 }
 
 /** The duck being built or edited locally. */
@@ -30,6 +40,8 @@ export interface DuckDraft {
   name: string;
   message: string;
   contact: string;
+  /** Only meaningful when `contact` is non-empty. */
+  scope: "keeper" | "keeper_and_david";
 }
 
 export type ScreenName =

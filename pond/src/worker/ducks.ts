@@ -2,21 +2,29 @@
  * Duck reads and writes.
  *
  * ══ THE ONE RULE ══
- * Nothing in this file may name the `contacts` table. The public pond read
- * must be structurally incapable of returning a contact — not "we remember
- * to strip the field", but "the query does not know the table exists".
+ * Nothing in this file may name the `contacts` table AT ALL, and nothing
+ * may select `card_id` into anything a visitor receives. The public read
+ * must be structurally incapable of returning either — not "we remember to
+ * strip the field", but "the query does not know the table exists".
  * `test/contacts-isolation.test.ts` greps this file to enforce it.
+ *
+ * That rule is why releasing a duck lives in `release.ts` rather than here:
+ * the release has to write the contact and the duck in one transaction, and
+ * doing it in this file would have bought that atomicity by spending the
+ * one property that makes the privacy claim checkable.
  */
 
 import type { Env, PublicDuck } from "./types";
-import { freeSlug, normaliseSlug, slugTaken } from "./slug";
-import { cleanText, nowSec, randomId } from "./util";
+import { normaliseSlug, slugTaken } from "./slug";
+import { cleanText, nowSec } from "./util";
 
 export const MAX_STICKERS = 6;
 /** 24×24 @ 4bpp = 288 bytes → exactly 384 base64 characters. */
 export const PAINT_B64_LEN = 384;
 /** Keep in step with TINTS in src/client/sprites.ts. */
 export const TINT_COUNT = 12;
+/** Ranked senders on a duck card — `.p-bumper`, max 5. See UI.md § 7. */
+export const TOP_BUMPERS = 5;
 
 /** Sticker ids the client ships. Anything else is rejected, not stored. */
 const STICKER_IDS = new Set([
@@ -27,6 +35,11 @@ const STICKER_IDS = new Set([
   "balloon","fish","leaf","spark",
   "handbag","tote","basket","satchel",
 ]);
+
+/** Who a contact may be read by. "Nobody" is spelled "no contact at all". */
+export const CONTACT_SCOPES = ["keeper", "keeper_and_david"] as const;
+export type ContactScope = (typeof CONTACT_SCOPES)[number];
+export const DEFAULT_CONTACT_SCOPE: ContactScope = "keeper_and_david";
 
 export interface DuckInput {
   fortune: number;
@@ -106,103 +119,56 @@ export function validateDuck(input: DuckInput): ValidatedDuck | { error: string 
   };
 }
 
-export interface CreatedDuck {
-  id: string;
-  slug: string;
-  editKey: string;
-}
-
-export async function createDuck(
-  env: Env,
-  sessionId: string,
-  cardId: string | null,
-  duck: ValidatedDuck,
-): Promise<CreatedDuck | { error: string }> {
-  const id = randomId(10);
-  // Separate, longer secret. Never derived from `id` or the slug, so a
-  // readable public URL tells you nothing about the edit key.
-  const editKey = randomId(32);
-  const ts = nowSec();
-  // Auto-assigned so nobody has to invent a unique name to release a duck.
-  // Renameable afterwards in settings.
-  const slug = await freeSlug(env);
-
-  // Order matters. `sessions.spent_duck` has a foreign key to `ducks(id)`
-  // and the schema enables PRAGMA foreign_keys, so claiming the session
-  // FIRST would reference a row that does not exist yet. Insert the duck,
-  // then claim.
-  await env.DB.prepare(
-    `INSERT INTO ducks
-       (id, slug, edit_key, card_id, fortune, tint, stickers, paint, name,
-        message, created, updated)
-     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?11)`,
-  )
-    .bind(
-      id,
-      slug,
-      editKey,
-      cardId,
-      duck.fortune,
-      duck.tint,
-      JSON.stringify(duck.stickers),
-      duck.paint,
-      duck.name,
-      duck.message,
-      ts,
-    )
-    .run();
-
-  // One duck per session. The WHERE clause is the check, so two parallel
-  // submits race and exactly one wins — no read-then-write.
-  const claim = await env.DB.prepare(
-    `UPDATE sessions SET spent_duck = ?1
-       WHERE id = ?2 AND spent_duck IS NULL AND expires >= ?3`,
-  )
-    .bind(id, sessionId, ts)
-    .run();
-
-  if (!claim.meta.changes) {
-    // We lost the race (or the session expired between the check and here).
-    // Remove the duck we just made rather than leaving it floating with no
-    // session that admits to owning it.
-    await env.DB.prepare(`DELETE FROM ducks WHERE id = ?1`).bind(id).run();
-    return { error: "session already used or expired" };
-  }
-
-  return { id, slug, editKey };
+/** A contact scope a client asked for, or the default if it asked for nonsense. */
+export function validateScope(raw: unknown): ContactScope {
+  return CONTACT_SCOPES.includes(raw as ContactScope)
+    ? (raw as ContactScope)
+    : DEFAULT_CONTACT_SCOPE;
 }
 
 /**
- * The public pond.
+ * The columns every public read shares.
  *
- * Reads only from `ducks`, plus the two derived bits the client needs to
- * draw (is it on fire, is it saying something). No join reaches anything
- * private. Capped and ordered so the response size is bounded no matter how
- * large the pond gets.
+ * Written once so the pond, the duck page and the owner's own view cannot
+ * drift apart — and so that adding a column here is a deliberate act
+ * reviewed in one place rather than three.
+ *
+ * `bumps` and `rescues` are DERIVED. They used to be denormalised counters
+ * on `ducks`, kept in step by a second write after the first; that second
+ * write was a window where a crash left a bump recorded with no count, and
+ * a stored total sitting beside the per-pair table it is supposed to equal
+ * is a drift waiting to happen. Correlated aggregates over indexed columns
+ * cost nothing at pond scale. The ceiling, and the fix when it arrives, is
+ * in docs/pond/SECURITY.md § 5.
+ *
+ * `?1` is now and `?2` is the say cutoff in EVERY query that uses this, so
+ * `?3` is always free for whatever that query is actually looking up. A gap
+ * in the numbering would bind silently to the wrong column.
  */
-export async function listPond(env: Env, limit = 200): Promise<PublicDuck[]> {
-  const ts = nowSec();
-  const { results } = await env.DB.prepare(
-    `SELECT d.id, d.slug, d.fortune, d.tint, d.stickers, d.paint, d.name, d.message,
-            d.created, d.wave_count, d.rescue_count,
-            (SELECT 1 FROM fires f
-               WHERE f.duck_id = d.id AND f.out_at IS NULL AND f.burns_until > ?1
-               LIMIT 1) AS burning,
-            (SELECT s.text FROM says s
-               WHERE s.duck_id = d.id AND s.created > ?2
-               ORDER BY s.created DESC LIMIT 1) AS say_text,
-            (SELECT s.created FROM says s
-               WHERE s.duck_id = d.id AND s.created > ?2
-               ORDER BY s.created DESC LIMIT 1) AS say_at
-       FROM ducks d
-      WHERE d.hidden = 0
-      ORDER BY d.created DESC
-      LIMIT ?3`,
-  )
-    .bind(ts, ts - 45, limit)
-    .all<Record<string, unknown>>();
+const PUBLIC_COLUMNS = `
+  d.id, d.slug, d.fortune, d.tint, d.stickers, d.paint, d.name, d.message,
+  d.created,
+  (SELECT COALESCE(SUM(b.total), 0) FROM bumps b WHERE b.to_duck = d.id) AS bumps,
+  (SELECT COUNT(*) FROM fires f
+    WHERE f.duck_id = d.id AND f.out_by IS NOT NULL) AS rescues,
+  (SELECT 1 FROM fires f
+     WHERE f.duck_id = d.id AND f.out_at IS NULL AND f.burns_until > ?1
+     LIMIT 1) AS burning,
+  (SELECT s.text FROM says s
+     WHERE s.duck_id = d.id AND s.created > ?2
+     ORDER BY s.created DESC LIMIT 1) AS say_text,
+  (SELECT s.created FROM says s
+     WHERE s.duck_id = d.id AND s.created > ?2
+     ORDER BY s.created DESC LIMIT 1) AS say_at,
+  (SELECT e.keeper_name FROM card_epochs e WHERE e.id = d.epoch_id) AS keeper
+`;
 
-  return (results ?? []).map((r) => ({
+/** Speech bubbles live 45 s on screen; older ones are not sent at all. */
+export const SAY_VISIBLE_SEC = 45;
+
+function toPublicDuck(r: Record<string, unknown>): PublicDuck {
+  const keeper = typeof r.keeper === "string" ? r.keeper.trim() : "";
+  return {
     id: String(r.id),
     slug: String(r.slug ?? ""),
     fortune: Number(r.fortune),
@@ -212,11 +178,36 @@ export async function listPond(env: Env, limit = 200): Promise<PublicDuck[]> {
     name: String(r.name ?? ""),
     message: String(r.message ?? ""),
     created: Number(r.created),
-    waves: Number(r.wave_count ?? 0),
-    rescues: Number(r.rescue_count ?? 0),
+    bumps: Number(r.bumps ?? 0),
+    rescues: Number(r.rescues ?? 0),
     burning: Boolean(r.burning),
     say: r.say_text ? { text: String(r.say_text), at: Number(r.say_at) } : null,
-  }));
+    // An unclaimed card has no keeper, and a keeper who left the name blank
+    // is the same thing to a reader: nothing to show.
+    keeper: keeper || null,
+  };
+}
+
+/**
+ * The public pond.
+ *
+ * Reads only from `ducks` plus the derived bits the client needs to draw.
+ * No join reaches anything private. Capped and ordered so the response size
+ * is bounded no matter how large the pond gets.
+ */
+export async function listPond(env: Env, limit = 200): Promise<PublicDuck[]> {
+  const ts = nowSec();
+  const { results } = await env.DB.prepare(
+    `SELECT ${PUBLIC_COLUMNS}
+       FROM ducks d
+      WHERE d.hidden = 0
+      ORDER BY d.created DESC
+      LIMIT ?3`,
+  )
+    .bind(ts, ts - SAY_VISIBLE_SEC, limit)
+    .all<Record<string, unknown>>();
+
+  return (results ?? []).map(toPublicDuck);
 }
 
 /** Stored JSON is ours, but a corrupt row must not take the pond down. */
@@ -235,28 +226,58 @@ function safeParseStickers(raw: unknown): { id: string; x: number; y: number }[]
 }
 
 /** Look a duck up by its private edit key. Constant-time via the index. */
-export async function duckByEditKey(env: Env, editKey: string) {
+export async function duckByEditKey(env: Env, editKey: string): Promise<PublicDuck | null> {
   if (!/^[A-Za-z0-9]{16,64}$/.test(editKey)) return null;
-  return env.DB.prepare(
-    `SELECT id, slug, fortune, tint, stickers, paint, name, message, created,
-            wave_count, rescue_count, hidden
-       FROM ducks WHERE edit_key = ?1`,
+  const ts = nowSec();
+  const row = await env.DB.prepare(
+    `SELECT ${PUBLIC_COLUMNS} FROM ducks d WHERE d.edit_key = ?3`,
   )
-    .bind(editKey)
+    .bind(ts, ts - SAY_VISIBLE_SEC, editKey)
     .first<Record<string, unknown>>();
+  return row ? toPublicDuck(row) : null;
 }
 
 /** The public duck page. Read-only — a slug is an address, not a key. */
-export async function duckBySlug(env: Env, slug: string) {
+export async function duckBySlug(env: Env, slug: string): Promise<PublicDuck | null> {
   const clean = normaliseSlug(slug);
   if (!clean) return null;
-  return env.DB.prepare(
-    `SELECT id, slug, fortune, tint, stickers, paint, name, message, created,
-            wave_count, rescue_count
-       FROM ducks WHERE slug = ?1 AND hidden = 0`,
+  const ts = nowSec();
+  const row = await env.DB.prepare(
+    `SELECT ${PUBLIC_COLUMNS} FROM ducks d WHERE d.slug = ?3 AND d.hidden = 0`,
   )
-    .bind(clean)
+    .bind(ts, ts - SAY_VISIBLE_SEC, clean)
     .first<Record<string, unknown>>();
+  return row ? toPublicDuck(row) : null;
+}
+
+/**
+ * "Most bumps from" — the ranked senders on a duck card.
+ *
+ * A query, not a table. This is the payoff for making bumps per-pair
+ * instead of a counter: the duck card gets real names for free, and so does
+ * whatever Phase 3 decides to do with them.
+ */
+export async function topBumpers(
+  env: Env,
+  duckId: string,
+  limit = TOP_BUMPERS,
+): Promise<{ slug: string; name: string; count: number }[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT d.slug AS slug, d.name AS name, b.total AS total
+       FROM bumps b
+       JOIN ducks d ON d.id = b.from_duck
+      WHERE b.to_duck = ?1 AND d.hidden = 0
+      ORDER BY b.total DESC, b.last_at DESC
+      LIMIT ?2`,
+  )
+    .bind(duckId, limit)
+    .all<Record<string, unknown>>();
+
+  return (results ?? []).map((r) => ({
+    slug: String(r.slug ?? ""),
+    name: String(r.name ?? ""),
+    count: Number(r.total ?? 0),
+  }));
 }
 
 /**
@@ -319,10 +340,15 @@ export async function updateDuck(
 /**
  * Remove a duck completely.
  *
- * `contacts.duck_id` is ON DELETE CASCADE, so the contact goes in the same
- * statement. "Take my duck out" has to actually mean it — a person who
- * leaves a phone number on a stranger's website must be able to withdraw it
- * without emailing anyone.
+ * One statement, because `ducks_before_delete` in the schema does the rest:
+ * the contact, the bumps in both directions, the fires and their rescues,
+ * the says, the reports, and the references that would otherwise pin the
+ * row. A trigger rather than a cascade, so it holds even where foreign keys
+ * are not being enforced — see the header of that trigger.
+ *
+ * "Take my duck out" has to actually mean it. A person who leaves a phone
+ * number on a stranger's website must be able to withdraw it without
+ * emailing anyone.
  */
 export async function deleteDuck(env: Env, editKey: string): Promise<boolean> {
   const res = await env.DB.prepare(`DELETE FROM ducks WHERE edit_key = ?1`)

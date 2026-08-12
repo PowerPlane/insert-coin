@@ -11,27 +11,21 @@
   ],
 
   "rewrites": [
+    { "source": "/", "destination": "/api/shell" },
     { "source": "/d/:slug", "destination": "/api/duck-page?slug=:slug" },
-    { "source": "/e/:key", "destination": "/api/duck-edit?key=:key" },
-    { "source": "/pondkeeper", "destination": "/api/admin" },
-    { "source": "/pondkeeper/:path*", "destination": "/api/admin?path=:path*" }
+    { "source": "/e/:key", "destination": "/api/duck-edit?key=:key" }
   ],
 
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/(.*)\\.(js|css|png|svg|webp|woff2)",
       "headers": [
-        { "key": "referrer-policy", "value": "no-referrer" },
         { "key": "x-content-type-options", "value": "nosniff" },
-        { "key": "x-frame-options", "value": "DENY" }
+        { "key": "cache-control", "value": "public, max-age=3600" }
       ]
     },
     {
       "source": "/e/(.*)",
-      "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }]
-    },
-    {
-      "source": "/pondkeeper(.*)",
       "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }]
     }
   ]

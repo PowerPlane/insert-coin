@@ -1,14 +1,40 @@
+import type { Db } from "../db/types";
+
+/**
+ * Everything a request handler is given.
+ *
+ * `DB` is the D1-shaped interface from src/db, not a Cloudflare binding.
+ * That indirection is the entire Cloudflare→Vercel port: these modules were
+ * written against `prepare().bind().first()/run()/all()` and did not change
+ * when the platform did.
+ *
+ * There is no `ASSETS` any more. On Workers the static site was a binding
+ * you fetched from; on Vercel the CDN serves `public/` before a function is
+ * ever invoked, and the HTML shell is rendered by src/worker/shell.ts —
+ * which is what lets `/` set a session cookie, `/d/<slug>` carry real link
+ * previews, and `<html lang>` be correct before Phase 6 adds 繁體中文.
+ */
 export interface Env {
-  DB: D1Database;
-  /** HMAC key for session cookies and visitor hashes. `wrangler secret put`. */
+  DB: Db;
+  /** HMAC key for session cookies and visitor hashes. */
   SESSION_SECRET: string;
   /** Admin password. The secret path is obscurity; this is the actual auth. */
   ADMIN_PASSWORD: string;
-  /** Static client assets. */
-  ASSETS: Fetcher;
 }
 
-/** What the public pond endpoint returns. Note what is NOT here. */
+/**
+ * What the public pond endpoint returns.
+ *
+ * ══ NOTE WHAT IS NOT HERE ══
+ * No contact, and no card id. The card serial is half of what a card claim
+ * is keyed on (see BUILD-PLAN § The claim credential), so publishing it
+ * would hand out one of the two things a forger needs. What a duck shows
+ * instead is `keeper` — the NAME the card's current keeper chose, resolved
+ * through card_epochs. "via Sam" tells a visitor something true and useful
+ * and cannot be replayed at anything.
+ *
+ * `test/contacts-isolation.test.ts` asserts both absences.
+ */
 export interface PublicDuck {
   id: string;
   /** The readable public address, /d/<slug>. Not a credential. */
@@ -20,8 +46,11 @@ export interface PublicDuck {
   name: string;
   message: string;
   created: number;
-  waves: number;
+  /** Total bumps received. Derived from `bumps`, never a stored counter. */
+  bumps: number;
   rescues: number;
   burning: boolean;
   say: { text: string; at: number } | null;
+  /** The card keeper's name — "via Sam" — or null. Never the serial. */
+  keeper: string | null;
 }

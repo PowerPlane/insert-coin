@@ -10,6 +10,7 @@
  * every duck dies on the submit button.
  */
 
+import { consume, mintBuckets, sweepRateLimits } from "./limits";
 import type { Env } from "./types";
 import { nowSec, randomId, timingSafeEqual } from "./util";
 
@@ -40,8 +41,9 @@ export async function hmac(secret: string, message: string): Promise<string> {
 
 /**
  * A visitor identity that is stable per browser but is NOT a device
- * fingerprint and is NOT an IP address. It exists only so "waves" and
- * "rescues" can be counted once per person instead of once per tap.
+ * fingerprint and is NOT an IP address. It exists only so rescues and
+ * reports can be counted once per person instead of once per tap, and so
+ * minting can be rate-limited without knowing who anybody is.
  */
 export async function visitorHash(env: Env, clientId: string): Promise<string> {
   return (await hmac(env.SESSION_SECRET, `v:${clientId}`)).slice(0, 32);
@@ -137,14 +139,19 @@ export interface MintResult {
  */
 export async function mintSession(
   env: Env,
-  opts: { digit: number; cardId: string | null; nonce: string | null },
+  opts: {
+    digit: number;
+    cardId: string | null;
+    nonce: string | null;
+    visitor: string;
+  },
 ): Promise<MintResult | null> {
   if (!Number.isInteger(opts.digit) || opts.digit < 1 || opts.digit > 4) return null;
 
   // `c=` comes off a physical card, but anyone can type one. An unknown id
   // is stored as NULL rather than passed through — `sessions.card_id` has a
   // foreign key, so a forged or typoed value would otherwise turn
-  // /p?d=1&c=whatever into an unhandled database error.
+  // /?d=1&c=whatever into an unhandled database error.
   let cardId: string | null = null;
   if (opts.cardId) {
     const card = await env.DB.prepare(`SELECT id, disabled FROM cards WHERE id = ?1`)
@@ -155,6 +162,13 @@ export async function mintSession(
     if (card?.disabled) return null;
     cardId = card ? card.id : null;
   }
+
+  // Charged BEFORE the session exists, and before the nonce is spent, so a
+  // refused mint costs nothing but the attempt. Being over a limit produces
+  // exactly what tapping a card with no coin in it produces — a read-only
+  // pond — because there is no honest way to distinguish the two to a
+  // visitor without telling a farmer which limit they hit.
+  if (!(await consume(env, mintBuckets(cardId, opts.visitor)))) return null;
 
   // If the firmware supplies a nonce, one coin insert mints exactly one
   // session. INSERT on a (card_id, nonce) primary key is the whole check:
@@ -186,9 +200,25 @@ export async function mintSession(
   };
 }
 
-/** Housekeeping. Cheap, and keeps the sessions table from growing forever. */
-export async function sweepSessions(env: Env): Promise<void> {
-  await env.DB.prepare(`DELETE FROM sessions WHERE expires < ?1`)
-    .bind(nowSec() - 86400)
-    .run();
+/**
+ * Housekeeping — the entire job of the daily cron.
+ *
+ * HOSTING.md has always said the cron sweeps "sessions and nonces"; only
+ * sessions were ever swept. Nonces are the smallest table here and would
+ * have grown forever, which is the kind of thing nobody notices until a
+ * free tier says so.
+ *
+ * Sessions are kept a day past expiry rather than deleted on the dot: a
+ * session row is the only record that a duck was released by a particular
+ * tap, and `spent_duck` is what stops one tap minting two.
+ */
+export async function sweep(env: Env): Promise<void> {
+  const cutoff = nowSec() - 86400;
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM sessions WHERE expires < ?1`).bind(cutoff),
+    // A nonce is proof that one coin insert was spent. Once every session
+    // it could have minted is gone, it is proof of nothing.
+    env.DB.prepare(`DELETE FROM nonces WHERE used < ?1`).bind(cutoff),
+  ]);
+  await sweepRateLimits(env);
 }

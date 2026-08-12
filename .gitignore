@@ -53,6 +53,12 @@ __pycache__/
 
 # Pond web app
 pond/node_modules/
-pond/.wrangler/
-pond/public/
-pond/.dev.vars
+pond/.vercel/
+pond/.env*.local
+pond/*.db
+pond/*.db-journal
+
+# pond/public/ used to be ignored, back when Wrangler built the client into
+# it. On Vercel it is the OUTPUT DIRECTORY — the CDN serves it verbatim and
+# nothing generates it — so ignoring it would deploy a site with no
+# stylesheet and no script, and the only symptom would be a blank page.

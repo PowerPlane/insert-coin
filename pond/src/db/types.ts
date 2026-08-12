@@ -38,6 +38,8 @@ export interface Db {
    * credited, a duck released with no session claimed.
    */
   batch(stmts: Stmt[]): Promise<RunResult[]>;
+  /** Is this connection enforcing foreign keys right now? */
+  foreignKeysOn(): Promise<boolean>;
   /** Throws unless the connection really is enforcing foreign keys. */
   assertForeignKeys(): Promise<void>;
   close(): void;

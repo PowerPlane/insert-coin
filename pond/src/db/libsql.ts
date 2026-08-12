@@ -1,26 +1,36 @@
 /**
  * libSQL (Turso) behind the D1-shaped interface.
  *
- * ══ THE FOREIGN KEY TRAP ══
- * Turso ships with foreign key enforcement OFF, for SQLite compatibility.
- * Our schema declares `contacts.duck_id ... ON DELETE CASCADE`, and that
- * cascade is the entire mechanism behind "take my duck out deletes its
- * message and contact at the same time. Nothing is kept." — a promise the
- * contact screen makes in writing before anyone hands over an address.
+ * ══ THE FOREIGN KEY TRAP, AND WHY IT NO LONGER DECIDES ANYTHING ══
+ * SQLite ships foreign key enforcement OFF and the pragma is PER-CONNECTION.
+ * Turso's HTTP mode hands out connections we do not own the lifetime of, so
+ * a pooled or re-established one can arrive without it — and with the pragma
+ * off, `contacts.duck_id ... ON DELETE CASCADE` silently does nothing.
+ * Deleting a duck leaves the contact row behind and NOTHING FAILS: no error,
+ * no warning, the data is just quietly still there. A broken promise that
+ * looks exactly like a kept one.
  *
- * With the pragma off, deleting a duck leaves the contact row behind and
- * NOTHING FAILS. No error, no warning; the data is just quietly still there.
- * That is the worst shape a bug can take, so this module does three things
- * rather than one:
+ * The first version of this file answered that by refusing to serve unless
+ * it could read the pragma back as ON. That was the wrong lever:
  *
- *   1. sets the pragma on every connection,
- *   2. asserts it is actually on, by reading it back,
- *   3. refuses to serve if it is not.
+ *   * it could not be verified without a real Turso database, so the whole
+ *     port sat behind a fact nobody could check, and
+ *   * if the answer turned out to be "no", the site would simply not boot —
+ *     downtime bought no safety, because the promise was still resting on
+ *     the pragma either way.
  *
- * Point 3 is not defensive programming for its own sake. If a future Turso
- * change, a connection-pool reset, or an HTTP-mode quirk drops the pragma
- * between deploys, the correct behaviour is a loud 500 — not a site that
- * keeps working while silently retaining data people asked us to delete.
+ * So the promise moved into the schema instead. `ducks_before_delete` in
+ * 0001_init.sql deletes the contact itself, and a trigger fires whether or
+ * not foreign keys are on. `test/foreign-keys.test.ts` proves it by running
+ * the whole deletion with the pragma deliberately OFF.
+ *
+ * What is left here is honest bookkeeping, not a load-bearing gate:
+ *
+ *   1. set the pragma on every connection — it is still worth having, for
+ *      the integrity checks the triggers do not cover,
+ *   2. read it back and say so,
+ *   3. refuse only for local files, where "off" means a broken test rig
+ *      rather than a platform we do not control.
  */
 
 import { createClient, type Client, type InArgs, type InValue } from "@libsql/client";
@@ -87,13 +97,17 @@ export class LibsqlDb implements Db {
     }));
   }
 
-  async assertForeignKeys(): Promise<void> {
+  async foreignKeysOn(): Promise<boolean> {
     const r = await this.client.execute("PRAGMA foreign_keys");
-    const on = Number(Object.values(r.rows[0] ?? {})[0] ?? 0) === 1;
-    if (!on) {
+    return Number(Object.values(r.rows[0] ?? {})[0] ?? 0) === 1;
+  }
+
+  async assertForeignKeys(): Promise<void> {
+    if (!(await this.foreignKeysOn())) {
       throw new Error(
-        "foreign_keys is OFF. Deleting a duck would leave its contact row " +
-          "behind with no error, breaking the deletion promise. Refusing to serve.",
+        "foreign_keys is OFF on this connection. The triggers in " +
+          "0001_init.sql still hold the deletion promise, but every other " +
+          "referential check is unenforced, which is not acceptable locally.",
       );
     }
   }
@@ -103,19 +117,42 @@ export class LibsqlDb implements Db {
   }
 }
 
+/** A file or in-memory database — somewhere we control the connection. */
+function isLocal(url: string): boolean {
+  return url.startsWith("file:") || url === ":memory:";
+}
+
 /**
- * Connect, turn foreign keys on, and prove it took.
+ * Connect and turn foreign keys on.
  *
- * `url` is `file:` for tests and local work, or a Turso `libsql://` URL.
- * **Embedded replicas are deliberately not used**: they read locally and
- * write remotely, so a fire ignited inside one `GET /api/pond` can be
- * invisible to the next request. Read-your-writes is load-bearing for
- * ignition and rescue credit, so this is a remote primary only.
+ * `url` is `file:`/`:memory:` for tests and local work, or a Turso
+ * `libsql://` URL. **Embedded replicas are deliberately not used**: they
+ * read locally and write remotely, so a fire ignited inside one
+ * `GET /api/pond` can be invisible to the next request. Read-your-writes is
+ * load-bearing for ignition and rescue credit, so this is a remote primary
+ * only.
+ *
+ * On a local database, foreign keys being off means the test rig is broken
+ * and we say so. On a remote one it means the platform did not keep a
+ * per-connection setting, which is its prerogative — we log it once and
+ * carry on, because the triggers, not the pragma, are what keep the promise.
+ * `npm run db:verify` is the script that proves that end to end against a
+ * real database.
  */
 export async function connect(url: string, authToken?: string): Promise<Db> {
   const client = createClient({ url, authToken });
   await client.execute("PRAGMA foreign_keys = ON");
   const db = new LibsqlDb(client);
-  await db.assertForeignKeys();
+
+  if (isLocal(url)) {
+    await db.assertForeignKeys();
+  } else if (!(await db.foreignKeysOn())) {
+    console.warn(
+      "[pond] foreign_keys did not survive on this connection. Deletion is " +
+        "still complete — ducks_before_delete does the work — but no " +
+        "referential check is being enforced. Run `npm run db:verify`.",
+    );
+  }
+
   return db;
 }
