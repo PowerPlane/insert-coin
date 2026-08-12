@@ -12,7 +12,10 @@ import type { Env, PublicDuck } from "./types";
 import { cleanText, nowSec, randomId } from "./util";
 
 export const MAX_STICKERS = 6;
-export const PAINT_B64_MAX = 512; // 24×24 @ 4bpp = 288 bytes → 384 b64 chars
+/** 24×24 @ 4bpp = 288 bytes → exactly 384 base64 characters. */
+export const PAINT_B64_LEN = 384;
+/** Keep in step with TINTS in src/client/sprites.ts. */
+export const TINT_COUNT = 12;
 
 /** Sticker ids the client ships. Anything else is rejected, not stored. */
 const STICKER_IDS = new Set([
@@ -48,15 +51,22 @@ export interface ValidatedDuck {
  * out-of-range coordinates, oversized blobs, and control characters in text
  * are all rejected rather than clamped-and-stored.
  */
+/** Strict: a real number in range. Number("1") is 1, so coercing here would
+ *  quietly accept a string where a number belongs — which is exactly how
+ *  malformed data gets past a validator and into storage. */
+function intIn(value: unknown, min: number, max: number): number | null {
+  if (typeof value !== "number" || !Number.isInteger(value)) return null;
+  return value >= min && value <= max ? value : null;
+}
+
 export function validateDuck(input: DuckInput): ValidatedDuck | { error: string } {
-  const fortune = Number(input.fortune);
-  if (!Number.isInteger(fortune) || fortune < 0 || fortune > 3) {
-    return { error: "bad fortune" };
-  }
-  const tint = Number(input.tint);
-  if (!Number.isInteger(tint) || tint < 0 || tint > 31) {
-    return { error: "bad tint" };
-  }
+  const fortune = intIn(input.fortune, 0, 3);
+  if (fortune === null) return { error: "bad fortune" };
+
+  // Must match the client's TINTS palette length exactly. A tint outside it
+  // has no colour to render and would fall back to gold, silently.
+  const tint = intIn(input.tint, 0, TINT_COUNT - 1);
+  if (tint === null) return { error: "bad tint" };
 
   let stickers: { id: string; x: number; y: number }[] = [];
   if (input.stickers !== undefined && input.stickers !== null) {
@@ -65,21 +75,23 @@ export function validateDuck(input: DuckInput): ValidatedDuck | { error: string 
     for (const raw of input.stickers) {
       if (typeof raw !== "object" || raw === null) return { error: "bad sticker" };
       const s = raw as Record<string, unknown>;
-      const id = String(s.id ?? "");
-      const x = Number(s.x);
-      const y = Number(s.y);
+      const id = typeof s.id === "string" ? s.id : "";
       if (!STICKER_IDS.has(id)) return { error: "unknown sticker" };
       // The grid is 24×24; anything outside it can't render and is a probe.
-      if (!Number.isInteger(x) || x < 0 || x > 23) return { error: "sticker out of bounds" };
-      if (!Number.isInteger(y) || y < 0 || y > 23) return { error: "sticker out of bounds" };
+      const x = intIn(s.x, 0, 23);
+      const y = intIn(s.y, 0, 23);
+      if (x === null || y === null) return { error: "sticker out of bounds" };
       stickers.push({ id, x, y });
     }
   }
 
+  // Either no paint at all, or exactly one canonical 24×24 layer. Accepting
+  // any base64-ish string of the right rough size would let a client store
+  // blobs that decode to nothing and render as an empty duck.
   let paint = "";
   if (typeof input.paint === "string" && input.paint.length > 0) {
-    if (input.paint.length > PAINT_B64_MAX) return { error: "paint too large" };
-    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(input.paint)) return { error: "paint not base64" };
+    if (input.paint.length !== PAINT_B64_LEN) return { error: "bad paint length" };
+    if (!/^[A-Za-z0-9+/]{384}$/.test(input.paint)) return { error: "paint not base64" };
     paint = input.paint;
   }
 
@@ -110,16 +122,10 @@ export async function createDuck(
   const editKey = randomId(32);
   const ts = nowSec();
 
-  // One duck per session, enforced by the UPDATE's WHERE clause rather than
-  // a read-then-write: two parallel submits race, and exactly one wins.
-  const claim = await env.DB.prepare(
-    `UPDATE sessions SET spent_duck = ?1
-       WHERE id = ?2 AND spent_duck IS NULL AND expires >= ?3`,
-  )
-    .bind(id, sessionId, ts)
-    .run();
-  if (!claim.meta.changes) return { error: "session already used or expired" };
-
+  // Order matters. `sessions.spent_duck` has a foreign key to `ducks(id)`
+  // and the schema enables PRAGMA foreign_keys, so claiming the session
+  // FIRST would reference a row that does not exist yet. Insert the duck,
+  // then claim.
   await env.DB.prepare(
     `INSERT INTO ducks
        (id, edit_key, card_id, fortune, tint, stickers, paint, name, message,
@@ -139,6 +145,23 @@ export async function createDuck(
       ts,
     )
     .run();
+
+  // One duck per session. The WHERE clause is the check, so two parallel
+  // submits race and exactly one wins — no read-then-write.
+  const claim = await env.DB.prepare(
+    `UPDATE sessions SET spent_duck = ?1
+       WHERE id = ?2 AND spent_duck IS NULL AND expires >= ?3`,
+  )
+    .bind(id, sessionId, ts)
+    .run();
+
+  if (!claim.meta.changes) {
+    // We lost the race (or the session expired between the check and here).
+    // Remove the duck we just made rather than leaving it floating with no
+    // session that admits to owning it.
+    await env.DB.prepare(`DELETE FROM ducks WHERE id = ?1`).bind(id).run();
+    return { error: "session already used or expired" };
+  }
 
   return { id, editKey };
 }

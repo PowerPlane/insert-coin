@@ -46,9 +46,13 @@ CREATE TABLE ducks (
   rescue_count INTEGER NOT NULL DEFAULT 0,
 
   CHECK (fortune BETWEEN 0 AND 3),
+  -- keep in step with TINTS in src/client/sprites.ts and TINT_COUNT
+  CHECK (tint BETWEEN 0 AND 11),
+  -- length() counts code points on TEXT, matching cleanText()
   CHECK (length(name) <= 18),
   CHECK (length(message) <= 90),
-  CHECK (length(paint) <= 512),
+  -- empty, or exactly one canonical 24x24 @ 4bpp layer
+  CHECK (length(paint) = 0 OR length(paint) = 384),
   CHECK (length(stickers) <= 512)
 );
 

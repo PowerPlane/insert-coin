@@ -156,6 +156,13 @@ constexpr uint8_t NDEF_EEPROM_WRITE_MS = 6;
 constexpr uint8_t NDEF_WRITE_ATTEMPTS = 4;
 constexpr uint8_t NDEF_RETRY_GAP_MS = 12;
 
+// The reset-to-'0' before terminal sleep is the one write that must not be
+// best-effort. Failing it leaves the card advertising a fortune with nothing
+// left awake to clear it, so the next person to tap claims a duck they
+// didn't earn. Each round is NDEF_WRITE_ATTEMPTS internally, with a 1 s nap
+// between rounds to give a resting phone time to move off the antenna.
+constexpr uint8_t NDEF_CLEAR_ROUNDS = 5;
+
 // After the reveal, the fortune-coded URL stays live for this many
 // seconds, then the MCU wakes once to reset the digit to '0' (no
 // ducky) and deep-sleeps for good.

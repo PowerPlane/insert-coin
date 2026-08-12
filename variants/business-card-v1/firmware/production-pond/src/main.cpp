@@ -87,24 +87,33 @@ void setup() {
     // bias. Safe to call twice.
     mic_deinit();
 
+    // If the patch succeeded, hold the fortune live for the visitor. If it
+    // did not, the tag still holds whatever digit was there before --
+    // possibly the previous visitor's -- so skip the wait and clear it now
+    // rather than spending 300 s advertising someone else's luck.
     if (patched) {
-        // Live-URL window. RTC-PIT wakes the CPU after
-        // NDEF_EXPIRY_SECONDS; the timed sleep draws single-digit uA.
+        // RTC-PIT wakes the CPU after NDEF_EXPIRY_SECONDS; the timed sleep
+        // draws single-digit uA.
         sleep_timed_seconds(NDEF_EXPIRY_SECONDS);
+    }
 
-        // Expiry: restore the default so a later tap lands on the
-        // read-only pond instead of an expired fortune.
+    // Restore the default so a later tap lands on the read-only pond
+    // instead of an expired fortune.
+    //
+    // This one genuinely matters, so it is not best-effort: going to
+    // terminal sleep with a stale digit still live means the NEXT person to
+    // tap this card claims a duck they did not earn, and nothing wakes the
+    // MCU to fix it until someone pulls the coin. Each ndef_patch_default()
+    // already retries NDEF_WRITE_ATTEMPTS times internally; if RF is still
+    // holding the bus, back off a second and try the whole sequence again.
+    for (uint8_t round = 0; round < NDEF_CLEAR_ROUNDS; round++) {
         ndef_init();
-        ndef_patch_default();
+        const bool cleared = ndef_patch_default();
         ndef_deinit();
-    } else {
-        // Every attempt NACKed, so the tag still holds whatever digit was
-        // there before -- possibly the previous visitor's fortune. Don't
-        // wait 300 s advertising someone else's luck; clear it now and
-        // let this tap fall through to the read-only pond.
-        ndef_init();
-        ndef_patch_default();
-        ndef_deinit();
+        if (cleared) break;
+        // Almost certainly a phone parked on the antenna. Sleeping a second
+        // costs nothing here and is the most likely way for it to move.
+        sleep_timed_seconds(1);
     }
 
     sleep_forever();

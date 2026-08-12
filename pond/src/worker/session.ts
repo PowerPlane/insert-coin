@@ -54,7 +54,16 @@ export function parseCookies(req: Request): Record<string, string> {
   for (const part of raw.split(";")) {
     const i = part.indexOf("=");
     if (i < 0) continue;
-    out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+    const name = part.slice(0, i).trim();
+    const value = part.slice(i + 1).trim();
+    try {
+      out[name] = decodeURIComponent(value);
+    } catch {
+      // A malformed percent-escape in ANY cookie — including one this app
+      // never set — would otherwise throw and turn an ordinary request into
+      // a 500. Ignore the bad value, keep the rest.
+      out[name] = value;
+    }
   }
   return out;
 }
@@ -132,24 +141,30 @@ export async function mintSession(
 ): Promise<MintResult | null> {
   if (!Number.isInteger(opts.digit) || opts.digit < 1 || opts.digit > 4) return null;
 
-  // A card that has been lost or is being abused can be switched off without
-  // touching any duck already in the pond.
+  // `c=` comes off a physical card, but anyone can type one. An unknown id
+  // is stored as NULL rather than passed through — `sessions.card_id` has a
+  // foreign key, so a forged or typoed value would otherwise turn
+  // /p?d=1&c=whatever into an unhandled database error.
+  let cardId: string | null = null;
   if (opts.cardId) {
-    const card = await env.DB.prepare(`SELECT disabled FROM cards WHERE id = ?1`)
+    const card = await env.DB.prepare(`SELECT id, disabled FROM cards WHERE id = ?1`)
       .bind(opts.cardId)
-      .first<{ disabled: number }>();
-    if (card && card.disabled) return null;
+      .first<{ id: string; disabled: number }>();
+    // A card that has been lost or is being abused can be switched off
+    // without touching any duck already in the pond.
+    if (card?.disabled) return null;
+    cardId = card ? card.id : null;
   }
 
   // If the firmware supplies a nonce, one coin insert mints exactly one
   // session. INSERT on a (card_id, nonce) primary key is the whole check:
   // a replay collides and throws.
-  if (opts.nonce && opts.cardId) {
+  if (opts.nonce && cardId) {
     try {
       await env.DB.prepare(
         `INSERT INTO nonces (card_id, nonce, used) VALUES (?1, ?2, ?3)`,
       )
-        .bind(opts.cardId, opts.nonce, nowSec())
+        .bind(cardId, opts.nonce, nowSec())
         .run();
     } catch {
       return null; // already spent
@@ -162,11 +177,11 @@ export async function mintSession(
     `INSERT INTO sessions (id, card_id, fortune, nonce, created, expires)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
   )
-    .bind(id, opts.cardId, opts.digit - 1, opts.nonce, nowSec(), expires)
+    .bind(id, cardId, opts.digit - 1, opts.nonce, nowSec(), expires)
     .run();
 
   return {
-    session: { id, cardId: opts.cardId, fortune: opts.digit - 1, nonce: opts.nonce, expires, spentDuck: null },
+    session: { id, cardId, fortune: opts.digit - 1, nonce: opts.nonce, expires, spentDuck: null },
     cookie: sessionCookieHeader(await signSessionCookie(env, id)),
   };
 }

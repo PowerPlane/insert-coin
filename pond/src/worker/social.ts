@@ -20,13 +20,18 @@ export const FIRE_MAX_CONCURRENT = 2;
 /**
  * Wave once per person per duck.
  *
- * `INSERT OR IGNORE` against the (duck_id, visitor) primary key is the
- * whole idempotency check. The counter only moves when the insert actually
- * inserted, so hammering the button earns nothing.
+ * `INSERT OR IGNORE` against the (duck_id, visitor) primary key gives the
+ * idempotency, and the counter only moves when the insert actually
+ * inserted — so hammering the button earns nothing.
+ *
+ * The INSERT ... SELECT form matters: `OR IGNORE` does not swallow foreign
+ * key violations, so a plain insert with a well-shaped but nonexistent duck
+ * id would raise instead of returning a clean 404.
  */
 export async function wave(env: Env, duckId: string, visitor: string): Promise<number | null> {
   const ins = await env.DB.prepare(
-    `INSERT OR IGNORE INTO waves (duck_id, visitor, created) VALUES (?1, ?2, ?3)`,
+    `INSERT OR IGNORE INTO waves (duck_id, visitor, created)
+     SELECT ?1, ?2, ?3 WHERE EXISTS (SELECT 1 FROM ducks WHERE id = ?1)`,
   )
     .bind(duckId, visitor, nowSec())
     .run();
@@ -89,41 +94,35 @@ export async function say(
  * Ignite a 凶 duck. Server-only — no client can start a fire, so there is
  * nothing to farm and no griefing vector. Called from a scheduled handler.
  */
-export async function maybeIgnite(env: Env): Promise<string | null> {
+export async function maybeIgnite(env: Env): Promise<boolean> {
   const ts = nowSec();
 
-  const active = await env.DB.prepare(
-    `SELECT COUNT(*) AS n FROM fires WHERE out_at IS NULL AND burns_until > ?1`,
-  )
-    .bind(ts)
-    .first<{ n: number }>();
-  if ((active?.n ?? 0) >= FIRE_MAX_CONCURRENT) return null;
-
-  const recent = await env.DB.prepare(
-    `SELECT MAX(lit_at) AS last FROM fires`,
-  ).first<{ last: number | null }>();
-  if (recent?.last && ts - recent.last < FIRE_MIN_GAP_SEC) return null;
-
-  // A bad-luck duck that isn't burning and hasn't burned recently.
-  const pick = await env.DB.prepare(
-    `SELECT d.id FROM ducks d
-      WHERE d.fortune = 3 AND d.hidden = 0
+  // One statement, so two overlapping cron invocations can't both pass the
+  // caps and light three fires at once. Every guard lives in the WHERE:
+  //   * fewer than FIRE_MAX_CONCURRENT currently burning
+  //   * at least FIRE_MIN_GAP_SEC since the last ignition
+  //   * the duck is a visible 凶 that isn't burning and hasn't burned recently
+  const res = await env.DB.prepare(
+    `INSERT INTO fires (duck_id, lit_at, burns_until)
+     SELECT d.id, ?1, ?1 + ?2
+       FROM ducks d
+      WHERE d.fortune = 3
+        AND d.hidden = 0
         AND NOT EXISTS (
-          SELECT 1 FROM fires f
-           WHERE f.duck_id = d.id
-             AND (f.out_at IS NULL AND f.burns_until > ?1 OR f.lit_at > ?2))
-      ORDER BY RANDOM() LIMIT 1`,
+              SELECT 1 FROM fires f
+               WHERE f.duck_id = d.id
+                 AND ((f.out_at IS NULL AND f.burns_until > ?1)
+                      OR f.lit_at > ?1 - ?3))
+        AND (SELECT COUNT(*) FROM fires
+              WHERE out_at IS NULL AND burns_until > ?1) < ?4
+        AND COALESCE((SELECT MAX(lit_at) FROM fires), 0) <= ?1 - ?5
+      ORDER BY RANDOM()
+      LIMIT 1`,
   )
-    .bind(ts, ts - FIRE_REIGNITE_SEC)
-    .first<{ id: string }>();
-  if (!pick) return null;
-
-  await env.DB.prepare(
-    `INSERT INTO fires (duck_id, lit_at, burns_until) VALUES (?1, ?2, ?3)`,
-  )
-    .bind(pick.id, ts, ts + FIRE_BURN_SEC)
+    .bind(ts, FIRE_BURN_SEC, FIRE_REIGNITE_SEC, FIRE_MAX_CONCURRENT, FIRE_MIN_GAP_SEC)
     .run();
-  return pick.id;
+
+  return Boolean(res.meta.changes);
 }
 
 /**
@@ -156,7 +155,12 @@ export async function extinguish(
     .bind(ts, visitor, fire.id)
     .run();
 
-  // Credit is per person per fire, so spamming taps earns nothing.
+  // Credit belongs to whoever actually put it out. Crediting on every tap
+  // would hand a rescue to people who arrived after the fire was already
+  // out, which makes the number on someone's duck card a lie.
+  if (!won.meta.changes) return { alreadyOut: true, credited: false };
+
+  // Per person per fire, so spamming taps still earns nothing.
   const credit = await env.DB.prepare(
     `INSERT OR IGNORE INTO rescues (fire_id, visitor, created) VALUES (?1, ?2, ?3)`,
   )
@@ -171,5 +175,5 @@ export async function extinguish(
       .run();
   }
 
-  return { alreadyOut: !won.meta.changes, credited: Boolean(credit.meta.changes) };
+  return { alreadyOut: false, credited: Boolean(credit.meta.changes) };
 }

@@ -22,7 +22,7 @@ import {
   visitorHash,
 } from "./session";
 import type { Env } from "./types";
-import { badRequest, intParam, json, notFound, nowSec, randomId, safeToken } from "./util";
+import { badRequest, cleanText, intParam, json, notFound, nowSec, randomId, safeToken } from "./util";
 
 const VISITOR_COOKIE = "pond_v";
 
@@ -159,7 +159,11 @@ export default {
       const made = await createDuck(env, s.id, s.cardId, checked);
       if ("error" in made) return json({ error: made.error }, { status: 409, headers });
 
-      const contact = typeof body.contact === "string" ? body.contact.trim().slice(0, 120) : "";
+      // Same cleaning as public text. A contact never renders in the pond,
+      // but it does render in admin, and a UTF-16 slice can split a
+      // surrogate pair and leave a broken character in the one field David
+      // has to actually read.
+      const contact = cleanText(body.contact, 120);
       if (contact) {
         // Private. Separate table, separate statement, never joined by the
         // public read path.
