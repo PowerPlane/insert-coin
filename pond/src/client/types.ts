@@ -7,6 +7,7 @@ export interface Sticker {
 /** A duck as the pond endpoint returns it. Note what is absent. */
 export interface PondDuck {
   id: string;
+  slug: string;
   fortune: number;
   tint: number;
   stickers: Sticker[];

@@ -11,6 +11,8 @@ export interface Env {
 /** What the public pond endpoint returns. Note what is NOT here. */
 export interface PublicDuck {
   id: string;
+  /** The readable public address, /d/<slug>. Not a credential. */
+  slug: string;
   fortune: number;
   tint: number;
   stickers: { id: string; x: number; y: number }[];

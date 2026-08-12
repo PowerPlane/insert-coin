@@ -30,8 +30,14 @@ CREATE TABLE cards (
 -- with the site. Improving the art later improves every existing duck.
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE ducks (
-  id          TEXT PRIMARY KEY,            -- public id, short + urlsafe
-  edit_key    TEXT NOT NULL UNIQUE,        -- the private link's secret half
+  id          TEXT PRIMARY KEY,            -- internal id, never in a URL
+  -- The readable public address: ducky.davidyang.work/d/<slug>.
+  -- Shareable on purpose, renameable, and NOT a credential — if this were
+  -- the edit link, /d/sam would be guessable and anyone could delete
+  -- anyone's duck. UNIQUE is what makes two simultaneous releases safe;
+  -- the generator's own check is only advisory.
+  slug        TEXT NOT NULL UNIQUE,
+  edit_key    TEXT NOT NULL UNIQUE,        -- the credential. Secret, at /e/<key>.
   card_id     TEXT REFERENCES cards(id),   -- which physical card minted it
   fortune     INTEGER NOT NULL,            -- 0 great · 1 little · 2 uncertain · 3 bad
   tint        INTEGER NOT NULL DEFAULT 0,  -- index into the body palette
@@ -50,6 +56,8 @@ CREATE TABLE ducks (
   CHECK (tint BETWEEN 0 AND 11),
   -- length() counts code points on TEXT, matching cleanText()
   CHECK (length(name) <= 18),
+  -- name may duplicate freely; slug may not. Two people called Sam is fine.
+  CHECK (length(slug) BETWEEN 3 AND 32),
   CHECK (length(message) <= 90),
   -- empty, or exactly one canonical 24x24 @ 4bpp layer
   CHECK (length(paint) = 0 OR length(paint) = 384),
@@ -58,6 +66,7 @@ CREATE TABLE ducks (
 
 -- The pond read: visible ducks, newest first.
 CREATE INDEX idx_ducks_visible ON ducks (hidden, created DESC);
+CREATE INDEX idx_ducks_slug    ON ducks (slug);
 CREATE INDEX idx_ducks_card    ON ducks (card_id);
 
 -- ─────────────────────────────────────────────────────────────────────────

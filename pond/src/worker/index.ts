@@ -15,7 +15,11 @@
  */
 
 import type { DuckInput } from "./ducks";
-import { createDuck, deleteDuck, duckByEditKey, listPond, updateDuck, validateDuck } from "./ducks";
+import {
+  createDuck, deleteDuck, duckByEditKey, duckBySlug, listPond, renameDuck,
+  updateDuck, validateDuck,
+} from "./ducks";
+import { normaliseSlug, slugTaken } from "./slug";
 import { extinguish, maybeIgnite, say, wave } from "./social";
 import {
   loadSession,
@@ -119,8 +123,17 @@ export default {
       return out;
     }
 
-    // ── the private link ────────────────────────────────────────────────
+    // ── a duck's public page: /d/<slug> ──────────────────────────────────
+    // Readable and shareable on purpose. NOT a credential — see slug.ts.
     if (path.startsWith("/d/")) {
+      const res = await env.ASSETS.fetch(new Request(new URL("/", url), req));
+      const out = new Response(res.body, res);
+      for (const [k, v] of headers) out.headers.append(k, v);
+      return out;
+    }
+
+    // ── the private link: /e/<edit_key> ──────────────────────────────────
+    if (path.startsWith("/e/")) {
       // Never let a search engine index a bearer URL.
       headers.set("x-robots-tag", "noindex, nofollow, noarchive");
       const res = await env.ASSETS.fetch(new Request(new URL("/", url), req));
@@ -133,6 +146,30 @@ export default {
     if (path === "/api/pond" && req.method === "GET") {
       const ducks = await listPond(env);
       return json({ ducks, now: nowSec() }, { headers });
+    }
+
+    if (path.startsWith("/api/duck/by-slug/") && req.method === "GET") {
+      const duck = await duckBySlug(env, path.slice("/api/duck/by-slug/".length));
+      return duck ? json({ duck }, { headers }) : notFound();
+    }
+
+    if (path === "/api/slug/check" && req.method === "GET") {
+      // Powers the "that one is taken" hint while someone types. It only
+      // answers about the slug it was asked about, so it leaks nothing that
+      // visiting /d/<slug> would not already reveal.
+      const wanted = normaliseSlug(url.searchParams.get("s"));
+      if (!wanted) return json({ ok: false, reason: "invalid" }, { headers });
+      const taken = await slugTaken(env, wanted);
+      return json({ ok: !taken, slug: wanted, reason: taken ? "taken" : null }, { headers });
+    }
+
+    if (path === "/api/slug" && req.method === "POST") {
+      const body = await readJson(req);
+      const editKey = typeof body?.editKey === "string" ? body.editKey : "";
+      const result = await renameDuck(env, editKey, body?.slug);
+      return result.ok
+        ? json(result, { headers })
+        : json(result, { status: result.reason === "taken" ? 409 : 400, headers });
     }
 
     if (path === "/api/session" && req.method === "GET") {
@@ -178,7 +215,8 @@ export default {
           .run();
       }
 
-      return json({ id: made.id, editKey: made.editKey }, { status: 201, headers });
+      return json({ id: made.id, slug: made.slug, editKey: made.editKey },
+        { status: 201, headers });
     }
 
     if (path === "/api/wave" && req.method === "POST") {

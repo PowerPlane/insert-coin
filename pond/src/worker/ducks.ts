@@ -9,6 +9,7 @@
  */
 
 import type { Env, PublicDuck } from "./types";
+import { freeSlug, normaliseSlug, slugTaken } from "./slug";
 import { cleanText, nowSec, randomId } from "./util";
 
 export const MAX_STICKERS = 6;
@@ -107,6 +108,7 @@ export function validateDuck(input: DuckInput): ValidatedDuck | { error: string 
 
 export interface CreatedDuck {
   id: string;
+  slug: string;
   editKey: string;
 }
 
@@ -117,10 +119,13 @@ export async function createDuck(
   duck: ValidatedDuck,
 ): Promise<CreatedDuck | { error: string }> {
   const id = randomId(10);
-  // Separate, longer secret. Never derived from `id`, so knowing a public
-  // duck id tells you nothing about its edit key.
+  // Separate, longer secret. Never derived from `id` or the slug, so a
+  // readable public URL tells you nothing about the edit key.
   const editKey = randomId(32);
   const ts = nowSec();
+  // Auto-assigned so nobody has to invent a unique name to release a duck.
+  // Renameable afterwards in settings.
+  const slug = await freeSlug(env);
 
   // Order matters. `sessions.spent_duck` has a foreign key to `ducks(id)`
   // and the schema enables PRAGMA foreign_keys, so claiming the session
@@ -128,12 +133,13 @@ export async function createDuck(
   // then claim.
   await env.DB.prepare(
     `INSERT INTO ducks
-       (id, edit_key, card_id, fortune, tint, stickers, paint, name, message,
-        created, updated)
-     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?10)`,
+       (id, slug, edit_key, card_id, fortune, tint, stickers, paint, name,
+        message, created, updated)
+     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?11)`,
   )
     .bind(
       id,
+      slug,
       editKey,
       cardId,
       duck.fortune,
@@ -163,7 +169,7 @@ export async function createDuck(
     return { error: "session already used or expired" };
   }
 
-  return { id, editKey };
+  return { id, slug, editKey };
 }
 
 /**
@@ -177,7 +183,7 @@ export async function createDuck(
 export async function listPond(env: Env, limit = 200): Promise<PublicDuck[]> {
   const ts = nowSec();
   const { results } = await env.DB.prepare(
-    `SELECT d.id, d.fortune, d.tint, d.stickers, d.paint, d.name, d.message,
+    `SELECT d.id, d.slug, d.fortune, d.tint, d.stickers, d.paint, d.name, d.message,
             d.created, d.wave_count, d.rescue_count,
             (SELECT 1 FROM fires f
                WHERE f.duck_id = d.id AND f.out_at IS NULL AND f.burns_until > ?1
@@ -198,6 +204,7 @@ export async function listPond(env: Env, limit = 200): Promise<PublicDuck[]> {
 
   return (results ?? []).map((r) => ({
     id: String(r.id),
+    slug: String(r.slug ?? ""),
     fortune: Number(r.fortune),
     tint: Number(r.tint),
     stickers: safeParseStickers(r.stickers),
@@ -231,12 +238,58 @@ function safeParseStickers(raw: unknown): { id: string; x: number; y: number }[]
 export async function duckByEditKey(env: Env, editKey: string) {
   if (!/^[A-Za-z0-9]{16,64}$/.test(editKey)) return null;
   return env.DB.prepare(
-    `SELECT id, fortune, tint, stickers, paint, name, message, created,
+    `SELECT id, slug, fortune, tint, stickers, paint, name, message, created,
             wave_count, rescue_count, hidden
        FROM ducks WHERE edit_key = ?1`,
   )
     .bind(editKey)
     .first<Record<string, unknown>>();
+}
+
+/** The public duck page. Read-only — a slug is an address, not a key. */
+export async function duckBySlug(env: Env, slug: string) {
+  const clean = normaliseSlug(slug);
+  if (!clean) return null;
+  return env.DB.prepare(
+    `SELECT id, slug, fortune, tint, stickers, paint, name, message, created,
+            wave_count, rescue_count
+       FROM ducks WHERE slug = ?1 AND hidden = 0`,
+  )
+    .bind(clean)
+    .first<Record<string, unknown>>();
+}
+
+/**
+ * Rename. Returns why it failed rather than a bare false, because "that one
+ * is taken" and "that isn't a usable name" need different words on screen.
+ */
+export async function renameDuck(
+  env: Env,
+  editKey: string,
+  requested: unknown,
+): Promise<{ ok: true; slug: string } | { ok: false; reason: "invalid" | "taken" }> {
+  const slug = normaliseSlug(requested);
+  if (!slug) return { ok: false, reason: "invalid" };
+
+  const current = await duckByEditKey(env, editKey);
+  if (!current) return { ok: false, reason: "invalid" };
+  if (current.slug === slug) return { ok: true, slug };
+
+  if (await slugTaken(env, slug)) return { ok: false, reason: "taken" };
+
+  try {
+    const res = await env.DB.prepare(
+      `UPDATE ducks SET slug = ?1, updated = ?2 WHERE edit_key = ?3`,
+    )
+      .bind(slug, nowSec(), editKey)
+      .run();
+    if (!res.meta.changes) return { ok: false, reason: "invalid" };
+  } catch {
+    // The UNIQUE index is the real guard; someone can take the name between
+    // the check above and this write.
+    return { ok: false, reason: "taken" };
+  }
+  return { ok: true, slug };
 }
 
 export async function updateDuck(
