@@ -182,6 +182,8 @@ Water is Bayer-dithered brand blues, never a gradient.
 
 | Date | Change | Why |
 | --- | --- | --- |
+| 2026-08-12 | Copy deck added ([COPY.md](COPY.md)) | Every string in one reviewable place. Its first run caught "waved" surviving the bump rename, and the keep sheet handing out /d/<slug> as the private link. |
+| 2026-08-12 | Card setup trimmed 169 → 124 words | It was nearly double the next longest screen. |
 | 2026-08-12 | Keeper links their own duck | Claiming a card and having a duck are different things; either can come first, so neither is a precondition. Optional, and the link is how two cards say they belong to one person. |
 | 2026-08-12 | 44px audit across all nine screens | Writing this file down found six violations, three pre-existing: text inputs and studio tabs at 40px, the duck card's close at 28px, Bump/Report at 34px. |
 | 2026-08-12 | Card setup + Admin screens added | The keeper flow and moderation now exist as screens, not just a proposal. |
