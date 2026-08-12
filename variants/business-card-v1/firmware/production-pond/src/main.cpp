@@ -8,7 +8,7 @@
 //   2. ducky walk        -- banks 0->3 stop-motion
 //   3. lottery           -- pick fortune from hardware-seeded RNG
 //   4. NDEF patch        -- I2C-write fortune digit ('1'..'4') so the next
-//                           tap lands on https://davidyang.work/p?d=N&c=...
+//                           tap lands on https://ducky.davidyang.work/?d=N&c=...
 //                           Retried on NACK (see ndef.cpp). Happens before
 //                           the reveal, so taps during the LED show already
 //                           see the new URL.

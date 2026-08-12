@@ -62,7 +62,7 @@ game over for a card-based system, so this is noted rather than fixed.
 
 ## 3 · The private link is the account
 
-`/d/<32-char key>` is a bearer credential with no expiry, no rotation and
+`/e/<32-char key>` is a bearer credential with no expiry, no rotation and
 no recovery. That is a deliberate trade — accounts would be heavier than the
 thing they protect — but the failure modes are real:
 
@@ -71,7 +71,7 @@ thing they protect — but the failure modes are real:
 | Link lost | The duck stays; it just can't be edited. There is no recovery, by design. |
 | Link leaked | Whoever has it can edit or delete that duck. Nothing else. |
 | Leaks via `Referer` | Prevented: `Referrer-Policy: no-referrer` on every response |
-| Leaks via search engines | Prevented: `X-Robots-Tag: noindex, nofollow` on `/d/*` |
+| Leaks via search engines | Prevented: `X-Robots-Tag: noindex, nofollow` on `/e/*` and `/pondkeeper*`. `/d/<slug>` is public on purpose and stays indexable. |
 | Leaks via server logs | The key is in the path, so **do not log full URLs**. |
 | Shared device / history | Not defended. It is a link in a browser. |
 

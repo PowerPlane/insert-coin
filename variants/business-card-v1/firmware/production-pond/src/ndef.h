@@ -1,7 +1,7 @@
 // ST25DV04K NDEF digit patching over I2C.
 //
 // The tag is pre-programmed once by a phone tag-writer with
-//   https://davidyang.work/p?d=0&c=XXXXXX
+//   https://ducky.davidyang.work/?d=0&c=XXXXXXXX
 // and this code rewrites only the single ASCII digit at
 // NDEF_DIGIT_OFFSET. The per-card `&c=` suffix sits after the digit, so
 // it never moves the patch target.

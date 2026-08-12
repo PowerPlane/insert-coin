@@ -251,7 +251,7 @@ it is a different feature.
 
 | # | Kind | String |
 | --- | --- | --- |
-| `admin.01` | Body | ducky.davidyang.work/admin |
+| `admin.01` | Body | ducky.davidyang.work/pondkeeper |
 | `admin.02` | Heading | Admin |
 | `admin.03` | Button | Ducks |
 | `admin.04` | Button | Contacts |

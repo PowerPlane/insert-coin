@@ -1,146 +1,158 @@
-# A pond that grows
+# The pond camera
 
-**Short answer: yes, and it is a small change.** The renderer already has
-exactly one scale constant, and a camera is a translate. The reason this is
-cheap is worth stating up front, because it is also the reason it will stay
-clean.
+What was built, and why each part is the way it is. This describes the
+implementation in `pond/tools/prototype-flow.html`; where an older draft of
+this file described something else, the code and this page win.
 
 ---
 
-## 1. Zoom is `CELL`, and only integers
+## Zoom is `CELL`, and only integers
 
-`CELL` is already "device pixels per sprite pixel" — every draw call in the
-scene is `fillRect(x * CELL, y * CELL, CELL, CELL)`. So:
-
-```
-zoom out   CELL = 2    four times the water on screen
-default    CELL = 4    what the pond looks like today
-zoom in    CELL = 6    reading distance
-```
-
-**Integers only. This is the rule that protects the look.** Pixel art scaled
-by 2.7× shimmers: some sprite pixels land on 2 screen pixels and their
-neighbours on 3, so the duck's outline crawls as you pinch. Every zoom level
-here is an exact integer multiple, so a duck is pixel-perfect at every step
-and looks like the same drawing, larger.
-
-A pinch gesture is continuous, so it drives a *pending* scale and snaps to
-the nearest level on release, with a 160 ms `steps(3)` settle. You get the
-smooth gesture; the screen never renders a fractional pixel.
-
-## 2. The world grows, the density does not
-
-The world is measured in sprite units and sized from the population:
+`CELL` is "device pixels per sprite pixel" — every draw is
+`fillRect(x * CELL, y * CELL, CELL, CELL)`. Zoom is that constant:
 
 ```
-WORLD = clamp(144, ceil(sqrt(ducks) * 34), 2000)
+2 · 3 · 4 · 6 · 8          4 is home
 ```
 
-At 14 ducks it is the pond you have now. At 400 it is about 680 units across
-— a much bigger pond, with **the same number of ducks per screenful**. That
-is the property to hold on to: handing out more cards should make the pond
-bigger, never more crowded.
+**Integers only, and this is the rule that protects the look.** At 4.7 px per
+sprite pixel some pixels land on 4 and their neighbours on 5, so outlines
+crawl. Every level is an exact multiple, so a duck is the same drawing,
+larger.
 
-## 3. The camera is two lines
+Smooth motion between two integers is done by rendering at the **nearest**
+integer and applying the leftover fraction as a CSS scale about the centre.
+The remainder is at most ±25%, the canvas overscan covers it, and the render
+is always on an integer grid. Crisp render, continuous motion.
 
-Because every draw already multiplies by `CELL`, panning is a translate in
-device pixels around the existing draw block:
+## One motion, not two
 
-```js
-ctx.save();
-ctx.translate(-cam.x * CELL, -cam.y * CELL);
-  // ... every existing duck / ripple / particle / effect draw, unchanged
-ctx.restore();
+Position and zoom interpolate **together**, every frame, in world space —
+`easeInOutCubic`, one easing. An earlier version split them into "travel,
+then zoom" to work around a bug, and it felt worse; the bug was the real
+problem and splitting them was not the fix.
+
+Two speeds:
+
+| | | |
+| --- | --- | --- |
+| `CAM_UI` | 480 ms | anything answering a control — zoom buttons, home, whistle, opening a duck card |
+| `CAM_MOMENT` | 1100 ms | the one thing watched rather than operated: a duck being released |
+
+## The world wraps
+
+**There are no edges.** Pan far enough in any direction and you come back
+round to the same water.
+
+This is not only a nicer feel. Clamping caused most of the camera trouble in
+this project — a tween jumping when it hit a boundary, ducks jammed into a
+corner by the whistle, "why can't I drag" at zoom levels where the world
+happened to equal the frame. A boundary that does not exist cannot be hit
+wrong.
+
+Two things follow, and both must hold or the seam shows:
+
+- **Distance** measures the short way round — separation, personal space, the
+  whistle, the bump dart. Two ducks either side of the seam are neighbours.
+- **Drawing** happens once per tile the viewport touches. The world floor is
+  2.4× the frame, so it can straddle at most one seam per axis: four draws
+  worst case, one almost always, with off-screen ducks culled in each.
+
+Wrapping is a property of the **space**, not the engine. The pond wraps; the
+arrival screen does not — it is a single-duck stage that has edges, and
+wrapping sent its camera to the far side of the world.
+
+## The world grows with the population
+
+```
+side = max(frame × 2.4, ceil(sqrt(ducks) × 34))
 ```
 
-Nothing inside changes. Ducks, ripples, flames, bump darts and petals are all
-already in world units, so they all come along for free.
+More cards means a bigger pond, never a more crowded one. The 2.4× floor
+exists so there is somewhere to drag to even when the pond is nearly empty —
+without it the world equalled the frame at default zoom and panning did
+nothing, which reads as broken rather than as "you have seen it all".
 
-**The water stays outside the transform**, drawn screen-locked. It is a
-uniform dither field, so scrolling it would be nearly invisible and would
-cost a full re-tile every frame. Keeping it fixed also means the vertical
-depth gradient stays anchored to the viewport, which reads as light on the
-water rather than a texture sliding under the ducks.
+## The canvas is overscanned
 
-## 4. Cost goes down, not up
+Drawn at 150% of its frame and clipped. A camera transform can translate as
+well as scale, and a translate slides an edge into view no matter how large
+the scale is; the margin means there is always real, rendered water outside
+the visible edge to move into.
 
-Today every duck is drawn every frame. With a camera, only ducks inside the
-viewport are drawn:
+**Consequence worth remembering:** the camera addresses the *canvas*, but only
+the middle two-thirds is ever seen. Centring is unaffected — the overscan is
+symmetric — but any *fractional* framing must be measured against the visible
+frame. `frameX/frameY/fw/fh/atFrame` exist for exactly this. Measuring "a
+third of the way down" against the canvas put a duck 5% down the screen,
+behind the notch.
 
-```js
-if (d.x < cam.x - N || d.x > cam.x + W / CELL + N) continue;
-```
+## Two clocks, one render
 
-So a 400-duck pond costs the same to render as today's 14-duck pond, because
-the same number fit on screen. The water buffer is already one `ImageData`
-blit per frame regardless of size.
+The world ticks at ~12 fps because stop-motion is the look. The camera is
+direct manipulation and must track a finger at display rate. So the camera
+redraws on `requestAnimationFrame` while it is moving and not otherwise — an
+idle pond still costs one draw per stop-motion frame.
 
-The payload is the part that does not自动 scale — see §7.
+And the world **holds still** for the length of a camera move. Otherwise the
+ducks lurch two or three times underneath a smoothly gliding view, which
+reads as the zoom stuttering even though the zoom is fine.
 
-## 5. The whistle
+## Sprites quantise to canvas pixels
 
-In the Wii Mii Plaza there is a whistle: blow it and every Mii runs over and
-lines up. That is the interaction to borrow, and it fits this product better
-than it fit Nintendo's, because **the card is already a thing you blow into**.
-Four blows claims a card; a whistle gathers the pond. Same gesture vocabulary.
+One rule, always. Snapping them to the world grid (`round(x) * CELL`) looks
+marginally tidier at rest, because it locks ducks to the water's dither — but
+it means a duck can only sit on multiples of `CELL`, so it jumps in
+`CELL`-sized steps whenever the view moves. Worse, having *two* rules meant
+every camera move ended with every duck snapping up to half a cell as the
+rule changed. A rule that changes is worse than either rule.
 
-Tapping the whistle offers whatever the pond can group by — the card keepers,
-your own circle, a fortune. Choose one and the matching ducks *swim together*
-rather than the others disappearing:
+## The whistle
 
-```js
-// one extra force term in the existing step(); no new rendering
-if (gather && matches(d)) {
-  const dx = gx - d.x, dy = gy - d.y;
-  d.vx += dx * 0.004;
-  d.vy += dy * 0.004;
-}
-```
+In the Wii Mii Plaza you blow a whistle and every Mii runs over. The card is
+already a thing you blow into, so the pond borrows the gesture. **The duck
+count is the whistle** — tap "113 ducks", pick a keeper, and it reads "30 of
+113" while active. No extra chrome over the water.
 
-Non-matching ducks are not hidden — they drift and fade to about 45 %. Hiding
-them would make the pond feel like a filtered list; dimming keeps it a place
-where the others are still swimming, which is the whole point of it being a
-pond and not a feed.
+Called ducks each aim at their own spot on a loose ring and arc in, because a
+crowd converging on one point packs into a hexagonal lattice and reads as a
+crystal rather than a flock. Everyone else is **pushed clear of the frame**,
+not dimmed — a faded duck still reads as being in the way — and fans around
+the rim rather than jamming into a corner. Clearing the whistle pulls the
+shoved ducks back, so the pond refills.
 
-The camera eases to the cluster as it forms. Clearing the whistle releases the
-force and everyone drifts apart again on their own — no return animation to
-write, because the existing drift does it.
+## Ducks keep their distance
 
-## 6. Edge cases
+Two zones, because not-overlapping and not-clumping are different problems:
 
-| Case | Behaviour |
-| --- | --- |
-| World smaller than the viewport | Centre it and disable panning. Never show void. |
-| Pan past the edge | Camera clamped to `[0, WORLD − viewport]` on both axes. |
-| Pinch below / above the range | Clamped to `CELL ∈ [2, 6]`; rubber-band during the gesture, snap back on release. |
-| Tap vs pan | A pointer that moves more than 8 px before release is a pan, not a tap. Below that it is a tap, so ripples and duck cards still work. |
-| Pinch fighting the browser | `touch-action: none` on the canvas, or Safari page-zooms instead. |
-| "Find my duck" | Eases the camera to your duck and zooms in to `CELL = 4` if further out. It is now a camera move, not a highlight. |
-| Labels at low zoom | `YOU` tags and speech bubbles only render at `CELL ≥ 3`. Zoomed out you read the shape of the crowd, not names — and a 4 px tall label is not text anyway. |
-| A duck bumps someone off-screen | Allowed. The dart runs in world space and you see the tail of it if you are looking elsewhere. |
-| A duck catches fire off-screen | Allowed, and the duck count chip gains a small flame marker so you know to go look. |
-| Reduced motion | Camera moves are instant; the whistle gather still gathers, without the ease. |
-| Keyboard / screen reader | The hidden duck list already exists. Focusing an entry pans the camera to that duck, so the two views stay in step. |
-| Double tap | One zoom step in, centred on the tap point. |
-| Momentum after a flick | **Deliberately not built.** Inertia needs velocity tracking, friction and its own clamping, and it is where this kind of code usually starts to rot. A hard stop is honest and one line. |
+- **contact** at `N × 0.86` — a hard push, so two ducks are never in the same
+  place
+- **elbow room** at `N × 1.75` — much weaker, and it is what actually keeps
+  the water evenly occupied
 
-## 7. The one thing this does not fix
+Both run on a uniform grid bucketed to the larger radius, so it stays O(n).
+New ducks are placed by best-candidate sampling: even coverage without a
+grid's regularity, because plain random clumps.
 
-Rendering scales. **The payload does not.** Every duck carries a 384-character
-paint layer, so a thousand ducks is roughly 400 KB of JSON before anyone has
-seen anything.
+Headings **wander** rather than holding a fixed drift. A fixed heading is a
+straight line and a straight line ends at a wall, which is why ducks used to
+collect along the edges before the pond wrapped.
 
-The fix is the same camera idea applied to the API: fetch ducks by region and
-by recency, not all of them. That is not needed at 100 ducks and is a real
-piece of work at 1,000, so it is written down here rather than built now.
+## What is deliberately not built
 
-## 8. What stays exactly the same
+- **Momentum after a flick.** It needs velocity tracking, friction and its own
+  interaction with wrapping, and it is where this kind of code starts to rot.
+- **Double-tap to zoom.** It would force every water tap to wait ~300 ms to
+  find out whether a second one was coming, and the ripple's snappiness is the
+  first thing anyone notices. The zoom buttons cover it, and they also work
+  one-handed, which pinch does not.
+- **Scenery.** No beach, no reeds, no houses. Later, maybe.
 
-Worth being explicit, since the requirement was that this not change what we
-have already settled:
+## The one thing this does not fix
 
-- the sprites, the palette, the dither, the stop-motion tick
-- ripples, arrivals, fire, bumps, petals — all in world units already
-- the pond at `CELL = 4` with a small population is pixel-identical to today
+Rendering scales; **the payload does not**. Every duck carries a 384-character
+paint layer, so a thousand ducks is ~400 KB of JSON before anything is drawn.
 
-The change is a camera and a force. Nothing about how a duck looks moves.
+The fix is the same idea applied to the API — fetch by region and recency, not
+all of them. Not needed at 100 cards, real work at 1,000, so it is written
+down rather than built.
