@@ -1341,103 +1341,92 @@ function Scene(canvas,opts){
     S.cam.x = cw<=vw() ? (cw-vw())/2 : Math.max(0,Math.min(cw-vw(),S.cam.x));
     S.cam.y = ch<=vh() ? (ch-vh())/2 : Math.max(0,Math.min(ch-vh(),S.cam.y));
   };
-  /* A smooth zoom without ever rendering a fractional cell.
-     The canvas is re-rendered immediately at the NEW integer zoom, then a
-     CSS transform is used to make it momentarily *look* like the old
-     framing and animated back to identity. So the pixels are always crisp
-     and always on an integer grid; the browser does the in-between scaling
-     of an already-correct image, and the animation lands exactly where the
-     renderer already is. Rendering the tween itself would mean cells of
-     4.7px, which is what makes pixel art shimmer. */
-  /* A smooth zoom that never renders a fractional cell, and never shows
-     what is behind the canvas.
-     The first version rendered at the NEW zoom and scaled the canvas DOWN
-     to fake the old framing -- which meant that while zooming in, the
-     canvas was momentarily smaller than its own box and the surface behind
-     it showed through around the pond.
-     So it works the other way round: keep rendering the OLD framing, scale
-     UP toward the new one (which overflows and is clipped, never exposing
-     anything), and only commit the new cell and camera at the end. The
-     tween is the browser scaling an already-crisp image; the render is
-     always on an integer grid. */
-  let dollying=0;
-  S.dollyTo=(c1,x1,y1,ms)=>{
-    c1=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],Math.round(c1)));
-    const c0=S.cell, x0=S.cam.x, y0=S.cam.y;
-    const set=(c,x,y)=>{ S.cell=c; S.cam.x=x; S.cam.y=y; S.clampCam(); };
-    const clear=()=>{ canvas.style.transition=""; canvas.style.transform="";
-      canvas.style.pointerEvents=""; dollying=0; };
-    const rect=canvas.getBoundingClientRect();
-    if(reduce||!rect.width||(c0===c1&&Math.abs(x0-x1)<0.01&&Math.abs(y0-y1)<0.01)){
-      set(c1,x1,y1); clear(); render(); return; }
-    ms=ms||420;
-    const disp=rect.width/W;
-    const ease=ms>=900?"cubic-bezier(.45,.02,.25,1)":"cubic-bezier(.4,0,.2,1)";
-    clearTimeout(dollying);
-    canvas.style.transformOrigin="0 0";
-    canvas.style.pointerEvents="none";      // coords are wrong mid-flight
-
-    /* The canvas always paints its whole box at any cell, so the ONLY way
-       the surface behind the pond shows is a CSS scale below 1. Both
-       directions therefore have to be arranged to scale UP -- which
-       overflows and is clipped -- and they need opposite treatment to get
-       there. Fixing only one of them is how the white edge survived. */
-    let from, to, commitFirst;
-    if(c1>c0){
-      /* Zooming IN: hold the old, wider render and grow into the new
-         framing. Scale runs 1 -> c1/c0. */
-      commitFirst=false;
-      from=""; 
-      to="translate("+((x0-x1)*c1*disp)+"px,"+((y0-y1)*c1*disp)+"px) scale("+(c1/c0)+")";
-    }else{
-      /* Zooming OUT: commit the new, wider render immediately and start it
-         blown up to look like the old close framing, then relax to fit.
-         Scale runs c0/c1 -> 1. */
-      commitFirst=true;
-      from="translate("+((x1-x0)*c0*disp)+"px,"+((y1-y0)*c0*disp)+"px) scale("+(c0/c1)+")";
-      to="";
-    }
-    if(commitFirst){ set(c1,x1,y1); render(); }
-    canvas.style.transition="none";
-    canvas.style.transform=from;
-    requestAnimationFrame(()=>{
-      canvas.style.transition="transform "+ms+"ms "+ease;
-      canvas.style.transform=to;
-      dollying=setTimeout(()=>{
-        if(!commitFirst){ set(c1,x1,y1); }
-        clear(); render();
-      },ms+30);
-    });
+  /* The world floor used to be exactly the viewport at default zoom, so
+     there was nowhere to drag to until the pond was crowded — and zoomed
+     out, never. A pond you cannot move around in is not a place. The floor
+     is comfortably larger than the frame at every zoom level now, and it
+     still grows with the population from there so density stays constant. */
+  S.growWorld=()=>{
+    if(!S.camera)return;
+    const side=Math.max(Math.ceil(W/CELL*2.4),
+      Math.ceil(Math.sqrt(Math.max(1,S.ducks.length))*34));
+    S.setWorld(side,Math.round(side*H/W));
   };
-  /* Anchor-preserving: the point under your fingers stays under them. */
+  /* Anchor-preserving, for pinch: the point under your fingers stays put. */
   S.setZoom=(cell,sx,sy)=>{
     const c=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],Math.round(cell)));
     if(c===S.cell)return;
+    S.stopMove();
     sx=(sx==null?W/2:sx); sy=(sy==null?H/2:sy);
     const wx=S.cam.x+sx/S.cell, wy=S.cam.y+sy/S.cell;
     S.cell=c;
     S.cam.x=wx-sx/S.cell; S.cam.y=wy-sy/S.cell;
     S.clampCam();
   };
+  S.panBy=(dx,dy)=>{
+    S.stopMove();                          // the finger always wins
+    S.cam.x-=dx/S.cell; S.cam.y-=dy/S.cell; S.clampCam();
+  };
+  /* ── the camera ────────────────────────────────────────────────────
+     ONE motion. Position and zoom interpolate together, every frame, in
+     world space -- so a move of any distance is safe and pan and zoom are
+     never two separate animations bolted together.
+
+     The thing that made this awkward is that pixel art cannot be rendered
+     at a fractional cell: at 4.7px per sprite pixel some pixels land on 4
+     and their neighbours on 5, and edges crawl. So the frame is rendered at
+     the NEAREST INTEGER cell -- always crisp -- and the leftover fraction
+     is applied as a CSS scale about the centre, which is at most ±25% and
+     is covered by the canvas overscan. Crisp render, continuous motion.  */
+  let mv=null;
+  const easeInOut=p=>p<0.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+  /* Camera is expressed as the world point at the CENTRE of the frame,
+     which is the only way the zoom residual can be applied about the centre
+     without shifting what you are looking at. */
+  S.centre=()=>({x:S.cam.x+(W/S.cell)/2,y:S.cam.y+(H/S.cell)/2});
+  S.place=(cx,cy,cell)=>{
+    S.cell=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],cell));
+    S.cam.x=cx-(W/S.cell)/2; S.cam.y=cy-(H/S.cell)/2; S.clampCam();
+  };
+  S.moveTo=(cx,cy,cell,ms)=>{
+    const c=S.centre();
+    if(reduce||!ms){ mv=null; canvas.style.transform=""; S.place(cx,cy,cell); render(); return; }
+    mv={x0:c.x,y0:c.y,z0:S.cell,x:cx,y:cy,z:cell,t0:performance.now(),ms:ms};
+  };
+  S.moving=()=>!!mv;
+  S.stopMove=()=>{ if(mv){ mv=null; canvas.style.transform=""; } };
+  /* Advance the move. Returns true if it drew. */
+  S.stepCam=(now)=>{
+    if(!mv)return false;
+    const p=Math.min(1,(now-mv.t0)/mv.ms), e=easeInOut(p);
+    const z=mv.z0+(mv.z-mv.z0)*e;                    // continuous zoom
+    const n=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],Math.round(z)));
+    S.cell=n;
+    S.cam.x=(mv.x0+(mv.x-mv.x0)*e)-(W/n)/2;
+    S.cam.y=(mv.y0+(mv.y-mv.y0)*e)-(H/n)/2;
+    S.clampCam();
+    render();
+    const k=z/n;
+    canvas.style.transform = Math.abs(k-1)<0.002 ? "" : "scale("+k+")";
+    if(p>=1){ mv=null; S.place(mv?mv.x:mv,0,n); canvas.style.transform="";
+      S.place(mvEndX,mvEndY,mv?mv.z:n); }
+    return true;
+  };
+  let mvEndX=0,mvEndY=0;
+  S.focus=(d,minCell,yFrac,ms)=>{
+    if(!d)return;
+    const c1=(minCell&&S.cell<minCell)?minCell:S.cell;
+    /* yFrac places the duck up the frame; expressed as a centre, that is
+       the duck plus the offset from centre to that fraction. */
+    const cy=d.y+(H/c1)*(0.5-(yFrac==null?0.5:yFrac));
+    S.moveTo(d.x,cy,c1,ms||620);
+  };
   S.zoomStep=(dir,sx,sy)=>{
     const i=ZOOMS.indexOf(S.cell);
     const c1=ZOOMS[Math.max(0,Math.min(ZOOMS.length-1,i+dir))];
     if(c1===S.cell)return;
-    sx=(sx==null?W/2:sx); sy=(sy==null?H/2:sy);
-    const wx=S.cam.x+sx/S.cell, wy=S.cam.y+sy/S.cell;
-    S.dollyTo(c1,wx-sx/c1,wy-sy/c1,460);
-  };
-  S.panBy=(dxScreen,dyScreen)=>{
-    S.target=null;                       // the finger wins
-    S.cam.x-=dxScreen/S.cell; S.cam.y-=dyScreen/S.cell; S.clampCam();
-  };
-  /* Density, not size, is what should stay constant: more cards means a
-     bigger pond, never a more crowded one. */
-  S.growWorld=()=>{
-    if(!S.camera)return;
-    const side=Math.max(Math.ceil(W/CELL),
-      Math.ceil(Math.sqrt(Math.max(1,S.ducks.length))*34));
-    S.setWorld(side,Math.max(Math.ceil(H/CELL),Math.round(side*H/W)));
+    const c=S.centre();
+    S.moveTo(c.x,c.y,c1,460);
   };
   /* Ducks never overlap, whistle or no whistle. Bucketed on a uniform grid
      sized to the separation distance, so only the nine neighbouring buckets
@@ -1496,42 +1485,8 @@ function Scene(canvas,opts){
     }
     return out;
   };
-  /* A glide target the loop eases toward. Buttons and "find my duck" set
-     one; dragging clears it, because a finger should never be argued with. */
-  S.target=null;
-  /* A timed tween, not exponential decay. `cam += (target-cam)*k` only ever
-     eases OUT -- it starts at full speed, which is what made pans feel like
-     they lurched and then crept. This eases in and out. */
-  S.glideTo=(x,y,ms)=>{ S.target={x0:S.cam.x,y0:S.cam.y,x,y,
-    t0:performance.now(),ms:ms||620}; };
-  /* yFrac places the duck up or down the frame: the arrival sheet covers
-     the bottom 40%, so centring there would hide the thing you just got. */
-  S.focus=(d,minCell,yFrac,ms)=>{
-    if(!d)return;
-    const c1=(minCell&&S.cell<minCell)?minCell:S.cell;
-    const tx=d.x-(W/c1)/2, ty=d.y-(H/c1)*(yFrac==null?0.5:yFrac);
-    if(reduce){ S.cell=c1; S.cam.x=tx; S.cam.y=ty; S.clampCam(); S.target=null; render(); return; }
-    if(c1===S.cell){ S.glideTo(tx,ty,ms); return; }
-    /* Travel first, then zoom — and never both in one transform.
-       A CSS transform can only borrow the water that is actually rendered
-       outside the frame, so a journey across the pond slides an edge into
-       view no matter how much overscan there is. The glide re-renders every
-       frame and is safe at any distance; the zoom then happens about the
-       centre, where its translate is near zero. Reads as "go there, then
-       look closer", which is also the right order for tapping a duck. */
-    const travel=Math.hypot(d.x-(S.cam.x+(W/S.cell)/2),d.y-(S.cam.y+(H/S.cell)/2));
-    const far=travel>Math.max(W,H)/S.cell*0.12;
-    const zoomAboutCentre=()=>{
-      const wx=S.cam.x+(W/2)/S.cell, wy=S.cam.y+(H/2)/S.cell;
-      S.dollyTo(c1,wx-(W/2)/c1,wy-(H/2)/c1,ms);
-      /* settle the final framing once the scale has committed */
-      setTimeout(()=>S.glideTo(tx,ty,Math.round((ms||420)*0.6)),(ms||420)+50);
-    };
-    if(!far){ S.target=null; zoomAboutCentre(); return; }
-    S.glideTo(d.x-(W/S.cell)/2,d.y-(H/S.cell)*(yFrac==null?0.5:yFrac),ms);
-    setTimeout(zoomAboutCentre,(ms||420)+40);
-  };
-  S.resetCam=()=>{ S.cell=CELL; S.cam.x=0; S.cam.y=0; S.target=null; S.growWorld(); S.clampCam(); };
+  S.resetCam=()=>{ S.stopMove(); S.cell=CELL; S.cam.x=0; S.cam.y=0;
+    S.growWorld(); S.clampCam(); };
   /* The canvas has to match its container's ASPECT, not just its width.
      With width:100% and height:auto a 688x1480 buffer in a 326x740 box
      renders 326x701 -- 39px short -- and that shortfall is the white band
@@ -1796,17 +1751,11 @@ function Scene(canvas,opts){
   const seen={x:NaN,y:NaN,c:NaN};
   (function loop(now){
     const dt=Math.min(0.25,(now-last)/1000); last=now; acc+=dt*1000;
-    if(S.target){
-      const t=S.target;
-      const pr=reduce?1:Math.min(1,(now-t.t0)/t.ms);
-      const e=pr<0.5?4*pr*pr*pr:1-Math.pow(-2*pr+2,3)/2;   // easeInOutCubic
-      S.cam.x=t.x0+(t.x-t.x0)*e; S.cam.y=t.y0+(t.y-t.y0)*e;
-      S.clampCam();
-      if(pr>=1)S.target=null;
-    }
+    /* Position and zoom advance together here, every frame, as one motion. */
+    const camDrew=S.live&&S.stepCam(now);
     const wait=S.tick*DWELL[S.frame%DWELL.length];
-    let drew=false;
-    if(acc>=wait){ acc=0; S.frame++; step(wait/1000); if(S.live){ render(); drew=true; } }
+    let drew=camDrew;
+    if(acc>=wait){ acc=0; S.frame++; step(wait/1000); if(S.live&&!camDrew){ render(); drew=true; } }
     /* Two clocks, one render. The world ticks at ~12fps because stop-motion
        is the look; the CAMERA is direct manipulation and has to track a
        finger at display rate or dragging feels broken. So: redraw off-tick,
@@ -1844,6 +1793,16 @@ NAMES.forEach((n,i)=>P.add({fort:n[2],tint:TINTS[(i*3)%TINTS.length][1],
   x:SPOTS[i][0],y:SPOTS[i][1],vx:(i%2?1:-1)*0.5,vy:(i%3?1:-1)*0.4,
   name:n[0],msg:n[1],date:n[3],keeper:n[5],bumps:n[4],
   stickers:i%3===0?[{id:Object.keys(STICKERS)[(i*5)%32],x:15,y:2}]:null}));
+/* The world is much larger than the frame, so the seeded ducks have to be
+   spread across all of it — left where they were authored they occupied one
+   corner and the rest of the pond was empty water, which reads as "panning
+   is broken" rather than "you have wandered off". */
+P.growWorld();
+(function(){
+  const spots=P.scatter(P.ducks.length);
+  P.ducks.forEach((d,i)=>{ d.x=spots[i].x; d.y=spots[i].y; });
+})();
+
 /* Spread each duck's bump total over a few neighbours, so the "bumped most
    by" row has a real ranking to show rather than a flat list. Deterministic,
    so the demo looks the same every time it is reviewed. */
@@ -1879,13 +1838,20 @@ function go(name){
     const sheet=document.getElementById("arrival-sheet");
     sheet.dataset.in="false";
     // Drop the duck high enough that the sheet never covers it.
+    /* Frame the landing spot BEFORE the duck falls, with no camera
+       animation at all. Zooming after it lands means moving and scaling at
+       once, which is the one combination the transform cannot do safely --
+       and it pushed the duck off the top of the screen. Letting it fall
+       into an already-close view is simpler, has no failure mode, and the
+       drop is the motion; the camera does not need to be. */
     A.resetCam();
+    A.setZoom(6,A.W/2,A.H*0.34);
+    A.cam.x=86-(A.W/6)/2; A.cam.y=78-(A.H/6)*0.34; A.clampCam();
     A.drop(me.fort,86,78,{tint:me.tint,mine:true});
     /* Wide while it falls and while the fortune's effect plays -- the
        fireworks need room -- then close in on the duck. Arriving zoomed in
        would crop the one moment the whole card exists for; arriving and
        staying wide leaves you looking at a speck. */
-    A.onland=d=>{ setTimeout(()=>A.focus(d,8,0.3,1250), me.fort===0?800:560); };
     clearTimeout(arrivalTimer);
     // The sheet waits for the arrival to land and its effect to read.
     // Showing it immediately would put chrome on top of the one moment
@@ -2328,9 +2294,8 @@ document.getElementById("z-home").appendChild(iconCanvas("home",22));
    well would mean losing your place to change scale. */
 function pondHome(){
   if(P.cell===CELL)return;
-  const wx=P.cam.x+(P.W/2)/P.cell, wy=P.cam.y+(P.H/2)/P.cell;
-  P.target=null;
-  P.dollyTo(CELL,wx-(P.W/2)/CELL,wy-(P.H/2)/CELL,560);
+  const c=P.centre();
+  P.moveTo(c.x,c.y,CELL,560);       // keeps your place, changes the scale
 }
 document.getElementById("z-home").onclick=pondHome;
 /* Show the way home only once there is one. Checked on the same rAF the
@@ -2361,7 +2326,7 @@ function setGather(key){
   /* Gather in the middle of the water and bring the camera along, so you
      are always looking at the thing you just whistled for. */
   if(key){ P.gatherAt={x:P.cw/2,y:P.ch/2};
-           P.glideTo(P.cw/2-P.vw()/2,P.ch/2-P.vh()/2); }
+           P.moveTo(P.cw/2,P.ch/2,P.cell,820); }
   else{
     P.gatherAt=null;
     /* "Everyone" is the show-me-everything action, so it is also the way
@@ -2550,7 +2515,7 @@ function releaseDuck(){
        out there". Wait for the splash and the fortune's effect to read
        first, then take almost a second to settle -- arriving instantly
        reads as a cut, and this is the one moment worth a slow one. */
-    setTimeout(()=>P.focus(d,8,0.42,1250), me.fort===0?950:700);
+    setTimeout(()=>P.focus(d,6,0.42,1250), me.fort===0?950:700);
     // Let the arrival finish before asking for anything.
     setTimeout(openKeep, me.fort===0 ? 1600 : 1200);
   };
