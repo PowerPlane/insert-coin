@@ -320,6 +320,20 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
 .p-name{font-family:var(--serif);font-weight:400;font-size:1.3rem;line-height:1.1;margin:0 0 .12rem}
 .p-meta{font-family:var(--mono);font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--p-faint);margin:0}
 .p-msg{font-size:1.02rem;line-height:1.5;color:var(--p-soft);margin:.7rem 0 0}
+/* Who bumps this duck most. Ducks, not names — it reads at a glance and it
+   stays playful; the name is on the label for anyone who needs it. */
+.p-bumpers{margin:.7rem 0 0}
+.p-bumplbl{font-family:var(--mono);font-size:.58rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--p-faint);margin:0 0 .3rem}
+.p-bumprow{display:flex;gap:.3rem;flex-wrap:wrap}
+.p-bumper{all:unset;box-sizing:border-box;cursor:pointer;position:relative;
+  width:40px;height:40px;display:grid;place-items:center;
+  background:#dff2fb;clip-path:var(--px-corner)}
+.p-bumper canvas{image-rendering:pixelated;width:32px;height:32px}
+.p-bumper i{position:absolute;right:1px;bottom:0;font-family:var(--mono);
+  font-style:normal;font-size:.52rem;color:var(--p-ink);background:#ffffffdd;padding:0 .15rem}
+.p-bumper:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
+.p-btn[disabled]{opacity:.5;cursor:default}
 .p-actions{display:flex;gap:.5rem;margin-top:.9rem;flex-wrap:wrap}
 .p-btn{all:unset;box-sizing:border-box;cursor:pointer;font-family:var(--mono);font-size:.64rem;
   letter-spacing:.09em;text-transform:uppercase;padding:.55rem .8rem;border-radius:7px;
@@ -527,12 +541,16 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
                 <div style="min-width:0">
                   <p class="p-fortune"><b id="p-jp">小吉</b><span id="p-en">Little luck</span></p>
                   <p class="p-name" id="p-name">Mika</p>
-                  <p class="p-meta" id="p-meta">Card 7F3A9K · 4 Aug</p>
+                  <p class="p-meta" id="p-meta">via Sam · 4 Aug</p>
                 </div>
               </div>
               <p class="p-msg" id="p-msg">found this card at the bar</p>
+              <div class="p-bumpers" id="p-bumpers" hidden>
+                <p class="p-bumplbl">Bumped most by</p>
+                <div class="p-bumprow" id="p-bumprow"></div>
+              </div>
               <div class="p-actions">
-                <button class="p-btn hot" id="p-wave">👋 Wave · <span id="p-waves">6</span></button>
+                <button class="p-btn hot" id="p-bump">Bump · <span id="p-bumps">6</span></button>
                 <button class="p-btn" id="p-report">Report</button>
               </div>
             </div>
@@ -625,7 +643,7 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
         <tr><td class="k">Release</td><td>The duck enters with its fortune's animation</td><td><span class="chip ok">built</span></td></tr>
         <tr><td class="k">Keep the link</td><td>Text/email it to yourself — the only key that exists</td><td><span class="chip ok">built</span></td></tr>
         <tr><td class="k">Pond</td><td>Tap any duck, wave, say something every 10 min</td><td><span class="chip ok">built</span></td></tr>
-        <tr><td class="k"><strong>Come back</strong></td><td>Your duck, days floating, waves received</td><td><span class="chip gap">was missing</span></td></tr>
+        <tr><td class="k"><strong>Come back</strong></td><td>Your duck, days floating, bumps received</td><td><span class="chip gap">was missing</span></td></tr>
         <tr><td class="k"><strong>Edit / delete</strong></td><td>Change message and contact, or remove everything</td><td><span class="chip gap">was missing</span></td></tr>
         <tr><td class="k">Visitor · d = 0</td><td>Read-only pond, can still put out fires</td><td><span class="chip ok">designed</span></td></tr>
         <tr><td class="k">Late tap · expired</td><td>Explains the 5-minute window, offers the pond anyway</td><td><span class="chip ok">designed</span></td></tr>
@@ -637,7 +655,7 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
   <h3>Still open</h3>
   <ul class="clean">
     <li><strong>Does redecorating re-run the arrival animation?</strong> I've said no — it's a quiet save, the fireworks belong to the first arrival only.</li>
-    <li><strong>Should waves notify you?</strong> There's no account to notify. It could be in the private link's page, which is what I've done, or an optional email if a contact was left.</li>
+    <li><strong>Should bumps notify you?</strong> There's no account to notify. It could be in the private link's page, which is what I've done, or an optional email if a contact was left.</li>
     <li><strong>How long does the private link live?</strong> Forever, matching the duck. Worth confirming, since it's the one credential in the system.</li>
   </ul>
 </div></section>
@@ -651,7 +669,7 @@ const SLOTS = {"hat":[15,2],"face":[15,5],"neck":[13,10],"body":[10,15],"float":
 <script>
 (function(){
 "use strict";
-const N=24, CELL=4;
+const N=24, CELL=4, DART_MS=420;
 const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
 const BEAK="#EF9F4E", EYE="#2B2B24";
 const TINTS=[["gold","#FFCA00"],["cream","#FFE9A8"],["apricot","#FFB068"],["coral","#FF8973"],
@@ -919,9 +937,23 @@ function Scene(canvas,opts){
       if(dist<26){const f=(1-dist/26)*a*1.5; d.vx+=dx/dist*f; d.vy+=dy/dist*f;} }
   };
   S.add=o=>{const d=Object.assign({x:cw/2,y:ch/2,vx:0,vy:0,fort:1,tint:"#FFCA00",paint:null,
-    stickers:null,flip:false,mine:false,burning:false,burnUntil:0,name:"",msg:"",date:"",card:"",waves:0,
+    stickers:null,flip:false,mine:false,burning:false,burnUntil:0,name:"",msg:"",date:"",keeper:"",bumps:0,
     dx:(Math.random()-0.5)*0.16,dy:(Math.random()-0.5)*0.12},o); S.ducks.push(d); return d;};
   S.drop=(fi,x,y,meta)=>S.arrivals.push({fi,x,y,t:performance.now(),meta:meta||{}});
+  /* A bump. Fixed duration whatever the distance, so a bump across the pond
+     is simply a faster duck rather than a longer wait -- the stop-motion
+     tick makes that read as intent, not as a glitch. Stops one duck-width
+     short so they touch instead of overlapping. */
+  S.bump=(from,to)=>{
+    if(!from||!to||from===to||from._dt)return false;
+    const dx=to.x-from.x, dy=to.y-from.y, dist=Math.hypot(dx,dy)||1;
+    const stop=Math.max(0,dist-N*0.7);
+    from._d0={x:from.x,y:from.y};
+    from._d1={x:from.x+dx/dist*stop,y:from.y+dy/dist*stop};
+    from._dtar=to; from._dt=performance.now(); from.flip=dx<0;
+    if(reduce){ from._dt=1; }   // land it on the next tick, no travel
+    return true;
+  };
   function land(a){
     const d=S.add(Object.assign({fort:a.fi,x:a.x,y:a.y},a.meta));
     S.splash(a.x,a.y,2.6);
@@ -968,6 +1000,19 @@ function Scene(canvas,opts){
         S.fx.splice(i,1);
       } }
     for(const d of S.ducks){
+      if(d._dt){
+        const pr=reduce?1:Math.min(1,(now-d._dt)/DART_MS), e=1-Math.pow(1-pr,3);
+        d.x=d._d0.x+(d._d1.x-d._d0.x)*e; d.y=d._d0.y+(d._d1.y-d._d0.y)*e;
+        d.vx=0; d.vy=0;
+        if(pr>=1){
+          const t=d._dtar, ax=t.x-d.x, ay=t.y-d.y, m=Math.hypot(ax,ay)||1;
+          S.splash(d.x+ax*0.5,d.y+ay*0.5,1.5);
+          t.vx+=ax/m*3.6; t.vy+=ay/m*2.4;    /* they get knocked */
+          d.vx-=ax/m*1.6; d.vy-=ay/m*1.1;    /* you rebound */
+          d._dt=0; d._d0=d._d1=d._dtar=null;
+        }
+        continue;
+      }
       d.vx*=0.86; d.vy*=0.86; d.x+=(d.vx+d.dx)*dt*8; d.y+=(d.vy+d.dy)*dt*8;
       const m=N*0.5;
       if(d.x<m){d.x=m;d.dx=Math.abs(d.dx);d.vx=Math.abs(d.vx);}
@@ -1052,18 +1097,35 @@ function Scene(canvas,opts){
 /* ── scenes ── */
 const A=Scene(document.getElementById("cv-arrival"),{});
 const P=Scene(document.getElementById("cv-pond"),{});
-const NAMES=[["Mika","found this card at the bar",1,"4 Aug",6],["Shuang","clover duck",1,"12 Jul",9],
- ["Ren","insert coin → insert duck",2,"5 Aug",4],["Jo","my duck has a hat",0,"6 Aug",8],
- ["Tobi","bad luck but a great card",3,"7 Aug",11],["Ana","sunglasses duck says hello",0,"8 Aug",5],
- ["Kofi","",2,"8 Aug",2],["Lu","pond gang",1,"9 Aug",7],["Sam","tapped this at david's desk",0,"9 Aug",3],
- ["Iris","",2,"10 Aug",1],["Max","good luck for a good week",0,"10 Aug",6],["Noor","",1,"11 Aug",0],
- ["Wen","🌊",3,"11 Aug",4]];
+/* name, message, fortune, date, bumps, whose card it came from.
+   The keeper replaces the card serial on the duck's card: readable, and it
+   stops publishing the id a card claim would be keyed on. */
+const NAMES=[["Mika","found this card at the bar",1,"4 Aug",6,"Sam"],["Shuang","clover duck",1,"12 Jul",9,"Sam"],
+ ["Ren","insert coin → insert duck",2,"5 Aug",4,""],["Jo","my duck has a hat",0,"6 Aug",8,"Mika"],
+ ["Tobi","bad luck but a great card",3,"7 Aug",11,"Sam"],["Ana","sunglasses duck says hello",0,"8 Aug",5,"Mika"],
+ ["Kofi","",2,"8 Aug",2,""],["Lu","pond gang",1,"9 Aug",7,"Sam"],["Sam","tapped this at david's desk",0,"9 Aug",3,""],
+ ["Iris","",2,"10 Aug",1,"Mika"],["Max","good luck for a good week",0,"10 Aug",6,"Sam"],["Noor","",1,"11 Aug",0,""],
+ ["Wen","🌊",3,"11 Aug",4,"Mika"]];
 const SPOTS=[[22,30],[58,22],[44,56],[120,38],[92,70],[26,92],[64,104],[128,112],
              [34,134],[96,142],[22,162],[120,172],[60,178]];
 NAMES.forEach((n,i)=>P.add({fort:n[2],tint:TINTS[(i*3)%TINTS.length][1],
   x:SPOTS[i][0],y:SPOTS[i][1],vx:(i%2?1:-1)*0.5,vy:(i%3?1:-1)*0.4,
-  name:n[0],msg:n[1],date:n[3],card:"7F3A9K",waves:n[4],
+  name:n[0],msg:n[1],date:n[3],keeper:n[5],bumps:n[4],
   stickers:i%3===0?[{id:Object.keys(STICKERS)[(i*5)%32],x:15,y:2}]:null}));
+/* Spread each duck's bump total over a few neighbours, so the "bumped most
+   by" row has a real ranking to show rather than a flat list. Deterministic,
+   so the demo looks the same every time it is reviewed. */
+P.ducks.forEach((d,i)=>{
+  d.bumpers=[];
+  let left=d.bumps|0;
+  for(let k=1;k<=4&&left>0;k++){
+    const j=(i+k*3+1)%P.ducks.length;
+    if(j===i)continue;
+    const n=Math.max(1,Math.ceil(left/(5-k)));
+    d.bumpers.push({i:j,n:Math.min(n,left)});
+    left-=n;
+  }
+});
 let MINE=null;
 
 /* ── router ── */
@@ -1316,9 +1378,12 @@ function openPanel(d,src){
   document.getElementById("p-jp").textContent=FORT[d.fort].jp;
   document.getElementById("p-en").textContent=FORT[d.fort].en;
   document.getElementById("p-name").textContent=d.name||"Anonymous duck";
-  document.getElementById("p-meta").textContent="Card "+(d.card||"—")+" · "+(d.date||"");
+  /* Whose card it came from, not which card. An unclaimed card says
+     nothing rather than showing a serial nobody can read. */
+  document.getElementById("p-meta").textContent=
+    (d.keeper?"via "+d.keeper+" · ":"")+(d.date||"");
   document.getElementById("p-msg").textContent=d.msg||"— left no message —";
-  document.getElementById("p-waves").textContent=d.waves|0;
+  paintBumpers(d); syncBumpBtn(d);
   pctx.imageSmoothingEnabled=false;
   pctx.fillStyle="#dff2fb"; pctx.fillRect(0,0,pDuck.width,pDuck.height);
   drawDuckInto(pctx,d,0,0,9,false);
@@ -1330,8 +1395,63 @@ function closePanel(){ panel.dataset.open="false"; scrim.dataset.open="false";
 document.getElementById("p-x").onclick=closePanel;
 scrim.onclick=closePanel;
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&panel.dataset.open==="true")closePanel(); });
-document.getElementById("p-wave").onclick=()=>{ const d=panel._d; if(!d)return;
-  d.waves=(d.waves|0)+1; document.getElementById("p-waves").textContent=d.waves; P.splash(d.x,d.y,1.4); };
+/* Who bumps this duck most, as ducks rather than names -- five at most,
+   because a ranking longer than a row stops being a glance. Tapping one
+   opens that duck, so the pond becomes something you can wander. */
+function paintBumpers(d){
+  const wrap=document.getElementById("p-bumpers"), row=document.getElementById("p-bumprow");
+  row.innerHTML="";
+  const top=(d.bumpers||[]).slice().sort((a,b)=>b.n-a.n).slice(0,5);
+  wrap.hidden=top.length===0;
+  for(const b of top){
+    const who=P.ducks[b.i]; if(!who)continue;
+    const btn=document.createElement("button");
+    btn.type="button"; btn.className="p-bumper";
+    btn.setAttribute("aria-label",
+      (who.name||"Anonymous")+", "+b.n+(b.n===1?" bump":" bumps"));
+    const c=document.createElement("canvas"); c.width=c.height=N*2;
+    const x=c.getContext("2d"); x.imageSmoothingEnabled=false;
+    drawDuckInto(x,who,0,0,2,false);
+    const tag=document.createElement("i"); tag.textContent=b.n;
+    btn.appendChild(c); btn.appendChild(tag);
+    btn.onclick=()=>openPanel(who,btn);
+    row.appendChild(btn);
+  }
+}
+
+/* Four states, and only one of them is "press me". */
+const BUMP_COOLDOWN_MS=8000;   // an hour in production; short here to review
+function syncBumpBtn(d){
+  const b=document.getElementById("p-bump");
+  /* Every branch rewrites the whole label including the count span, so no
+     state can leave the next open without a counter to write into. */
+  const label=(text,on)=>{
+    b.innerHTML=text+' <span id="p-bumps">'+(d.bumps|0)+"</span>";
+    b.disabled=!on; b.classList.toggle("hot",on);
+  };
+  if(d.mine){ b.hidden=true; return; }
+  b.hidden=false;
+  if(!MINE){ b.innerHTML="Make a duck to bump"; b.disabled=true;
+    b.classList.remove("hot"); return; }
+  if(d._bumpedAt&&performance.now()-d._bumpedAt<BUMP_COOLDOWN_MS){
+    label("Bumped ✓ ·",false); return; }
+  /* If they have bumped you, say so — reciprocity is the whole charm. */
+  const backs=(MINE.bumpers||[]).some(x=>P.ducks[x.i]===d);
+  label(backs?"Bump back ·":"Bump ·",true);
+}
+
+document.getElementById("p-bump").onclick=()=>{
+  const d=panel._d; if(!d||!MINE||d===MINE)return;
+  d.bumps=(d.bumps|0)+1; d._bumpedAt=performance.now();
+  const mi=P.ducks.indexOf(MINE);
+  d.bumpers=d.bumpers||[];
+  const seen=d.bumpers.find(x=>x.i===mi);
+  if(seen)seen.n++; else d.bumpers.push({i:mi,n:1});
+  /* Close first: the bump is the thing worth watching, and the card covers
+     the water it happens on. */
+  closePanel();
+  P.bump(MINE,d);
+};
 document.getElementById("p-report").onclick=function(){ this.textContent="Reported ✓"; };
 function buildSr(){
   const l=document.getElementById("sr-list"); l.innerHTML="";
@@ -1403,7 +1523,7 @@ function releaseDuck(){
     setTimeout(openKeep, me.fort===0 ? 1600 : 1200);
   };
   P.drop(me.fort,x,y,{tint:me.tint,paint:me.paint,stickers:me.stickers,mine:true,
-    name:me.name||"You",msg:me.msg||"",date:"just now",card:"7F3A9K",waves:0});
+    name:me.name||"You",msg:me.msg||"",date:"just now",keeper:"",bumps:0});
 }
 document.getElementById("release-go").onclick=releaseDuck;
 document.getElementById("release-skip").onclick=releaseDuck;
