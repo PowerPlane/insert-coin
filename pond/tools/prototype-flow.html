@@ -342,6 +342,7 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
   font-family:var(--mono);font-size:1.05rem;line-height:1;
   background:#ffffffee;color:var(--p-ink);clip-path:var(--px-corner)}
 .zoomer button:active{background:#dff2fb}
+.zoomer button[hidden]{display:none}
 .zoomer button:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--field-500)}
 .bar{position:absolute;left:16px;right:16px;bottom:28px;z-index:30;display:flex;gap:.4rem}
 .bar[hidden]{display:none}
@@ -697,6 +698,10 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
             <div class="glist" id="glist"></div>
           </div>
           <div class="zoomer">
+            <!-- Only present once you have actually moved: at the default
+                 framing there is nowhere to go back to, so it would be a
+                 button that does nothing. -->
+            <button type="button" id="z-home" aria-label="Back to the whole pond" hidden></button>
             <button type="button" id="z-in"  aria-label="Zoom in">+</button>
             <button type="button" id="z-out" aria-label="Zoom out">−</button>
           </div>
@@ -1091,6 +1096,21 @@ const ICONS={
         ".....................kkkkkk","........................kkk",
         "........................kkk","........................kkk",
         "..........................."],
+  home:[
+        "...........................","...........................",
+        ".............k.............","............kkk............",
+        "...........kkkkk...........","..........kkkkkkk..........",
+        ".........kkkkkkkkk.........","........kkkkkkkkkkk........",
+        ".......kkkkkkkkkkkkk.......","......kkkkkkkkkkkkkkk......",
+        ".....kkkkkkkkkkkkkkkkk.....","....kkkkkkkkkkkkkkkkkkk....",
+        "...kkkkkkkkkkkkkkkkkkkkk...","...........................",
+        "....kkkkkkkkkkkkkkkkkkk....","....kk...............kk....",
+        "....kk.....kkkkkkk...kk....","....kk.....kk...kk...kk....",
+        "....kk.....kk...kk...kk....","....kk.....kk...kk...kk....",
+        "....kk.....kk...kk...kk....","....kkkkkkkkkkkkkkkkkkk....",
+        "...........................","...........................",
+        "...........................","...........................",
+        "..........................."],
   /* The icons8 pixel gear, verbatim at its native 26x26 — eight teeth on a
      stepped ring around a hollow square hub. Reducing it to 13 turns it into
      a mandala and redrawing it at 15 turns it into a sun, so it is kept at
@@ -1299,7 +1319,10 @@ function Scene(canvas,opts){
   let cw=Math.ceil(W/CELL), ch=Math.ceil(H/CELL);
   const S={ctx,W,H,cw,ch,ducks:[],parts:[],rings:[],fx:[],petals:[],arrivals:[],
     frame:0,tick:80,cell:CELL,cam:{x:0,y:0},camera:!!(opts&&opts.camera),gather:null};
-  const ZOOMS=[2,3,4,6];
+  /* 4 is home -- the pond's native framing. 8 exists mainly for the arrival
+     and release moments, where the duck should be close enough to look at
+     rather than locate. */
+  const ZOOMS=[2,3,4,6,8];
   S.zooms=ZOOMS;
   const vw=()=>W/S.cell, vh=()=>H/S.cell;
   S.vw=vw; S.vh=vh;
@@ -1308,6 +1331,55 @@ function Scene(canvas,opts){
   S.clampCam=()=>{
     S.cam.x = cw<=vw() ? (cw-vw())/2 : Math.max(0,Math.min(cw-vw(),S.cam.x));
     S.cam.y = ch<=vh() ? (ch-vh())/2 : Math.max(0,Math.min(ch-vh(),S.cam.y));
+  };
+  /* A smooth zoom without ever rendering a fractional cell.
+     The canvas is re-rendered immediately at the NEW integer zoom, then a
+     CSS transform is used to make it momentarily *look* like the old
+     framing and animated back to identity. So the pixels are always crisp
+     and always on an integer grid; the browser does the in-between scaling
+     of an already-correct image, and the animation lands exactly where the
+     renderer already is. Rendering the tween itself would mean cells of
+     4.7px, which is what makes pixel art shimmer. */
+  /* A smooth zoom that never renders a fractional cell, and never shows
+     what is behind the canvas.
+     The first version rendered at the NEW zoom and scaled the canvas DOWN
+     to fake the old framing -- which meant that while zooming in, the
+     canvas was momentarily smaller than its own box and the surface behind
+     it showed through around the pond.
+     So it works the other way round: keep rendering the OLD framing, scale
+     UP toward the new one (which overflows and is clipped, never exposing
+     anything), and only commit the new cell and camera at the end. The
+     tween is the browser scaling an already-crisp image; the render is
+     always on an integer grid. */
+  let dollying=0;
+  S.dollyTo=(c1,x1,y1,ms)=>{
+    c1=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],Math.round(c1)));
+    const c0=S.cell, x0=S.cam.x, y0=S.cam.y;
+    const commit=()=>{ S.cell=c1; S.cam.x=x1; S.cam.y=y1; S.clampCam();
+      canvas.style.transition=""; canvas.style.transform="";
+      canvas.style.pointerEvents=""; dollying=0; render(); };
+    const rect=canvas.getBoundingClientRect();
+    if(reduce||!rect.width||(c0===c1&&Math.abs(x0-x1)<0.01&&Math.abs(y0-y1)<0.01)){
+      commit(); return; }
+    ms=ms||420;
+    const disp=rect.width/W;
+    const k=c1/c0;
+    const tx=(x0-x1)*c1*disp, ty=(y0-y1)*c1*disp;
+    clearTimeout(dollying);
+    canvas.style.transformOrigin="0 0";
+    canvas.style.transition="none";
+    canvas.style.transform="";
+    canvas.style.pointerEvents="none";      // coords are wrong mid-flight
+    requestAnimationFrame(()=>{
+      /* Eased at both ends: a camera does not start at full speed. The
+         long "moment" zooms get a gentler entry and a longer settle; the
+         short UI ones stay closer to a standard ease-in-out so buttons
+         still feel responsive. */
+      canvas.style.transition="transform "+ms+"ms "+
+        (ms>=900?"cubic-bezier(.45,.02,.25,1)":"cubic-bezier(.4,0,.2,1)");
+      canvas.style.transform="translate("+tx+"px,"+ty+"px) scale("+k+")";
+      dollying=setTimeout(commit,ms+30);
+    });
   };
   /* Anchor-preserving: the point under your fingers stays under them. */
   S.setZoom=(cell,sx,sy)=>{
@@ -1321,7 +1393,11 @@ function Scene(canvas,opts){
   };
   S.zoomStep=(dir,sx,sy)=>{
     const i=ZOOMS.indexOf(S.cell);
-    S.setZoom(ZOOMS[Math.max(0,Math.min(ZOOMS.length-1,i+dir))],sx,sy);
+    const c1=ZOOMS[Math.max(0,Math.min(ZOOMS.length-1,i+dir))];
+    if(c1===S.cell)return;
+    sx=(sx==null?W/2:sx); sy=(sy==null?H/2:sy);
+    const wx=S.cam.x+sx/S.cell, wy=S.cam.y+sy/S.cell;
+    S.dollyTo(c1,wx-sx/c1,wy-sy/c1,460);
   };
   S.panBy=(dxScreen,dyScreen)=>{
     S.target=null;                       // the finger wins
@@ -1396,12 +1472,19 @@ function Scene(canvas,opts){
      one; dragging clears it, because a finger should never be argued with. */
   S.target=null;
   S.glideTo=(x,y)=>{ S.target={x,y}; };
-  S.focus=(d,minCell)=>{
+  /* yFrac places the duck up or down the frame: the arrival sheet covers
+     the bottom 40%, so centring there would hide the thing you just got. */
+  S.focus=(d,minCell,yFrac,ms)=>{
     if(!d)return;
-    if(minCell&&S.cell<minCell)S.setZoom(minCell);
-    if(reduce){ S.cam.x=d.x-vw()/2; S.cam.y=d.y-vh()/2; S.clampCam(); S.target=null; }
-    else S.glideTo(d.x-vw()/2,d.y-vh()/2);
+    const c1=(minCell&&S.cell<minCell)?minCell:S.cell;
+    const tx=d.x-(W/c1)/2, ty=d.y-(H/c1)*(yFrac==null?0.5:yFrac);
+    /* Zoom and move as ONE motion — a glide running alongside the zoom
+       transform is two easings fighting. */
+    if(c1!==S.cell){ S.target=null; S.dollyTo(c1,tx,ty,ms); }
+    else if(reduce){ S.cam.x=tx; S.cam.y=ty; S.clampCam(); S.target=null; }
+    else S.glideTo(tx,ty);
   };
+  S.resetCam=()=>{ S.cell=CELL; S.cam.x=0; S.cam.y=0; S.target=null; S.growWorld(); S.clampCam(); };
   const RIPPLE=480, easeOut=p=>1-Math.pow(1-p,3);
   S.ring=(x,y,a)=>{S.rings.push({x,y,t:performance.now(),max:14+a*7});if(S.rings.length>12)S.rings.shift();};
   S.emit=(x,y,vx,vy,c,l,rise)=>S.parts.push({x,y,vx,vy,c,life:l,l0:l,rise:rise||0});
@@ -1681,7 +1764,7 @@ function Scene(canvas,opts){
 }
 
 /* ── scenes ── */
-const A=Scene(document.getElementById("cv-arrival"),{});
+const A=Scene(document.getElementById("cv-arrival"),{camera:true});
 const P=Scene(document.getElementById("cv-pond"),{camera:true});
 /* name, message, fortune, date, bumps, whose card it came from.
    The keeper replaces the card serial on the duck's card: readable, and it
@@ -1728,7 +1811,13 @@ function go(name){
     const sheet=document.getElementById("arrival-sheet");
     sheet.dataset.in="false";
     // Drop the duck high enough that the sheet never covers it.
+    A.resetCam();
     A.drop(me.fort,86,78,{tint:me.tint,mine:true});
+    /* Wide while it falls and while the fortune's effect plays -- the
+       fireworks need room -- then close in on the duck. Arriving zoomed in
+       would crop the one moment the whole card exists for; arriving and
+       staying wide leaves you looking at a speck. */
+    A.onland=d=>{ setTimeout(()=>A.focus(d,8,0.3,1250), me.fort===0?800:560); };
     clearTimeout(arrivalTimer);
     // The sheet waits for the arrival to land and its effect to read.
     // Showing it immediately would put chrome on top of the one moment
@@ -2153,6 +2242,29 @@ document.getElementById("pond-settings").onclick=()=>go("manage");
   setTimeout(say,300);
 })();
 
+document.getElementById("z-home").appendChild(iconCanvas("home",22));
+/* Home is the ZOOM, not the place. Back to CELL 4 -- the pond's native
+   framing -- anchored on the middle of what you are already looking at, so
+   you keep your spot. Yanking the camera back to the middle of the world as
+   well would mean losing your place to change scale. */
+function pondHome(){
+  if(P.cell===CELL)return;
+  const wx=P.cam.x+(P.W/2)/P.cell, wy=P.cam.y+(P.H/2)/P.cell;
+  P.target=null;
+  P.dollyTo(CELL,wx-(P.W/2)/CELL,wy-(P.H/2)/CELL,560);
+}
+document.getElementById("z-home").onclick=pondHome;
+/* Show the way home only once there is one. Checked on the same rAF the
+   camera already redraws on, so it costs nothing while the pond is idle. */
+(function(){
+  const btn=document.getElementById("z-home");
+  let was=null;
+  (function watch(){
+    const home = P.cell===CELL;
+    if(home!==was){ btn.hidden=home; was=home; }
+    requestAnimationFrame(watch);
+  })();
+})();
 document.getElementById("z-in").onclick=()=>P.zoomStep(1);
 document.getElementById("z-out").onclick=()=>P.zoomStep(-1);
 document.getElementById("cv-pond").addEventListener("dblclick",e=>e.preventDefault());
@@ -2171,7 +2283,14 @@ function setGather(key){
      are always looking at the thing you just whistled for. */
   if(key){ P.gatherAt={x:P.cw/2,y:P.ch/2};
            P.glideTo(P.cw/2-P.vw()/2,P.ch/2-P.vh()/2); }
-  else P.gatherAt=null;
+  else{
+    P.gatherAt=null;
+    /* "Everyone" is the show-me-everything action, so it is also the way
+       home: back to the default zoom (CELL 4, the pond's native framing)
+       and back to the middle. Without this there was no way to undo a zoom
+       and a pan except by hand. */
+    pondHome();
+  }
   const chip=document.getElementById("whistle");
   chip.hidden=!key;
   if(key) document.getElementById("whistle-what").textContent =
@@ -2349,8 +2468,10 @@ function releaseDuck(){
     /* Close in on it. This is the moment the duck becomes yours, and in a
        pond that may be far bigger than the screen, a duck landing at
        arm's length is the difference between "there it is" and "somewhere
-       out there". The camera glides, so you see where it sits. */
-    P.focus(d,6);
+       out there". Wait for the splash and the fortune's effect to read
+       first, then take almost a second to settle -- arriving instantly
+       reads as a cut, and this is the one moment worth a slow one. */
+    setTimeout(()=>P.focus(d,8,0.42,1250), me.fort===0?950:700);
     // Let the arrival finish before asking for anything.
     setTimeout(openKeep, me.fort===0 ? 1600 : 1200);
   };

@@ -134,7 +134,7 @@ it is a different feature.
 ## 05 · The pond
 
 *The water itself.*  
-`38 strings · 108 words`
+`39 strings · 113 words`
 
 | # | Kind | String |
 | --- | --- | --- |
@@ -142,40 +142,41 @@ it is a different feature.
 | `pond.02` | Screen reader | BY-002 — about this card. Opens davidyang.work in a new tab. |
 | `pond.03` | Screen reader | Show everyone again |
 | `pond.04` | Body | Whistle for |
-| `pond.05` | Screen reader | Zoom in |
-| `pond.06` | Button | + |
-| `pond.07` | Screen reader | Zoom out |
-| `pond.08` | Button | − |
-| `pond.09` | Screen reader | Say something |
-| `pond.10` | Button | Find my duck |
-| `pond.11` | Screen reader | Your duck settings |
-| `pond.12` | Screen reader | Ducks in the pond |
-| `pond.13` | Body | Your duck is in |
-| `pond.14` | Heading | Keep this link |
-| `pond.15` | Body | No accounts. Use this to edit, redecorate, or take your duck out. |
-| `pond.16` | Field label | Your private link |
-| `pond.17` | Example value | ducky.davidyang.work/e/9fQ2xK7pLm |
-| `pond.18` | Button | Copy |
-| `pond.19` | Button | Text |
-| `pond.20` | Button | Email |
-| `pond.21` | Button | Done |
-| `pond.22` | Screen reader | Close |
-| `pond.23` | Body | 小吉·Little luck |
-| `pond.24` | Body | Mika |
-| `pond.25` | Body | via Sam · 4 Aug |
-| `pond.26` | Body | found this card at the bar |
-| `pond.27` | Body | Most bumps from |
-| `pond.28` | Body | What's wrong with it? |
-| `pond.29` | Button | Rude or abusive |
-| `pond.30` | Button | Private details |
-| `pond.31` | Button | Spam |
-| `pond.32` | Button | Something else |
-| `pond.33` | Field label | Anything to add |
-| `pond.34` | Placeholder | Anything to add — optional |
-| `pond.35` | Button | Send report |
-| `pond.36` | Button | Cancel |
-| `pond.37` | Button | Bump · 6 |
-| `pond.38` | Button | Report |
+| `pond.05` | Screen reader | Back to the whole pond |
+| `pond.06` | Screen reader | Zoom in |
+| `pond.07` | Button | + |
+| `pond.08` | Screen reader | Zoom out |
+| `pond.09` | Button | − |
+| `pond.10` | Screen reader | Say something |
+| `pond.11` | Button | Find my duck |
+| `pond.12` | Screen reader | Your duck settings |
+| `pond.13` | Screen reader | Ducks in the pond |
+| `pond.14` | Body | Your duck is in |
+| `pond.15` | Heading | Keep this link |
+| `pond.16` | Body | No accounts. Use this to edit, redecorate, or take your duck out. |
+| `pond.17` | Field label | Your private link |
+| `pond.18` | Example value | ducky.davidyang.work/e/9fQ2xK7pLm |
+| `pond.19` | Button | Copy |
+| `pond.20` | Button | Text |
+| `pond.21` | Button | Email |
+| `pond.22` | Button | Done |
+| `pond.23` | Screen reader | Close |
+| `pond.24` | Body | 小吉·Little luck |
+| `pond.25` | Body | Mika |
+| `pond.26` | Body | via Sam · 4 Aug |
+| `pond.27` | Body | found this card at the bar |
+| `pond.28` | Body | Most bumps from |
+| `pond.29` | Body | What's wrong with it? |
+| `pond.30` | Button | Rude or abusive |
+| `pond.31` | Button | Private details |
+| `pond.32` | Button | Spam |
+| `pond.33` | Button | Something else |
+| `pond.34` | Field label | Anything to add |
+| `pond.35` | Placeholder | Anything to add — optional |
+| `pond.36` | Button | Send report |
+| `pond.37` | Button | Cancel |
+| `pond.38` | Button | Bump · 6 |
+| `pond.39` | Button | Report |
 
 ---
 
@@ -322,13 +323,13 @@ it is a different feature.
 | Studio | 18 | 37 |
 | Sign it | 9 | 23 |
 | Contact | 8 | 52 |
-| The pond | 38 | 108 |
+| The pond | 39 | 113 |
 | Your duck, later | 7 | 29 |
 | Settings | 9 | 38 |
 | Card setup | 18 | 65 |
 | Admin | 32 | 90 |
 | Shared chrome | 3 | 14 |
 | Set from code | 6 | 28 |
-| **Total** | | **509** |
+| **Total** | | **514** |
 
 Anything over ~120 words on one phone screen is worth a second look.

@@ -182,6 +182,9 @@ Water is Bayer-dithered brand blues, never a gradient.
 
 | Date | Change | Why |
 | --- | --- | --- |
+| 2026-08-12 | Smooth zoom without fractional cells | Render stays on the OLD integer framing and the canvas scales UP to the new one, committing at the end. Scaling *down* to fake the old framing exposed the surface behind the pond. |
+| 2026-08-12 | Zoom home button | Returns to CELL 4 anchored on what you are looking at — home is the zoom, not the place. Hidden when already there. |
+| 2026-08-12 | Zoom level 8 added | For the arrival and release moments, where the duck should be close enough to look at rather than locate. |
 | 2026-08-12 | Ducks keep personal space | Two zones: contact (never overlap) and elbow room at ~2x, which is what stops loose huddles forming. Measured: min gap 36→53px, edge-hugging 21→6. |
 | 2026-08-12 | Wander, not fixed drift | A constant heading is a straight line and a straight line ends at a wall, which is why ducks accumulated on edges. Headings meander; walls repel before contact. |
 | 2026-08-12 | Gather point is the world centre | It was the viewport centre, so it moved when you panned and shoved ducks into whatever corner you faced. |
