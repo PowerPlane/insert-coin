@@ -17,7 +17,7 @@ with a phone. Desktop is a courtesy.
 pond/
   schema/0001_init.sql     THE FROZEN CONTRACT. Read the comments first.
   api/                     Vercel entry points. Three lines each, on purpose.
-    [...path].ts           everything under /api
+    router.ts              everything under /api, via a rewrite
     sweep.ts               the daily cron, behind CRON_SECRET
     shell.ts               /            duck-page.ts  /d/<slug>
     duck-edit.ts           /e/<key>

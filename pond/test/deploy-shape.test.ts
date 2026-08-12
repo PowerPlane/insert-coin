@@ -83,6 +83,23 @@ describe("the shape Vercel's CDN requires", () => {
     }
   });
 
+  it("/api/* is rewritten, because filename routing only matched one segment", () => {
+    // `api/[...path].ts` deployed fine and then served exactly one path
+    // segment: /api/pond worked, /api/duck/by-slug/<slug> returned Vercel's
+    // own NOT_FOUND without ever invoking our code. Zero-config /api does
+    // not expand a catch-all across segments.
+    //
+    // Deleting this rewrite silently un-deploys half the API — every route
+    // with a slash in it — while the tests stay green, so it is asserted
+    // here rather than trusted to a comment.
+    const config = JSON.parse(readFileSync(join(root, "vercel.json"), "utf8")) as {
+      rewrites?: { source: string; destination: string }[];
+    };
+    const api = (config.rewrites ?? []).find((r) => r.source.startsWith("/api/"));
+    expect(api, "no /api/* rewrite — multi-segment routes will 404").toBeDefined();
+    expect(api?.destination).toContain("__path=");
+  });
+
   it("every route in vercel.json points at a function that exists", () => {
     const config = JSON.parse(readFileSync(join(root, "vercel.json"), "utf8")) as {
       rewrites?: { destination: string }[];

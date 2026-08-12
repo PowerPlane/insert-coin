@@ -125,13 +125,19 @@ export async function mintFromQuery(
 /**
  * Everything under /api.
  *
- * Vercel routes `/api/*` to this by filename (`api/[...path].ts`), with no
- * rewrite in between — so `url.pathname` here is the real path the visitor
- * asked for, not a rewritten destination.
+ * `pathname` is passed in rather than read off the request, because on
+ * Vercel `/api/*` arrives through a rewrite and a rewritten request carries
+ * its DESTINATION path, not the one the visitor typed. `api/router.ts`
+ * reassembles the real one and hands it over; nothing in this file needs to
+ * know that happened, which is the point of the split.
+ *
+ * It falls back to `req.url` so that tests, and any platform that routes by
+ * path natively, can call this with two arguments and get the obvious
+ * behaviour.
  */
-export async function handle(req: Request, env: Env): Promise<Response> {
+export async function handle(req: Request, env: Env, pathname?: string): Promise<Response> {
   const url = new URL(req.url);
-  const path = url.pathname.replace(/\/+$/, "") || "/";
+  const path = (pathname ?? url.pathname).replace(/\/+$/, "") || "/";
 
   const { visitor, setCookie } = await ensureVisitor(req, env);
   const headers = securityHeaders();

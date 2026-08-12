@@ -148,6 +148,45 @@ describe("GET /api/pond", () => {
   });
 });
 
+describe("the path the router dispatches on", () => {
+  /**
+   * On Vercel `/api/*` arrives through a rewrite, so `req.url` is the
+   * DESTINATION (`/api/router?__path=duck/by-slug/x`), not what the visitor
+   * typed. `api/router.ts` reassembles the real path and passes it in.
+   *
+   * This is the seam that made half the API unreachable on the first deploy,
+   * so the override is tested rather than assumed.
+   */
+  it("comes from the argument when given one, not from the URL", async () => {
+    const e = await env();
+    const res = await handle(
+      new Request(`${ORIGIN}/api/router?__path=pond`),
+      e,
+      "/api/pond",
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ducks: [] });
+  });
+
+  it("falls back to the URL when no path is passed", async () => {
+    const e = await env();
+    const res = await handle(new Request(`${ORIGIN}/api/pond`), e);
+    expect(res.status).toBe(200);
+  });
+
+  it("routes a multi-segment path — the one that 404'd in production", async () => {
+    const e = await env();
+    const duck = await release(new Visitor(e));
+    const res = await handle(
+      new Request(`${ORIGIN}/api/router?__path=duck/by-slug/${duck.slug}`),
+      e,
+      `/api/duck/by-slug/${duck.slug}`,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ duck: { slug: duck.slug } });
+  });
+});
+
 describe("a tap becomes a session, exactly once", () => {
   it("mints on ?d= and reports the fortune it dealt", async () => {
     const e = await env();

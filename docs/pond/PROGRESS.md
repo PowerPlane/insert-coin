@@ -153,8 +153,10 @@ that class of gap closes.
 ### The port
 
 - `handle(req, env)` takes a web `Request` and knows nothing about Vercel.
-  `api/[...path].ts` is three lines. A catch-all **by filename, not a
-  rewrite**, so the router sees the real path rather than a destination.
+  `api/router.ts` is a few lines. `/api/*` reaches it by rewrite and hands
+  the real path back as `__path` — a filename catch-all (`api/[...path].ts`)
+  deployed cleanly and then matched only ONE path segment, so every route
+  with a slash in it returned Vercel's own 404 without invoking our code.
 - **No `public/index.html`, deliberately.** The CDN serves a static file
   before a function runs, and `/` is where a tap becomes a session. The shell
   is server-rendered, which also buys real link previews on `/d/<slug>` and a

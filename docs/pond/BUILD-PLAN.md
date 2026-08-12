@@ -31,7 +31,7 @@ why. `PROGRESS.md` is the tracker; this is the reasoning behind it.
 /d/<slug>         public duck page    → api/duck-page.ts   SERVER-RENDERED
 /e/<key>          private edit page   → api/duck-edit.ts   noindex
 /pondkeeper       admin               → Phase 4; not routed yet
-/api/*            everything else     → api/[...path].ts
+/api/*            everything else     → api/router.ts       (rewritten)
 ```
 
 **There is no `public/index.html`, deliberately.** Vercel's CDN serves a
@@ -207,10 +207,15 @@ that deletes a duck and asserts the contact row is gone. ✅
 
 ### Phase 1b — the port and the freeze ✅ *(built; deploy outstanding)*
 
-- `src/worker/index.ts` becomes `handle(req, env)`, which knows nothing about
-  Vercel; `api/[...path].ts` hands it a `Request`. A catch-all **by filename,
-  not a rewrite** — a rewrite gives a function its destination path, and the
-  router dispatches on the path.
+- `src/worker/index.ts` becomes `handle(req, env, path)`, which knows nothing
+  about Vercel; `api/router.ts` hands it a `Request` and the path.
+  **REVISED:** this was a filename catch-all, `api/[...path].ts`, chosen to
+  avoid a rewrite handing the function its destination path instead of the
+  real one. It deployed fine and matched exactly one segment — `/api/pond`
+  worked, `/api/duck/by-slug/<slug>` never reached our code. Zero-config
+  `/api` does not expand a catch-all across segments. It is a rewrite now,
+  like every other route here, and the matched segments come back as
+  `__path` for `api/router.ts` to reassemble.
 - `api/sweep.ts` for the daily cron, behind the `CRON_SECRET` bearer check.
 - Fire ignition moves into `GET /api/pond`.
 - Apply the §2 contract changes.

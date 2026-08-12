@@ -13,7 +13,8 @@
   "rewrites": [
     { "source": "/", "destination": "/api/shell" },
     { "source": "/d/:slug", "destination": "/api/duck-page?slug=:slug" },
-    { "source": "/e/:key", "destination": "/api/duck-edit?key=:key" }
+    { "source": "/e/:key", "destination": "/api/duck-edit?key=:key" },
+    { "source": "/api/:path*", "destination": "/api/router?__path=:path*" }
   ],
 
   "headers": [
