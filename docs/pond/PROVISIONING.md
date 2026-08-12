@@ -20,7 +20,10 @@ never touched again except to change the one fortune digit.
 /* Crockford base32 of the low 40 bits. 40 bits is ~1.1e12 values; at a
    hundred cards the chance of any collision is about 4 in a billion, and
    the alphabet has no I, L, O or U so nothing reads as a typo. */
-static void card_serial(char out[9]);
+void card_serial(const uint8_t sernum[10], char out[9]);
+/* shared/firmware/card-identity/ — one definition, compiled for both the
+   AVR and the host, because deriving this twice is what would make every
+   card unknown to the server at once. */
 ```
 
 ### Why the MCU's serial and not the NFC chip's
@@ -95,11 +98,16 @@ Handled three ways, and all three have to hold:
 
 This is designed, not tested. Before committing to a hundred:
 
-- Writing ~45 bytes on first boot instead of patching one. Same mechanism,
-  more traffic — confirm it completes inside the boot window and survives a
-  brownout mid-write.
+- Writing **68 bytes** on first boot instead of patching one — the record
+  grew by the serial, the counter and the token, so this is ~408 ms at
+  `NDEF_EEPROM_WRITE_MS`. Same mechanism, more traffic: confirm it completes
+  inside the boot window and survives a brownout mid-write.
 - That `SIGROW.SERNUM` is genuinely distinct across a handful of real chips
-  from the same reel, not just per lot.
+  from the same reel, not just per lot. **Less load-bearing than it was:**
+  the serial is now a hash of all ten bytes rather than a slice of them, so
+  two chips differing in one die coordinate get unrelated serials (there are
+  pinned vectors for exactly that pair). Two chips with an IDENTICAL SERNUM
+  would still collide, which is what this check is really for.
 - That the LED confirmation is unmistakable, since it is the only signal that
   a card is finished.
 

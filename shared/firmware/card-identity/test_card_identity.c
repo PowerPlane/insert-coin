@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "card_identity.h"
+#include "ndef_record.h"
 #include "siphash_reference_vectors.h"
 
 static int failures = 0;
@@ -139,12 +140,72 @@ static void test_token_shape(void) {
     check(strcmp(t0, other) != 0, "the secret changes the token", t0, "something else");
 }
 
+/* ── 5. The NDEF record ─────────────────────────────────────────────── */
+static void test_ndef(void) {
+    char what[96];
+
+    /* The offset config.h has been carrying as a magic number since before
+     * the card wrote its own record. Derived here from the strings, so if
+     * the URL ever changes the two cannot disagree — one of them is now
+     * computed from the other's source. */
+    snprintf(what, sizeof(what), "digit offset is 0x%04X", (unsigned)NDEF_DIGIT_OFFSET_DERIVED);
+    check(NDEF_DIGIT_OFFSET_DERIVED == 0x0023, what, "derived", "0x0023");
+
+    uint8_t buf[NDEF_RECORD_MAX];
+    char token[CARD_TOKEN_LEN + 1];
+    uint8_t secret[16];
+    for (int i = 0; i < 16; i++) secret[i] = (uint8_t)i;
+    card_token(secret, "7F3A9KQZ", 0, token);
+
+    const size_t n = ndef_build(buf, sizeof(buf), "7F3A9KQZ", 0, token, '0');
+    snprintf(what, sizeof(what), "record is %u bytes", (unsigned)n);
+    check(n == NDEF_RECORD_MAX, what, "length", "NDEF_RECORD_MAX");
+
+    /* A buffer one byte short must refuse rather than truncate. A truncated
+     * record on a hundred cards is unrecoverable without a reflash. */
+    check(ndef_build(buf, NDEF_RECORD_MAX - 1, "7F3A9KQZ", 0, token, '0') == 0,
+          "refuses a short buffer", "wrote", "0");
+
+    check(buf[0] == 0xE1, "CC magic", "?", "0xE1");
+    check(buf[4] == 0x03, "NDEF TLV type", "?", "0x03");
+    check(buf[5] == (uint8_t)NDEF_MESSAGE_LEN, "TLV length", "?", "message length");
+    check(buf[6] == 0xD1 && buf[9] == 0x55, "record header and URI type", "?", "D1 .. 55");
+    check(buf[8] == (uint8_t)NDEF_PAYLOAD_LEN, "payload length", "?", "payload length");
+    check(buf[10] == 0x04, "URI prefix is https://", "?", "0x04");
+    check(buf[n - 1] == 0xFE, "terminator TLV", "?", "0xFE");
+
+    /* The digit really is where the derived constant says it is. */
+    check(buf[NDEF_DIGIT_OFFSET_DERIVED] == '0', "digit sits at the derived offset",
+          "?", "'0'");
+
+    /* And the whole URL reads back as the thing we meant to write. */
+    char url[NDEF_RECORD_MAX + 1];
+    size_t u = 0;
+    for (size_t i = NDEF_URI_TEXT_OFFSET; i < n - 1; i++) url[u++] = (char)buf[i];
+    url[u] = '\0';
+    char want[NDEF_RECORD_MAX + 1];
+    snprintf(want, sizeof(want), "%s0&c=7F3A9KQZ&g=0000&t=%s", NDEF_URL_PREFIX, token);
+    check(strcmp(url, want) == 0, "the URL reads back correctly", url, want);
+
+    /* Patching the digit must move nothing else — that is the entire reason
+     * the per-card suffix sits after it. */
+    uint8_t four[NDEF_RECORD_MAX];
+    ndef_build(four, sizeof(four), "7F3A9KQZ", 0, token, '4');
+    int only_digit_differs = 1;
+    for (size_t i = 0; i < n; i++) {
+        if (i == NDEF_DIGIT_OFFSET_DERIVED) continue;
+        if (buf[i] != four[i]) only_digit_differs = 0;
+    }
+    check(only_digit_differs, "the fortune digit is the only byte that moves", "?", "one byte");
+}
+
 int main(void) {
     printf("card_identity\n");
     test_siphash_reference();
     test_crockford();
     test_provision();
     test_token_shape();
+    test_ndef();
     printf("%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;
 }

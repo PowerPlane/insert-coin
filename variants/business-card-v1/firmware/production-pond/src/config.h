@@ -118,31 +118,39 @@ constexpr uint8_t RNG_RESEED_SAMPLES = 32;
 #define FORCE_FORTUNE (-1)
 #endif
 
-// -- NFC NDEF byte patching -----------------------------------------------
-// The tag is pre-programmed once by a phone NFC-writer app with the URL
-//   https://ducky.davidyang.work/?d=0&c=XXXXXX
-// where XXXXXX is this card's id. The MCU patches only the digit, to
-// encode the fortune (1..4) or restore the default (0) after a timeout.
+// -- NFC NDEF record -------------------------------------------------------
+// The card WRITES ITS OWN RECORD on first boot, from its own SIGROW serial.
+// It used to be pre-programmed by a phone tag-writer app, with the MCU
+// patching only the fortune digit — which meant the layout lived in two
+// places, a comment here and whatever somebody typed into an app, joined by
+// the magic number below. Getting it wrong patches the wrong byte and the
+// card serves a broken URL for the rest of its life.
 //
-// The `&c=` suffix sits AFTER the digit, so it varies per card without
-// moving the patch target -- every card runs this identical firmware.
+// The layout now has ONE definition, in
+// shared/firmware/card-identity/ndef_record.h, where every offset is
+// derived from the strings at compile time. See docs/pond/PROVISIONING.md.
 //
 //   0x0000 CC (E1 40 40 00)
-//   0x0004 TLV header (03 LL)
-//   0x0006 NDEF record header (D1 01 LL 55)
+//   0x0004 TLV header (03 3D)
+//   0x0006 NDEF record header (D1 01 39 55)
 //   0x000A URI prefix (0x04 = "https://")
 //   0x000B "ducky.davidyang.work/?d="      (24 bytes)
-//   0x0023 digit ASCII byte                <-- patch target
-//   0x0024 "&c=XXXXXX"                     per-card, moves nothing
-//   ...    Terminator TLV (FE)
+//   0x0023 digit ASCII byte                <-- the ONE patch target
+//   0x0024 "&c=" + 8-character serial      (11 bytes)
+//   0x002F "&g=" + 4 hex claim counter     (7 bytes)
+//   0x0036 "&t=" + 10 hex claim token      (13 bytes)
+//   0x0043 Terminator TLV (FE)
 //
-// The pond lives on its own subdomain rather than a path, because
-// davidyang.work's apex stays on Cargo. That makes the host longer, so the
-// digit sits six bytes later than production-nfc's 0x001D.
+// 68 bytes in total. At NDEF_EEPROM_WRITE_MS per byte that is ~408 ms of
+// first-boot write, once, and it is the number the bench check in
+// PROVISIONING.md is confirming fits inside the boot window.
 //
-// This constant and the NDEF text a phone writes must change TOGETHER —
-// they are two halves of one layout. Verify on a real tag before flashing a
-// batch: docs/pond/PROVISIONING.md has the read-back procedure.
+// `&c=`, `&g=` and `&t=` all sit AFTER the digit, so the patch target never
+// moves and every card still runs one identical binary.
+//
+// This constant is checked against the derived one two ways: a native test
+// in shared/firmware/card-identity (100 checks, run with cc) and a test in
+// pond/ that greps this very line. It cannot drift silently any more.
 constexpr uint16_t NDEF_DIGIT_OFFSET = 0x0023;
 
 // Internal pull-ups (~35 kOhm) + ~25 pF bus capacitance gives ~2 us

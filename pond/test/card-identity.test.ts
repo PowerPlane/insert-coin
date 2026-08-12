@@ -45,6 +45,7 @@ const SPEC = JSON.parse(
   version: number;
   serial: { serial_key_hex: string; alphabet: string; length: number };
   token: { test_key_hex: string; length: number };
+  url: { template: string };
   serials: { note: string; sernum: string; serial: string }[];
   tokens: { serial: string; counter: number; counter_hex: string; token: string }[];
 };
@@ -193,5 +194,51 @@ describe("the claim token, against the vectors the firmware generated", () => {
     expect(() => counterHex(-1)).toThrow(/16-bit/);
     expect(() => counterHex(0x10000)).toThrow(/16-bit/);
     expect(counterHex(0xffff)).toBe("ffff");
+  });
+});
+
+describe("the layout, in the third place it appears", () => {
+  /**
+   * The URL is described in three files: the NDEF builder that writes it,
+   * the firmware config that patches one byte of it, and the spec. The
+   * builder derives its offsets from the strings, so those two cannot
+   * drift — but `config.h` still carries a literal, because ndef.cpp needs
+   * a constant to write to.
+   *
+   * A wrong constant there patches the wrong byte and the card serves a
+   * broken URL for the rest of its life, with nothing to notice it but a
+   * tap. So the literal is checked here against the same arithmetic the C
+   * does.
+   */
+  const CONFIG = readFileSync(
+    join(
+      __dirname, "..", "..", "variants", "business-card-v1",
+      "firmware", "production-pond", "src", "config.h",
+    ),
+    "utf8",
+  );
+
+  it("config.h patches the byte the record builder put the digit at", () => {
+    const m = CONFIG.match(/NDEF_DIGIT_OFFSET\s*=\s*(0x[0-9A-Fa-f]+)/);
+    expect(m, "NDEF_DIGIT_OFFSET not found in config.h").not.toBeNull();
+
+    // Derived the same way ndef_record.h does it: CC + TLV header + record
+    // header + the URI prefix byte, then the host text.
+    const url = SPEC.url.template;
+    const prefix = url.slice("https://".length, url.indexOf("<digit>"));
+    const derived = 4 + 2 + 4 + 1 + prefix.length;
+
+    expect(prefix).toBe("ducky.davidyang.work/?d=");
+    expect(Number(m![1])).toBe(derived);
+    expect(derived).toBe(0x0023);
+  });
+
+  it("puts every per-card field after the digit, so one binary fits all cards", () => {
+    const url = SPEC.url.template;
+    // If a serial ever moved ahead of the digit, the patch target would
+    // differ per card and the firmware could no longer be identical.
+    expect(url.indexOf("<digit>")).toBeLessThan(url.indexOf("<serial>"));
+    expect(url.indexOf("<digit>")).toBeLessThan(url.indexOf("<counter>"));
+    expect(url.indexOf("<digit>")).toBeLessThan(url.indexOf("<token>"));
   });
 });

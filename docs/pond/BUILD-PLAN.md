@@ -300,16 +300,28 @@ Provisioning is a **state machine**, not a script:
   card with a broken record and no way to notice.
 - Write the whole NDEF record, read it back, compare, and only then set the
   flag. A card that fails verification retries next power-up.
-- ~45 bytes at 6 ms per EEPROM cycle. Confirm it completes inside the boot
-  window and survives a brownout mid-record.
-- **Shared test vectors.** A fixture of `SERNUM → serial → token` that both
-  the C code and the host script are tested against. This is the cheap
-  insurance against the two derivations disagreeing.
+- **68 bytes**, not the ~45 this plan first guessed — the record grew by the
+  serial, the counter and the token. At `NDEF_EEPROM_WRITE_MS` per byte that
+  is **~408 ms** of first-boot write. Confirm it completes inside the boot
+  window and survives a brownout mid-record. (Page writes would cut this to
+  a handful of cycles; single-byte reuses the already-proven retry path, so
+  that is an optimisation for after the first two cards work.)
+- **Shared test vectors.** ✅ `shared/firmware/card-identity/card-identity.json`
+  — generated from the C, consumed by both sides, so neither implementation
+  is the reference for the other. **REVISED: the serial is hashed, not
+  sliced.** "The low 40 bits" of SERNUM is lot number, wafer number and die
+  coordinates; a hundred cards from one reel share a lot, so any fixed
+  window is partly constant across the batch and the 4-in-a-billion estimate
+  would not have been true of it. Hashing all ten bytes with a public
+  domain-separation key makes it honest, and costs nothing because SipHash
+  is already in the binary for the token.
 - Write `tools/record-card.sh` — referenced by `PROVISIONING.md`, does not
   exist — and **import `cards.csv` into the `cards` table**, rejecting
   duplicates loudly.
-- Update `config.h`: it documents a six-character `&c=` and the record is now
-  longer by the serial, counter and token.
+- ✅ `config.h` updated: an eight-character `&c=`, plus `&g=` and `&t=`. The
+  digit offset is now DERIVED from the strings in `ndef_record.h` and the
+  literal in config.h is checked against it from two directions — a native C
+  test and a pond test that greps the line.
 
 **Done when** the `&c=` in the tapped URL matches, character for character,
 the row the flashing script wrote — on two cards flashed from one binary.
