@@ -4,7 +4,7 @@ The tracker. Tick things off here as they land; `BUILD-PLAN.md` is the
 detail behind each line.
 
 **Branch** `pond` · **PR** [#11](https://github.com/PowerPlane/insert-coin/pull/11)
-· **Tests** 98 passing · **Live** <https://ducky.davidyang.work>
+· **Tests** 128 + 100 native C · **Live** <https://ducky.davidyang.work>
 
 ---
 
@@ -24,8 +24,8 @@ flashed identically, each giving itself an identity on first boot.
 | | Phase | State | Notes |
 | --- | --- | --- | --- |
 | **1a** | Turso adapter | ✅ **done** | D1-shaped interface, batch, `meta.changes`. |
-| **1b** | Port to Vercel | ✅ **done, deployed** | Contract frozen, routes ported, 98 tests. Live and verified end to end. |
-| **2** | One real card | ⬜ next | Firmware serial + full NDEF write, `record-card.sh`, import. |
+| **1b** | Port to Vercel | ✅ **done, deployed** | Contract frozen, routes ported. Live and verified end to end. |
+| **2** | One real card | 🟡 **in progress** | Identity pinned and cross-tested, NDEF record built, host tooling done. Firmware integration + bench are what remain. |
 | **3** | The client | ⬜ | Nine screens against the frozen API. The biggest piece. |
 | **4** | Admin | ⬜ | `/pondkeeper` — ducks, contacts, cards, CSV. |
 | **5** | Keepers | ⬜ | Blow gesture, signed claim, Card setup. Schema is already in. |
@@ -77,6 +77,64 @@ from `__path`.
 that are invisible locally and fatal in production — extensions on every
 relative import, the absence of `public/index.html`, that referenced assets
 exist, and that the `/api/*` rewrite is still there.
+
+---
+
+## Phase 2 — where it stands
+
+**Done, and testable without hardware:**
+
+- `shared/firmware/card-identity/` — the serial, the claim token, CRC-8 and
+  the provisioning flag, as Arduino-free C that compiles for the AVR and the
+  host. 100 native checks, including all 64 SipHash reference vectors
+  fetched from veorq/SipHash rather than recalled.
+- **`card-identity.json` — the pinned spec.** Generated from the C, consumed
+  by both sides. Neither implementation is the reference for the other,
+  because the failure this guards against (the two derivations disagreeing)
+  makes every card unknown at once and does it silently.
+- `ndef_record.h` — the whole 68-byte record, every offset derived from the
+  strings at compile time. The digit offset comes out at `0x0023`, which is
+  what config.h had as a magic number; it is now checked from both sides.
+- `pond/src/card/` — the host half, plus the cards.csv parser and importer.
+  The importer re-derives every serial from its own recorded SERNUM and
+  refuses the whole file on any disagreement.
+- `record-card.sh`, `secrets.h.example`, and the gitignore entries for the
+  two things that must never be committed.
+
+> **REVISED: the serial is hashed, not sliced.** "The low 40 bits" of
+> SIGROW.SERNUM is lot number, wafer number and die coordinates — a hundred
+> cards from one reel share a lot, so any fixed window is partly constant
+> across the batch and the 4-in-a-billion collision estimate would not have
+> been true of it. Hashing all ten bytes makes it honest and costs nothing.
+
+**Left to do:**
+
+1. **Firmware integration** — the provisioning state machine in `main.cpp`
+   (read the flag, build the record, write it, read it back, compare, only
+   then seal the flag) and the whole-record write in `ndef.cpp` reusing the
+   existing retry wrapper. Written but not yet wired; PlatformIO is not
+   installed on this machine, so not even a compile check has run.
+2. **The bench**, which needs two real cards — see below.
+
+### The bench runbook
+
+Everything above is arithmetic and can be proved on a desk. These three
+cannot, and PROVISIONING.md has said so from the start:
+
+- **68 bytes on first boot**, ~408 ms at `NDEF_EEPROM_WRITE_MS`. Confirm it
+  finishes inside the boot window and survives a brownout mid-record. (Page
+  writes would cut this to a handful of cycles — an optimisation for after
+  two cards work, not before.)
+- **`SIGROW.SERNUM` is distinct across real chips from one reel.** Less
+  load-bearing than it was, now the serial is a hash of all ten bytes, but
+  two chips with an identical SERNUM would still collide.
+- **The LED confirmation is unmistakable**, since it is the only signal a
+  card is finished.
+
+**Done when** the `&c=` in the tapped URL matches, character for character,
+the row `record-card.sh` wrote — on TWO cards flashed from one binary. Two,
+because "two cards open two pages" would pass with the derivations
+disagreeing.
 
 ---
 
