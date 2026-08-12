@@ -36,10 +36,17 @@ const STICKER_IDS = new Set([
   "handbag","tote","basket","satchel",
 ]);
 
-/** Who a contact may be read by. "Nobody" is spelled "no contact at all". */
-export const CONTACT_SCOPES = ["keeper", "keeper_and_david"] as const;
+/**
+ * Who a contact may be read by. "Nobody" is spelled "no contact at all".
+ *
+ * The default is the narrowest of the three because it is the only one the
+ * contact screen actually promises: "Want David to reply?" … "Only David
+ * sees this." Someone who never opens a scope picker has agreed to that
+ * sentence, so that sentence is what is stored.
+ */
+export const CONTACT_SCOPES = ["david", "keeper", "keeper_and_david"] as const;
 export type ContactScope = (typeof CONTACT_SCOPES)[number];
-export const DEFAULT_CONTACT_SCOPE: ContactScope = "keeper_and_david";
+export const DEFAULT_CONTACT_SCOPE: ContactScope = "david";
 
 export interface DuckInput {
   fortune: number;

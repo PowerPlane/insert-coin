@@ -157,16 +157,28 @@ CREATE INDEX idx_ducks_epoch   ON ducks (epoch_id);
 CREATE TABLE contacts (
   duck_id     TEXT PRIMARY KEY REFERENCES ducks(id) ON DELETE CASCADE,
   value       TEXT NOT NULL,               -- freeform: email, phone, @handle
-  -- Who may read it. "Nobody" is not a value here: choosing nobody means no
-  -- row is written at all, which is the same thing and leaves nothing to
-  -- leak. The default matches the contact screen's own words — David runs
-  -- the pond and answers the post, so he is always one of the readers.
-  scope       TEXT NOT NULL DEFAULT 'keeper_and_david',
+  -- Who may read it.
+  --
+  -- "Nobody" is not a value here: choosing nobody means no row is written at
+  -- all, which is the same thing and leaves nothing to leak.
+  --
+  -- THE DEFAULT IS THE NARROWEST ONE, and that is not fussiness. The contact
+  -- screen asks "Want David to reply?" and answers, in writing, "Only David
+  -- sees this." (COPY.md contact.02 and contact.06.) Anyone who never
+  -- touches a scope picker has agreed to exactly that sentence and nothing
+  -- wider, so that sentence is what gets stored. Defaulting to
+  -- 'keeper_and_david' would have shared it with a person the screen never
+  -- mentioned.
+  --
+  -- On David's own card the keeper IS David, so all three collapse to the
+  -- same reader. The distinction only starts to matter on the ninety-nine
+  -- cards somebody else keeps.
+  scope       TEXT NOT NULL DEFAULT 'david',
   -- The keeper the consent was given TO. Never inherited by the next one.
   epoch_id    TEXT REFERENCES card_epochs(id) ON DELETE SET NULL,
   created     INTEGER NOT NULL,
   CHECK (length(value) <= 120),
-  CHECK (scope IN ('keeper', 'keeper_and_david'))
+  CHECK (scope IN ('david', 'keeper', 'keeper_and_david'))
 );
 
 -- ─────────────────────────────────────────────────────────────────────────

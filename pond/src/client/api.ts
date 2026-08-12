@@ -66,8 +66,11 @@ export interface SessionState {
  * with Sam and David", never "scope: 2". Choosing nobody is not a value
  * here: it means no contact is sent at all, so there is no row and nothing
  * to leak. See docs/pond/UI.md § 9.
+ *
+ * Omitting it means `"david"`, which is the only thing the contact screen
+ * promises out loud. Widening it has to be something the person did.
  */
-export type ContactScope = "keeper" | "keeper_and_david";
+export type ContactScope = "david" | "keeper" | "keeper_and_david";
 
 /** The four buttons on the report sheet, in the order they appear. */
 export type ReportReason = "rude" | "private" | "spam" | "other";

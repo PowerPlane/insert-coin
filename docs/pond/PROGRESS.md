@@ -4,7 +4,7 @@ The tracker. Tick things off here as they land; `BUILD-PLAN.md` is the
 detail behind each line.
 
 **Branch** `pond` · **PR** [#11](https://github.com/PowerPlane/insert-coin/pull/11)
-· **Tests** 89 passing · **Deployed** not yet — needs a Turso database and
+· **Tests** 90 passing · **Deployed** not yet — needs a Turso database and
 the CNAME
 
 ---
@@ -25,7 +25,7 @@ flashed identically, each giving itself an identity on first boot.
 | | Phase | State | Notes |
 | --- | --- | --- | --- |
 | **1a** | Turso adapter | ✅ **done** | D1-shaped interface, batch, `meta.changes`. |
-| **1b** | Port to Vercel | ✅ **done, undeployed** | Contract frozen, routes ported, 89 tests. Deploy is the one step left and it needs credentials. |
+| **1b** | Port to Vercel | ✅ **done, undeployed** | Contract frozen, routes ported, 90 tests. Deploy is the one step left and it needs credentials. |
 | **2** | One real card | ⬜ next | Firmware serial + full NDEF write, `record-card.sh`, import. |
 | **3** | The client | ⬜ | Nine screens against the frozen API. The biggest piece. |
 | **4** | Admin | ⬜ | `/pondkeeper` — ducks, contacts, cards, CSV. |
@@ -62,12 +62,22 @@ npx vercel --prod
 #     Do not touch the apex. Do not add an A record.
 
 # 6 · prove it
-curl https://ducky.davidyang.work/api/pond
-TURSO_URL=... TURSO_TOKEN=... npm run db:verify
+curl https://ducky.davidyang.work/api/pond          # → {"ducks":[],"now":…}
+TURSO_URL=... TURSO_TOKEN=... npm run db:verify     # → the promise holds
+#     then open https://ducky.davidyang.work/?d=1 in a browser
+#     it must say "you have a fortune waiting"
 ```
 
-**Done when** `/api/pond` returns JSON *and* `db:verify` reports the contact
-gone. Step 6 is the whole phase; the rest is plumbing.
+**Done when** all three pass. Step 6 is the whole phase; the rest is
+plumbing.
+
+**The browser check is not decoration.** The 90 local tests call
+`pondPage()` directly, so the one link they structurally cannot reach is
+Vercel's rewrite layer: whether `/?d=1&c=X` → `/api/shell` keeps the query
+string, and whether the `Set-Cookie` survives it. Both curl checks can pass
+while `/` silently fails to mint — and a `/` that cannot mint is the failure
+that kills every duck at the submit button, which is the single most
+important thing in this app.
 
 ---
 
@@ -123,7 +133,7 @@ that class of gap closes.
 | **Bumps** | Replace waves. Per-pair and directional, ten-unreturned cap in one upsert, "bump back" derivable, "Most bumps from" a query. Authenticated by the bumper's edit key — an unauthenticated cap is a weapon. |
 | **Keepers** | `card_epochs`. Ducks and contacts carry `epoch_id`, `ON DELETE SET NULL`. Keeper name and language live on the epoch. |
 | **`via <keeper>`** | `PublicDuck.keeper`, resolved through the epoch. |
-| **Contact scope** | `keeper` / `keeper_and_david`. "Nobody" is spelled *no row at all*. |
+| **Contact scope** | `david` / `keeper` / `keeper_and_david`, defaulting to `david`. "Nobody" is spelled *no row at all*. |
 | **Reports** | Reason + note, one per visitor per duck, idempotent. |
 | **Card serial** | Out of every public payload, with a test that greps for it. |
 | **Deleted** | The denormalised bump/rescue counters (derived now, cannot drift) and the whole `rescues` table — `fires.out_by` already recorded the one person who won. Extinguish is now a single atomic statement. |
@@ -159,10 +169,13 @@ once something is running.
   friends; needs a per-card key if these are ever sold.
 - Payload at scale: ~400 KB at a thousand ducks. Fix is fetch-by-region.
 - RF write protection on the ST25DV is not configured.
-- **Contact scope wording.** The schema stores `keeper` and
-  `keeper_and_david`; the screens must say it in names ("shared with Sam and
-  David"). Phase 3 writes those strings and may find a third case worth
-  having.
+- **Contact scope wording.** The screens must say it in NAMES ("shared with
+  Sam and David"), never as a value. Phase 3 writes those strings.
+  The schema stores three, and the default is the narrowest: the contact
+  screen asks "Want David to reply?" and answers "Only David sees this", so
+  somebody who never opens a picker has agreed to exactly that. A default of
+  `keeper_and_david` would have shared it with a person the screen never
+  named — caught on review, while the freeze was still open.
 - Rate limits are 60/day per card and 10/day per visitor. Guesses, not
   measurements. Revisit after the first evening a card gets passed round.
 
@@ -175,4 +188,4 @@ once something is running.
 | 2026-08-12 | Design complete. Prototype at nine screens, copy deck, UI rules. |
 | 2026-08-12 | Plan reviewed twice — internally, then adversarially by Codex. Claim counter replaced with a signed token; Turso FK trap caught; port estimate corrected. |
 | 2026-08-12 | **Phase 1a landed.** 49 tests. |
-| 2026-08-12 | **Phase 1b landed.** Contract frozen, routes ported, 89 tests. The deletion promise moved from a cascade to a trigger and is now proved with foreign keys off. `sessions.spent_duck` found pinning the duck it pointed at. Not deployed. |
+| 2026-08-12 | **Phase 1b landed.** Contract frozen, routes ported, 90 tests. The deletion promise moved from a cascade to a trigger and is now proved with foreign keys off. `sessions.spent_duck` found pinning the duck it pointed at. Not deployed. |

@@ -41,7 +41,7 @@ export interface DuckDraft {
   message: string;
   contact: string;
   /** Only meaningful when `contact` is non-empty. */
-  scope: "keeper" | "keeper_and_david";
+  scope: "david" | "keeper" | "keeper_and_david";
 }
 
 export type ScreenName =

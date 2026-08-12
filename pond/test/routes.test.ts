@@ -246,7 +246,23 @@ describe("the deletion promise, over HTTP", () => {
     const v = new Visitor(e);
     await release(v, { contact: "sam@example.com", scope: "everyone" });
     const row = await e.DB.prepare(`SELECT scope FROM contacts`).first<{ scope: string }>();
-    expect(row?.scope).toBe("keeper_and_david");
+    expect(row?.scope).toBe("david");
+  });
+
+  /**
+   * The default has to be the sentence on the screen.
+   *
+   * The contact screen asks "Want David to reply?" and answers "Only David
+   * sees this." Someone who never opens a scope picker has agreed to that
+   * and nothing wider — so a default of `keeper_and_david` would share it
+   * with a person the screen never named.
+   */
+  it("stores only what the screen promised when nobody picked a scope", async () => {
+    const e = await env();
+    const v = new Visitor(e);
+    await release(v, { contact: "sam@example.com" });
+    const row = await e.DB.prepare(`SELECT scope FROM contacts`).first<{ scope: string }>();
+    expect(row?.scope).toBe("david");
   });
 });
 

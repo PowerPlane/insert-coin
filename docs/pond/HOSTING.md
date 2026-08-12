@@ -143,5 +143,11 @@ curl https://ducky.davidyang.work/api/pond     # → {"ducks":[],"now":…}
 npm run db:verify                              # → the promise holds
 ```
 
-Opening `/` should show a duck count. That single number proves the database
-is reachable, the session cookie survived the CDN, and the API is answering.
+Then open **`/?d=1`** in a browser. It must say *"you have a fortune
+waiting"*. That sentence is the only proof that the rewrite `/` →
+`/api/shell` preserved the query string and let the `Set-Cookie` through —
+which no test can check from outside a deployment, and which is the one
+failure that would kill every duck at the submit button.
+
+A plain `/` showing a duck count proves the rest: the database is reachable
+and the API is answering.
