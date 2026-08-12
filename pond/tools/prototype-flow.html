@@ -1388,10 +1388,24 @@ function Scene(canvas,opts){
     S.cell=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],cell));
     S.cam.x=cx-(W/S.cell)/2; S.cam.y=cy-(H/S.cell)/2; S.clampCam();
   };
+  /* Clamp the DESTINATION once, here, and interpolate between two already
+     legal centres. Clamping every frame instead means the camera stops
+     tracking the interpolation the moment it touches a world edge, while
+     the CSS scale carries on pivoting about the canvas centre — which is
+     the size jump. */
+  S.legalCentre=(cx,cy,cell)=>{
+    const c=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],cell));
+    const vwc=W/c, vhc=H/c;
+    let x=cx-vwc/2, y=cy-vhc/2;
+    x = cw<=vwc ? (cw-vwc)/2 : Math.max(0,Math.min(cw-vwc,x));
+    y = ch<=vhc ? (ch-vhc)/2 : Math.max(0,Math.min(ch-vhc,y));
+    return {x:x+vwc/2, y:y+vhc/2};
+  };
   S.moveTo=(cx,cy,cell,ms)=>{
     const c=S.centre();
-    if(reduce||!ms){ mv=null; canvas.style.transform=""; S.place(cx,cy,cell); render(); return; }
-    mv={x0:c.x,y0:c.y,z0:S.cell,x:cx,y:cy,z:cell,t0:performance.now(),ms:ms};
+    const dest=S.legalCentre(cx,cy,cell);
+    if(reduce||!ms){ mv=null; canvas.style.transform=""; S.place(dest.x,dest.y,cell); render(); return; }
+    mv={x0:c.x,y0:c.y,z0:S.cell,x:dest.x,y:dest.y,z:cell,t0:performance.now(),ms:ms};
   };
   S.moving=()=>!!mv;
   S.stopMove=()=>{ if(mv){ mv=null; canvas.style.transform=""; } };
@@ -1402,9 +1416,10 @@ function Scene(canvas,opts){
     const z=mv.z0+(mv.z-mv.z0)*e;                    // continuous zoom
     const n=Math.max(ZOOMS[0],Math.min(ZOOMS[ZOOMS.length-1],Math.round(z)));
     S.cell=n;
+    /* No clamp here: both ends are already legal, so anything between them
+       is too, and clamping would break the centre the scale pivots on. */
     S.cam.x=(mv.x0+(mv.x-mv.x0)*e)-(W/n)/2;
     S.cam.y=(mv.y0+(mv.y-mv.y0)*e)-(H/n)/2;
-    S.clampCam();
     render();
     const k=z/n;
     canvas.style.transform = Math.abs(k-1)<0.002 ? "" : "scale("+k+")";
@@ -1691,7 +1706,20 @@ function Scene(canvas,opts){
        scrolling it would be invisible and would cost a full re-tile. */
     water(ctx,Math.ceil(W/CELL),Math.ceil(H/CELL),CELL,S.frame,true);
     ctx.save();
-    ctx.translate(-Math.round(S.cam.x*CELL),-Math.round(S.cam.y*CELL));
+    /* While the camera is still, everything is quantised to the world grid,
+       which is what keeps ducks aligned with the water's dither. While it is
+       MOVING that alignment is the enemy: a duck can then only sit on
+       multiples of CELL, so at CELL 8 it jumps in 8px steps against a
+       smoothly sliding view. During a move we quantise to single canvas
+       pixels instead — still crisp, because the sprite's own pixels are
+       still CELL-sized squares on integer offsets, just no longer locked to
+       a grid nobody can see. */
+    const moving=S.moving();
+    const camPX=moving?S.cam.x*CELL:Math.round(S.cam.x*CELL);
+    const camPY=moving?S.cam.y*CELL:Math.round(S.cam.y*CELL);
+    const q=(v)=>moving?Math.round(v*CELL):Math.round(v)*CELL;
+    ctx.save();
+    ctx.translate(-camPX,-camPY);
     for(const r of S.rings){
       const p=(now-r.t)/RIPPLE; if(p>=1)continue;
       const rad=easeOut(p)*r.max,fade=1-p;
@@ -1725,7 +1753,7 @@ function Scene(canvas,opts){
          costs: the same number fit on screen either way. */
       if(d.x<l||d.x>r0||d.y<t||d.y>b){ d._vis=false; continue; }
       d._vis=true;
-      const px=Math.round(d.x-N/2)*CELL, py=Math.round(d.y-N/2)*CELL;
+      const px=q(d.x-N/2), py=q(d.y-N/2);
       drawDuckInto(ctx,d,px,py,CELL,d.flip,S.frame);
       /* A 4px-tall label is not text. Zoomed out you read the shape of the
          crowd; names come back when you are close enough to read them. */
@@ -1746,6 +1774,7 @@ function Scene(canvas,opts){
                      Math.round(e.y+(p.y-e.rows/2)*e.cell/2)*CELL,CELL*(e.cell/2),CELL*(e.cell/2));
       } }
     ctx.restore();
+    ctx.restore();
   }
   let acc=0,last=performance.now();
   const seen={x:NaN,y:NaN,c:NaN};
@@ -1755,7 +1784,15 @@ function Scene(canvas,opts){
     const camDrew=S.live&&S.stepCam(now);
     const wait=S.tick*DWELL[S.frame%DWELL.length];
     let drew=camDrew;
-    if(acc>=wait){ acc=0; S.frame++; step(wait/1000); if(S.live&&!camDrew){ render(); drew=true; } }
+    if(acc>=wait){ acc=0; S.frame++;
+      /* Hold the world still while the camera is moving. The pond ticks at
+         ~12fps because stop-motion is the look, but during a dolly that
+         means the ducks lurch two or three times underneath a smoothly
+         gliding view — which reads as the ZOOM stuttering, even though the
+         camera is perfectly smooth. A camera move is a deliberate moment;
+         nothing else needs to happen inside it. */
+      if(!S.moving()) step(wait/1000);
+      if(S.live&&!camDrew){ render(); drew=true; } }
     /* Two clocks, one render. The world ticks at ~12fps because stop-motion
        is the look; the CAMERA is direct manipulation and has to track a
        finger at display rate or dragging feels broken. So: redraw off-tick,
