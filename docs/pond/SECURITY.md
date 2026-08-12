@@ -11,7 +11,7 @@ action is reversible, and nothing valuable is stored.
 
 ## 1 · `?d=N` is forgeable, and that is the central fact
 
-Anyone can type `davidyang.work/p?d=1` and get a great-luck session without
+Anyone can type `ducky.davidyang.work/?d=1` and get a great-luck session without
 ever touching a card. The digit proves a fortune was *requested*, not that a
 coin was *inserted*.
 
@@ -48,7 +48,7 @@ Revisit before a card goes anywhere public.
 ## 2 · The card's URL is public and shareable
 
 Every card serves the same URL modulo one digit. Screenshotting or forwarding
-`/p?d=3` hands someone else a fortune.
+`/?d=3` hands someone else a fortune.
 
 For a pond meant for friends this is close to harmless and arguably charming.
 It is listed here so the decision is deliberate rather than overlooked.
@@ -62,7 +62,7 @@ game over for a card-based system, so this is noted rather than fixed.
 
 ## 3 · The private link is the account
 
-`/p/d/<32-char key>` is a bearer credential with no expiry, no rotation and
+`/d/<32-char key>` is a bearer credential with no expiry, no rotation and
 no recovery. That is a deliberate trade — accounts would be heavier than the
 thing they protect — but the failure modes are real:
 
@@ -71,7 +71,7 @@ thing they protect — but the failure modes are real:
 | Link lost | The duck stays; it just can't be edited. There is no recovery, by design. |
 | Link leaked | Whoever has it can edit or delete that duck. Nothing else. |
 | Leaks via `Referer` | Prevented: `Referrer-Policy: no-referrer` on every response |
-| Leaks via search engines | Prevented: `X-Robots-Tag: noindex, nofollow` on `/p/d/*` |
+| Leaks via search engines | Prevented: `X-Robots-Tag: noindex, nofollow` on `/d/*` |
 | Leaks via server logs | The key is in the path, so **do not log full URLs**. |
 | Shared device / history | Not defended. It is a link in a browser. |
 
@@ -125,9 +125,10 @@ TTL, not a Durable Object.
 ## 6 · Content
 
 24×24 pixels, a fixed palette and a curated sticker set is a low ceiling on
-what can be depicted, but not zero. Text is normalised, control characters
-and zero-width joiners are stripped, and lengths are counted in code points
-so an emoji costs one.
+what can be depicted, but not zero. Text is normalised, control and format characters are
+stripped by Unicode property — while deliberately KEEPING zero-width
+joiners and variation selectors, since stripping those shreds ordinary
+emoji — and lengths are counted in code points so an emoji costs one.
 
 Every duck has a report button; hiding is one tap in admin and is never a
 hard delete, so a mistake is reversible.
@@ -146,7 +147,7 @@ so the path is not treated as a secret.
 
 In the order it will actually happen:
 
-1. Someone types `/p?d=1` and makes a duck without a card. Mitigated, not prevented.
+1. Someone types `/?d=1` and makes a duck without a card. Mitigated, not prevented.
 2. A person loses their private link and wants their duck edited. There is no recovery — answer honestly.
 3. Polling the whole pond gets slow enough to notice. Cache it.
 4. A message or drawing needs hiding. One tap; make sure admin works before handing out the first card.

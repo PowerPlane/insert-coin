@@ -1,6 +1,6 @@
 # The Pond — build plan
 
-Every part that has to exist for `davidyang.work/p` to work, what state each
+Every part that has to exist for `ducky.davidyang.work` to work, what state each
 is in, and the order to build them. Companion to `DESIGN.md` (why) and
 `FLOW.md` (what the screens do).
 
@@ -27,9 +27,9 @@ absolute offset, so the digit's position depends only on the bytes *before*
 it. `https://` is a 1-byte NDEF prefix code, so:
 
 ```
-0x000B  "davidyang.work/p?d="   19 bytes
-0x001E  the digit                ← NDEF_DIGIT_OFFSET
-0x001F  "&c=XXXXXX"              per-card, varies, moves nothing
+0x000B  "ducky.davidyang.work/?d="   19 bytes
+0x0023  the digit                ← NDEF_DIGIT_OFFSET
+0x0024  "&c=XXXXXX"              per-card, varies, moves nothing
 ```
 
 Every card runs identical firmware. Only the NDEF text written once by a
@@ -59,15 +59,15 @@ duck art later and every duck already in the pond improves with it.
 
 | Route | Method | Purpose |
 | --- | --- | --- |
-| `/p` | GET | The app. Reads `?d=`/`?c=`, mints the session, then never re-checks. |
-| `/p/api/pond` | GET | Public duck list. Structurally cannot return a contact. |
-| `/p/api/duck` | POST | Release a duck. Requires a valid session. |
-| `/p/api/duck/:id` | PATCH/DELETE | Edit or remove. Requires the private key. |
-| `/p/api/wave` | POST | Idempotent per visitor |
-| `/p/api/fire/:id/out` | POST | Extinguish. Idempotent; first writer wins. |
-| `/p/api/say` | POST | 10-minute cooldown, server-enforced |
-| `/p/d/:key` | GET | The private link — your duck, later |
-| `/p/admin` | GET | Secret path + password. Hide/unhide, contacts, CSV export. |
+| `/` | GET | The app. Reads `?d=`/`?c=`, mints the session, then never re-checks. |
+| `/api/pond` | GET | Public duck list. Structurally cannot return a contact. |
+| `/api/duck` | POST | Release a duck. Requires a valid session. |
+| `/api/duck/:id` | PATCH/DELETE | Edit or remove. Requires the private key. |
+| `/api/wave` | POST | Idempotent per visitor |
+| `/api/fire/:id/out` | POST | Extinguish. Idempotent; first writer wins. |
+| `/api/say` | POST | 10-minute cooldown, server-enforced |
+| `/d/:key` | GET | The private link — your duck, later |
+| `/admin` | GET | Secret path + password. Hide/unhide, contacts, CSV export. |
 
 Cross-cutting: signed-cookie sessions, per-card and per-IP rate limits,
 input validation on every field, and a test that asserts the public pond

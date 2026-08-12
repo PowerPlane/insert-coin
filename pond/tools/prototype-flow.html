@@ -23,8 +23,11 @@
   --paper:#0d181e;--surface:#12222a;--sunk:#0a141a;--ink:#e6f2f7;--ink-soft:#9fbdc8;
   --ink-faint:#6d909d;--rule:#1e3540;--rule-hard:#2c4a58;--shell:#060f14;--shell-2:#04090c;}
 *{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}   /* Safari inflates text in landscape */
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);
   font-size:16.5px;line-height:1.62;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+/* No double-tap-to-zoom delay on anything interactive. */
+button,input,textarea,canvas,[role="tab"]{touch-action:manipulation}
 .wrap{max-width:calc(70ch + 2*var(--gutter));margin:0 auto;padding:0 var(--gutter)}
 .wide{max-width:1120px;margin:0 auto;padding:0 var(--gutter)}
 .inner{max-width:70ch}
@@ -117,10 +120,12 @@ ul.clean li::before{content:"";position:absolute;left:0;top:.62em;width:6px;heig
   margin:0 0 .5rem;color:var(--p-ink)}
 .v-p{font-size:.9rem;line-height:1.5;color:var(--p-soft);margin:0 0 1rem}
 .spacer{flex:1;min-height:.4rem}
-canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none}
+canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;
+  touch-action:none;overscroll-behavior:contain}
 .btn{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;text-align:center;
   font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
-  padding:.85rem;border-radius:10px;background:var(--duck);color:#4a3a06;box-shadow:0 4px 0 var(--duck-shadow)}
+  padding:.85rem;min-height:44px;border-radius:10px;      /* 44px = the Apple/WCAG floor */
+  background:var(--duck);color:#4a3a06;box-shadow:0 4px 0 var(--duck-shadow)}
 .btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--duck-shadow)}
 .btn.g{background:#dff2fb;color:var(--p-ink);box-shadow:0 4px 0 #b9d9e6}
 .btn.g:active{box-shadow:0 1px 0 #b9d9e6}
@@ -128,7 +133,10 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;touch-
 .field{margin-bottom:.7rem}
 .field label{display:block;font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;
   text-transform:uppercase;color:var(--p-faint);margin-bottom:.28rem}
-.field input,.field textarea{width:100%;font-family:var(--body);font-size:.92rem;padding:.65rem .7rem;
+.field input,.field textarea{width:100%;font-family:var(--body);
+  /* 16px is a hard floor: iOS Safari zooms the whole page when focusing an
+     input with a smaller font, and never zooms back out. */
+  font-size:16px;padding:.65rem .7rem;
   border:0;border-radius:9px;background:#fff;color:var(--p-ink);resize:none;box-shadow:0 2px 0 #b9d9e6}
 .counter{font-family:var(--mono);font-size:.56rem;color:var(--p-faint);text-align:right;margin-top:.15rem}
 .priv{font-family:var(--mono);font-size:.6rem;line-height:1.6;color:var(--p-soft);
@@ -188,6 +196,16 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;touch-
   background:#fff;border-radius:10px;padding:.85rem 0;font-size:.95rem;box-shadow:0 3px 0 #b9d9e6;line-height:1}
 .urlbar{position:absolute;bottom:0;left:0;right:0;z-index:30;background:#ffffff55;
   font-family:var(--mono);font-size:.55rem;color:var(--p-faint);padding:.38rem .8rem;text-align:center}
+/* The arrival sheet. Rises AFTER the duck lands, so the moment is never
+   interrupted by chrome appearing on top of it. Same dithered edge as the
+   duck card, because it is the same kind of object: a surface meeting water. */
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:35;
+  transform:translateY(102%);transition:transform .28s steps(5,end)}
+.sheet[data-in="true"]{transform:translateY(0)}
+@media(prefers-reduced-motion:reduce){.sheet{transition:none}}
+.sheet-body{background:var(--p-surface);
+  /* clear the home indicator on iPhone; 0 everywhere else */
+  padding:.9rem 16px calc(16px + env(safe-area-inset-bottom, 0px));}
 .panel{position:absolute;left:0;right:0;bottom:0;z-index:50;transform:translateY(100%);
   transition:transform .22s steps(4,end)}
 .panel[data-open="true"]{transform:translateY(0)}
@@ -196,7 +214,8 @@ canvas.pix{display:block;width:100%;height:auto;image-rendering:pixelated;touch-
 .d25{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='1' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='0' y='2' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
 .d50{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='1' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='0' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='3' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='3' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
 .d75{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='4' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='1' fill='%23f2fbfe'/><rect width='4' height='1' x='0' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='3' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='3' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
-.panel-body{background:var(--p-surface);padding:.9rem 1rem 1.5rem;position:relative}
+.panel-body{background:var(--p-surface);position:relative;
+  padding:.9rem 1rem calc(1.5rem + env(safe-area-inset-bottom, 0px))}
 .panel-hd{display:flex;gap:.85rem;align-items:flex-start}
 .panel-hd canvas{width:72px;height:72px;image-rendering:pixelated;flex:0 0 auto;background:#dff2fb;border-radius:6px}
 .p-fortune{display:inline-flex;align-items:center;gap:.4rem;margin:0 0 .25rem;
@@ -237,47 +256,45 @@ footer{border-top:1px solid var(--ink);margin-top:3rem;padding:1.2rem 0 3rem;
     <div class="idx">
       <p class="idx-h">Flow</p>
       <div class="grp">Fresh tap · d = 1…4</div>
-      <button data-go="arrival"><span class="n">01</span> Arrival</button>
-      <button data-go="reveal"><span class="n">02</span> Your duck</button>
-      <button data-go="studio"><span class="n">03</span> Studio</button>
-      <button data-go="sign"><span class="n">04</span> Sign it</button>
-      <button data-go="contact"><span class="n">05</span> Contact</button>
-      <button data-go="release"><span class="n">06</span> Release</button>
-      <button data-go="keep"><span class="n">07</span> Keep the link</button>
+      <button data-go="arrival"><span class="n">01</span> Arrival &amp; your duck</button>
+      <button data-go="studio"><span class="n">02</span> Studio</button>
+      <button data-go="sign"><span class="n">03</span> Sign it</button>
+      <button data-go="contact"><span class="n">04</span> Contact</button>
+      <button data-go="release"><span class="n">05</span> Release</button>
+      <button data-go="keep"><span class="n">06</span> Keep the link</button>
       <div class="grp">The place</div>
-      <button data-go="pond"><span class="n">08</span> The pond</button>
+      <button data-go="pond"><span class="n">07</span> The pond</button>
       <div class="grp">Coming back — the gap</div>
-      <button data-go="mine"><span class="n">09</span> Your duck, later</button>
-      <button data-go="manage"><span class="n">10</span> Edit or delete</button>
+      <button data-go="mine"><span class="n">08</span> Your duck, later</button>
+      <button data-go="manage"><span class="n">09</span> Edit or delete</button>
     </div>
 
     <div class="dev">
       <div class="phone"><div class="screen" id="screen">
         <div class="notch" aria-hidden="true"></div>
 
-        <!-- 01 ARRIVAL -->
+        <!-- 01 ARRIVAL — the drop and the reveal, one screen -->
         <div class="view" data-v="arrival">
           <canvas class="pix" id="cv-arrival" width="688" height="1480"></canvas>
+          <div class="sheet" id="arrival-sheet">
+            <div class="panel-edge" aria-hidden="true"><i class="d25"></i><i class="d50"></i><i class="d75"></i></div>
+            <div class="sheet-body">
+              <p class="v-eyebrow">The card dealt you</p>
+              <h2 class="v-h" id="rv-jp">大吉 · Great luck</h2>
+              <p class="v-p" style="margin-bottom:.9rem">Nobody else got this one today.
+                Make it look like you, or drop it in as it is.</p>
+              <div class="btn-row">
+                <button class="btn" data-go="studio">Make it mine</button>
+                <button class="btn g" data-go="pond">Just look around</button>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <!-- 02 REVEAL -->
-        <div class="view" data-v="reveal"><div class="v-pad">
-          <p class="v-eyebrow">The card dealt you</p>
-          <h2 class="v-h" id="rv-jp">大吉 · Great luck</h2>
-          <p class="v-p">Nobody else got this one today. Make it look like you, or drop it in as it is.</p>
-          <div style="display:grid;place-items:center;flex:1">
-            <canvas class="pix" id="cv-reveal" width="384" height="384" style="width:190px"></canvas>
-          </div>
-          <div class="btn-row">
-            <button class="btn" data-go="studio">Make it mine</button>
-            <button class="btn g" data-go="pond">Just look around</button>
-          </div>
-        </div></div>
 
         <!-- 03 STUDIO -->
         <div class="view" data-v="studio">
           <div class="s-nav">
-            <button data-go="reveal">← Back</button><span>Make it yours</span>
+            <button data-go="arrival">← Back</button><span>Make it yours</span>
             <button data-go="sign">Skip</button>
           </div>
           <div style="padding:0 14px">
@@ -581,14 +598,42 @@ function drawDuckInto(ctx,d,px,py,s,flip){
 /* ── dithered pale water, shared by every canvas ── */
 const BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
 const WSH=["#CFEFFA","#AFE4F5","#8EDCEE","#6BCBE4","#4FBBDA","#3FB5D8","#2E9BC0","#1F80A4"];
+/* Canvas pixel memory is little-endian ABGR, not ARGB — packing it the
+   obvious way swaps red and blue and turns the pond cream. */
+const packLE=(r,g,b)=>(((255<<24)|(b<<16)|(g<<8)|r)>>>0);
+const WSH_LE=[[0xCF,0xEF,0xFA],[0xAF,0xE4,0xF5],[0x8E,0xDC,0xEE],[0x6B,0xCB,0xE4],
+              [0x4F,0xBB,0xDA],[0x3F,0xB5,0xD8],[0x2E,0x9B,0xC0],[0x1F,0x80,0xA4]]
+             .map(c=>packLE(c[0],c[1],c[2]));
+
+/* Water is painted into a 1px-per-cell buffer and blown up with smoothing
+   off. Identical pixels to a per-cell fillRect loop, ~25x cheaper: 63,640
+   fillRect calls is ~18 ms on a desktop and far worse on a phone, which is
+   most of the frame budget at 12 fps gone before a single duck is drawn. */
+const _wbuf=new Map();
+function waterBuffer(cw,ch){
+  const key=cw+"x"+ch;
+  let b=_wbuf.get(key);
+  if(!b){
+    const c=document.createElement("canvas"); c.width=cw; c.height=ch;
+    const cx=c.getContext("2d");
+    const img=cx.createImageData(cw,ch);
+    b={c,cx,img,words:new Uint32Array(img.data.buffer)};
+    _wbuf.set(key,b);
+  }
+  return b;
+}
 function water(ctx,cw,ch,cell,frame,depth){
+  const b=waterBuffer(cw,ch);
+  const w=b.words;
   for(let y=0;y<ch;y++)for(let x=0;x<cw;x++){
     let k=Math.floor((depth?0.7+(y/ch)*4.1:1.0+(y/ch)*2.4)+(BAYER[(y&3)*4+(x&3)]/16-0.5)*0.62);
     if(((x*7+y*11+(frame>>1))%149)===0)k-=2;
     else if(((x*3+y*5-(frame>>2))%71)===0)k-=1;
-    ctx.fillStyle=WSH[k<0?0:k>7?7:k];
-    ctx.fillRect(x*cell,y*cell,cell,cell);
+    w[y*cw+x]=WSH_LE[k<0?0:k>7?7:k];
   }
+  b.cx.putImageData(b.img,0,0);
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(b.c,0,0,cw*cell,ch*cell);
 }
 
 /* ── sparkle engine, constants from Base.astro ── */
@@ -770,6 +815,7 @@ NAMES.forEach((n,i)=>P.add({fort:n[2],tint:TINTS[(i*3)%TINTS.length][1],
 let MINE=null;
 
 /* ── router ── */
+let arrivalTimer=0;
 const screen=document.getElementById("screen");
 const views=[...screen.querySelectorAll(".view")];
 const idx=[...document.querySelectorAll(".idx button")];
@@ -777,8 +823,21 @@ function go(name){
   views.forEach(v=>v.classList.toggle("on",v.dataset.v===name));
   idx.forEach(b=>b.setAttribute("aria-current",String(b.dataset.go===name)));
   A.live=name==="arrival"; R.live=name==="release"; P.live=name==="pond";
-  if(name==="arrival"){ A.ducks.length=0;A.fx.length=0;A.petals.length=0;
-    A.drop(me.fort,86,90,{tint:me.tint}); }
+  if(name==="arrival"){
+    A.ducks.length=0; A.fx.length=0; A.petals.length=0;
+    const sheet=document.getElementById("arrival-sheet");
+    sheet.dataset.in="false";
+    // Drop the duck high enough that the sheet never covers it.
+    A.drop(me.fort,86,78,{tint:me.tint,mine:true});
+    clearTimeout(arrivalTimer);
+    // The sheet waits for the arrival to land and its effect to read.
+    // Showing it immediately would put chrome on top of the one moment
+    // this whole thing exists for.
+    arrivalTimer=setTimeout(()=>{ sheet.dataset.in="true"; },
+      reduce ? 340 : (me.fort===0 ? 1500 : 1100));
+  } else {
+    document.getElementById("arrival-sheet").dataset.in="false";
+  }
   if(name==="release"){ R.ducks.length=0;R.fx.length=0;R.petals.length=0;
     R.drop(me.fort,86,120,{tint:me.tint,paint:me.paint,stickers:me.stickers,mine:true}); }
   if(name==="pond"){
@@ -790,7 +849,7 @@ function go(name){
     document.getElementById("hud-n").textContent=P.ducks.length+" ducks";
     buildSr();
   }
-  if(name==="reveal"||name==="sign"||name==="mine") drawStatics();
+  if(name==="arrival"||name==="sign"||name==="mine") drawStatics();
   if(name==="studio") redrawAll();
   const v=screen.querySelector(".view.on"); if(v)v.scrollTop=0;
 }
@@ -829,7 +888,7 @@ setInterval(()=>{ orbitT++;
 
 function drawStatics(){
   drawOrbit();
-  [["cv-reveal",12],["cv-sign",12]].forEach(([id,s])=>{
+  [["cv-sign",12]].forEach(([id,s])=>{
     const c=document.getElementById(id); if(!c)return;
     const x=c.getContext("2d"); x.imageSmoothingEnabled=false;
     x.clearRect(0,0,c.width,c.height);
@@ -1016,10 +1075,10 @@ function openPanel(d,src){
   pctx.fillStyle="#dff2fb"; pctx.fillRect(0,0,pDuck.width,pDuck.height);
   drawDuckInto(pctx,d,0,0,9,false);
   panel.dataset.open="true"; scrim.dataset.open="true"; lastFocus=src||null;
-  document.getElementById("p-x").focus(); panel._d=d;
+  document.getElementById("p-x").focus({preventScroll:true}); panel._d=d;
 }
 function closePanel(){ panel.dataset.open="false"; scrim.dataset.open="false";
-  if(lastFocus)lastFocus.focus(); }
+  if(lastFocus)lastFocus.focus({preventScroll:true}); }
 document.getElementById("p-x").onclick=closePanel;
 scrim.onclick=closePanel;
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&panel.dataset.open==="true")closePanel(); });

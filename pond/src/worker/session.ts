@@ -89,7 +89,7 @@ export function sessionCookieHeader(value: string, maxAge = SESSION_TTL_SEC): st
   // No Domain attribute: host-only, so it never leaks to another subdomain.
   return [
     `${SESSION_COOKIE}=${encodeURIComponent(value)}`,
-    "Path=/p",
+    "Path=/",
     "HttpOnly",
     "Secure",
     "SameSite=Lax", // Lax, not Strict: the visitor arrives by a cross-site tap

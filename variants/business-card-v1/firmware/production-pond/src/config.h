@@ -120,7 +120,7 @@ constexpr uint8_t RNG_RESEED_SAMPLES = 32;
 
 // -- NFC NDEF byte patching -----------------------------------------------
 // The tag is pre-programmed once by a phone NFC-writer app with the URL
-//   https://davidyang.work/p?d=0&c=XXXXXX
+//   https://ducky.davidyang.work/?d=0&c=XXXXXX
 // where XXXXXX is this card's id. The MCU patches only the digit, to
 // encode the fortune (1..4) or restore the default (0) after a timeout.
 //
@@ -131,15 +131,19 @@ constexpr uint8_t RNG_RESEED_SAMPLES = 32;
 //   0x0004 TLV header (03 LL)
 //   0x0006 NDEF record header (D1 01 LL 55)
 //   0x000A URI prefix (0x04 = "https://")
-//   0x000B "davidyang.work/p?d="           (19 bytes)
-//   0x001E digit ASCII byte                <-- patch target
-//   0x001F "&c=XXXXXX"                     per-card, moves nothing
+//   0x000B "ducky.davidyang.work/?d="      (24 bytes)
+//   0x0023 digit ASCII byte                <-- patch target
+//   0x0024 "&c=XXXXXX"                     per-card, moves nothing
 //   ...    Terminator TLV (FE)
 //
-// One byte later than production-nfc (0x001D) purely because the path
-// gained "/p". Verify on a real tag before flashing a batch: see
-// docs/pond/PROVISIONING.md for the read-back procedure.
-constexpr uint16_t NDEF_DIGIT_OFFSET = 0x001E;
+// The pond lives on its own subdomain rather than a path, because
+// davidyang.work's apex stays on Cargo. That makes the host longer, so the
+// digit sits six bytes later than production-nfc's 0x001D.
+//
+// This constant and the NDEF text a phone writes must change TOGETHER —
+// they are two halves of one layout. Verify on a real tag before flashing a
+// batch: docs/pond/PROVISIONING.md has the read-back procedure.
+constexpr uint16_t NDEF_DIGIT_OFFSET = 0x0023;
 
 // Internal pull-ups (~35 kOhm) + ~25 pF bus capacitance gives ~2 us
 // rise; 25 kHz SCL keeps the data window comfortable without needing

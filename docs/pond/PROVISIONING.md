@@ -1,7 +1,7 @@
 # Provisioning a card for the pond
 
 What has to happen to each physical card once, before it can point at
-`davidyang.work/p`. Roughly ten minutes per card.
+`ducky.davidyang.work`. Roughly ten minutes per card.
 
 The firmware is identical on every card. The only thing that differs is the
 NDEF text written once by a phone, which is why the `&c=` suffix goes
@@ -31,7 +31,7 @@ With the card **unpowered** (no coin), using NFC TagWriter or NFC Tools:
 2. Enter exactly, including the trailing `0`:
 
    ```
-   https://davidyang.work/p?d=0&c=7F3A9K
+   https://ducky.davidyang.work/?d=0&c=7F3A9K
    ```
 
 3. Hold the phone over the etched antenna on the back.
@@ -51,9 +51,9 @@ Do this once per NDEF layout, not once per card. Phone tag-writers vary, and
 0x0004  TLV header (03 LL)
 0x0006  NDEF record header (D1 01 LL 55)
 0x000A  URI prefix (0x04 = "https://")
-0x000B  "davidyang.work/p?d="        19 bytes
-0x001E  the digit                    ← NDEF_DIGIT_OFFSET
-0x001F  "&c=7F3A9K"                  moves nothing
+0x000B  "ducky.davidyang.work/?d="   24 bytes
+0x0023  the digit                    ← NDEF_DIGIT_OFFSET
+0x0024  "&c=7F3A9K"                  moves nothing
 ```
 
 To check:

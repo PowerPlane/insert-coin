@@ -1,6 +1,6 @@
 # The Pond
 
-`davidyang.work/p` — the web half of the BY-002 Insert Coin card.
+`ducky.davidyang.work` — the web half of the BY-002 Insert Coin card.
 
 Tap the card after a coin insert and you land here holding the duck the
 machine dealt you. Decorate it, sign it, leave it in the water with everyone

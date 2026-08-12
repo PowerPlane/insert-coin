@@ -9,6 +9,9 @@
  *     was requested, not that a coin was inserted. Everything that could be
  *     abused because of that is rate-limited per card and per visitor, and
  *     the honest threat model is in docs/pond/SECURITY.md.
+ *
+ * Served from ducky.davidyang.work — its own subdomain, because the apex
+ * davidyang.work stays on Cargo.
  */
 
 import type { DuckInput } from "./ducks";
@@ -59,7 +62,7 @@ async function ensureVisitor(
   const raw = randomId(24);
   const setCookie = [
     `${VISITOR_COOKIE}=${raw}`,
-    "Path=/p",
+    "Path=/",
     "HttpOnly",
     "Secure",
     "SameSite=Lax",
@@ -86,14 +89,15 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
 
-    if (!path.startsWith("/p")) return notFound();
+    // The pond owns ducky.davidyang.work entirely, so paths are rooted here
+    // rather than under /p — davidyang.work itself stays on Cargo.
 
     const { visitor, setCookie } = await ensureVisitor(req, env);
     const headers = securityHeaders();
     if (setCookie) headers.append("set-cookie", setCookie);
 
     // ── the app shell ───────────────────────────────────────────────────
-    if (path === "/p") {
+    if (path === "/") {
       const digit = intParam(url.searchParams.get("d"), 0, 4);
       const cardId = safeToken(url.searchParams.get("c"), 12);
       const nonce = safeToken(url.searchParams.get("n"), 32);
@@ -116,22 +120,22 @@ export default {
     }
 
     // ── the private link ────────────────────────────────────────────────
-    if (path.startsWith("/p/d/")) {
+    if (path.startsWith("/d/")) {
       // Never let a search engine index a bearer URL.
       headers.set("x-robots-tag", "noindex, nofollow, noarchive");
-      const res = await env.ASSETS.fetch(new Request(new URL("/p", url), req));
+      const res = await env.ASSETS.fetch(new Request(new URL("/", url), req));
       const out = new Response(res.body, res);
       for (const [k, v] of headers) out.headers.append(k, v);
       return out;
     }
 
     // ── API ─────────────────────────────────────────────────────────────
-    if (path === "/p/api/pond" && req.method === "GET") {
+    if (path === "/api/pond" && req.method === "GET") {
       const ducks = await listPond(env);
       return json({ ducks, now: nowSec() }, { headers });
     }
 
-    if (path === "/p/api/session" && req.method === "GET") {
+    if (path === "/api/session" && req.method === "GET") {
       const id = await readSessionCookie(env, req);
       const s = id ? await loadSession(env, id) : null;
       return json(
@@ -142,7 +146,7 @@ export default {
       );
     }
 
-    if (path === "/p/api/duck" && req.method === "POST") {
+    if (path === "/api/duck" && req.method === "POST") {
       const id = await readSessionCookie(env, req);
       const s = id ? await loadSession(env, id) : null;
       if (!s) return json({ error: "no session" }, { status: 401, headers });
@@ -177,7 +181,7 @@ export default {
       return json({ id: made.id, editKey: made.editKey }, { status: 201, headers });
     }
 
-    if (path === "/p/api/wave" && req.method === "POST") {
+    if (path === "/api/wave" && req.method === "POST") {
       const body = await readJson(req);
       const duckId = typeof body?.id === "string" ? body.id : "";
       if (!/^[A-Za-z0-9]{6,16}$/.test(duckId)) return badRequest("bad id");
@@ -185,7 +189,7 @@ export default {
       return waves === null ? notFound() : json({ waves }, { headers });
     }
 
-    if (path === "/p/api/say" && req.method === "POST") {
+    if (path === "/api/say" && req.method === "POST") {
       const body = await readJson(req);
       const editKey = typeof body?.editKey === "string" ? body.editKey : "";
       const duck = await duckByEditKey(env, editKey);
@@ -196,16 +200,16 @@ export default {
         : json({ ok: false, retryAfter: result.retryAfter }, { status: 429, headers });
     }
 
-    if (path.startsWith("/p/api/fire/") && path.endsWith("/out") && req.method === "POST") {
-      const duckId = path.slice("/p/api/fire/".length, -"/out".length);
+    if (path.startsWith("/api/fire/") && path.endsWith("/out") && req.method === "POST") {
+      const duckId = path.slice("/api/fire/".length, -"/out".length);
       if (!/^[A-Za-z0-9]{6,16}$/.test(duckId)) return badRequest("bad id");
       // Being late is not an error — animate the extinguish regardless.
       const r = await extinguish(env, duckId, visitor);
       return json({ ok: true, ...r }, { headers });
     }
 
-    if (path.startsWith("/p/api/duck/")) {
-      const editKey = path.slice("/p/api/duck/".length);
+    if (path.startsWith("/api/duck/")) {
+      const editKey = path.slice("/api/duck/".length);
       const duck = await duckByEditKey(env, editKey);
       if (!duck) return notFound();
 

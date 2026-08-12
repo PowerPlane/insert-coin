@@ -9,7 +9,7 @@
 
 import type { PondDuck } from "./types";
 
-const BASE = "/p/api";
+const BASE = "/api";
 
 export class ApiError extends Error {
   constructor(
