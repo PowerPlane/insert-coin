@@ -1907,14 +1907,18 @@ function go(name){
        and it pushed the duck off the top of the screen. Letting it fall
        into an already-close view is simpler, has no failure mode, and the
        drop is the motion; the camera does not need to be. */
+    /* Start WIDE, framing the water the duck is about to hit. The fall and
+       the fortune's effect need room — a 大吉 firework cropped to a
+       close-up is not a firework. */
     A.resetCam();
-    A.setZoom(6,A.W/2,A.H*0.34);
-    A.cam.x=86-(A.W/6)/2; A.cam.y=78-(A.H/6)*0.34; A.clampCam();
+    A.place(86,78+(A.H/CELL)*(0.5-0.34),CELL);
     A.drop(me.fort,86,78,{tint:me.tint,mine:true});
-    /* Wide while it falls and while the fortune's effect plays -- the
-       fireworks need room -- then close in on the duck. Arriving zoomed in
-       would crop the one moment the whole card exists for; arriving and
-       staying wide leaves you looking at a speck. */
+    /* Then, once the effect has read, close in on the duck. This is the
+       moment the card exists for, and a duck you have to look for is not a
+       moment. Held off until the fireworks have said their piece. */
+    A.onland=d=>{
+      setTimeout(()=>A.focus(d,8,0.3,900), me.fort===0?850:700);
+    };
     clearTimeout(arrivalTimer);
     // The sheet waits for the arrival to land and its effect to read.
     // Showing it immediately would put chrome on top of the one moment
