@@ -240,6 +240,13 @@ fires whether or not foreign keys are on.** Every deletion test now runs
 twice, once with the pragma deliberately off, and `npm run db:verify` proves
 it against the real database in ten seconds.
 
+**Postscript: the pragma does survive.** Run against the real Turso primary,
+`db:verify` reports `foreign_keys: ON` — the client holds a stateful
+connection, so the setting persists between `execute()` calls. The work was
+not wasted: it turned a question the whole port was blocked behind into a
+second layer of defence, and the trigger still covers delete paths that do
+not exist yet.
+
 It also covers every delete path that will ever exist — including the admin
 screens in Phase 4 — without anyone having to remember this file.
 

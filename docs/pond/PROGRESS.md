@@ -97,7 +97,19 @@ rescue on exactly that.
 
 1a ended with one honest gap: whether `PRAGMA foreign_keys` survives Turso's
 HTTP mode on a remote primary could not be checked without a real database.
-It still can't. **So the answer stopped mattering.**
+**So the answer was made not to matter** — and then, once a database existed,
+it was checked anyway.
+
+> **ANSWERED, 2026-08-12, against the real Turso primary: it is ON.**
+> `connect()` sets the pragma in one `execute()` and reads it back in a
+> separate one, so the libSQL client is holding a stateful connection rather
+> than firing independent stateless requests. `npm run db:verify` reports
+> `foreign_keys on this connection: ON` and all four checks pass.
+>
+> The trigger stays regardless. It is what makes the promise true on every
+> delete path that will ever exist — including the Phase 4 admin screens —
+> and it costs nothing. The pragma being on is now a second layer rather
+> than the only one.
 
 `ducks_before_delete` in `0001_init.sql` deletes the contact, the bumps in
 both directions, the fires, the says and the reports, and releases the
