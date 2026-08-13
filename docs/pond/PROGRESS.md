@@ -28,8 +28,8 @@ flashed identically, each giving itself an identity on first boot.
 | **2** | One real card | ✅ **done** | Two cards flashed, recorded, tapped, imported. Attribution proved on production. |
 | **3** | The client | ✅ **done** | All ten screens, the camera with inertia and pinch, the whistle, and the four arrivals. Matched to the prototype. |
 | **4** | Admin | ✅ **done** | `/pondkeeper` — ducks, contacts, cards, CSV, behind the password. |
-| **5** | Keepers | ⬜ next | Blow gesture, signed claim, Card setup. Schema and token verification are already in. |
-| **6** | 繁體中文 | ⬜ | ~80 strings. `lang` negotiation already works. |
+| **5** | Keepers | ✅ **done, deployed** | Signed claim, succession of epochs, Card setup. Replay, rollback and forgery all refused on production. |
+| **6** | 繁體中文 | ✅ **done, deployed** | Full table, coverage enforced by the type system. Verified live at `zh-TW`. |
 
 ---
 
@@ -334,7 +334,91 @@ that class of gap closes.
 
 ---
 
+## Phases 5 and 6 — done, and what they turned up
+
+Both are live. 224 tests, `tsc` clean.
+
+### The bug that had already happened three times
+
+`field()` ran the caller's `onInput` once during construction to seed its
+character count. Those handlers reference siblings — a hint, a scope picker —
+and siblings are usually declared BELOW the field, so the call landed in the
+temporal dead zone and threw. Because every screen begins with
+`replaceChildren()`, the throw emptied the page: the contact screen, the
+pond's count, and then Card setup, all presenting as a blank or broken
+screen with nothing to search for.
+
+Each earlier fix reordered the caller, which is correct locally and leaves
+the trap set for the next screen. `field()` now does not call `onInput`
+during construction at all — the caller passed the value in and already
+knows it.
+
+**The suite stayed green through all three**, because nothing in it rendered
+a DOM. jsdom is now a dev dependency and `test/dom.test.ts` covers the
+primitives. The two tests that matter were checked by putting the old
+behaviour back: they fail with `ReferenceError: Cannot access 'hint' before
+initialization`.
+
+One thing removing that call broke, immediately: the contact screen was
+getting its initial scope-picker visibility FROM the construction-time
+callback. It now calls `syncScope()` explicitly. The dependency is the
+same; it is written down rather than being a side effect of building a
+text field.
+
+### A consent feature that had silently disabled itself
+
+The contact screen offers "share with Sam" only when there is a Sam to
+name, and it was learning that name by inference on the client: collect the
+keepers of every duck on screen, and if they all agree, use that. Its own
+comment claimed it looked at ducks "from this card" — but the pond payload
+deliberately does not say which card a duck came from, so it never filtered.
+
+One keeper in the pond and it worked. Two and the set had two names, the
+inference gave up and returned null, and the option stopped appearing — in
+exactly the situation the pond exists for. It was already dead on
+production, with six ducks from two cards.
+
+The name now comes from the tapped card's current epoch, carried on the
+session. Reaching it needs a session and a session needs the card in hand,
+so it is not a way to enumerate keeper names from a guessed serial — and
+the name is public anyway: every duck already reads "via Sam".
+
+### A string the table could not reach
+
+The arrival heading was built in the screen as `${jp} · ${en}`, so it stayed
+half-English however the reader had asked to be spoken to — on the loudest
+screen in the product. It is `fortuneTitle()` now, which glosses only for
+English. 大吉 is already Chinese; appending "Great luck" glosses into a
+language the reader is not reading.
+
+### 繁體中文
+
+`ZH_HANT` is typed `Record<StringKey, string>`, so coverage is a compile
+error, not a test — a key added to English and forgotten here will not
+typecheck. Entries that legitimately match English (names, URLs, the zoom
+glyphs, the two language buttons) are written out rather than omitted, so
+"identical on purpose" stays distinguishable from "nobody has done this
+yet". Tests cover the two things the compiler cannot see: that no
+translation drops or invents a `{placeholder}`, and that the table was not
+filled in by copying English.
+
+Negotiation verified on production: `zh-TW` and `zh-HK` get `zh-Hant`;
+`zh-CN` falls through to English rather than being served the wrong script.
+
+---
+
 ## Open questions
+
+- **0YBSVSVN's claim counter is ahead of the physical card.** Testing the
+  signed-claim flow needed armed URLs, and minting them with the real
+  firmware key advanced the SERVER's high-water mark to 4 while the CARD's
+  EEPROM never moved. The rule is `counter > claim_counter`, strictly, so
+  the next real blow-four-times ritual arms at 1 and is refused as "already
+  used" — indistinguishable by eye from a genuine replay. Repair staged at
+  `~/pond-backups/REPAIR-0YBSVSVN.sql`; a full dump was taken first. **Run
+  it before tapping that card.** Minting against a card that anybody is
+  going to physically tap was the mistake; a card reserved for it would
+  have cost nothing.
 
 - **KS0KEKBX is a bench card, deliberately left broken.** Flashed before
   `secrets.h` was filled in, so its claim token is signed with the all-zero
@@ -370,3 +454,7 @@ once something is running.
 | 2026-08-12 | Plan reviewed twice — internally, then adversarially by Codex. Claim counter replaced with a signed token; Turso FK trap caught; port estimate corrected. |
 | 2026-08-12 | **Phase 1a landed.** 49 tests. |
 | 2026-08-12 | **Phase 1b landed.** Contract frozen, routes ported, 90 tests. The deletion promise moved from a cascade to a trigger and is now proved with foreign keys off. `sessions.spent_duck` found pinning the duck it pointed at. Not deployed. |
+| 2026-08-13 | **Phase 5 landed.** Signed claim, epochs, Card setup. Replay, counter rollback, forged token and unknown card all refused with 403 on production. |
+| 2026-08-13 | **Phase 6 landed.** 繁體中文 complete, coverage enforced by the type system, verified live at `zh-TW`. |
+| 2026-08-13 | `field()` stopped calling `onInput` during construction — the cause of three blank screens. jsdom added; the guard was mutation-tested. |
+| 2026-08-13 | The keeper's name moved off client-side inference onto the session. It had been returning null, and the consent option missing, whenever the pond held two keepers. |
