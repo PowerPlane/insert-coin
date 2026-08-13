@@ -4,7 +4,7 @@ The tracker. Tick things off here as they land; `BUILD-PLAN.md` is the
 detail behind each line.
 
 **Branch** `pond` · **PR** [#11](https://github.com/PowerPlane/insert-coin/pull/11)
-· **Tests** 128 + 100 native C · **Live** <https://ducky.davidyang.work>
+· **Tests** 167 + 100 native C · **Live** <https://ducky.davidyang.work>
 
 ---
 
@@ -26,7 +26,7 @@ flashed identically, each giving itself an identity on first boot.
 | **1a** | Turso adapter | ✅ **done** | D1-shaped interface, batch, `meta.changes`. |
 | **1b** | Port to Vercel | ✅ **done, deployed** | Contract frozen, routes ported. Live and verified end to end. |
 | **2** | One real card | ✅ **done** | Two cards flashed, recorded, tapped, imported. Attribution proved on production. |
-| **3** | The client | ⬜ next | Nine screens against the frozen API. The biggest piece. |
+| **3** | The client | 🟡 **most of it works** | Pond, camera, the whole making flow, and the return path — all on the live site. Redecorate and the whistle are what remain. |
 | **4** | Admin | ⬜ | `/pondkeeper` — ducks, contacts, cards, CSV. |
 | **5** | Keepers | ⬜ | Blow gesture, signed claim, Card setup. Schema is already in. |
 | **6** | 繁體中文 | ⬜ | ~80 strings. `lang` negotiation already works. |
@@ -77,6 +77,38 @@ from `__path`.
 that are invisible locally and fatal in production — extensions on every
 relative import, the absence of `public/index.html`, that referenced assets
 exist, and that the `/api/*` rewrite is still there.
+
+---
+
+## Phase 3 — where it stands
+
+**Working on the live site, walked end to end in a browser:**
+
+| | |
+| --- | --- |
+| The pond | Water, ducks, camera. Also the visitor state — someone who taps with no coin gets exactly this. |
+| Camera | Integer zoom ladder, wrapping world, **inertia** and **pinch**, +/− controls. |
+| Arrival → studio → sign → contact → release → keep | The whole making flow. 12 tints, 32 stickers, 15 paint colours, brush/erase/undo/clear. |
+| Duck card | Bump (authenticated by your own edit key) and report (reason + note, idempotent). |
+| `/e/<key>` | Your duck later, message & settings, and **take my duck out**. |
+
+**The deletion promise, kept through the UI rather than through SQL:** made
+a duck with a contact, opened its private link, tapped through to the
+confirmation, removed it — 2 contacts became 1, the duck's rows went to 0,
+and no orphans. That is what Phase 1a's adapter was built for, now closed
+by a person tapping buttons.
+
+### Inertia and pinch — added, with no prototype behind them
+
+The first camera behaviour with nothing to port from, so the reasoning
+lives in POND-CAMERA.md: exponential decay at `tau = 325ms`, velocity from
+a ~120 ms buffer so a deliberate pause does not fling, closed-form travel
+so a dropped frame does not lose distance, and a pinch anchored on the
+centroid. No rubber-banding, ever — the world wraps, so there are no edges.
+
+**Left in Phase 3:** redecorate routing into the studio (the API and screen
+both exist; only the wiring is missing), the whistle / gather list, and the
+arrival animations per fortune.
 
 ---
 
