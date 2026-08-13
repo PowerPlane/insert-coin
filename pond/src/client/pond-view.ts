@@ -20,13 +20,15 @@ import {
   CAM_MOMENT,
   CAM_UI,
   HOME_CELL,
-  duckSpread,
   OVERSCAN,
   PondCamera,
+  duckSpread,
   project,
   worldSide,
   wrap,
+  wrapDelta,
 } from "./camera.js";
+import { Gestures } from "./gestures.js";
 import {
   RIPPLE_MS,
   type Ripple,
@@ -139,6 +141,7 @@ export class PondView {
   readonly camera = new PondCamera({ x: 0, y: 0, cell: HOME_CELL }, 1);
 
   private ctx: CanvasRenderingContext2D;
+  private readonly gestures: Gestures;
   private water: WaterBuffer | null = null;
   private ducks: Placed[] = [];
   private ripples: Ripple[] = [];
@@ -147,7 +150,12 @@ export class PondView {
   private lastDebug = 0;
   private readonly debugging =
     typeof location !== "undefined" && location.search.includes("debug");
+  // Two different kinds of handle. Holding both in one field and cancelling
+  // it as both was an id-collision waiting to happen: cancelAnimationFrame
+  // and clearTimeout share a numeric space, so stopping the view could
+  // cancel an unrelated animation somewhere else on the page.
   private raf = 0;
+  private timer = 0;
   private running = false;
   /** Visible frame in sprite pixels — NOT the overscanned canvas. */
   private frameSprite = { w: 0, h: 0 };
@@ -155,7 +163,37 @@ export class PondView {
   constructor(private readonly opts: PondViewOptions) {
     this.ctx = opts.canvas.getContext("2d")!;
     this.ctx.imageSmoothingEnabled = false;
-    this.attachGestures();
+    this.gestures = new Gestures(opts.canvas, {
+      // The CONTINUOUS cell, not the render cell. Mid-pinch they differ by
+      // up to 25%, and every screen-to-world conversion would be wrong by
+      // that much — taps landing on the wrong duck, drags outrunning the
+      // finger.
+      scale: () => this.camera.cam.cell / this.dpr(),
+      dpr: () => this.dpr(),
+      camera: this.camera,
+      onTap: (cx, cy) => this.tap(cx, cy),
+    });
+  }
+
+  private dpr(): number {
+    return Math.min(window.devicePixelRatio || 1, 2);
+  }
+
+  /** Screen point to world point, through the same numbers used to draw. */
+  private toWorld(clientX: number, clientY: number): { wx: number; wy: number } {
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const cell = this.camera.cam.cell / this.dpr();
+    return {
+      wx: wrap(this.camera.cam.x + (clientX - (rect.left + rect.width / 2)) / cell, this.camera.side),
+      wy: wrap(this.camera.cam.y + (clientY - (rect.top + rect.height / 2)) / cell, this.camera.side),
+    };
+  }
+
+  private tap(clientX: number, clientY: number): void {
+    const { wx, wy } = this.toWorld(clientX, clientY);
+    const hit = this.hitTest(wx, wy);
+    if (hit) this.opts.onTapDuck?.(hit);
+    else this.opts.onTapWater?.(wx, wy);
   }
 
   setDucks(ducks: PondDuck[]): void {
@@ -231,10 +269,15 @@ export class PondView {
     };
     // Water is drawn at one water-pixel per sprite-pixel and scaled up.
     this.water = createWaterBuffer(Math.ceil(w / cell), Math.ceil(h / cell));
+    // Resizing changes the world, so the ducks have to be laid out in the
+    // new one — otherwise they keep positions measured against the old
+    // size and drift out of the population area. Placement is a pure
+    // function of ids, so nothing shuffles.
     this.camera.side = worldSide(
       Math.max(this.frameSprite.w, this.frameSprite.h),
       this.ducks.length,
     );
+    if (this.ducks.length) this.ducks = placeDucks(this.ducks, this.camera.side);
   }
 
   start(): void {
@@ -260,16 +303,20 @@ export class PondView {
       // but not page globals, so a `window` handle reads back as undefined
       // from outside — and `window.pond` is doubly useless, because an
       // element with id="pond" already claims that name.
-      if (this.debugging && now - this.lastDebug > 400) {
+      if (this.debugging && now - this.lastDebug > 50) {
         this.lastDebug = now;
         this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
       }
 
       // Display rate while moving or rippling; stop-motion otherwise.
+      // Display rate whenever the view is under anyone's control — a
+      // finger, a fling, a glide, a settle — and stop-motion otherwise.
       if (camMoving || this.ripples.length) {
         this.raf = requestAnimationFrame(loop);
       } else {
-        this.raf = window.setTimeout(() => requestAnimationFrame(loop), WORLD_MS) as unknown as number;
+        this.timer = window.setTimeout(() => {
+          this.raf = requestAnimationFrame(loop);
+        }, WORLD_MS);
       }
     };
     this.raf = requestAnimationFrame(loop);
@@ -278,7 +325,8 @@ export class PondView {
   stop(): void {
     this.running = false;
     cancelAnimationFrame(this.raf);
-    clearTimeout(this.raf);
+    clearTimeout(this.timer);
+    this.gestures.destroy();
   }
 
   /**
@@ -366,72 +414,16 @@ export class PondView {
     canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
   }
 
-  /** Drag to pan, tap to open. A tap is a press that did not travel far. */
-  private attachGestures(): void {
-    const el = this.opts.canvas;
-    let dragging = false;
-    let moved = 0;
-    let lastX = 0;
-    let lastY = 0;
-
-    const spritePerPx = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      return dpr / this.camera.frame().renderCell;
-    };
-
-    el.addEventListener("pointerdown", (e) => {
-      dragging = true;
-      moved = 0;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      el.setPointerCapture(e.pointerId);
-    });
-
-    el.addEventListener("pointermove", (e) => {
-      if (!dragging) return;
-      const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      moved += Math.abs(dx) + Math.abs(dy);
-      const k = spritePerPx();
-      this.camera.pan(dx * k, dy * k);
-    });
-
-    el.addEventListener("pointerup", (e) => {
-      dragging = false;
-      // 8 px of slop: a finger never holds perfectly still, and a tap that
-      // needs stillness reads as an unresponsive button.
-      if (moved > 8) return;
-
-      const rect = el.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const { renderCell } = this.camera.frame();
-      const cx = (e.clientX - rect.left) * dpr;
-      const cy = (e.clientY - rect.top) * dpr;
-      // Screen to world, through the same projection used to draw.
-      const wx = wrap(this.camera.cam.x + (cx - (rect.width * dpr) / 2) / renderCell, this.camera.side);
-      const wy = wrap(this.camera.cam.y + (cy - (rect.height * dpr) / 2) / renderCell, this.camera.side);
-
-      const hit = this.hitTest(wx, wy);
-      if (hit) this.opts.onTapDuck?.(hit);
-      else this.opts.onTapWater?.(wx, wy);
-    });
-  }
-
   /** Nearest duck within a forgiving radius. Front-most wins. */
   private hitTest(wx: number, wy: number): Placed | undefined {
     let best: Placed | undefined;
     let bestD = 16; // sprite pixels — a duck is 24 wide
     for (const d of this.ducks) {
-      let dx = d.wx - wx;
-      let dy = d.wy - wy;
-      const s = this.camera.side;
-      if (dx > s / 2) dx -= s;
-      if (dx < -s / 2) dx += s;
-      if (dy > s / 2) dy -= s;
-      if (dy < -s / 2) dy += s;
-      const dist = Math.hypot(dx, dy);
+      // The one wrap implementation, not a fourth copy of the arithmetic.
+      const dist = Math.hypot(
+        wrapDelta(wx, d.wx, this.camera.side),
+        wrapDelta(wy, d.wy, this.camera.side),
+      );
       if (dist < bestD) {
         bestD = dist;
         best = d;

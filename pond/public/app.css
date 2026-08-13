@@ -199,3 +199,51 @@ html[lang="zh-Hant"] body {
     transform: none;
   }
 }
+
+/* ── zoom ─────────────────────────────────────────────────────────────── */
+
+/*
+ * Pinch and wheel are the direct way to zoom; these are the discoverable
+ * one, and the only one for somebody who cannot pinch. Bottom right, out of
+ * the way of a thumb reaching for the CTA.
+ */
+.p-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.p-icon-btn {
+  width: var(--p-tap);
+  height: var(--p-tap);
+  border: 0;
+  background: var(--p-paper);
+  color: var(--p-ink);
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px,
+                     100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                     calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px));
+}
+
+/* At the end of the ladder the control says so rather than doing nothing. */
+.p-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.p-icon-btn:not(:disabled):active {
+  transform: translateY(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-icon-btn:not(:disabled):active {
+    transform: none;
+  }
+}

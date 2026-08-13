@@ -15,6 +15,10 @@ import {
   CAM_MOMENT,
   CAM_UI,
   CELLS,
+  FLING_MAX_SCREEN_PX_PER_MS,
+  FLING_REST,
+  FLING_TAU,
+  OVERSCAN,
   HOME_CELL,
   PondCamera,
   easeInOutCubic,
@@ -201,5 +205,178 @@ describe("the world grows with the population", () => {
     // The population term overtakes the floor somewhere between the two.
     expect(Math.ceil(Math.sqrt(13) * 34)).toBe(123);
     expect(Math.ceil(Math.sqrt(113) * 34)).toBe(362);
+  });
+});
+
+describe("inertia — a flick keeps travelling and slows down", () => {
+  /**
+   * The model every platform settled on: exponential decay. UIScrollView
+   * expresses it as a per-millisecond decelerationRate; 0.998 is a time
+   * constant of ~325 ms, which reads as normal rather than icy or sticky.
+   *
+   * There is no rubber-banding and there never will be — the world wraps,
+   * so there are no edges to bounce off.
+   */
+  it("keeps moving after the finger lifts, then stops", () => {
+    const cam = new PondCamera({ x: 500, y: 500, cell: 4 }, 1000);
+    cam.fling(0.5, 0, 0);
+    expect(cam.moving).toBe(true);
+
+    const early = (() => {
+      cam.tick(50);
+      return cam.cam.x;
+    })();
+    expect(early).not.toBe(500);
+
+    // Runs down to rest on its own rather than drifting forever.
+    for (let t = 100; t < 4000; t += 16) cam.tick(t);
+    expect(cam.moving).toBe(false);
+  });
+
+  it("decays exponentially with the documented time constant", () => {
+    const cam = new PondCamera({ x: 0, y: 0, cell: 4 }, 100000);
+    cam.fling(1, 0, 0);
+    cam.tick(FLING_TAU); // one time constant
+
+    // Closed-form travel over one tau is tau * (1 - 1/e).
+    const expected = FLING_TAU * (1 - Math.exp(-1));
+    expect(wrap(-cam.cam.x, 100000)).toBeCloseTo(expected, 0);
+  });
+
+  it("travels the same distance regardless of frame rate", () => {
+    // The closed form matters: a phone dropping frames must not also lose
+    // distance, or a flick feels different when the device is busy.
+    const smooth = new PondCamera({ x: 0, y: 0, cell: 4 }, 100000);
+    smooth.fling(1, 0, 0);
+    for (let t = 8; t <= 2000; t += 8) smooth.tick(t);
+
+    const choppy = new PondCamera({ x: 0, y: 0, cell: 4 }, 100000);
+    choppy.fling(1, 0, 0);
+    for (let t = 50; t <= 2000; t += 50) choppy.tick(t);
+
+    expect(wrap(-smooth.cam.x, 100000)).toBeCloseTo(wrap(-choppy.cam.x, 100000), 0);
+  });
+
+  it("ignores a flick too slow to be one", () => {
+    // A finger that paused before lifting must not fling. The velocity
+    // buffer produces ~zero for that, and this is the floor under it.
+    const cam = new PondCamera({ x: 0, y: 0, cell: 4 }, 1000);
+    cam.fling(FLING_REST / 2, 0, 0);
+    expect(cam.moving).toBe(false);
+  });
+
+  it("caps a wild flick so it cannot teleport", () => {
+    const cam = new PondCamera({ x: 0, y: 0, cell: 4 }, 100000);
+    cam.fling(9999, 0, 0);
+    for (let t = 16; t < 4000; t += 16) cam.tick(t);
+    const travelled = wrap(-cam.cam.x, 100000);
+    // The cap is in screen pixels per ms; at cell 4 that is a bounded
+    // world distance however hard the flick was.
+    const ceiling = (FLING_MAX_SCREEN_PX_PER_MS / 4) * FLING_TAU * 1.05;
+    expect(travelled).toBeLessThanOrEqual(ceiling);
+  });
+
+  it("a new finger kills the fling instantly", () => {
+    const cam = new PondCamera({ x: 0, y: 0, cell: 4 }, 1000);
+    cam.fling(1, 0, 0);
+    cam.grab();
+    const at = cam.cam.x;
+    cam.tick(500);
+    // Held, so the camera is under the finger's control and does not drift.
+    expect(cam.cam.x).toBe(at);
+    expect(cam.moving).toBe(true); // still frozen-world, still display rate
+  });
+
+  it("counts a held finger as moving, so a drag redraws at display rate", () => {
+    // Before this, `moving` was only true during a glide — so dragging fell
+    // through to the 83 ms stop-motion path and tracked a thumb at 12 fps.
+    const cam = new PondCamera({ x: 0, y: 0, cell: 4 }, 1000);
+    expect(cam.moving).toBe(false);
+    cam.grab();
+    expect(cam.moving).toBe(true);
+    cam.release();
+    expect(cam.moving).toBe(false);
+  });
+});
+
+describe("pinch — the water under the fingers stays put", () => {
+  it("keeps the anchored world point under the anchor", () => {
+    const side = 4000;
+    const cam = new PondCamera({ x: 1000, y: 1000, cell: 4 }, side);
+
+    // A point 120 screen px right and 80 down from the view centre.
+    const ax = 120;
+    const ay = 80;
+    const before = {
+      x: cam.cam.x + ax / cam.cam.cell,
+      y: cam.cam.y + ay / cam.cam.cell,
+    };
+
+    cam.zoomAbout(6, ax, ay);
+
+    const after = {
+      x: cam.cam.x + ax / cam.cam.cell,
+      y: cam.cam.y + ay / cam.cam.cell,
+    };
+    expect(after.x).toBeCloseTo(before.x, 6);
+    expect(after.y).toBeCloseTo(before.y, 6);
+  });
+
+  it("zooming about the centre only changes the zoom", () => {
+    const cam = new PondCamera({ x: 500, y: 500, cell: 4 }, 2000);
+    cam.zoomAbout(8, 0, 0);
+    expect(cam.cam.x).toBeCloseTo(500, 6);
+    expect(cam.cam.y).toBeCloseTo(500, 6);
+    expect(cam.cam.cell).toBe(8);
+  });
+
+  it("settles onto the nearest rung once the fingers lift", () => {
+    const cam = new PondCamera({ x: 0, y: 0, cell: 4 }, 1000);
+    cam.grab();
+    cam.zoomAbout(5.4, 0, 0);
+    expect(cam.cam.cell).toBeCloseTo(5.4);
+    cam.release();
+
+    for (let t = 16; t < 1200; t += 16) cam.tick(t);
+    expect(cam.cam.cell).toBe(6); // nearest rung to 5.4
+    expect(cam.moving).toBe(false);
+  });
+
+  it("never asks the overscan for more than it has", () => {
+    // Mid-pinch the render is at the nearest rung and the remainder is a
+    // CSS scale. The worst remainder on the {2,3,4,6,8} ladder decides how
+    // much overscan is needed; 150% has to cover it.
+    let worst = 1;
+    for (let cell = CELLS[0]; cell <= CELLS[CELLS.length - 1]!; cell += 0.01) {
+      const scale = cell / nearestCell(cell);
+      worst = Math.max(worst, 1 / scale, scale);
+    }
+    expect(worst).toBeLessThan(OVERSCAN);
+  });
+});
+
+describe("the anchor is in device pixels, and the units are the bug", () => {
+  it("drifts by exactly the dpr factor when given CSS pixels instead", () => {
+    // Measured on a real 2x screen: 24.75 world pixels of drift at a
+    // 200-pixel anchor zooming 4 -> 8. That is `200 * (2 - 1) * (1/8)`,
+    // which is what passing CSS pixels to a device-pixel API costs.
+    //
+    // Pinned as a test because "it drifts a bit" is exactly the kind of
+    // thing that gets shrugged off as feel rather than recognised as a
+    // missing factor.
+    const cssAnchor = 200;
+    const dpr = 2;
+    const from = 4;
+    const to = 8;
+
+    const correct = new PondCamera({ x: 1000, y: 1000, cell: from }, 8000);
+    correct.zoomAbout(to, cssAnchor * dpr, 0);
+
+    const wrong = new PondCamera({ x: 1000, y: 1000, cell: from }, 8000);
+    wrong.zoomAbout(to, cssAnchor, 0);
+
+    const drift = Math.abs(correct.cam.x - wrong.cam.x);
+    expect(drift).toBeCloseTo(cssAnchor * (dpr - 1) * (1 / to), 4);
+    expect(drift).toBeCloseTo(25, 1);
   });
 });

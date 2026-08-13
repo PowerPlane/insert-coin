@@ -94,6 +94,10 @@ var CELLS = [2, 3, 4, 6, 8];
 var HOME_CELL = 4;
 var CAM_UI = 480;
 var CAM_MOMENT = 1100;
+var FLING_TAU = 325;
+var FLING_REST = 4e-3;
+var FLING_MAX_SCREEN_PX_PER_MS = 4;
+var SETTLE_TAU = 90;
 var OVERSCAN = 1.5;
 function easeInOutCubic(p) {
   return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
@@ -121,9 +125,24 @@ var PondCamera = class {
   cam;
   side;
   move = null;
-  /** True while a move is running — the world holds still meanwhile (rule 5). */
+  flung = null;
+  /** Set while fingers are on the glass, so the world holds still. */
+  held = false;
+  /**
+   * Is anything moving the view right now?
+   *
+   * This is what drives BOTH the display-rate redraw and the world freeze,
+   * and it deliberately includes a finger on the glass. Before it did, a
+   * drag fell through to the 83 ms stop-motion path and tracked a thumb at
+   * twelve frames a second — the exact thing POND-CAMERA's two-clocks rule
+   * exists to prevent, and invisible in a screenshot.
+   */
   get moving() {
-    return this.move !== null;
+    return this.move !== null || this.flung !== null || this.held || this.settling;
+  }
+  /** Mid-pinch, cell is off the ladder and easing back onto it. */
+  get settling() {
+    return !this.held && Math.abs(this.cam.cell - nearestCell(this.cam.cell)) > 1e-3;
   }
   /**
    * Start a move. Position and zoom travel together, one easing.
@@ -147,16 +166,84 @@ var PondCamera = class {
     if (to.y !== void 0) this.cam.y = wrap(to.y, this.side);
     if (to.cell !== void 0) this.cam.cell = clampCell(to.cell);
   }
-  /** Drag by a screen delta, in sprite pixels. Wraps; never clamps. */
+  /** Drag by a world delta, in sprite pixels. Wraps; never clamps. */
   pan(dxSprite, dySprite) {
     this.move = null;
+    this.flung = null;
     this.cam.x = wrap(this.cam.x - dxSprite, this.side);
     this.cam.y = wrap(this.cam.y - dySprite, this.side);
   }
-  /** Advance any running move. Returns true while still animating. */
+  /**
+   * Zoom about a point, keeping the world under it still.
+   *
+   * The anchor is what makes a pinch feel like handling the water rather
+   * than operating a slider: whatever is between the fingers stays between
+   * the fingers.
+   *
+   * `ax`/`ay` are offsets from the view centre in DEVICE pixels, because
+   * that is what `cell` is denominated in — "device pixels per sprite
+   * pixel". Passing CSS pixels instead under-corrects by exactly the
+   * device-pixel ratio, which on a 2x screen is half: measured as 24.75
+   * world pixels of drift at a 200-pixel anchor, which is
+   * `200 x (2 - 1) x (1/8)` to the decimal.
+   */
+  zoomAbout(nextCell, ax, ay) {
+    this.move = null;
+    const from = this.cam.cell;
+    const to = clampCell(nextCell);
+    if (to === from) return;
+    this.cam.x = wrap(this.cam.x + ax * (1 / from - 1 / to), this.side);
+    this.cam.y = wrap(this.cam.y + ay * (1 / from - 1 / to), this.side);
+    this.cam.cell = to;
+  }
+  /**
+   * Release a flick. Velocity is in WORLD units per millisecond, already
+   * measured across a buffer rather than from the last event — a single
+   * delta is mostly sensor noise, and a finger that paused before lifting
+   * must not fling.
+   */
+  fling(vx, vy, now = performance.now()) {
+    const speed = Math.hypot(vx, vy);
+    if (speed < FLING_REST) return;
+    const cap = FLING_MAX_SCREEN_PX_PER_MS / this.cam.cell / speed;
+    const k = Math.min(1, cap);
+    this.move = null;
+    this.flung = { vx: vx * k, vy: vy * k, last: now };
+  }
+  /** A finger has landed: stop everything and hand over control. */
+  grab() {
+    this.move = null;
+    this.flung = null;
+    this.held = true;
+  }
+  release() {
+    this.held = false;
+  }
+  /** Advance whatever is moving. Returns true while still animating. */
   tick(now = performance.now()) {
+    if (this.held) return true;
+    if (this.flung) {
+      const f = this.flung;
+      const dt = Math.max(0, now - f.last);
+      f.last = now;
+      const decay = Math.exp(-dt / FLING_TAU);
+      const travel = FLING_TAU * (1 - decay);
+      this.cam.x = wrap(this.cam.x - f.vx * travel, this.side);
+      this.cam.y = wrap(this.cam.y - f.vy * travel, this.side);
+      f.vx *= decay;
+      f.vy *= decay;
+      if (Math.hypot(f.vx, f.vy) < FLING_REST) this.flung = null;
+      this.settle(now, dt);
+      return this.flung !== null || this.settling;
+    }
+    if (!this.move) {
+      if (this.settling) {
+        this.settle(now, 16);
+        return true;
+      }
+      return false;
+    }
     const m = this.move;
-    if (!m) return false;
     const p = Math.min(1, (now - m.start) / m.ms);
     const e = easeInOutCubic(p);
     this.cam.x = wrap(m.from.x + (m.to.x - m.from.x) * e, this.side);
@@ -167,6 +254,20 @@ var PondCamera = class {
       return false;
     }
     return true;
+  }
+  /**
+   * Ease an off-ladder zoom back onto the nearest rung.
+   *
+   * Mid-pinch the cell is continuous, which is a legal render state — the
+   * remainder is a CSS scale. It is not a legal RESTING state, because at
+   * rest an integer cell is what keeps outlines from crawling.
+   */
+  settle(now, dt) {
+    if (this.held) return;
+    const target = nearestCell(this.cam.cell);
+    const k = 1 - Math.exp(-dt / SETTLE_TAU);
+    this.cam.cell += (target - this.cam.cell) * k;
+    if (Math.abs(this.cam.cell - target) < 1e-3) this.cam.cell = target;
   }
   /**
    * How to draw this frame.
@@ -828,6 +929,128 @@ function drawRipples(buf, ripples, now) {
   buf.canvas.getContext("2d").putImageData(buf.image, 0, 0);
 }
 
+// src/client/gestures.ts
+var VELOCITY_WINDOW_MS = 120;
+var TAP_SLOP_PX = 8;
+var Gestures = class {
+  constructor(el2, target) {
+    this.el = el2;
+    this.target = target;
+    el2.addEventListener("pointerdown", this.down);
+    el2.addEventListener("pointermove", this.move);
+    el2.addEventListener("pointerup", this.up);
+    el2.addEventListener("pointercancel", this.up);
+    el2.addEventListener("wheel", this.wheel, { passive: false });
+  }
+  el;
+  target;
+  /** Live pointers, each with a short trail of where it has been. */
+  points = /* @__PURE__ */ new Map();
+  travelled = 0;
+  /** Distance between two fingers when the pinch was last measured. */
+  pinchGap = 0;
+  destroy() {
+    this.el.removeEventListener("pointerdown", this.down);
+    this.el.removeEventListener("pointermove", this.move);
+    this.el.removeEventListener("pointerup", this.up);
+    this.el.removeEventListener("pointercancel", this.up);
+    this.el.removeEventListener("wheel", this.wheel);
+  }
+  trail(id) {
+    let t2 = this.points.get(id);
+    if (!t2) {
+      t2 = [];
+      this.points.set(id, t2);
+    }
+    return t2;
+  }
+  push(e) {
+    const t2 = this.trail(e.pointerId);
+    t2.push({ t: e.timeStamp, x: e.clientX, y: e.clientY });
+    while (t2.length > 2 && e.timeStamp - t2[0].t > VELOCITY_WINDOW_MS) t2.shift();
+  }
+  latest() {
+    return [...this.points.values()].map((t2) => t2[t2.length - 1]).filter(Boolean);
+  }
+  centroid() {
+    const now = this.latest();
+    const sum = now.reduce((a, p) => ({ x: a.x + p.x, y: a.y + p.y }), { x: 0, y: 0 });
+    return { x: sum.x / now.length, y: sum.y / now.length };
+  }
+  gap() {
+    const [a, b] = this.latest();
+    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+  }
+  down = (e) => {
+    this.push(e);
+    if (this.points.size === 1) this.travelled = 0;
+    this.pinchGap = this.gap();
+    this.target.camera.grab();
+    try {
+      this.el.setPointerCapture(e.pointerId);
+    } catch {
+    }
+  };
+  move = (e) => {
+    if (!this.points.has(e.pointerId)) return;
+    const before = this.centroid();
+    const beforeGap = this.gap();
+    this.push(e);
+    const after = this.centroid();
+    const dx = after.x - before.x;
+    const dy = after.y - before.y;
+    this.travelled += Math.abs(dx) + Math.abs(dy);
+    const { camera } = this.target;
+    if (this.points.size >= 2 && beforeGap > 0 && this.pinchGap > 0) {
+      const gap = this.gap();
+      const ratio = gap / beforeGap;
+      if (Number.isFinite(ratio) && ratio > 0) {
+        const d = this.target.dpr();
+        const rect = this.el.getBoundingClientRect();
+        camera.zoomAbout(
+          camera.cam.cell * ratio,
+          (after.x - (rect.left + rect.width / 2)) * d,
+          (after.y - (rect.top + rect.height / 2)) * d
+        );
+      }
+    }
+    const k = 1 / this.target.scale();
+    camera.pan(dx * k, dy * k);
+  };
+  up = (e) => {
+    const trail = this.points.get(e.pointerId);
+    this.points.delete(e.pointerId);
+    if (this.points.size > 0) {
+      this.pinchGap = this.gap();
+      return;
+    }
+    this.target.camera.release();
+    if (this.travelled <= TAP_SLOP_PX) {
+      this.target.onTap(e.clientX, e.clientY);
+      return;
+    }
+    if (prefersReducedMotion() || !trail || trail.length < 2) return;
+    const first = trail[0];
+    const last = trail[trail.length - 1];
+    const dt = last.t - first.t;
+    if (dt <= 0) return;
+    const k = 1 / this.target.scale();
+    this.target.camera.fling((last.x - first.x) / dt * k, (last.y - first.y) / dt * k);
+  };
+  wheel = (e) => {
+    e.preventDefault();
+    const rect = this.el.getBoundingClientRect();
+    const { camera } = this.target;
+    const factor = Math.exp(-e.deltaY / 400);
+    const d = this.target.dpr();
+    camera.zoomAbout(
+      camera.cam.cell * factor,
+      (e.clientX - (rect.left + rect.width / 2)) * d,
+      (e.clientY - (rect.top + rect.height / 2)) * d
+    );
+  };
+};
+
 // src/client/pond-view.ts
 var WORLD_FPS = 12;
 var WORLD_MS = 1e3 / WORLD_FPS;
@@ -883,11 +1106,21 @@ var PondView = class {
     this.opts = opts;
     this.ctx = opts.canvas.getContext("2d");
     this.ctx.imageSmoothingEnabled = false;
-    this.attachGestures();
+    this.gestures = new Gestures(opts.canvas, {
+      // The CONTINUOUS cell, not the render cell. Mid-pinch they differ by
+      // up to 25%, and every screen-to-world conversion would be wrong by
+      // that much — taps landing on the wrong duck, drags outrunning the
+      // finger.
+      scale: () => this.camera.cam.cell / this.dpr(),
+      dpr: () => this.dpr(),
+      camera: this.camera,
+      onTap: (cx, cy) => this.tap(cx, cy)
+    });
   }
   opts;
   camera = new PondCamera({ x: 0, y: 0, cell: HOME_CELL }, 1);
   ctx;
+  gestures;
   water = null;
   ducks = [];
   ripples = [];
@@ -895,10 +1128,33 @@ var PondView = class {
   lastWorldTick = 0;
   lastDebug = 0;
   debugging = typeof location !== "undefined" && location.search.includes("debug");
+  // Two different kinds of handle. Holding both in one field and cancelling
+  // it as both was an id-collision waiting to happen: cancelAnimationFrame
+  // and clearTimeout share a numeric space, so stopping the view could
+  // cancel an unrelated animation somewhere else on the page.
   raf = 0;
+  timer = 0;
   running = false;
   /** Visible frame in sprite pixels — NOT the overscanned canvas. */
   frameSprite = { w: 0, h: 0 };
+  dpr() {
+    return Math.min(window.devicePixelRatio || 1, 2);
+  }
+  /** Screen point to world point, through the same numbers used to draw. */
+  toWorld(clientX, clientY) {
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const cell = this.camera.cam.cell / this.dpr();
+    return {
+      wx: wrap(this.camera.cam.x + (clientX - (rect.left + rect.width / 2)) / cell, this.camera.side),
+      wy: wrap(this.camera.cam.y + (clientY - (rect.top + rect.height / 2)) / cell, this.camera.side)
+    };
+  }
+  tap(clientX, clientY) {
+    const { wx, wy } = this.toWorld(clientX, clientY);
+    const hit = this.hitTest(wx, wy);
+    if (hit) this.opts.onTapDuck?.(hit);
+    else this.opts.onTapWater?.(wx, wy);
+  }
   setDucks(ducks) {
     const wasEmpty = this.ducks.length === 0;
     this.camera.side = worldSide(Math.max(this.frameSprite.w, this.frameSprite.h), ducks.length);
@@ -964,6 +1220,7 @@ var PondView = class {
       Math.max(this.frameSprite.w, this.frameSprite.h),
       this.ducks.length
     );
+    if (this.ducks.length) this.ducks = placeDucks(this.ducks, this.camera.side);
   }
   start() {
     if (this.running) return;
@@ -976,14 +1233,16 @@ var PondView = class {
         this.frame++;
       }
       this.draw(now);
-      if (this.debugging && now - this.lastDebug > 400) {
+      if (this.debugging && now - this.lastDebug > 50) {
         this.lastDebug = now;
         this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
       }
       if (camMoving || this.ripples.length) {
         this.raf = requestAnimationFrame(loop);
       } else {
-        this.raf = window.setTimeout(() => requestAnimationFrame(loop), WORLD_MS);
+        this.timer = window.setTimeout(() => {
+          this.raf = requestAnimationFrame(loop);
+        }, WORLD_MS);
       }
     };
     this.raf = requestAnimationFrame(loop);
@@ -991,7 +1250,8 @@ var PondView = class {
   stop() {
     this.running = false;
     cancelAnimationFrame(this.raf);
-    clearTimeout(this.raf);
+    clearTimeout(this.timer);
+    this.gestures.destroy();
   }
   /**
    * A ripple where something happened. Discrete rings, not a wave sim.
@@ -1069,62 +1329,15 @@ var PondView = class {
     this.ripples = this.ripples.filter((r) => now - r.t < RIPPLE_MS);
     canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
   }
-  /** Drag to pan, tap to open. A tap is a press that did not travel far. */
-  attachGestures() {
-    const el2 = this.opts.canvas;
-    let dragging = false;
-    let moved = 0;
-    let lastX = 0;
-    let lastY = 0;
-    const spritePerPx = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      return dpr / this.camera.frame().renderCell;
-    };
-    el2.addEventListener("pointerdown", (e) => {
-      dragging = true;
-      moved = 0;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      el2.setPointerCapture(e.pointerId);
-    });
-    el2.addEventListener("pointermove", (e) => {
-      if (!dragging) return;
-      const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      moved += Math.abs(dx) + Math.abs(dy);
-      const k = spritePerPx();
-      this.camera.pan(dx * k, dy * k);
-    });
-    el2.addEventListener("pointerup", (e) => {
-      dragging = false;
-      if (moved > 8) return;
-      const rect = el2.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const { renderCell } = this.camera.frame();
-      const cx = (e.clientX - rect.left) * dpr;
-      const cy = (e.clientY - rect.top) * dpr;
-      const wx = wrap(this.camera.cam.x + (cx - rect.width * dpr / 2) / renderCell, this.camera.side);
-      const wy = wrap(this.camera.cam.y + (cy - rect.height * dpr / 2) / renderCell, this.camera.side);
-      const hit = this.hitTest(wx, wy);
-      if (hit) this.opts.onTapDuck?.(hit);
-      else this.opts.onTapWater?.(wx, wy);
-    });
-  }
   /** Nearest duck within a forgiving radius. Front-most wins. */
   hitTest(wx, wy) {
     let best;
     let bestD = 16;
     for (const d of this.ducks) {
-      let dx = d.wx - wx;
-      let dy = d.wy - wy;
-      const s = this.camera.side;
-      if (dx > s / 2) dx -= s;
-      if (dx < -s / 2) dx += s;
-      if (dy > s / 2) dy -= s;
-      if (dy < -s / 2) dy += s;
-      const dist = Math.hypot(dx, dy);
+      const dist = Math.hypot(
+        wrapDelta(wx, d.wx, this.camera.side),
+        wrapDelta(wy, d.wy, this.camera.side)
+      );
       if (dist < bestD) {
         bestD = dist;
         best = d;
@@ -1410,17 +1623,38 @@ async function pondScreen(bootstrap) {
   count.type = "button";
   hud.append(count);
   const cta = el("div", "p-cta");
-  root.append(stage, hud, cta);
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
     onTapWater: (wx, wy) => view.splash(wx, wy)
   });
+  const zoom = el("div", "p-zoom");
+  const zoomBtn = (label, aria, dir) => {
+    const b = el("button", "p-icon-btn", label);
+    b.type = "button";
+    b.setAttribute("aria-label", aria);
+    b.addEventListener("click", () => {
+      const next = view.camera.step(dir);
+      if (next !== null) view.camera.glide({ cell: next }, CAM_UI);
+      syncZoom();
+    });
+    return b;
+  };
+  const zoomIn = zoomBtn(t("pond.07"), t("pond.06"), 1);
+  const zoomOut = zoomBtn(t("pond.09"), t("pond.08"), -1);
+  const syncZoom = () => {
+    zoomIn.disabled = view.camera.step(1) === null;
+    zoomOut.disabled = view.camera.step(-1) === null;
+  };
+  zoom.append(zoomIn, zoomOut);
+  root.append(stage, hud, zoom, cta);
   window.__pond = view;
   const fit = () => view.resize();
   fit();
   window.addEventListener("resize", fit);
   view.start();
+  syncZoom();
+  setInterval(syncZoom, 500);
   let ducks = [];
   const refresh = async () => {
     try {

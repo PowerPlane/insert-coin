@@ -156,3 +156,82 @@ paint layer, so a thousand ducks is ~400 KB of JSON before anything is drawn.
 The fix is the same idea applied to the API — fetch by region and recency, not
 all of them. Not needed at 100 cards, real work at 1,000, so it is written
 down rather than built.
+
+
+---
+
+## Inertia and pinch
+
+**The first camera behaviour with no prototype behind it**, so this section
+is the only place the reasoning lives. Added on request: dragging should
+follow the force of the finger rather than stopping dead.
+
+### A flick coasts, and slows down
+
+Exponential decay, which is what every platform converged on:
+
+```
+v *= exp(-dt / 325ms)
+```
+
+UIScrollView expresses the same curve as a per-millisecond
+`decelerationRate`; 0.998 is a time constant of ~325 ms, which reads as
+normal rather than icy or sticky. The travel is integrated in CLOSED FORM
+(`tau * (1 - decay)`) rather than accumulated per frame, so a phone dropping
+frames does not also lose distance.
+
+| | |
+| --- | --- |
+| `FLING_TAU` | 325 ms |
+| `FLING_REST` | 0.004 sprite px/ms — below this it has stopped |
+| `FLING_MAX` | 4 screen px/ms, so a wild flick cannot teleport across a small world |
+
+**Velocity is measured across a ~120 ms buffer, not from the last event.**
+A single delta is mostly sensor noise — and, more importantly, a finger
+that slides across and then *pauses* before lifting would otherwise fling
+with the velocity of the slide. Over a buffer a deliberate stop yields
+almost nothing, so it does not fling, with no special case for it.
+Confirmed on the deployed site: a pause-then-lift coasts 0 pixels.
+
+**There is no rubber-banding, and there never will be.** The world wraps,
+so there are no edges to bounce off — which deletes the hardest part of
+scroll physics. Do not add it back.
+
+**Reduced motion turns inertia off.** UI.md § 5 says reduced motion never
+removes *information*; a coast carries none.
+
+### Two fingers pan and zoom at once
+
+The centroid's movement pans, the distance between the fingers zooms, and
+the zoom is anchored on the centroid so the water between them stays
+between them. Treating those as separate modes makes a pinch feel like
+operating two controls badly rather than holding one thing.
+
+**The anchor is in DEVICE pixels.** `CELL` is defined as *device* pixels per
+sprite pixel, so passing CSS pixels under-corrects by exactly the
+device-pixel ratio. On a 2× screen that is half, and it presents as the
+water sliding under the fingers rather than as an obvious bug — measured at
+24.75 world pixels of drift for a 200-pixel anchor zooming 4→6, which is
+`200 × (2−1) × (1/8)` to the decimal. Now 0.04. There is a test pinned to
+that arithmetic.
+
+A pinch is CONTINUOUS while the fingers are down — which is a legal render
+state, because the remainder is a CSS scale — and eases onto the nearest
+rung when they lift (`SETTLE_TAU` 90 ms). At rest the zoom is always
+integral, which is what stops outlines crawling.
+
+### A finger on the glass counts as camera movement
+
+`moving` includes dragging, flinging and settling, not just gliding. It
+drives both the display-rate redraw and the world freeze.
+
+Before it did, a drag fell through to the 83 ms stop-motion path and
+tracked a thumb at twelve frames a second — the exact thing the two-clocks
+rule exists to prevent, and invisible in a screenshot.
+
+### Screen to world uses the continuous cell
+
+Every screen→world conversion — taps, drags, anchors — uses `cam.cell`, not
+`renderCell`. They are equal at rest and differ by up to 25% mid-pinch, so
+using the render cell would put taps on the wrong duck and make drags
+outrun the finger for the length of every zoom.

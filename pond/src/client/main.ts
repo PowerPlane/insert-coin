@@ -12,6 +12,7 @@
  */
 
 import { ApiError, api, recallEditKey, type SessionState } from "./api.js";
+import { CAM_UI } from "./camera.js";
 import { PondView, type Placed } from "./pond-view.js";
 import { setLang, t, type Lang } from "./strings.js";
 import type { PondDuck } from "./types.js";
@@ -69,13 +70,43 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
 
   const cta = el("div", "p-cta");
 
-  root.append(stage, hud, cta);
-
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
     onTapWater: (wx, wy) => view.splash(wx, wy),
   });
+
+  /**
+   * Zoom controls — pond.06 to pond.09 in the deck.
+   *
+   * Pinch and wheel are the direct way; these are the discoverable one, and
+   * the only one available to somebody who cannot pinch. Each steps one rung
+   * of the ladder and glides, so the zoom that arrives is always integral.
+   */
+  const zoom = el("div", "p-zoom");
+  const zoomBtn = (label: string, aria: string, dir: 1 | -1) => {
+    const b = el("button", "p-icon-btn", label);
+    b.type = "button";
+    b.setAttribute("aria-label", aria);
+    b.addEventListener("click", () => {
+      const next = view.camera.step(dir);
+      // null at the ends of the ladder. Disable rather than no-op silently,
+      // so the control tells the truth about what it can do.
+      if (next !== null) view.camera.glide({ cell: next }, CAM_UI);
+      syncZoom();
+    });
+    return b;
+  };
+  const zoomIn = zoomBtn(t("pond.07"), t("pond.06"), 1);
+  const zoomOut = zoomBtn(t("pond.09"), t("pond.08"), -1);
+  const syncZoom = () => {
+    zoomIn.disabled = view.camera.step(1) === null;
+    zoomOut.disabled = view.camera.step(-1) === null;
+  };
+  zoom.append(zoomIn, zoomOut);
+
+  root.append(stage, hud, zoom, cta);
+
 
   // A handle for looking at the real thing in a real browser. The pond is
   // canvas, so nothing about its state is visible in the DOM inspector —
@@ -91,6 +122,10 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   fit();
   window.addEventListener("resize", fit);
   view.start();
+  syncZoom();
+  // A pinch changes the zoom without touching a button, so the buttons have
+  // to notice. Cheap, and only while something is happening.
+  setInterval(syncZoom, 500);
 
   // ── the pond itself ───────────────────────────────────────────────────
   let ducks: PondDuck[] = [];
