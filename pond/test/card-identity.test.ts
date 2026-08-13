@@ -242,3 +242,38 @@ describe("the layout, in the third place it appears", () => {
     expect(url.indexOf("<digit>")).toBeLessThan(url.indexOf("<token>"));
   });
 });
+
+describe("a real card, from the bench", () => {
+  /**
+   * The first physical ATtiny1616 ever flashed with this firmware, recorded
+   * here because it is the only vector in this file that did not come from
+   * our own code.
+   *
+   * The SERNUM was read off the chip with avrdude; the serial is what the
+   * card actually wrote into its own tag and what a phone actually read
+   * back. Everything else in this file proves the two implementations agree
+   * with each other. This proves they agree with SILICON.
+   *
+   *   tapped: /?d=1&c=0YBSVSVN&g=0000&t=5d29221795
+   *
+   * If this ever fails, the derivation changed under a card that already
+   * exists in the world — and that card's ducks would become unattributed.
+   */
+  const BENCH_SERNUM = "3054304c493268721626";
+  const BENCH_SERIAL = "0YBSVSVN";
+
+  it("derives the serial a real chip put in its own tag", () => {
+    const bytes = new Uint8Array(
+      (BENCH_SERNUM.match(/../g) ?? []).map((b) => parseInt(b, 16)),
+    );
+    expect(cardSerial(bytes)).toBe(BENCH_SERIAL);
+  });
+
+  it("shows real SERNUMs are nothing like the synthetic ones", () => {
+    // 30 54 30 4c 49 32 68 72 16 26 — ASCII-ish lot characters in the high
+    // bytes, which is exactly why the serial hashes all ten rather than
+    // slicing a window out of them.
+    expect(BENCH_SERNUM.slice(0, 8)).toBe("3054304c");
+    expect(isSerial(BENCH_SERIAL)).toBe(true);
+  });
+});

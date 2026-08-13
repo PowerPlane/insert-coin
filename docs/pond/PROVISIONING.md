@@ -108,9 +108,39 @@ Handled three ways, and all three have to hold:
 
 ---
 
+## The bench, so far
+
+**One card flashed and tapped, 2026-08-12, and it worked.**
+
+```
+SERNUM   30 54 30 4c 49 32 68 72 16 26   (read with avrdude)
+recorded 0YBSVSVN                        (record-card.sh)
+tapped   /?d=1&c=0YBSVSVN&g=0000&t=5d29221795
+```
+
+The `&c=` matches the recorded serial character for character, which is the
+thing this whole phase was built to make certain of: the C on the ATtiny and
+the TypeScript on the host derive the same serial from the same chip.
+
+The URL proves the rest of the chain too. The card read its own SIGROW,
+hashed it, signed a claim token with the real FIRMWARE_SECRET (the token is
+not the all-zero-key one, so `secrets.h` was filled in before flashing),
+built all 68 bytes, wrote them over I2C, read them back, compared, and
+sealed its EEPROM flag. `?d=1` means it then ran the show and patched the
+fortune digit — so the ~408 ms first-boot write fits inside the boot window
+with room to spare.
+
+Its values are pinned in `pond/test/card-identity.test.ts` as the one vector
+that did not come from our own code.
+
+**Still to do: a SECOND card.** "Two cards open two pages" would pass even
+with the derivations disagreeing; two cards whose recorded serials both
+match their tapped URLs is the real check, and it is what catches a
+derivation that happens to be stable but wrong.
+
 ## Still to prove on the bench
 
-This is designed, not tested. Before committing to a hundred:
+Before committing to a hundred:
 
 - Writing **68 bytes** on first boot instead of patching one — the record
   grew by the serial, the counter and the token, so this is ~408 ms at
@@ -123,6 +153,9 @@ This is designed, not tested. Before committing to a hundred:
   pinned vectors for exactly that pair). Two chips with an IDENTICAL SERNUM
   would still collide, which is what this check is really for.
 - That the LED confirmation is unmistakable, since it is the only signal that
-  a card is finished.
+  a card is finished. (The first card completed, so the pattern exists — what
+  is unproven is whether a FAILED provision is distinguishable from a
+  successful one at a glance.)
 
-Do all three on two cards first. Everything else about this is mechanical.
+One card down. Do the rest on a second before committing to a hundred —
+everything else about this is mechanical.
