@@ -68,3 +68,6 @@ pond/*.db-journal
 # must be set to the same sixteen bytes.
 **/production-pond/src/secrets.h
 variants/business-card-v1/cards.csv
+
+# esbuild's bundle analysis. Useful locally, not worth shipping.
+pond/public/.app.js.meta

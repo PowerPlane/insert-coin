@@ -13,10 +13,12 @@
     "typecheck": "tsc --noEmit",
     "sprites": "python3 tools/gen-sprites.py",
     "cards:import": "tsx tools/import-cards.ts",
-    "cards:check": "tsx tools/check-card.ts"
+    "cards:check": "tsx tools/check-card.ts",
+    "build:client": "node tools/build-client.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "esbuild": "^0.28.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
