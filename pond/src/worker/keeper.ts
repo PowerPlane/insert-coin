@@ -116,6 +116,26 @@ async function orphanCount(env: Env, cardId: string): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
+/**
+ * The name the current keeper of a card chose, if they chose one.
+ *
+ * Reached only through a session, and a session needs the physical card —
+ * so this cannot be used to enumerate keeper names from a guessed serial.
+ * The name is public anyway: every duck from the card already reads
+ * "via Sam" to everyone.
+ */
+export async function keeperNameOfCard(env: Env, cardId: string | null): Promise<string | null> {
+  if (!cardId) return null;
+  const row = await env.DB.prepare(
+    `SELECT keeper_name FROM card_epochs WHERE card_id = ?1 AND ended IS NULL`,
+  )
+    .bind(cardId)
+    .first<{ keeper_name: string }>();
+  // A card nobody has claimed, and a keeper who left the name blank, are the
+  // same thing here: there is no one to name, so nothing is offered.
+  return (row?.keeper_name ?? "").trim() || null;
+}
+
 export interface KeeperSettings {
   name?: unknown;
   lang?: unknown;

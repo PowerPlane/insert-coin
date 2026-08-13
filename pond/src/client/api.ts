@@ -57,6 +57,8 @@ export interface SessionState {
   active: boolean;
   fortune?: number;
   spent?: boolean;
+  /** The keeper of the card that was tapped, if they named themselves. */
+  keeper?: string | null;
 }
 
 /**

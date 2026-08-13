@@ -13,7 +13,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cardToken } from "../src/card/identity.js";
-import { claimCard, keeperState, saveKeeper } from "../src/worker/keeper.js";
+import { claimCard, keeperNameOfCard, keeperState, saveKeeper } from "../src/worker/keeper.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/worker/types.js";
 import { count, editKeyFor, fresh, makeDuck } from "./helpers.js";
@@ -210,5 +210,60 @@ describe("card setup", () => {
     const claim = await claimCard(e, CARD, 1, sign(1));
     if ("error" in claim) throw new Error("claim failed");
     expect(await saveKeeper(e, claim.epochId, {})).toEqual({ ok: true, adopted: 0 });
+  });
+
+  /*
+   * ══ THE NAME THE CONTACT SCREEN IS ALLOWED TO SAY ══
+   * The scope picker offers "share with Sam" only when there is a Sam to
+   * name. That name used to be INFERRED on the client, from the keepers of
+   * whichever ducks happened to be on screen — which silently returned null
+   * as soon as two keepers had ducks in the pond, so the option vanished in
+   * exactly the situation the pond is built for. It now comes from the card
+   * the session was minted for.
+   */
+  describe("the name offered to a visitor", () => {
+    it("is the current keeper's", async () => {
+      const e = await env();
+      const claim = await claimCard(e, CARD, 1, sign(1));
+      if ("error" in claim) throw new Error("claim failed");
+      await saveKeeper(e, claim.epochId, { name: "Sam" });
+      expect(await keeperNameOfCard(e, CARD)).toBe("Sam");
+    });
+
+    it("is nobody for an unclaimed card, and for a card that is not real", async () => {
+      const e = await env();
+      expect(await keeperNameOfCard(e, CARD)).toBeNull();
+      expect(await keeperNameOfCard(e, "NOSUCHID")).toBeNull();
+      expect(await keeperNameOfCard(e, null)).toBeNull();
+    });
+
+    it("is nobody when the keeper left the name blank", async () => {
+      // There is no one to name, so the picker must not offer to share
+      // with them — "shared with " is not a sentence anyone can consent to.
+      const e = await env();
+      const claim = await claimCard(e, CARD, 1, sign(1));
+      if ("error" in claim) throw new Error("claim failed");
+      await saveKeeper(e, claim.epochId, { name: "   " });
+      expect(await keeperNameOfCard(e, CARD)).toBeNull();
+    });
+
+    it("changes hands with the card, and never lags behind", async () => {
+      const e = await env();
+      const sam = await claimCard(e, CARD, 1, sign(1));
+      if ("error" in sam) throw new Error("claim failed");
+      await saveKeeper(e, sam.epochId, { name: "Sam" });
+      expect(await keeperNameOfCard(e, CARD)).toBe("Sam");
+
+      // Mika picks the card up. Sam must stop being offered immediately,
+      // before Mika has chosen a name — a visitor consenting to "share
+      // with Sam" when Sam no longer holds the card is the exact harm the
+      // epochs exist to prevent.
+      const mika = await claimCard(e, CARD, 2, sign(2));
+      if ("error" in mika) throw new Error("claim failed");
+      expect(await keeperNameOfCard(e, CARD)).toBeNull();
+
+      await saveKeeper(e, mika.epochId, { name: "Mika" });
+      expect(await keeperNameOfCard(e, CARD)).toBe("Mika");
+    });
   });
 });

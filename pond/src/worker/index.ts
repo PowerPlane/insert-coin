@@ -32,6 +32,7 @@ import { claimCard, keeperState, saveKeeper } from "./keeper.js";
 import { createDuck } from "./release.js";
 import { normaliseSlug, slugTaken } from "./slug.js";
 import { bump, extinguish, maybeIgnite, report, say } from "./social.js";
+import { keeperNameOfCard } from "./keeper.js";
 import { loadSession, mintSession, readSessionCookie, sweep, visitorHash } from "./session.js";
 import type { Env } from "./types.js";
 import { badRequest, cleanText, intParam, json, notFound, nowSec, randomId, safeToken } from "./util.js";
@@ -163,7 +164,16 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     const id = await readSessionCookie(env, req);
     const s = id ? await loadSession(env, id) : null;
     return json(
-      s ? { active: true, fortune: s.fortune, spent: Boolean(s.spentDuck) } : { active: false },
+      s
+        ? {
+            active: true,
+            fortune: s.fortune,
+            spent: Boolean(s.spentDuck),
+            // Decides whether the contact screen may offer to share with
+            // the keeper. It must name them, so it needs the name.
+            keeper: await keeperNameOfCard(env, s.cardId),
+          }
+        : { active: false },
       { headers },
     );
   }

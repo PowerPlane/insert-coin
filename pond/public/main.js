@@ -3031,9 +3031,12 @@ async function pondScreen(bootstrap) {
         releaseFlow({
           root: overlay,
           fortune: session.fortune ?? 1,
-          // The keeper's name decides whether the scope picker can offer to
-          // share with them at all.
-          keeper: keeperOf(ducks),
+          // The keeper of the card that was TAPPED — from the session, which
+          // knows the card. It used to be inferred from the ducks on screen,
+          // which quietly stopped working the moment the pond held ducks from
+          // two different keepers: the inference gave up and returned null, so
+          // the option to share with a keeper never appeared at all.
+          keeper: session.keeper ?? null,
           onBrowse: () => {
             overlay.replaceChildren();
             resumePolling();
@@ -3084,10 +3087,6 @@ async function pondScreen(bootstrap) {
     view.stop();
     teardown = null;
   };
-}
-function keeperOf(ducks) {
-  const names = new Set(ducks.map((d) => d.keeper).filter(Boolean));
-  return names.size === 1 ? [...names][0] : null;
 }
 function openDuckCard(view, duck) {
   view.lookAt(duck.id);

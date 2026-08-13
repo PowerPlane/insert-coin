@@ -272,9 +272,12 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       releaseFlow({
         root: overlay,
         fortune: session.fortune ?? 1,
-        // The keeper's name decides whether the scope picker can offer to
-        // share with them at all.
-        keeper: keeperOf(ducks),
+        // The keeper of the card that was TAPPED — from the session, which
+        // knows the card. It used to be inferred from the ducks on screen,
+        // which quietly stopped working the moment the pond held ducks from
+        // two different keepers: the inference gave up and returned null, so
+        // the option to share with a keeper never appeared at all.
+        keeper: session.keeper ?? null,
         onBrowse: () => {
           overlay.replaceChildren();
           resumePolling();
@@ -342,19 +345,6 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     view.stop();
     teardown = null;
   };
-}
-
-/**
- * The keeper's name, if every duck from this card agrees on one.
- *
- * The pond payload carries `keeper` per duck rather than per card, so this
- * is the only place the client can learn it before Phase 5's Card setup
- * exists. Null is the safe answer: with no name, the scope picker does not
- * offer to share with a person it cannot name.
- */
-function keeperOf(ducks: PondDuck[]): string | null {
-  const names = new Set(ducks.map((d) => d.keeper).filter(Boolean));
-  return names.size === 1 ? [...names][0]! : null;
 }
 
 /**
