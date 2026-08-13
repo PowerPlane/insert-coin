@@ -1135,23 +1135,190 @@ var EN = {
   "code.06": "Slide a coin in to get one"
   // Set from code
 };
+var ZH_HANT = {
+  // ── who may read a contact — stated in NAMES, never as a value ────────
+  "scope.01": "誰可以看到",
+  "scope.02": "只有 David",
+  "scope.03": "只有 {keeper}",
+  "scope.04": "{keeper} 和 David",
+  "scope.05": "David 經營這個池塘，也會回信。",
+  // ── counts, states, and the words for a network that is not there ────
+  "live.count": "{n} 隻鴨子",
+  "live.count.one": "1 隻鴨子",
+  "live.count.none": "還沒有鴨子",
+  "live.offline": "沒有訊號",
+  "live.error": "池塘沒有回應",
+  "live.via": "來自 {keeper}",
+  "live.bumps": "被戳 {n} 次",
+  "live.bumps.one": "被戳 1 次",
+  "live.bumps.none": "還沒有人戳過它",
+  "live.today": "今天來到池塘",
+  "live.day": "在池塘裡一天了",
+  "live.days": "在池塘裡 {n} 天了",
+  "live.loading": "正在找你的鴨子",
+  "live.saved": "已儲存",
+  "live.nolink": "這個連結打不開任何鴨子",
+  "live.nolink.body": "可能已經被帶走了，或是連結不完整。",
+  "live.remove.sure": "確定要把鴨子永遠帶走嗎？",
+  "live.remove.yes": "好，帶走",
+  "live.removed": "你的鴨子離開了",
+  "live.removed.body": "你留下的一切都已經刪除。",
+  "live.capped": "先戳回去",
+  "live.count.of": "{total} 隻中的 {n} 隻",
+  "live.nokeepers": "還沒有卡片取過名字，所以沒有人可以呼喚。",
+  "live.keeper.hint": "這張卡片放出的鴨子會寫「來自 {keeper}」。",
+  "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
+  // ── card setup ────────────────────────────────────────────────────────
+  "keeper.01": "卡片設定",
+  "keeper.02": "設定這張卡片",
+  "keeper.03": "想改的話，拿著卡片再吹一次。",
+  "keeper.04": "卡片名稱",
+  "keeper.05": "Sam",
+  "keeper.06": "這張卡片放出的鴨子會寫「來自 Sam」。",
+  "keeper.07": "連結你的鴨子",
+  "keeper.08": "移除連結",
+  "keeper.09": "做一隻鴨子",
+  "keeper.10": "貼上鴨子連結",
+  "keeper.11": "別人就可以戳回來。",
+  "keeper.12": "預設語言",
+  "keeper.13": "English",
+  "keeper.14": "繁體中文",
+  "keeper.15": "訪客的手機還是可以選別的語言。",
+  "keeper.16": "把先前的 12 隻鴨子加進這張卡片",
+  "keeper.17": "儲存設定",
+  "keeper.18": "現在不要",
+  // ── the arrival ───────────────────────────────────────────────────────
+  "arrival.01": "你的運勢",
+  "arrival.02": "大吉",
+  "arrival.03": "今天沒有別人拿到這隻鴨子。裝飾它，或就這樣放下水。",
+  "arrival.04": "裝飾它",
+  "arrival.05": "先看看就好",
+  // ── the studio ────────────────────────────────────────────────────────
+  "studio.01": "返回",
+  "studio.02": "把它變成你的",
+  "studio.03": "略過",
+  "studio.04": "你的鴨子。點一下放置，或拖曳貼紙。",
+  "studio.05": "復原",
+  "studio.06": "全部清除",
+  "studio.07": "隨機來一個",
+  "studio.08": "顏色",
+  "studio.09": "貼紙",
+  "studio.10": "塗鴉",
+  "studio.11": "身體",
+  "studio.12": "筆刷",
+  "studio.13": "1×",
+  "studio.14": "2×",
+  "studio.15": "擦掉",
+  "studio.16": "顏色",
+  "studio.17": "下一步",
+  "studio.18": "拖曳貼紙可以移動。什麼都不填也可以。",
+  // ── signing it ────────────────────────────────────────────────────────
+  "sign.01": "簽名",
+  "sign.02": "幫鴨子取個名字",
+  "sign.03": "名字",
+  "sign.04": "Sam",
+  "sign.05": "0",
+  "sign.06": "留言",
+  "sign.07": "說點什麼",
+  "sign.08": "每個感應這張卡片的人都看得到你的名字和留言。",
+  "sign.09": "下一步",
+  // ── the contact, and what it is for ───────────────────────────────────
+  "contact.01": "可以不填",
+  "contact.02": "想讓 David 回覆你嗎？",
+  "contact.03": "跳過也沒關係，鴨子一樣會下水。",
+  "contact.04": "電子郵件、電話、@帳號，或地址",
+  "contact.05": "@yourhandle 或 12 Somewhere St, Brooklyn NY 11211",
+  "contact.06": "只有 David 看得到。不會出現在池塘裡，你把鴨子帶走時也會一起刪掉。",
+  "contact.07": "放我的鴨子下水",
+  "contact.08": "略過聯絡方式",
+  // ── the pond ──────────────────────────────────────────────────────────
+  "pond.01": "14 隻鴨子",
+  "pond.02": "BY-002 — 關於這張卡片。會在新分頁打開 davidyang.work。",
+  "pond.03": "重新顯示全部",
+  "pond.04": "呼喚",
+  "pond.05": "回到整個池塘",
+  "pond.06": "放大",
+  "pond.07": "+",
+  "pond.08": "縮小",
+  "pond.09": "−",
+  "pond.10": "說點什麼",
+  "pond.11": "找我的鴨子",
+  "pond.12": "你的鴨子設定",
+  "pond.13": "池塘裡的鴨子",
+  "pond.14": "你的鴨子下水了",
+  "pond.15": "留著這個連結",
+  "pond.16": "沒有帳號。用這個連結修改、重新裝飾，或把鴨子帶走。",
+  "pond.17": "你的私人連結",
+  "pond.18": "ducky.davidyang.work/e/9fQ2xK7pLm",
+  "pond.19": "複製",
+  "pond.20": "簡訊",
+  "pond.21": "電子郵件",
+  "pond.22": "完成",
+  "pond.23": "關閉",
+  "pond.24": "小吉",
+  "pond.25": "Mika",
+  "pond.26": "來自 Sam · 8 月 4 日",
+  "pond.27": "在酒吧撿到這張卡片",
+  "pond.28": "戳最多次的是",
+  "pond.29": "它有什麼問題？",
+  "pond.30": "無禮或辱罵",
+  "pond.31": "私人資訊",
+  "pond.32": "垃圾訊息",
+  "pond.33": "其他",
+  "pond.34": "想補充什麼",
+  "pond.35": "想補充什麼 — 可以不填",
+  "pond.36": "送出檢舉",
+  "pond.37": "取消",
+  "pond.38": "戳一下 · 6",
+  "pond.39": "檢舉",
+  // ── coming back to your own duck ──────────────────────────────────────
+  "mine.01": "歡迎回來",
+  "mine.02": "你的鴨子",
+  "mine.03": "在池塘裡六天了。有四個人戳過你的鴨子。",
+  "mine.04": "Mika、Jo、Lu 和 Sam 戳過你的鴨子。",
+  "mine.05": "回到池塘",
+  "mine.06": "重新裝飾",
+  "mine.07": "設定",
+  // ── managing it ───────────────────────────────────────────────────────
+  "manage.01": "你的鴨子",
+  "manage.02": "留言與設定",
+  "manage.03": "你的留言",
+  "manage.04": "電子郵件、電話、@帳號，或地址",
+  "manage.05": "你的私人連結",
+  "manage.06": "ducky.davidyang.work/e/9fQ2xK7pLm",
+  "manage.07": "把鴨子帶走時，留言和聯絡方式會一起刪掉。什麼都不會留下。",
+  "manage.08": "儲存變更",
+  "manage.09": "把我的鴨子帶走",
+  // ── the prototype's own scaffolding ───────────────────────────────────
+  "shared.01": "點池塘裡的鴨子。在工作室裡拖曳貼紙。",
+  "shared.02": "加入 100 隻鴨子",
+  "shared.03": "重設",
+  // ── set from code ─────────────────────────────────────────────────────
+  "code.01": "拖曳貼紙可以移動 · 什麼都不填也可以",
+  "code.02": "完成我的鴨子",
+  "code.03": "先做一隻鴨子才能戳",
+  "code.04": "已檢舉",
+  "code.05": "已檢舉 ✓",
+  "code.06": "投一枚硬幣就能拿到一隻"
+};
 var TABLES = {
   en: { ...EN, ...KEEPER_STRINGS, ...SCOPE_STRINGS, ...LIVE_STRINGS },
-  // Phase 6. Deliberately empty rather than machine-translated: every entry
-  // falls through to English until a person has written it, which is the
-  // honest failure mode.
-  "zh-Hant": {}
+  "zh-Hant": ZH_HANT
 };
 var current = "en";
 function setLang(lang) {
   current = lang;
-  document.documentElement.lang = lang;
+  if (typeof document !== "undefined") document.documentElement.lang = lang;
 }
 function t(key, vars) {
   const table = TABLES[current] ?? {};
   const text = table[key] ?? EN[key] ?? KEEPER_STRINGS[key] ?? SCOPE_STRINGS[key] ?? LIVE_STRINGS[key] ?? "";
   if (!vars) return text;
   return text.replace(/\{(\w+)\}/g, (whole, name) => vars[name] ?? whole);
+}
+function fortuneTitle(fortune) {
+  const f = FORTUNES[fortune] ?? FORTUNES[1];
+  return current === "zh-Hant" ? f.jp : `${f.jp} · ${f.en}`;
 }
 
 // src/client/studio.ts
@@ -1982,12 +2149,11 @@ function releaseFlow(opts) {
   }
   function arrivalBody() {
     root2.replaceChildren();
-    const f = FORTUNES[opts.fortune] ?? FORTUNES[1];
     const { root: sheetRoot, body: wrap2 } = sheet(true);
     wrap2.append(
       el("p", "p-eyebrow", t("arrival.01")),
       preview(6),
-      el("h1", "p-title", `${f.jp} · ${f.en}`),
+      el("h1", "p-title", fortuneTitle(opts.fortune)),
       el("p", "p-body", t("arrival.03"))
     );
     const actions = el("div", "p-actions");

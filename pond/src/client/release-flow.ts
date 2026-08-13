@@ -19,9 +19,8 @@ import type { ContactScope } from "./api.js";
 import { GRID, decodePaint } from "./codec.js";
 import { button, el, field, screen, sheet } from "./dom.js";
 import { drawDuck } from "./render.js";
-import { FORTUNES } from "./sprites.js";
 import { type StudioState, studioScreen, toPayload } from "./studio.js";
-import { SCOPE_STRINGS, t } from "./strings.js";
+import { SCOPE_STRINGS, fortuneTitle, t } from "./strings.js";
 
 export interface ReleaseResult {
   id: string;
@@ -117,12 +116,11 @@ export function releaseFlow(opts: FlowOptions): void {
   // ── 01 · arrival ──────────────────────────────────────────────────────
   function arrivalBody(): void {
     root.replaceChildren();
-    const f = FORTUNES[opts.fortune] ?? FORTUNES[1];
     const { root: sheetRoot, body: wrap } = sheet(true);
     wrap.append(
       el("p", "p-eyebrow", t("arrival.01")),
       preview(6),
-      el("h1", "p-title", `${f.jp} · ${f.en}`),
+      el("h1", "p-title", fortuneTitle(opts.fortune)),
       el("p", "p-body", t("arrival.03")),
     );
     const actions = el("div", "p-actions");
