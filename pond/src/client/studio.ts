@@ -10,7 +10,7 @@
  */
 
 import { GRID, clampPaintValue, encodePaint } from "./codec.js";
-import { el, button } from "./dom.js";
+import { el, button, sheet } from "./dom.js";
 import { drawDuck } from "./render.js";
 import { PAINT_COLOURS, TINTS } from "./sprites.js";
 import { MAX_STICKERS, SLOT_ORIGIN, STICKERS } from "./stickers.js";
@@ -33,14 +33,20 @@ export interface StudioOptions {
   onBack: () => void;
 }
 
-/** The duck is 24x24; this is how many screen pixels each cell gets. */
+/**
+ * The backing store is 12 device pixels per sprite pixel; CSS scales it
+ * down to fit. Rendering at a fixed high resolution and letting the layout
+ * decide the displayed size keeps the sprite crisp on every screen without
+ * the canvas being resized — and `image-rendering: pixelated` means scaling
+ * down costs nothing.
+ */
 const EDIT_CELL = 12;
 
 export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   const { state } = opts;
 
   root.replaceChildren();
-  const wrap = el("div", "p-screen");
+  const { root: sheetRoot, body: wrap } = sheet();
 
   const nav = el("div", "p-nav");
   nav.append(
@@ -251,7 +257,7 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   const history: Uint8Array[] = [];
 
   wrap.append(nav, canvas, tabs, panel);
-  root.append(wrap);
+  root.append(sheetRoot);
   setTab("colour");
   redraw();
 }

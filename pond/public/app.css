@@ -699,3 +699,25 @@ a.p-btn {
 .p-cta:empty {
   display: none;
 }
+
+/*
+ * While a sheet is open, the pond's own controls step out of the way.
+ *
+ * Not just visually: two "Decorate it" buttons existed at once, one on the
+ * sheet and one on the water behind it, and a tap could reach either. The
+ * water keeps moving — that is the point — but nothing on it is operable
+ * while something is being made.
+ */
+#pond:has(.p-overlay:not(:empty)) :is(.p-cta, .p-zoom, .p-hud) {
+  display: none;
+}
+
+/*
+ * The duck being decorated. Rendered at 12x and scaled to fit, so it is
+ * crisp everywhere and never taller than the room left once the nav, the
+ * tabs and a panel of swatches have taken theirs.
+ */
+.p-edit {
+  width: min(224px, 56vw);
+  height: auto;
+}

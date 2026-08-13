@@ -1105,7 +1105,7 @@ var EDIT_CELL = 12;
 function studioScreen(root2, opts) {
   const { state } = opts;
   root2.replaceChildren();
-  const wrap2 = el("div", "p-screen");
+  const { root: sheetRoot, body: wrap2 } = sheet();
   const nav = el("div", "p-nav");
   nav.append(
     button("p-chip", t("studio.01"), opts.onBack),
@@ -1286,7 +1286,7 @@ function studioScreen(root2, opts) {
   }
   const history = [];
   wrap2.append(nav, canvas, tabs, panel);
-  root2.append(wrap2);
+  root2.append(sheetRoot);
   setTab("colour");
   redraw();
 }
