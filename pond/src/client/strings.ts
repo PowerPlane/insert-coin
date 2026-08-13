@@ -83,6 +83,10 @@ export const LIVE_STRINGS = {
   // The ten-unreturned cap is an answer, not a failure: it is the poke
   // dynamic asking for reciprocity.
   "live.capped": "bump them back first",
+  // "30 of 113" while a whistle is active — the count says what it is
+  // showing rather than growing a second label.
+  "live.count.of": "{n} of {total}",
+  "live.nokeepers": "No cards have been named yet, so there is nobody to whistle for.",
 } as const;
 
 export const EN = {

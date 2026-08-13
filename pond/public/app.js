@@ -857,7 +857,11 @@ var LIVE_STRINGS = {
   "live.removed.body": "Everything you left has been deleted.",
   // The ten-unreturned cap is an answer, not a failure: it is the poke
   // dynamic asking for reciprocity.
-  "live.capped": "bump them back first"
+  "live.capped": "bump them back first",
+  // "30 of 113" while a whistle is active — the count says what it is
+  // showing rather than growing a second label.
+  "live.count.of": "{n} of {total}",
+  "live.nokeepers": "No cards have been named yet, so there is nobody to whistle for."
 };
 var EN = {
   "arrival.01": "Your fortune",
@@ -1088,6 +1092,219 @@ function t(key, vars) {
   return text.replace(/\{(\w+)\}/g, (whole, name) => vars[name] ?? whole);
 }
 
+// src/client/studio.ts
+var EDIT_CELL = 12;
+function studioScreen(root2, opts) {
+  const { state } = opts;
+  root2.replaceChildren();
+  const wrap2 = el("div", "p-screen");
+  const nav = el("div", "p-nav");
+  nav.append(
+    button("p-chip", t("studio.01"), opts.onBack),
+    el("span", "p-nav-title", t("studio.02")),
+    button("p-chip", t("studio.17"), opts.onNext)
+  );
+  const canvas = el("canvas", "p-edit");
+  canvas.width = GRID * EDIT_CELL;
+  canvas.height = GRID * EDIT_CELL;
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", t("studio.04"));
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  const redraw = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawDuck(
+      ctx,
+      { fortune: opts.fortune, tint: state.tint, paint: state.paint, stickers: state.stickers },
+      0,
+      0,
+      EDIT_CELL
+    );
+    opts.onChange(state);
+  };
+  let tab = "colour";
+  const panel = el("div", "p-panel");
+  const tabs = el("div", "p-tabs");
+  const setTab = (next) => {
+    tab = next;
+    [...tabs.children].forEach(
+      (c) => c.classList.toggle("on", c.dataset.tab === next)
+    );
+    drawPanel();
+  };
+  for (const [key, label] of [
+    ["colour", t("studio.08")],
+    ["stickers", t("studio.09")],
+    ["draw", t("studio.10")]
+  ]) {
+    const b = button("p-tab", label, () => setTab(key));
+    b.dataset.tab = key;
+    tabs.append(b);
+  }
+  function drawPanel() {
+    panel.replaceChildren();
+    if (tab === "colour") return colourPanel();
+    if (tab === "stickers") return stickerPanel();
+    return paintPanel();
+  }
+  function colourPanel() {
+    const swatches = el("div", "p-swatches");
+    TINTS.forEach((colour, i) => {
+      const b = button("p-swatch", "", () => {
+        state.tint = i;
+        redraw();
+        drawPanel();
+      }, `${t("studio.11")} ${i + 1}`);
+      b.style.background = colour;
+      b.classList.toggle("on", state.tint === i);
+      swatches.append(b);
+    });
+    panel.append(swatches);
+  }
+  function stickerPanel() {
+    const hint = el("p", "p-hint", t("studio.18"));
+    const grid = el("div", "p-stickers");
+    for (const [id, def] of Object.entries(STICKERS)) {
+      const already = state.stickers.find((s) => s.id === id);
+      const b = button("p-sticker", "", () => {
+        if (already) {
+          state.stickers = state.stickers.filter((s) => s.id !== id);
+        } else {
+          if (state.stickers.length >= MAX_STICKERS) state.stickers.shift();
+          const [ox, oy] = SLOT_ORIGIN[def.slot];
+          state.stickers.push({ id, x: ox, y: oy });
+        }
+        redraw();
+        drawPanel();
+      }, def.name);
+      b.classList.toggle("on", Boolean(already));
+      const c = el("canvas", "p-sticker-art");
+      const cell = 4;
+      c.width = def.rows[0].length * cell;
+      c.height = def.rows.length * cell;
+      const cc = c.getContext("2d");
+      cc.imageSmoothingEnabled = false;
+      def.rows.forEach((row, y) => {
+        [...row].forEach((ch, x) => {
+          if (ch === ".") return;
+          cc.fillStyle = STICKER_COLOURS[ch] ?? "#2B2B24";
+          cc.fillRect(x * cell, y * cell, cell, cell);
+        });
+      });
+      b.append(c);
+      grid.append(b);
+    }
+    panel.append(hint, grid);
+  }
+  function paintPanel() {
+    let colour = 1;
+    let brush = 1;
+    let erasing = false;
+    const tools = el("div", "p-tools");
+    const brush1 = button("p-chip", t("studio.13"), () => {
+      brush = 1;
+      erasing = false;
+      syncTools();
+    });
+    const brush2 = button("p-chip", t("studio.14"), () => {
+      brush = 2;
+      erasing = false;
+      syncTools();
+    });
+    const erase = button("p-chip", t("studio.15"), () => {
+      erasing = !erasing;
+      syncTools();
+    });
+    const syncTools = () => {
+      brush1.classList.toggle("on", brush === 1 && !erasing);
+      brush2.classList.toggle("on", brush === 2 && !erasing);
+      erase.classList.toggle("on", erasing);
+    };
+    syncTools();
+    const undo = button("p-chip", "↶", () => {
+      const last = history.pop();
+      if (last) {
+        state.paint = last;
+        redraw();
+      }
+    }, t("studio.05"));
+    const clear = button("p-chip", "×", () => {
+      history.push(state.paint.slice());
+      state.paint = new Uint8Array(GRID * GRID);
+      redraw();
+    }, t("studio.06"));
+    tools.append(brush1, brush2, erase, undo, clear);
+    const swatches = el("div", "p-swatches");
+    PAINT_COLOURS.forEach((c, i) => {
+      const b = button("p-swatch", "", () => {
+        colour = i + 1;
+        erasing = false;
+        syncTools();
+        drawPanel();
+      }, `${t("studio.16")} ${i + 1}`);
+      b.style.background = c;
+      b.classList.toggle("on", colour === i + 1);
+      swatches.append(b);
+    });
+    let painting = false;
+    const paintAt = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / rect.width * GRID);
+      const y = Math.floor((e.clientY - rect.top) / rect.height * GRID);
+      for (let dy = 0; dy < brush; dy++) {
+        for (let dx = 0; dx < brush; dx++) {
+          const px = x + dx;
+          const py = y + dy;
+          if (px < 0 || py < 0 || px >= GRID || py >= GRID) continue;
+          state.paint[py * GRID + px] = erasing ? 0 : clampPaintValue(colour);
+        }
+      }
+      redraw();
+    };
+    canvas.onpointerdown = (e) => {
+      history.push(state.paint.slice());
+      if (history.length > 24) history.shift();
+      painting = true;
+      canvas.setPointerCapture(e.pointerId);
+      paintAt(e);
+    };
+    canvas.onpointermove = (e) => {
+      if (painting) paintAt(e);
+    };
+    canvas.onpointerup = () => {
+      painting = false;
+    };
+    panel.append(tools, swatches);
+  }
+  const history = [];
+  wrap2.append(nav, canvas, tabs, panel);
+  root2.append(wrap2);
+  setTab("colour");
+  redraw();
+}
+var STICKER_COLOURS = {
+  k: "#2B2B24",
+  w: "#FFFFFF",
+  r: "#FF4B4B",
+  y: "#FFCA00",
+  b: "#3FB5D8",
+  g: "#5AD08A",
+  p: "#FF6FA5",
+  o: "#FF8953",
+  n: "#8B5E34",
+  s: "#C9D6DC"
+};
+function toPayload(state) {
+  const painted = state.paint.some((v) => v !== 0);
+  return {
+    tint: state.tint,
+    stickers: state.stickers,
+    // Empty means empty. Sending 384 characters of zeros would store a
+    // blank layer on every duck that never used the brush.
+    paint: painted ? encodePaint(state.paint) : ""
+  };
+}
+
 // src/client/mine.ts
 function since(created) {
   const days = Math.floor((Date.now() / 1e3 - created) / 86400);
@@ -1155,11 +1372,40 @@ function mineScreen(opts) {
       const actions = el("div", "p-actions");
       actions.append(
         button("p-btn", t("mine.05"), opts.onPond),
-        button("p-btn p-btn-quiet", t("mine.06"), () => opts.onRedecorate(duck)),
+        button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)),
         button("p-btn p-btn-quiet", t("mine.07"), () => settings(duck))
       );
       wrap2.append(actions);
       root2.append(wrap2);
+    });
+  }
+  function redecorate(duck) {
+    const state = {
+      tint: duck.tint,
+      stickers: [...duck.stickers],
+      paint: decodePaint(duck.paint)
+    };
+    studioScreen(root2, {
+      fortune: duck.fortune,
+      state,
+      onChange: () => {
+      },
+      onBack: () => view(duck),
+      onNext: () => {
+        const { tint, stickers, paint } = toPayload(state);
+        void api.update(editKey, { tint, stickers, paint, name: duck.name, message: duck.message }).then(
+          () => {
+            duck.tint = tint;
+            duck.stickers = stickers;
+            duck.paint = paint;
+            view(duck);
+          },
+          () => {
+            const note = el("p", "p-note", t("live.error"));
+            root2.querySelector(".p-screen")?.append(note);
+          }
+        );
+      }
     });
   }
   function settings(duck) {
@@ -1484,219 +1730,6 @@ function project(wx, wy, cam, renderCell, canvasW, canvasH, side) {
   return {
     x: Math.round(canvasW / 2 + dx * renderCell),
     y: Math.round(canvasH / 2 + dy * renderCell)
-  };
-}
-
-// src/client/studio.ts
-var EDIT_CELL = 12;
-function studioScreen(root2, opts) {
-  const { state } = opts;
-  root2.replaceChildren();
-  const wrap2 = el("div", "p-screen");
-  const nav = el("div", "p-nav");
-  nav.append(
-    button("p-chip", t("studio.01"), opts.onBack),
-    el("span", "p-nav-title", t("studio.02")),
-    button("p-chip", t("studio.17"), opts.onNext)
-  );
-  const canvas = el("canvas", "p-edit");
-  canvas.width = GRID * EDIT_CELL;
-  canvas.height = GRID * EDIT_CELL;
-  canvas.setAttribute("role", "img");
-  canvas.setAttribute("aria-label", t("studio.04"));
-  const ctx = canvas.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  const redraw = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawDuck(
-      ctx,
-      { fortune: opts.fortune, tint: state.tint, paint: state.paint, stickers: state.stickers },
-      0,
-      0,
-      EDIT_CELL
-    );
-    opts.onChange(state);
-  };
-  let tab = "colour";
-  const panel = el("div", "p-panel");
-  const tabs = el("div", "p-tabs");
-  const setTab = (next) => {
-    tab = next;
-    [...tabs.children].forEach(
-      (c) => c.classList.toggle("on", c.dataset.tab === next)
-    );
-    drawPanel();
-  };
-  for (const [key, label] of [
-    ["colour", t("studio.08")],
-    ["stickers", t("studio.09")],
-    ["draw", t("studio.10")]
-  ]) {
-    const b = button("p-tab", label, () => setTab(key));
-    b.dataset.tab = key;
-    tabs.append(b);
-  }
-  function drawPanel() {
-    panel.replaceChildren();
-    if (tab === "colour") return colourPanel();
-    if (tab === "stickers") return stickerPanel();
-    return paintPanel();
-  }
-  function colourPanel() {
-    const swatches = el("div", "p-swatches");
-    TINTS.forEach((colour, i) => {
-      const b = button("p-swatch", "", () => {
-        state.tint = i;
-        redraw();
-        drawPanel();
-      }, `${t("studio.11")} ${i + 1}`);
-      b.style.background = colour;
-      b.classList.toggle("on", state.tint === i);
-      swatches.append(b);
-    });
-    panel.append(swatches);
-  }
-  function stickerPanel() {
-    const hint = el("p", "p-hint", t("studio.18"));
-    const grid = el("div", "p-stickers");
-    for (const [id, def] of Object.entries(STICKERS)) {
-      const already = state.stickers.find((s) => s.id === id);
-      const b = button("p-sticker", "", () => {
-        if (already) {
-          state.stickers = state.stickers.filter((s) => s.id !== id);
-        } else {
-          if (state.stickers.length >= MAX_STICKERS) state.stickers.shift();
-          const [ox, oy] = SLOT_ORIGIN[def.slot];
-          state.stickers.push({ id, x: ox, y: oy });
-        }
-        redraw();
-        drawPanel();
-      }, def.name);
-      b.classList.toggle("on", Boolean(already));
-      const c = el("canvas", "p-sticker-art");
-      const cell = 4;
-      c.width = def.rows[0].length * cell;
-      c.height = def.rows.length * cell;
-      const cc = c.getContext("2d");
-      cc.imageSmoothingEnabled = false;
-      def.rows.forEach((row, y) => {
-        [...row].forEach((ch, x) => {
-          if (ch === ".") return;
-          cc.fillStyle = STICKER_COLOURS[ch] ?? "#2B2B24";
-          cc.fillRect(x * cell, y * cell, cell, cell);
-        });
-      });
-      b.append(c);
-      grid.append(b);
-    }
-    panel.append(hint, grid);
-  }
-  function paintPanel() {
-    let colour = 1;
-    let brush = 1;
-    let erasing = false;
-    const tools = el("div", "p-tools");
-    const brush1 = button("p-chip", t("studio.13"), () => {
-      brush = 1;
-      erasing = false;
-      syncTools();
-    });
-    const brush2 = button("p-chip", t("studio.14"), () => {
-      brush = 2;
-      erasing = false;
-      syncTools();
-    });
-    const erase = button("p-chip", t("studio.15"), () => {
-      erasing = !erasing;
-      syncTools();
-    });
-    const syncTools = () => {
-      brush1.classList.toggle("on", brush === 1 && !erasing);
-      brush2.classList.toggle("on", brush === 2 && !erasing);
-      erase.classList.toggle("on", erasing);
-    };
-    syncTools();
-    const undo = button("p-chip", "↶", () => {
-      const last = history.pop();
-      if (last) {
-        state.paint = last;
-        redraw();
-      }
-    }, t("studio.05"));
-    const clear = button("p-chip", "×", () => {
-      history.push(state.paint.slice());
-      state.paint = new Uint8Array(GRID * GRID);
-      redraw();
-    }, t("studio.06"));
-    tools.append(brush1, brush2, erase, undo, clear);
-    const swatches = el("div", "p-swatches");
-    PAINT_COLOURS.forEach((c, i) => {
-      const b = button("p-swatch", "", () => {
-        colour = i + 1;
-        erasing = false;
-        syncTools();
-        drawPanel();
-      }, `${t("studio.16")} ${i + 1}`);
-      b.style.background = c;
-      b.classList.toggle("on", colour === i + 1);
-      swatches.append(b);
-    });
-    let painting = false;
-    const paintAt = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = Math.floor((e.clientX - rect.left) / rect.width * GRID);
-      const y = Math.floor((e.clientY - rect.top) / rect.height * GRID);
-      for (let dy = 0; dy < brush; dy++) {
-        for (let dx = 0; dx < brush; dx++) {
-          const px = x + dx;
-          const py = y + dy;
-          if (px < 0 || py < 0 || px >= GRID || py >= GRID) continue;
-          state.paint[py * GRID + px] = erasing ? 0 : clampPaintValue(colour);
-        }
-      }
-      redraw();
-    };
-    canvas.onpointerdown = (e) => {
-      history.push(state.paint.slice());
-      if (history.length > 24) history.shift();
-      painting = true;
-      canvas.setPointerCapture(e.pointerId);
-      paintAt(e);
-    };
-    canvas.onpointermove = (e) => {
-      if (painting) paintAt(e);
-    };
-    canvas.onpointerup = () => {
-      painting = false;
-    };
-    panel.append(tools, swatches);
-  }
-  const history = [];
-  wrap2.append(nav, canvas, tabs, panel);
-  root2.append(wrap2);
-  setTab("colour");
-  redraw();
-}
-var STICKER_COLOURS = {
-  k: "#2B2B24",
-  w: "#FFFFFF",
-  r: "#FF4B4B",
-  y: "#FFCA00",
-  b: "#3FB5D8",
-  g: "#5AD08A",
-  p: "#FF6FA5",
-  o: "#FF8953",
-  n: "#8B5E34",
-  s: "#C9D6DC"
-};
-function toPayload(state) {
-  const painted = state.paint.some((v) => v !== 0);
-  return {
-    tint: state.tint,
-    stickers: state.stickers,
-    // Empty means empty. Sending 384 characters of zeros would store a
-    // blank layer on every duck that never used the brush.
-    paint: painted ? encodePaint(state.paint) : ""
   };
 }
 
@@ -2088,6 +2121,7 @@ var Gestures = class {
 var WORLD_FPS = 12;
 var WORLD_MS = 1e3 / WORLD_FPS;
 var SEPARATION = 30;
+var GATHER_MS = 900;
 function hashId(id) {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) {
@@ -2160,6 +2194,7 @@ var PondView = class {
   frame = 0;
   lastWorldTick = 0;
   lastDebug = 0;
+  gatherStart = 0;
   debugging = typeof location !== "undefined" && location.search.includes("debug");
   // Two different kinds of handle. Holding both in one field and cancelling
   // it as both was an id-collision waiting to happen: cancelAnimationFrame
@@ -2188,11 +2223,97 @@ var PondView = class {
     if (hit) this.opts.onTapDuck?.(hit);
     else this.opts.onTapWater?.(wx, wy);
   }
+  /**
+   * Take a fresh pond from the server.
+   *
+   * ══ A DUCK ALREADY HERE KEEPS WHERE IT IS ══
+   * The pond is polled every twenty seconds, and re-placing everything on
+   * each poll threw away anything that had moved a duck since — most
+   * visibly the whistle, which survived exactly until the next refresh and
+   * then silently put everyone back. Placement is deterministic so nothing
+   * jumped, which is what made it hard to see rather than easy.
+   *
+   * So: known ducks keep their position and whatever the whistle did to
+   * them, new ducks are placed, and departed ones are dropped.
+   */
   setDucks(ducks) {
     const wasEmpty = this.ducks.length === 0;
+    const previous = new Map(this.ducks.map((d) => [d.id, d]));
     this.camera.side = worldSide(Math.max(this.frameSprite.w, this.frameSprite.h), ducks.length);
-    this.ducks = placeDucks(ducks, this.camera.side);
+    const placed = placeDucks(ducks, this.camera.side);
+    this.ducks = placed.map((fresh) => {
+      const old = previous.get(fresh.id);
+      if (!old) return fresh;
+      return {
+        ...fresh,
+        wx: old.wx,
+        wy: old.wy,
+        flip: old.flip,
+        tx: old.tx,
+        ty: old.ty,
+        homeX: old.homeX,
+        homeY: old.homeY,
+        gx: old.gx,
+        gy: old.gy
+      };
+    });
     if (wasEmpty) this.camera.snap({ x: this.camera.side / 2, y: this.camera.side / 2 });
+  }
+  /**
+   * The whistle.
+   *
+   * In the Wii Mii Plaza you blow a whistle and every Mii runs over. The
+   * card is already a thing you blow into, so the pond borrows the gesture
+   * — and the duck COUNT is the whistle, so it costs no chrome over the
+   * water.
+   *
+   * Two details that are the whole difference between a flock and a bug:
+   *
+   *  1. **Called ducks aim at their own spot on a loose ring**, not at one
+   *     point. A crowd converging on a single point packs into a hexagonal
+   *     lattice and reads as a crystal.
+   *
+   *  2. **Everyone else is pushed CLEAR OF THE FRAME, not dimmed.** A faded
+   *     duck still reads as being in the way. They fan around the rim
+   *     rather than jamming into a corner, and clearing the whistle pulls
+   *     them back, so the pond refills.
+   */
+  gather(match) {
+    const { side } = this.camera;
+    const cx = this.camera.cam.x;
+    const cy = this.camera.cam.y;
+    for (const d of this.ducks) {
+      d.homeX ??= d.wx;
+      d.homeY ??= d.wy;
+    }
+    if (!match) {
+      for (const d of this.ducks) {
+        d.tx = d.homeX;
+        d.ty = d.homeY;
+      }
+      this.gatherStart = performance.now();
+      return;
+    }
+    const called = this.ducks.filter(match);
+    const rest = this.ducks.filter((d) => !match(d));
+    const radius = Math.max(24, Math.min(this.frameSprite.w, this.frameSprite.h) * 0.28);
+    called.forEach((d, i) => {
+      const a = i / Math.max(called.length, 1) * Math.PI * 2;
+      const wobble = 0.82 + 0.36 * hashId(d.id + "r");
+      d.tx = wrap(cx + Math.cos(a) * radius * wobble, side);
+      d.ty = wrap(cy + Math.sin(a) * radius * wobble, side);
+    });
+    const out = Math.max(this.frameSprite.w, this.frameSprite.h) * 0.78;
+    rest.forEach((d) => {
+      const a = hashId(d.id + "o") * Math.PI * 2;
+      d.tx = wrap(cx + Math.cos(a) * out, side);
+      d.ty = wrap(cy + Math.sin(a) * out, side);
+    });
+    this.gatherStart = performance.now();
+  }
+  /** True while ducks are still travelling, so the loop stays at display rate. */
+  get gathering() {
+    return this.gatherStart > 0 && performance.now() - this.gatherStart < GATHER_MS;
   }
   /** What the view actually believes, for debugging against a real browser. */
   debug() {
@@ -2265,12 +2386,13 @@ var PondView = class {
         this.lastWorldTick = now;
         this.frame++;
       }
+      this.advanceGather(now);
       this.draw(now);
       if (this.debugging && now - this.lastDebug > 50) {
         this.lastDebug = now;
         this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
       }
-      if (camMoving || this.ripples.length) {
+      if (camMoving || this.ripples.length || this.gathering) {
         this.raf = requestAnimationFrame(loop);
       } else {
         this.timer = window.setTimeout(() => {
@@ -2302,6 +2424,34 @@ var PondView = class {
     const d = this.find(id);
     if (!d) return;
     this.camera.glide({ x: d.wx, y: d.wy, cell: HOME_CELL }, moment ? CAM_MOMENT : CAM_UI);
+  }
+  /**
+   * Move each duck toward wherever the whistle put it.
+   *
+   * Eased, and through `wrapDelta`, so a duck on the far side of the seam
+   * comes the short way round rather than swimming the length of the world.
+   */
+  advanceGather(now) {
+    if (this.gatherStart === 0) return;
+    const p = Math.min(1, (now - this.gatherStart) / GATHER_MS);
+    const e = easeInOutCubic(p);
+    const { side } = this.camera;
+    for (const d of this.ducks) {
+      if (d.tx === void 0 || d.ty === void 0) continue;
+      const fromX = d.gx ?? d.wx;
+      const fromY = d.gy ?? d.wy;
+      d.gx ??= fromX;
+      d.gy ??= fromY;
+      d.wx = wrap(fromX + wrapDelta(fromX, d.tx, side) * e, side);
+      d.wy = wrap(fromY + wrapDelta(fromY, d.ty, side) * e, side);
+    }
+    if (p >= 1) {
+      this.gatherStart = 0;
+      for (const d of this.ducks) {
+        d.gx = void 0;
+        d.gy = void 0;
+      }
+    }
   }
   draw(now) {
     const { canvas } = this.opts;
@@ -2407,6 +2557,7 @@ async function pondScreen(bootstrap) {
   const hud = el2("div", "p-hud");
   const count = el2("button", "p-count");
   count.type = "button";
+  count.setAttribute("aria-label", t("pond.13"));
   hud.append(count);
   const cta = el2("div", "p-cta");
   const view = new PondView({
@@ -2447,7 +2598,7 @@ async function pondScreen(bootstrap) {
       const res = await api.pond();
       ducks = res.ducks;
       view.setDucks(ducks);
-      count.textContent = ducks.length === 0 ? t("live.count.none") : ducks.length === 1 ? t("live.count.one") : t("live.count", { n: String(ducks.length) });
+      syncCount();
     } catch (err) {
       count.textContent = err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
     }
@@ -2482,6 +2633,54 @@ async function pondScreen(bootstrap) {
     });
     cta.append(back);
   }
+  let calling = null;
+  const sheet = el2("div", "p-sheet");
+  sheet.hidden = true;
+  const syncCount = () => {
+    if (calling === null) {
+      count.textContent = ducks.length === 0 ? t("live.count.none") : ducks.length === 1 ? t("live.count.one") : t("live.count", { n: String(ducks.length) });
+      return;
+    }
+    const n = ducks.filter((d) => d.keeper === calling).length;
+    count.textContent = t("live.count.of", { n: String(n), total: String(ducks.length) });
+  };
+  const call = (keeper) => {
+    calling = keeper;
+    view.gather(keeper === null ? null : (d) => d.keeper === keeper);
+    syncCount();
+    sheet.hidden = true;
+  };
+  count.addEventListener("click", () => {
+    const keepers = [...new Set(ducks.map((d) => d.keeper).filter(Boolean))];
+    sheet.replaceChildren();
+    if (keepers.length === 0) {
+      sheet.append(el2("p", "p-note", t("live.nokeepers")));
+    } else {
+      sheet.append(el2("p", "p-field-label", t("pond.04")));
+      const list = el2("div", "p-actions");
+      for (const k of keepers) {
+        const n = ducks.filter((d) => d.keeper === k).length;
+        list.append(button("p-chip", `${k} · ${n}`, () => call(k)));
+      }
+      sheet.append(list);
+    }
+    if (calling !== null) {
+      sheet.append(
+        el2("div", "p-actions").appendChild(
+          button("p-btn p-btn-quiet", t("pond.03"), () => call(null))
+        ).parentElement
+      );
+    }
+    sheet.append(
+      el2("div", "p-actions").appendChild(
+        button("p-chip", t("pond.23"), () => {
+          sheet.hidden = true;
+        })
+      ).parentElement
+    );
+    sheet.hidden = !sheet.hidden;
+  });
+  root.append(sheet);
   if (bootstrap.duck) view.lookAt(bootstrap.duck.id, true);
   const pondPoll = window.setInterval(refresh, 2e4);
   teardown = () => {
@@ -2579,10 +2778,7 @@ async function main() {
     mineScreen({
       root,
       editKey: b.editKey,
-      onPond: () => void pondScreen({}),
-      onRedecorate: () => {
-        void pondScreen({});
-      }
+      onPond: () => void pondScreen({})
     });
     return;
   }

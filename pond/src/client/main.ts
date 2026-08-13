@@ -82,6 +82,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const hud = el("div", "p-hud");
   const count = el("button", "p-count");
   count.type = "button";
+  count.setAttribute("aria-label", t("pond.13"));
   hud.append(count);
 
   const cta = el("div", "p-cta");
@@ -150,13 +151,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       const res = await api.pond();
       ducks = res.ducks;
       view.setDucks(ducks);
-      // "The count is the whistle" — tapping it opens the gather list.
-      count.textContent =
-        ducks.length === 0
-          ? t("live.count.none")
-          : ducks.length === 1
-            ? t("live.count.one")
-            : t("live.count", { n: String(ducks.length) });
+      syncCount();
     } catch (err) {
       count.textContent =
         err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
@@ -203,6 +198,73 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     });
     cta.append(back);
   }
+
+  /**
+   * The whistle.
+   *
+   * "The count IS the whistle" — tapping it opens the gather list, so the
+   * gesture costs no chrome over the water. Picking a card calls that
+   * card's ducks in and pushes everyone else clear of the frame; the label
+   * reads "30 of 113" while it is active.
+   */
+  let calling: string | null = null;
+  const sheet = el("div", "p-sheet");
+  sheet.hidden = true;
+
+  const syncCount = () => {
+    if (calling === null) {
+      count.textContent =
+        ducks.length === 0 ? t("live.count.none")
+        : ducks.length === 1 ? t("live.count.one")
+        : t("live.count", { n: String(ducks.length) });
+      return;
+    }
+    const n = ducks.filter((d) => d.keeper === calling).length;
+    count.textContent = t("live.count.of", { n: String(n), total: String(ducks.length) });
+  };
+
+  const call = (keeper: string | null) => {
+    calling = keeper;
+    view.gather(keeper === null ? null : (d) => d.keeper === keeper);
+    syncCount();
+    sheet.hidden = true;
+  };
+
+  count.addEventListener("click", () => {
+    // Everyone with a name to be gathered by. A duck from an unclaimed card
+    // has no keeper, so there is nobody to whistle for — it is simply part
+    // of the pond.
+    const keepers = [...new Set(ducks.map((d) => d.keeper).filter(Boolean))] as string[];
+    sheet.replaceChildren();
+
+    if (keepers.length === 0) {
+      sheet.append(el("p", "p-note", t("live.nokeepers")));
+    } else {
+      sheet.append(el("p", "p-field-label", t("pond.04")));
+      const list = el("div", "p-actions");
+      for (const k of keepers) {
+        const n = ducks.filter((d) => d.keeper === k).length;
+        list.append(button("p-chip", `${k} · ${n}`, () => call(k)));
+      }
+      sheet.append(list);
+    }
+
+    if (calling !== null) {
+      sheet.append(
+        el("div", "p-actions").appendChild(
+          button("p-btn p-btn-quiet", t("pond.03"), () => call(null)),
+        ).parentElement!,
+      );
+    }
+    sheet.append(
+      el("div", "p-actions").appendChild(
+        button("p-chip", t("pond.23"), () => { sheet.hidden = true; }),
+      ).parentElement!,
+    );
+    sheet.hidden = !sheet.hidden;
+  });
+
+  root.append(sheet);
 
   // Arrival zoom: land at arm's length from your own duck rather than
   // somewhere out there.
@@ -358,12 +420,6 @@ async function main(): Promise<void> {
       root,
       editKey: b.editKey,
       onPond: () => void pondScreen({}),
-      onRedecorate: () => {
-        // Redecorating routes into the same studio but saves quietly — the
-        // arrival animation belongs to the first arrival only. That is the
-        // next cluster; until then, settings is where edits happen.
-        void pondScreen({});
-      },
     });
     return;
   }

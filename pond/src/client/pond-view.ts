@@ -19,6 +19,7 @@
 import {
   CAM_MOMENT,
   CAM_UI,
+  easeInOutCubic,
   HOME_CELL,
   OVERSCAN,
   PondCamera,
@@ -54,7 +55,19 @@ export interface Placed extends PondDuck {
   wx: number;
   wy: number;
   flip: boolean;
+  /** Where the duck is being pulled to, while a whistle is active. */
+  tx?: number;
+  ty?: number;
+  /** Where it lives when nobody is whistling. */
+  homeX?: number;
+  homeY?: number;
+  /** Where this leg of the journey started. Cleared when it arrives. */
+  gx?: number;
+  gy?: number;
 }
+
+/** How long a duck takes to arc in, or back out again. */
+const GATHER_MS = 900;
 
 /**
  * A stable pseudo-random number from a duck's id.
@@ -148,6 +161,7 @@ export class PondView {
   private frame = 0;
   private lastWorldTick = 0;
   private lastDebug = 0;
+  private gatherStart = 0;
   private readonly debugging =
     typeof location !== "undefined" && location.search.includes("debug");
   // Two different kinds of handle. Holding both in one field and cancelling
@@ -196,14 +210,114 @@ export class PondView {
     else this.opts.onTapWater?.(wx, wy);
   }
 
+  /**
+   * Take a fresh pond from the server.
+   *
+   * ══ A DUCK ALREADY HERE KEEPS WHERE IT IS ══
+   * The pond is polled every twenty seconds, and re-placing everything on
+   * each poll threw away anything that had moved a duck since — most
+   * visibly the whistle, which survived exactly until the next refresh and
+   * then silently put everyone back. Placement is deterministic so nothing
+   * jumped, which is what made it hard to see rather than easy.
+   *
+   * So: known ducks keep their position and whatever the whistle did to
+   * them, new ducks are placed, and departed ones are dropped.
+   */
   setDucks(ducks: PondDuck[]): void {
     const wasEmpty = this.ducks.length === 0;
+    const previous = new Map(this.ducks.map((d) => [d.id, d]));
+
     this.camera.side = worldSide(Math.max(this.frameSprite.w, this.frameSprite.h), ducks.length);
-    this.ducks = placeDucks(ducks, this.camera.side);
+    const placed = placeDucks(ducks, this.camera.side);
+
+    this.ducks = placed.map((fresh) => {
+      const old = previous.get(fresh.id);
+      if (!old) return fresh;
+      // Server-side facts are new; where it sits is ours.
+      return {
+        ...fresh,
+        wx: old.wx, wy: old.wy, flip: old.flip,
+        tx: old.tx, ty: old.ty,
+        homeX: old.homeX, homeY: old.homeY,
+        gx: old.gx, gy: old.gy,
+      };
+    });
+
     // Open looking at the ducks. The camera starts at the world origin,
     // which is a corner — and a corner of a pond 2.4 frames wide is water
     // with nothing in it.
     if (wasEmpty) this.camera.snap({ x: this.camera.side / 2, y: this.camera.side / 2 });
+  }
+
+  /**
+   * The whistle.
+   *
+   * In the Wii Mii Plaza you blow a whistle and every Mii runs over. The
+   * card is already a thing you blow into, so the pond borrows the gesture
+   * — and the duck COUNT is the whistle, so it costs no chrome over the
+   * water.
+   *
+   * Two details that are the whole difference between a flock and a bug:
+   *
+   *  1. **Called ducks aim at their own spot on a loose ring**, not at one
+   *     point. A crowd converging on a single point packs into a hexagonal
+   *     lattice and reads as a crystal.
+   *
+   *  2. **Everyone else is pushed CLEAR OF THE FRAME, not dimmed.** A faded
+   *     duck still reads as being in the way. They fan around the rim
+   *     rather than jamming into a corner, and clearing the whistle pulls
+   *     them back, so the pond refills.
+   */
+  gather(match: ((d: Placed) => boolean) | null): void {
+    const { side } = this.camera;
+    const cx = this.camera.cam.x;
+    const cy = this.camera.cam.y;
+
+    for (const d of this.ducks) {
+      // Remember home once, so repeated whistles do not drift the pond.
+      d.homeX ??= d.wx;
+      d.homeY ??= d.wy;
+    }
+
+    if (!match) {
+      for (const d of this.ducks) {
+        d.tx = d.homeX;
+        d.ty = d.homeY;
+      }
+      this.gatherStart = performance.now();
+      return;
+    }
+
+    const called = this.ducks.filter(match);
+    const rest = this.ducks.filter((d) => !match(d));
+
+    // A ring sized to the crowd, so twenty ducks are not stacked and three
+    // are not scattered across the horizon.
+    const radius = Math.max(24, Math.min(this.frameSprite.w, this.frameSprite.h) * 0.28);
+    called.forEach((d, i) => {
+      const a = (i / Math.max(called.length, 1)) * Math.PI * 2;
+      // A little jitter per duck, so the ring is a gathering rather than a
+      // dial. Derived from the id, so it does not shimmer between frames.
+      const wobble = 0.82 + 0.36 * hashId(d.id + "r");
+      d.tx = wrap(cx + Math.cos(a) * radius * wobble, side);
+      d.ty = wrap(cy + Math.sin(a) * radius * wobble, side);
+    });
+
+    // Everyone else fans around the rim, outside the frame, keeping their
+    // own angle so they go the short way out and come back the same way.
+    const out = Math.max(this.frameSprite.w, this.frameSprite.h) * 0.78;
+    rest.forEach((d) => {
+      const a = hashId(d.id + "o") * Math.PI * 2;
+      d.tx = wrap(cx + Math.cos(a) * out, side);
+      d.ty = wrap(cy + Math.sin(a) * out, side);
+    });
+
+    this.gatherStart = performance.now();
+  }
+
+  /** True while ducks are still travelling, so the loop stays at display rate. */
+  private get gathering(): boolean {
+    return this.gatherStart > 0 && performance.now() - this.gatherStart < GATHER_MS;
   }
 
   /** What the view actually believes, for debugging against a real browser. */
@@ -293,6 +407,7 @@ export class PondView {
         this.frame++;
       }
 
+      this.advanceGather(now);
       this.draw(now);
 
       // Publish state into the DOM, throttled, behind `?debug`.
@@ -311,7 +426,7 @@ export class PondView {
       // Display rate while moving or rippling; stop-motion otherwise.
       // Display rate whenever the view is under anyone's control — a
       // finger, a fling, a glide, a settle — and stop-motion otherwise.
-      if (camMoving || this.ripples.length) {
+      if (camMoving || this.ripples.length || this.gathering) {
         this.raf = requestAnimationFrame(loop);
       } else {
         this.timer = window.setTimeout(() => {
@@ -346,6 +461,37 @@ export class PondView {
     const d = this.find(id);
     if (!d) return;
     this.camera.glide({ x: d.wx, y: d.wy, cell: HOME_CELL }, moment ? CAM_MOMENT : CAM_UI);
+  }
+
+  /**
+   * Move each duck toward wherever the whistle put it.
+   *
+   * Eased, and through `wrapDelta`, so a duck on the far side of the seam
+   * comes the short way round rather than swimming the length of the world.
+   */
+  private advanceGather(now: number): void {
+    if (this.gatherStart === 0) return;
+    const p = Math.min(1, (now - this.gatherStart) / GATHER_MS);
+    const e = easeInOutCubic(p);
+    const { side } = this.camera;
+
+    for (const d of this.ducks) {
+      if (d.tx === undefined || d.ty === undefined) continue;
+      const fromX = d.gx ?? d.wx;
+      const fromY = d.gy ?? d.wy;
+      d.gx ??= fromX;
+      d.gy ??= fromY;
+      d.wx = wrap(fromX + wrapDelta(fromX, d.tx, side) * e, side);
+      d.wy = wrap(fromY + wrapDelta(fromY, d.ty, side) * e, side);
+    }
+
+    if (p >= 1) {
+      this.gatherStart = 0;
+      for (const d of this.ducks) {
+        d.gx = undefined;
+        d.gy = undefined;
+      }
+    }
   }
 
   private draw(now: number): void {

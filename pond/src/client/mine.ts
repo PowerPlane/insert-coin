@@ -17,6 +17,7 @@ import { ApiError, api, clearDraft } from "./api.js";
 import { button, el, field, screen } from "./dom.js";
 import { drawDuck } from "./render.js";
 import { GRID, decodePaint } from "./codec.js";
+import { studioScreen, toPayload } from "./studio.js";
 import { t } from "./strings.js";
 import type { PondDuck } from "./types.js";
 
@@ -24,7 +25,6 @@ export interface MineOptions {
   root: HTMLElement;
   editKey: string;
   onPond: () => void;
-  onRedecorate: (duck: PondDuck) => void;
 }
 
 /** Days, in the words a person would use. */
@@ -102,11 +102,59 @@ export function mineScreen(opts: MineOptions): void {
       const actions = el("div", "p-actions");
       actions.append(
         button("p-btn", t("mine.05"), opts.onPond),
-        button("p-btn p-btn-quiet", t("mine.06"), () => opts.onRedecorate(duck)),
+        button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)),
         button("p-btn p-btn-quiet", t("mine.07"), () => settings(duck)),
       );
       wrap.append(actions);
       root.append(wrap);
+    });
+  }
+
+  /**
+   * Redecorate.
+   *
+   * The same studio, saving quietly — FLOW.md: "the arrival animation
+   * belongs to the first arrival only". There is nothing to announce about
+   * changing a hat, and re-running the reveal would say otherwise.
+   *
+   * The draft machinery is deliberately NOT used here. A draft exists to
+   * survive losing an unreleased duck; this duck is already in the pond, so
+   * the thing to protect is the version that is in it. Changes land when
+   * Next is tapped, or not at all.
+   */
+  function redecorate(duck: PondDuck): void {
+    const state = {
+      tint: duck.tint,
+      stickers: [...duck.stickers],
+      paint: decodePaint(duck.paint),
+    };
+
+    studioScreen(root, {
+      fortune: duck.fortune,
+      state,
+      onChange: () => {
+        /* nothing: this duck is already in the water */
+      },
+      onBack: () => view(duck),
+      onNext: () => {
+        const { tint, stickers, paint } = toPayload(state);
+        void api.update(editKey, { tint, stickers, paint, name: duck.name, message: duck.message })
+          .then(
+            () => {
+              duck.tint = tint;
+              duck.stickers = stickers;
+              duck.paint = paint;
+              view(duck);
+            },
+            () => {
+              // The edits are still on screen and Next still works, so the
+              // honest thing is to say so and stay put rather than throw
+              // the work away by navigating.
+              const note = el("p", "p-note", t("live.error"));
+              root.querySelector(".p-screen")?.append(note);
+            },
+          );
+      },
     });
   }
 

@@ -26,7 +26,7 @@ flashed identically, each giving itself an identity on first boot.
 | **1a** | Turso adapter | ✅ **done** | D1-shaped interface, batch, `meta.changes`. |
 | **1b** | Port to Vercel | ✅ **done, deployed** | Contract frozen, routes ported. Live and verified end to end. |
 | **2** | One real card | ✅ **done** | Two cards flashed, recorded, tapped, imported. Attribution proved on production. |
-| **3** | The client | 🟡 **most of it works** | Pond, camera, the whole making flow, and the return path — all on the live site. Redecorate and the whistle are what remain. |
+| **3** | The client | 🟡 **nearly done** | Pond, camera, making flow, return path, redecorate and the whistle — all live. Only the per-fortune arrival animations remain. |
 | **4** | Admin | ⬜ | `/pondkeeper` — ducks, contacts, cards, CSV. |
 | **5** | Keepers | ⬜ | Blow gesture, signed claim, Card setup. Schema is already in. |
 | **6** | 繁體中文 | ⬜ | ~80 strings. `lang` negotiation already works. |
@@ -90,7 +90,8 @@ exist, and that the `/api/*` rewrite is still there.
 | Camera | Integer zoom ladder, wrapping world, **inertia** and **pinch**, +/− controls. |
 | Arrival → studio → sign → contact → release → keep | The whole making flow. 12 tints, 32 stickers, 15 paint colours, brush/erase/undo/clear. |
 | Duck card | Bump (authenticated by your own edit key) and report (reason + note, idempotent). |
-| `/e/<key>` | Your duck later, message & settings, and **take my duck out**. |
+| `/e/<key>` | Your duck later, message & settings, redecorate, and **take my duck out**. |
+| The whistle | Tap the count, pick a card. Called ducks arc to a loose ring; everyone else is pushed clear of the frame. "3 of 5" while active. |
 
 **The deletion promise, kept through the UI rather than through SQL:** made
 a duck with a contact, opened its private link, tapped through to the
@@ -106,9 +107,11 @@ a ~120 ms buffer so a deliberate pause does not fling, closed-form travel
 so a dropped frame does not lose distance, and a pinch anchored on the
 centroid. No rubber-banding, ever — the world wraps, so there are no edges.
 
-**Left in Phase 3:** redecorate routing into the studio (the API and screen
-both exist; only the wiring is missing), the whistle / gather list, and the
-arrival animations per fortune.
+**Left in Phase 3:** the per-fortune arrival animations. FLOW.md § Arrivals
+specifies four, built on the sparkle engine already on byproductlab.com —
+大吉 fireworks, 小吉 flowers that leave tappable petals for ~3 minutes,
+末吉 a sun a cloud drifts over, and 凶 arriving already alight until the
+water puts it out.
 
 ---
 
