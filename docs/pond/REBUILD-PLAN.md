@@ -103,3 +103,55 @@ verify` (currently 224 tests) and a real-device pass before the single deploy.
 
 A → C → B → D, then ship once. A is small and unblocks honest visual
 comparison; C makes the diff legible; B and D are the large pieces.
+
+---
+
+## E. Messages, duck variants, animation — added 2026-08-13
+
+Second reference: artifact `fafccdf9` — **The Pond — rev E**, an earlier and
+smaller revision than rev F. Where they disagree, rev F wins on layout; rev E
+is the reference for the three systems below.
+
+### Messages ("say")
+
+The server side already matches rev E exactly and needs nothing:
+`SAY_VISIBLE_SEC = 45` (`src/worker/ducks.ts:174`) and
+`SAY_COOLDOWN_SEC = 10 * 60` (`src/worker/social.ts:17`). Older says are not
+sent to the client at all.
+
+Missing is the client: the compose row (`say-open` / `say-in` in rev E) and
+the speech bubble drawn over a duck for its 45 seconds. Bubbles are part of
+the canvas, not DOM — they have to pan and zoom with the duck they belong to.
+
+### Duck variants
+
+Four fortunes — 大吉 / 小吉 / 末吉 / 凶 — each with its own sprite, times the
+tint palette, times stickers, times the paint layer. `FORTUNES` and the
+sprite rows already exist in `src/client/sprites.ts`; what needs checking is
+that every variant is reachable and that the burning state still composites
+over each of the four rather than only over `little`.
+
+### Animation — the gap the CSS shows plainly
+
+rev E animates DOM with **stepped** easing, never smooth:
+
+```
+transition: transform .22s steps(4, end);
+transition: opacity  .18s steps(3, end);
+.btn:active { transform: translateY(3px) }   /* face onto its shadow */
+```
+
+`public/app.css` currently contains **no `transition` declarations at all**
+and one use of `steps()`. So every DOM movement in the live client is either
+instant or browser-default smooth — both wrong. Stop-motion is not only the
+canvas's discipline; rev E applies it to sheets, scrims and buttons too, and
+that is a large part of why the prototype feels made and the live client
+feels generic.
+
+Canvas timings already correct and to be left alone: `HOLD = 170`,
+`RIPPLE = 480`, `CELL = 4`, `PETAL_LIFE = 3 min`, 12fps with the `DWELL`
+table.
+
+**Work:** a stepped-transition scale in the stylesheet, applied to sheet
+entry, scrim fade, button press, chip changes and tab switches — with
+`prefers-reduced-motion` honoured, as rev E does via its `reduce` flag.
