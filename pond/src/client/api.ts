@@ -110,6 +110,19 @@ export const api = {
       body: JSON.stringify({ editKey, id }),
     }),
 
+  /**
+   * Claim a card that arrived armed.
+   *
+   * Every refusal comes back the same — a forged token and a spent counter
+   * are indistinguishable from outside, so somebody walking the counter
+   * space learns nothing about how close they got.
+   */
+  claim: (card: string, counter: number, token: string) =>
+    request<{ ok: boolean; orphans?: number }>("/claim", {
+      method: "POST",
+      body: JSON.stringify({ card, counter, token }),
+    }),
+
   /** Idempotent: reporting twice is the same report, and says so. */
   report: (id: string, reason: ReportReason, note?: string) =>
     request<{ ok: true; filed: boolean }>("/report", {

@@ -16,6 +16,7 @@ import { button, field } from "./dom.js";
 import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
 import { CAM_UI } from "./camera.js";
+import { cardSetup, claimFromUrl } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, type Placed } from "./pond-view.js";
 import { setLang, t, type Lang } from "./strings.js";
@@ -487,6 +488,23 @@ async function main(): Promise<void> {
   }
 
   await pondScreen(b);
+
+  /*
+   * A card that arrived ARMED — four blows during the boot window — carries
+   * a signed claim in its URL. Claimed here, on arrival, so the credential
+   * spends as little time in the address bar as possible; Card setup then
+   * opens over the water like every other screen.
+   */
+  const url = new URL(location.href);
+  if (url.searchParams.has("t") && (await claimFromUrl(url))) {
+    // Take the claim out of the URL: it is spent, and a shared or
+    // bookmarked link should not carry a used credential around.
+    history.replaceState(null, "", url.pathname);
+    cardSetup({
+      root: document.querySelector(".p-overlay")!,
+      onDone: () => document.querySelector(".p-overlay")!.replaceChildren(),
+    });
+  }
 }
 
 void main();

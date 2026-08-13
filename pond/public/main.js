@@ -62,6 +62,17 @@ var api = {
     method: "POST",
     body: JSON.stringify({ editKey, id })
   }),
+  /**
+   * Claim a card that arrived armed.
+   *
+   * Every refusal comes back the same — a forged token and a spent counter
+   * are indistinguishable from outside, so somebody walking the counter
+   * space learns nothing about how close they got.
+   */
+  claim: (card, counter, token) => request("/claim", {
+    method: "POST",
+    body: JSON.stringify({ card, counter, token })
+  }),
   /** Idempotent: reporting twice is the same report, and says so. */
   report: (id, reason, note) => request("/report", {
     method: "POST",
@@ -869,7 +880,48 @@ var LIVE_STRINGS = {
   // "30 of 113" while a whistle is active — the count says what it is
   // showing rather than growing a second label.
   "live.count.of": "{n} of {total}",
-  "live.nokeepers": "No cards have been named yet, so there is nobody to whistle for."
+  "live.nokeepers": "No cards have been named yet, so there is nobody to whistle for.",
+  // The hint shows what the name will DO rather than describing it.
+  "live.keeper.hint": "Ducks from this card say via {keeper}.",
+  "live.keeper.adopt": "Add the {n} earlier ducks"
+};
+var KEEPER_STRINGS = {
+  "keeper.01": "Card setup",
+  // Body
+  "keeper.02": "Set up this card",
+  // Heading
+  "keeper.03": "To change it, hold the card and blow again.",
+  // Body
+  "keeper.04": "Card name",
+  // Field label
+  "keeper.05": "Sam",
+  // Example value
+  "keeper.06": "Ducks from this card say via Sam.",
+  // Hint
+  "keeper.07": "Link your duck",
+  // Field label
+  "keeper.08": "Remove link",
+  // Button
+  "keeper.09": "Make a duck",
+  // Button
+  "keeper.10": "Paste duck link",
+  // Button
+  "keeper.11": "People can bump you back.",
+  // Hint
+  "keeper.12": "Default language",
+  // Field label
+  "keeper.13": "English",
+  // Button
+  "keeper.14": "繁體中文",
+  // Button
+  "keeper.15": "A visitor's phone can still choose another language.",
+  // Hint
+  "keeper.16": "Add the 12 earlier ducks to this card",
+  // Field label
+  "keeper.17": "Save setup",
+  // Button
+  "keeper.18": "Not now"
+  // Button
 };
 var EN = {
   "arrival.01": "Your fortune",
@@ -1082,7 +1134,7 @@ var EN = {
   // Set from code
 };
 var TABLES = {
-  en: { ...EN, ...SCOPE_STRINGS, ...LIVE_STRINGS },
+  en: { ...EN, ...KEEPER_STRINGS, ...SCOPE_STRINGS, ...LIVE_STRINGS },
   // Phase 6. Deliberately empty rather than machine-translated: every entry
   // falls through to English until a person has written it, which is the
   // honest failure mode.
@@ -1095,7 +1147,7 @@ function setLang(lang) {
 }
 function t(key, vars) {
   const table = TABLES[current] ?? {};
-  const text = table[key] ?? EN[key] ?? SCOPE_STRINGS[key] ?? LIVE_STRINGS[key] ?? "";
+  const text = table[key] ?? EN[key] ?? KEEPER_STRINGS[key] ?? SCOPE_STRINGS[key] ?? LIVE_STRINGS[key] ?? "";
   if (!vars) return text;
   return text.replace(/\{(\w+)\}/g, (whole, name) => vars[name] ?? whole);
 }
@@ -1230,14 +1282,14 @@ function studioScreen(root2, opts) {
     };
     syncTools();
     const undo = button("p-chip", "↶", () => {
-      const last = history.pop();
+      const last = history2.pop();
       if (last) {
         state.paint = last;
         redraw();
       }
     }, t("studio.05"));
     const clear = button("p-chip", "×", () => {
-      history.push(state.paint.slice());
+      history2.push(state.paint.slice());
       state.paint = new Uint8Array(GRID * GRID);
       redraw();
     }, t("studio.06"));
@@ -1270,8 +1322,8 @@ function studioScreen(root2, opts) {
       redraw();
     };
     canvas.onpointerdown = (e) => {
-      history.push(state.paint.slice());
-      if (history.length > 24) history.shift();
+      history2.push(state.paint.slice());
+      if (history2.length > 24) history2.shift();
       painting = true;
       canvas.setPointerCapture(e.pointerId);
       paintAt(e);
@@ -1284,7 +1336,7 @@ function studioScreen(root2, opts) {
     };
     panel.append(tools, swatches);
   }
-  const history = [];
+  const history2 = [];
   wrap2.append(nav, canvas, tabs, panel);
   root2.append(sheetRoot);
   setTab("colour");
@@ -1739,6 +1791,133 @@ function project(wx, wy, cam, renderCell, canvasW, canvasH, side) {
     x: Math.round(canvasW / 2 + dx * renderCell),
     y: Math.round(canvasH / 2 + dy * renderCell)
   };
+}
+
+// src/client/keeper.ts
+async function get() {
+  const res = await fetch("/api/keeper", { credentials: "same-origin" });
+  return res.ok ? await res.json() : null;
+}
+function cardSetup(opts) {
+  const { root: root2 } = opts;
+  void get().then((state) => {
+    if (!state) return opts.onDone();
+    render(state);
+  });
+  function render(state) {
+    screen(root2, () => {
+      root2.replaceChildren();
+      const { root: sheetRoot, body: wrap2 } = sheet();
+      wrap2.append(
+        el("p", "p-eyebrow", t("keeper.01")),
+        el("h2", "p-title", t("keeper.02")),
+        el("p", "p-note", t("keeper.03"))
+      );
+      let name = state.keeper;
+      const nameField = field({
+        label: t("keeper.04"),
+        placeholder: t("keeper.05"),
+        max: 18,
+        value: name,
+        onInput: (v) => {
+          name = v;
+          hint.textContent = v ? t("live.keeper.hint", { keeper: v }) : t("keeper.06");
+        }
+      });
+      const hint = el("p", "p-hint", name ? t("live.keeper.hint", { keeper: name }) : t("keeper.06"));
+      wrap2.append(nameField.wrap, hint);
+      let editKey = recallEditKey() ?? "";
+      wrap2.append(el("p", "p-field-label", t("keeper.07")));
+      if (state.duckSlug) {
+        const linked = el("div", "p-actions");
+        linked.append(
+          el("p", "p-body", `/d/${state.duckSlug}`),
+          button("p-chip", t("keeper.08"), () => {
+            editKey = "";
+            void save({ editKey: "" });
+          })
+        );
+        wrap2.append(linked);
+      } else {
+        const paste = field({
+          label: "",
+          placeholder: t("keeper.10"),
+          max: 200,
+          value: editKey,
+          onInput: (v) => {
+            editKey = v.trim().replace(/^.*\/e\//, "");
+          }
+        });
+        wrap2.append(paste.wrap, el("p", "p-hint", t("keeper.11")));
+      }
+      let lang = state.lang;
+      wrap2.append(el("p", "p-field-label", t("keeper.12")));
+      const langs = el("div", "p-scopes");
+      const langButtons = [
+        ["en", t("keeper.13")],
+        ["zh-Hant", t("keeper.14")]
+      ];
+      const buttons = langButtons.map(
+        ([value, label]) => button("p-chip", label, () => {
+          lang = value;
+          buttons.forEach((b, i) => b.classList.toggle("on", langButtons[i][0] === lang));
+        })
+      );
+      buttons.forEach((b, i) => {
+        b.classList.toggle("on", langButtons[i][0] === lang);
+        langs.append(b);
+      });
+      wrap2.append(langs, el("p", "p-hint", t("keeper.15")));
+      let adopt = false;
+      if (state.orphans > 0) {
+        const adoptBtn = button(
+          "p-chip",
+          t("live.keeper.adopt", { n: String(state.orphans) }),
+          () => {
+            adopt = !adopt;
+            adoptBtn.classList.toggle("on", adopt);
+          }
+        );
+        wrap2.append(el("p", "p-field-label", t("keeper.16")), adoptBtn);
+      }
+      const status = el("p", "p-note", "");
+      const actions = el("div", "p-actions");
+      actions.append(
+        button("p-btn", t("keeper.17"), () => void save({ name, lang, editKey, adopt })),
+        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone)
+      );
+      wrap2.append(actions, status);
+      root2.append(sheetRoot);
+      async function save(body) {
+        try {
+          const res = await fetch("/api/keeper", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(body)
+          });
+          if (!res.ok) throw new Error(String(res.status));
+          opts.onDone();
+        } catch {
+          status.textContent = t("live.error");
+        }
+      }
+    });
+  }
+}
+async function claimFromUrl(url) {
+  const card = url.searchParams.get("c");
+  const g = url.searchParams.get("g");
+  const token = url.searchParams.get("t");
+  if (!card || !g || !token) return false;
+  const counter = parseInt(g, 16);
+  if (!Number.isInteger(counter) || counter <= 0) return false;
+  try {
+    const res = await api.claim(card, counter, token);
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 // src/client/release-flow.ts
@@ -2998,5 +3177,13 @@ async function main() {
     return;
   }
   await pondScreen(b);
+  const url = new URL(location.href);
+  if (url.searchParams.has("t") && await claimFromUrl(url)) {
+    history.replaceState(null, "", url.pathname);
+    cardSetup({
+      root: document.querySelector(".p-overlay"),
+      onDone: () => document.querySelector(".p-overlay").replaceChildren()
+    });
+  }
 }
 void main();

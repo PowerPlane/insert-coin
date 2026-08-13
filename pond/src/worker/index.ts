@@ -28,6 +28,7 @@ import {
   adminDucks, adminState, authorised, contactsCsv, markContact,
   resolveReports, setHidden, signIn,
 } from "./admin.js";
+import { claimCard, keeperState, saveKeeper } from "./keeper.js";
 import { createDuck } from "./release.js";
 import { normaliseSlug, slugTaken } from "./slug.js";
 import { bump, extinguish, maybeIgnite, report, say } from "./social.js";
@@ -281,6 +282,56 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     // same outcome as reporting it, and the button says "Reported ✓" either
     // way — there is nothing here worth turning into an error.
     return json(result, { headers });
+  }
+
+  // ── claiming a card ─────────────────────────────────────────────────────
+  //
+  // Reached by tapping a card that was armed with four blows. The claim is
+  // in the URL the card wrote, so this is a POST the client makes on
+  // arrival rather than something anyone types.
+  if (path === "/api/claim" && req.method === "POST") {
+    const body = await readJson(req);
+    const card = safeToken(typeof body?.card === "string" ? body.card : null, 12);
+    const counter = typeof body?.counter === "number" ? body.counter : NaN;
+    const token = typeof body?.token === "string" ? body.token : "";
+    if (!card || !Number.isInteger(counter)) return badRequest("bad claim", headers);
+
+    const claim = await claimCard(env, card, counter, token);
+    if ("error" in claim) {
+      // Every refusal looks the same from outside. Distinguishing "bad
+      // token" from "already used" would tell somebody walking the counter
+      // space exactly how close they were.
+      return json({ ok: false }, { status: 403, headers });
+    }
+
+    // The epoch id IS the credential for Card setup, the same way an edit
+    // key is for a duck. It goes in a cookie rather than the URL so it does
+    // not end up in history or a Referer.
+    headers.append("set-cookie", [
+      `pond_keeper=${claim.epochId}`,
+      "Path=/", "HttpOnly", "Secure", "SameSite=Lax", "Max-Age=3600",
+    ].join("; "));
+    return json({ ok: true, orphans: claim.orphans }, { headers });
+  }
+
+  if (path === "/api/keeper") {
+    const epochId = (req.headers.get("cookie") ?? "").match(
+      /(?:^|;\s*)pond_keeper=([A-Za-z0-9]{8,32})/,
+    )?.[1];
+    if (!epochId) return notFound(headers);
+
+    if (req.method === "GET") {
+      const state = await keeperState(env, epochId);
+      return state ? json(state, { headers }) : notFound(headers);
+    }
+
+    if (req.method === "POST") {
+      const body = await readJson(req);
+      const saved = await saveKeeper(env, epochId, body ?? {});
+      return "error" in saved
+        ? json(saved, { status: 403, headers })
+        : json(saved, { headers });
+    }
   }
 
   // ── /pondkeeper ─────────────────────────────────────────────────────────

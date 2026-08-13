@@ -87,6 +87,37 @@ export const LIVE_STRINGS = {
   // showing rather than growing a second label.
   "live.count.of": "{n} of {total}",
   "live.nokeepers": "No cards have been named yet, so there is nobody to whistle for.",
+  // The hint shows what the name will DO rather than describing it.
+  "live.keeper.hint": "Ducks from this card say via {keeper}.",
+  "live.keeper.adopt": "Add the {n} earlier ducks",
+} as const;
+
+/**
+ * Card setup — Phase 5's screen.
+ *
+ * Held apart from EN only because these were excluded when the deck was
+ * first extracted, back when keepers were a phase away. They are the deck's
+ * own strings, unedited.
+ */
+export const KEEPER_STRINGS = {
+  "keeper.01": "Card setup", // Body
+  "keeper.02": "Set up this card", // Heading
+  "keeper.03": "To change it, hold the card and blow again.", // Body
+  "keeper.04": "Card name", // Field label
+  "keeper.05": "Sam", // Example value
+  "keeper.06": "Ducks from this card say via Sam.", // Hint
+  "keeper.07": "Link your duck", // Field label
+  "keeper.08": "Remove link", // Button
+  "keeper.09": "Make a duck", // Button
+  "keeper.10": "Paste duck link", // Button
+  "keeper.11": "People can bump you back.", // Hint
+  "keeper.12": "Default language", // Field label
+  "keeper.13": "English", // Button
+  "keeper.14": "繁體中文", // Button
+  "keeper.15": "A visitor's phone can still choose another language.", // Hint
+  "keeper.16": "Add the 12 earlier ducks to this card", // Field label
+  "keeper.17": "Save setup", // Button
+  "keeper.18": "Not now", // Button
 } as const;
 
 export const EN = {
@@ -197,12 +228,13 @@ export const EN = {
 } as const;
 
 export type StringKey =
+  | keyof typeof KEEPER_STRINGS
   | keyof typeof EN
   | keyof typeof SCOPE_STRINGS
   | keyof typeof LIVE_STRINGS;
 
 const TABLES: Record<Lang, Partial<Record<StringKey, string>>> = {
-  en: { ...EN, ...SCOPE_STRINGS, ...LIVE_STRINGS },
+  en: { ...EN, ...KEEPER_STRINGS, ...SCOPE_STRINGS, ...LIVE_STRINGS },
   // Phase 6. Deliberately empty rather than machine-translated: every entry
   // falls through to English until a person has written it, which is the
   // honest failure mode.
@@ -231,6 +263,7 @@ export function t(key: StringKey, vars?: Record<string, string>): string {
   const text =
     table[key] ??
     EN[key as keyof typeof EN] ??
+    KEEPER_STRINGS[key as keyof typeof KEEPER_STRINGS] ??
     SCOPE_STRINGS[key as keyof typeof SCOPE_STRINGS] ??
     LIVE_STRINGS[key as keyof typeof LIVE_STRINGS] ??
     "";

@@ -14,7 +14,9 @@
     "cards:import": "tsx tools/import-cards.ts",
     "cards:check": "tsx tools/check-card.ts",
     "build:client": "node tools/build-client.mjs",
-    "stickers": "python3 tools/gen-stickers.py"
+    "stickers": "python3 tools/gen-stickers.py",
+    "verify": "npm run typecheck && npm run build:client && npm test",
+    "ship": "npm run verify && vercel deploy --prod --yes"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

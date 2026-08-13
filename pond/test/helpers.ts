@@ -71,6 +71,19 @@ export async function makeCard(
   return { card, epoch };
 }
 
+/**
+ * The edit key a duck would really have: 32 characters, alphanumeric.
+ *
+ * The fixture used to produce `editkey-<id>`, which is twelve characters
+ * with a hyphen in it — a shape the real validation rejects. Every code
+ * path that looks a duck up BY key therefore failed against the fixture
+ * while working fine in production, which is the wrong way round for a
+ * test to be wrong.
+ */
+export function editKeyFor(id: string): string {
+  return `editkey${id}`.replace(/[^A-Za-z0-9]/g, "").padEnd(32, "0").slice(0, 32);
+}
+
 /** A duck, optionally with the private contact hanging off it. */
 export async function makeDuck(
   db: Db,
@@ -83,7 +96,7 @@ export async function makeDuck(
                           paint, name, message, created, updated)
        VALUES (?1, ?2, ?3, ?4, ?5, 0, '[]', '', 'Sam', 'hello', 1, 1)`,
     )
-    .bind(id, `slug-${id}`, `editkey-${id}`, opts.epoch ?? null, opts.fortune ?? 0)
+    .bind(id, `slug-${id}`, editKeyFor(id), opts.epoch ?? null, opts.fortune ?? 0)
     .run();
 
   if (opts.contact) {
