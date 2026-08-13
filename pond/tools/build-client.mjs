@@ -28,8 +28,11 @@ const watch = process.argv.includes("watch");
 
 /** Kept in step with the CSP in src/worker/index.ts: script-src 'self'. */
 const options = {
-  entryPoints: ["src/client/main.ts"],
-  outfile: "public/app.js",
+  // Two bundles. The admin shares the DOM helpers and nothing else — it has
+  // no water, no camera and no sprites, and making one reader download the
+  // canvas engine to read a list of contacts would be silly.
+  entryPoints: ["src/client/main.ts", "src/client/admin.ts"],
+  outdir: "public",
   bundle: true,
   format: "esm",
   // The audience is a phone that just tapped a card, so this is the floor
@@ -57,18 +60,18 @@ const options = {
 if (watch) {
   const ctx = await context(options);
   await ctx.watch();
-  console.log("watching src/client/ → public/app.js");
+  console.log("watching src/client/ → public/");
 } else {
   const result = await build({ ...options, metafile: true });
-  const bytes = readFileSync("public/app.js").byteLength;
-  const inputs = Object.keys(result.metafile.inputs).filter((f) => f.startsWith("src/"));
-  console.log(`public/app.js  ${(bytes / 1024).toFixed(1)} kB  from ${inputs.length} modules`);
-
-  // A bundle that quietly stops including a module is the kind of thing
-  // that shows up as a blank screen on someone's phone.
-  if (bytes < 1024) {
-    console.error("that is suspiciously small — did main.ts import anything?");
-    process.exit(1);
+  for (const [file, out] of Object.entries(result.metafile.outputs)) {
+    if (!file.endsWith(".js")) continue;
+    console.log(`${file}  ${(out.bytes / 1024).toFixed(1)} kB  from ${Object.keys(out.inputs).length} modules`);
+    // A bundle that quietly stops including a module shows up as a blank
+    // screen on somebody's phone, not as a build error.
+    if (out.bytes < 1024) {
+      console.error(`${file} is suspiciously small — did its entry point import anything?`);
+      process.exit(1);
+    }
   }
-  writeFileSync("public/.app.js.meta", JSON.stringify(result.metafile, null, 2));
+  writeFileSync("public/.build.meta", JSON.stringify(result.metafile, null, 2));
 }

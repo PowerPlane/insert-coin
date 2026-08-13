@@ -146,7 +146,7 @@ describe("the committed bundle is in step with its source", () => {
    * and compare. esbuild does this in tens of milliseconds.
    */
   it("rebuilding produces byte-identical output", () => {
-    const bundle = join(root, "public", "app.js");
+    const bundle = join(root, "public", "main.js");
     const before = readFileSync(bundle);
 
     execFileSync("node", ["tools/build-client.mjs"], { cwd: root, stdio: "pipe" });
@@ -160,7 +160,7 @@ describe("the committed bundle is in step with its source", () => {
 
   it("the shell asks for the bundle it actually builds", () => {
     const shell = readFileSync(join(root, "src", "worker", "shell.ts"), "utf8");
-    expect(shell).toContain('src="/app.js"');
+    expect(shell).toContain('/main.js');
     // type="module" matters: the bundle is ESM, and a classic script tag
     // would fail on the first `import` with nothing but a console error.
     expect(shell).toContain('type="module"');
@@ -177,5 +177,30 @@ describe("the committed bundle is in step with its source", () => {
     expect(Object.keys(pkg.scripts)).not.toContain("build");
     expect(Object.keys(pkg.scripts)).not.toContain("vercel-build");
     expect(pkg.scripts["build:client"]).toBeDefined();
+  });
+});
+
+describe("no function file shadows an API path", () => {
+  /**
+   * A file in `api/` beats the `/api/:path*` rewrite. `api/admin.ts` served
+   * the pondkeeper's HTML at `/api/admin`, so the admin API — password gate
+   * and all — answered 200 with a login page to anyone who asked for it.
+   *
+   * Any file whose name matches a path the router handles is the same bug,
+   * so the rule is checked rather than remembered.
+   */
+  it("no api/<name>.ts collides with a route the router owns", () => {
+    const router = readFileSync(join(root, "src", "worker", "index.ts"), "utf8");
+    const owned = new Set(
+      [...router.matchAll(/path(?:\s*===|\.startsWith\()\s*"\/api\/([a-z-]+)/g)].map((m) => m[1]!),
+    );
+
+    const files = readdirSync(join(root, "api"))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => f.replace(/\.ts$/, ""));
+
+    for (const f of files) {
+      expect(owned.has(f), `api/${f}.ts shadows the router's /api/${f}`).toBe(false);
+    }
   });
 });

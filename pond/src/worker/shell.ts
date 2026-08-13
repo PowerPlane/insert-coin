@@ -65,6 +65,8 @@ export interface ShellOptions {
   bootstrap: Record<string, unknown>;
   canonical?: string;
   noindex?: boolean;
+  /** Which bundle the page loads. The admin has its own. */
+  script?: string;
 }
 
 /**
@@ -101,7 +103,7 @@ ${o.noindex ? '<meta name="robots" content="noindex, nofollow, noarchive">\n' : 
 <body>
 <div id="pond"></div>
 <script type="application/json" id="pond-bootstrap">${jsonBlock(o.bootstrap)}</script>
-<script type="module" src="/app.js"></script>
+<script type="module" src="${o.script ?? "/main.js"}"></script>
 </body>
 </html>
 `;
@@ -147,5 +149,24 @@ export function editShell(lang: Language, editKey: string): string {
     // a bearer URL, so the less of the duck that is baked into it, the less
     // there is sitting in a browser cache or a screenshot.
     bootstrap: { view: "edit", editKey },
+  });
+}
+
+/**
+ * The admin shell.
+ *
+ * Its own document rather than a view of the pond: nothing here shares the
+ * water, the camera or the client bundle, and loading 80 kB of canvas code
+ * to render a list of contacts would be silly. It stays English — one
+ * reader, and it is David. COPY.md § 09.
+ */
+export function adminShell(): string {
+  return renderShell({
+    lang: "en",
+    title: "Admin · the pond",
+    description: "The pondkeeper.",
+    noindex: true,
+    bootstrap: { view: "admin" },
+    script: "/admin.js",
   });
 }

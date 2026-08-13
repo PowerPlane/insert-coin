@@ -70,4 +70,4 @@ pond/*.db-journal
 variants/business-card-v1/cards.csv
 
 # esbuild's bundle analysis. Useful locally, not worth shipping.
-pond/public/.app.js.meta
+pond/public/.build.meta

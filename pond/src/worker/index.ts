@@ -24,6 +24,10 @@ import {
   deleteDuck, duckByEditKey, duckBySlug, listPond, renameDuck,
   topBumpers, updateDuck, validateDuck, validateScope,
 } from "./ducks.js";
+import {
+  adminDucks, adminState, authorised, contactsCsv, markContact,
+  resolveReports, setHidden, signIn,
+} from "./admin.js";
 import { createDuck } from "./release.js";
 import { normaliseSlug, slugTaken } from "./slug.js";
 import { bump, extinguish, maybeIgnite, report, say } from "./social.js";
@@ -277,6 +281,59 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     // same outcome as reporting it, and the button says "Reported ✓" either
     // way — there is nothing here worth turning into an error.
     return json(result, { headers });
+  }
+
+  // ── /pondkeeper ─────────────────────────────────────────────────────────
+  //
+  // Everything under here is behind the password, and an unauthorised
+  // request gets the SAME 404 an unknown route gets. An admin panel that
+  // announces itself with a 401 is a thing to try passwords against.
+  if (path.startsWith("/api/admin")) {
+    if (path === "/api/admin/in" && req.method === "POST") {
+      const body = await readJson(req);
+      const cookie = await signIn(env, body?.password);
+      if (!cookie) return notFound(headers);
+      headers.append("set-cookie", cookie);
+      return json({ ok: true }, { headers });
+    }
+
+    if (!(await authorised(req, env))) return notFound(headers);
+
+    if (path === "/api/admin" && req.method === "GET") {
+      const state = await adminState(env);
+      // adminState builds its own response; copy the security headers on.
+      const out = new Response(state.body, state);
+      for (const [k, v] of headers) out.headers.append(k, v);
+      return out;
+    }
+
+    if (path === "/api/admin/csv" && req.method === "GET") {
+      const csv = contactsCsv(await adminDucks(env));
+      headers.set("content-type", "text/csv; charset=utf-8");
+      headers.set("content-disposition", 'attachment; filename="pond-contacts.csv"');
+      return new Response(csv, { headers });
+    }
+
+    if (req.method === "POST") {
+      const body = await readJson(req);
+      const duckId = typeof body?.id === "string" ? body.id : "";
+      if (!DUCK_ID.test(duckId)) return badRequest("bad id", headers);
+
+      if (path === "/api/admin/hide") {
+        const ok = await setHidden(env, duckId, Boolean(body?.hidden));
+        return ok ? json({ ok: true }, { headers }) : notFound(headers);
+      }
+      if (path === "/api/admin/replied" || path === "/api/admin/postcard") {
+        const field = path.endsWith("replied") ? "replied" : "postcard";
+        const ok = await markContact(env, duckId, field, Boolean(body?.done));
+        return ok ? json({ ok: true }, { headers }) : notFound(headers);
+      }
+      if (path === "/api/admin/resolve") {
+        return json({ resolved: await resolveReports(env, duckId) }, { headers });
+      }
+    }
+
+    return notFound(headers);
   }
 
   // ── the owner's own duck ────────────────────────────────────────────────

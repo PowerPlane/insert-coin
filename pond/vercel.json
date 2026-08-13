@@ -22,6 +22,10 @@
       "destination": "/api/duck-edit?key=:key"
     },
     {
+      "source": "/pondkeeper",
+      "destination": "/api/pondkeeper"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/router?__path=:path*"
     }
@@ -50,6 +54,15 @@
         {
           "key": "cache-control",
           "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/pondkeeper",
+      "headers": [
+        {
+          "key": "x-robots-tag",
+          "value": "noindex, nofollow"
         }
       ]
     },

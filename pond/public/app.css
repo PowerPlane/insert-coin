@@ -721,3 +721,135 @@ a.p-btn {
   width: min(224px, 56vw);
   height: auto;
 }
+
+/* ── the pondkeeper ──────────────────────────────────────────────────── */
+
+/*
+ * The admin is a list, not a pond: no water, no camera, and a plain
+ * scrolling page rather than a sheet. It shares the palette and the
+ * corners so it belongs to the same product, and nothing else.
+ *
+ * It stays English, and it has one reader. COPY.md § 09.
+ */
+.a-screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: max(20px, env(safe-area-inset-top)) 16px
+           calc(20px + env(safe-area-inset-bottom));
+  background: var(--p-surface);
+}
+
+.a-centre {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.a-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.a-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.55rem;
+  color: var(--p-ink);
+}
+
+.a-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.a-row {
+  padding: 0.8rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  clip-path: var(--px-corner);
+}
+
+.a-row p {
+  margin: 0;
+}
+
+.a-row-name {
+  font-family: var(--display);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.a-row-meta {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+}
+
+.a-row-msg {
+  color: var(--p-soft);
+  overflow-wrap: anywhere;
+}
+
+/* The one place a contact is ever shown. Selectable, because the job is
+   to copy it into a mail client. */
+.a-contact {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--p-ink);
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+
+.a-badge {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  background: var(--quiet);
+  color: var(--p-soft);
+}
+
+.a-badge-hot {
+  background: var(--danger);
+  color: var(--danger-text);
+}
+
+.a-flag {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--danger-text);
+}
+
+.a-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 0.2rem;
+}
+
+.a-actions .p-chip,
+a.p-chip {
+  min-height: 38px;
+  font-size: 0.6rem;
+  text-decoration: none;
+}

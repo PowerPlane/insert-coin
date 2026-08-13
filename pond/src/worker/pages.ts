@@ -12,7 +12,7 @@
 
 import { duckBySlug } from "./ducks.js";
 import { ensureVisitor, mintFromQuery, securityHeaders } from "./index.js";
-import { duckShell, editShell, pickLanguage, pondShell } from "./shell.js";
+import { adminShell, duckShell, editShell, pickLanguage, pondShell } from "./shell.js";
 import type { Env } from "./types.js";
 
 function html(body: string, headers: Headers, status = 200): Response {
@@ -93,4 +93,20 @@ export async function editPage(req: Request, env: Env, key: string): Promise<Res
   // look exactly like a right one until the API says otherwise, so this
   // page cannot be used to test keys.
   return html(editShell(lang, key), headers);
+}
+
+/**
+ * `/pondkeeper` — the admin.
+ *
+ * Never indexed, and the noindex is set here as well as in vercel.json.
+ * Belt and braces on the one header whose absence cannot be noticed until
+ * the page is already in a search index.
+ */
+export async function adminPage(req: Request, _env: Env): Promise<Response> {
+  const headers = securityHeaders();
+  headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+  const lang = pickLanguage(req.headers.get("accept-language"));
+  // The admin stays English — one reader, and it is David. COPY.md § 09.
+  void lang;
+  return html(adminShell(), headers);
 }
