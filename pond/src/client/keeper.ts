@@ -87,7 +87,7 @@ export function cardSetup(opts: CardSetupOptions): void {
         wrap.append(linked);
       } else {
         const paste = field({
-          label: "", placeholder: t("keeper.10"), max: 200, value: editKey,
+          placeholder: t("keeper.10"), max: 200, value: editKey,
           onInput: (v) => {
             // Somebody will paste the whole link rather than the key. Take
             // either — asking a person to extract a substring is asking

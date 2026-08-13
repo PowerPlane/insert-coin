@@ -36,7 +36,8 @@ export function button(
 
 /** A labelled text field with a live character count. */
 export function field(opts: {
-  label: string;
+  /** Omitted when a heading above already names the field. */
+  label?: string;
   placeholder: string;
   max: number;
   value?: string;
@@ -44,7 +45,10 @@ export function field(opts: {
   onInput?: (value: string) => void;
 }): { wrap: HTMLElement; input: HTMLInputElement | HTMLTextAreaElement } {
   const wrap = el("label", "p-field");
-  wrap.append(el("span", "p-field-label", opts.label));
+  // An empty <span> still occupies a line box, which showed up as a gap
+  // under "Link your duck" — a heading that names a field in one state and
+  // a chip row in the other, so the field itself has no label of its own.
+  if (opts.label) wrap.append(el("span", "p-field-label", opts.label));
 
   const input = opts.multiline ? el("textarea", "p-input") : el("input", "p-input");
   if (!opts.multiline) (input as HTMLInputElement).type = "text";
@@ -55,15 +59,33 @@ export function field(opts: {
   // is a courtesy that must not be stricter than it.
   input.maxLength = opts.max * 2;
 
+  /*
+   * ══ onInput FIRES ON INPUT, AND NOT BEFORE ══
+   * This used to run the caller's handler once during construction, to
+   * seed the character count. That handler almost always touches other
+   * things in the same function — a hint, a scope picker, a preview — and
+   * those are usually declared BELOW the field they belong to, so the call
+   * landed in the temporal dead zone and threw.
+   *
+   * It happened three times: the contact screen, the pond's count, and
+   * Card setup. Each was fixed by reordering the surrounding code, which
+   * left the trap in place for the next screen.
+   *
+   * The initial count needs no handler — the caller passed the value in
+   * and already knows it. So the count seeds itself and `onInput` means
+   * what it says.
+   */
   const count = el("span", "p-field-count");
-  const sync = () => {
+  const showCount = () => {
     const points = [...input.value].length;
     count.textContent = `${points}`;
     count.classList.toggle("over", points > opts.max);
-    opts.onInput?.(input.value);
   };
-  input.addEventListener("input", sync);
-  sync();
+  input.addEventListener("input", () => {
+    showCount();
+    opts.onInput?.(input.value);
+  });
+  showCount();
 
   wrap.append(input, count);
   return { wrap, input };

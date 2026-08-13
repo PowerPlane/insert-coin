@@ -147,21 +147,23 @@ function button(className, label, onClick, aria) {
 }
 function field(opts) {
   const wrap2 = el("label", "p-field");
-  wrap2.append(el("span", "p-field-label", opts.label));
+  if (opts.label) wrap2.append(el("span", "p-field-label", opts.label));
   const input = opts.multiline ? el("textarea", "p-input") : el("input", "p-input");
   if (!opts.multiline) input.type = "text";
   input.placeholder = opts.placeholder;
   input.value = opts.value ?? "";
   input.maxLength = opts.max * 2;
   const count = el("span", "p-field-count");
-  const sync = () => {
+  const showCount = () => {
     const points = [...input.value].length;
     count.textContent = `${points}`;
     count.classList.toggle("over", points > opts.max);
-    opts.onInput?.(input.value);
   };
-  input.addEventListener("input", sync);
-  sync();
+  input.addEventListener("input", () => {
+    showCount();
+    opts.onInput?.(input.value);
+  });
+  showCount();
   wrap2.append(input, count);
   return { wrap: wrap2, input };
 }
@@ -1840,7 +1842,6 @@ function cardSetup(opts) {
         wrap2.append(linked);
       } else {
         const paste = field({
-          label: "",
           placeholder: t("keeper.10"),
           max: 200,
           value: editKey,
@@ -2080,8 +2081,8 @@ function releaseFlow(opts) {
         syncScope();
       }
     });
-    wrap2.append(input.wrap);
-    wrap2.append(scopeLabel, scopes, el("p", "p-note", t("contact.06")));
+    wrap2.append(input.wrap, scopeLabel, scopes, el("p", "p-note", t("contact.06")));
+    syncScope();
     const actions = el("div", "p-actions");
     actions.append(
       button("p-btn", t("contact.07"), () => void release()),

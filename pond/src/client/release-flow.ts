@@ -182,18 +182,7 @@ export function releaseFlow(opts: FlowOptions): void {
       el("p", "p-body", t("contact.03")),
     );
 
-    /**
-     * ══ ORDER MATTERS HERE ══
-     * The scope picker is BUILT before the contact field even though it is
-     * SHOWN after it, because `field()` fires its onInput once during
-     * construction to set the initial character count — and that handler
-     * calls `syncScope`, which reads all of this.
-     *
-     * Built the other way round it threw on the temporal dead zone, and
-     * because the throw landed after `replaceChildren()` the screen went
-     * blank rather than showing an error. A blank screen is the worst way
-     * for a bug to present: nothing to search for and nothing to report.
-     *
+    /*
      * The picker states scope in NAMES, never as a value — UI.md § 9. And
      * the keeper options only exist when the card HAS a keeper: "shared
      * with the person who keeps this card" is not a sentence anyone can
@@ -229,9 +218,11 @@ export function releaseFlow(opts: FlowOptions): void {
       label: t("contact.04"), placeholder: t("contact.05"), max: 120, value: draft.contact,
       onInput: (v) => { draft.contact = v; persist(); syncScope(); },
     });
-    wrap.append(input.wrap);
-
-    wrap.append(scopeLabel, scopes, el("p", "p-note", t("contact.06")));
+    wrap.append(input.wrap, scopeLabel, scopes, el("p", "p-note", t("contact.06")));
+    // Explicitly, on the way in. This used to happen as a side effect of
+    // `field()` running its onInput during construction, which is exactly
+    // the kind of invisible dependency that made three screens throw.
+    syncScope();
 
     const actions = el("div", "p-actions");
     actions.append(

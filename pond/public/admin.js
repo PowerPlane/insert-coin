@@ -20,21 +20,23 @@ function button(className, label, onClick, aria) {
 }
 function field(opts) {
   const wrap = el("label", "p-field");
-  wrap.append(el("span", "p-field-label", opts.label));
+  if (opts.label) wrap.append(el("span", "p-field-label", opts.label));
   const input = opts.multiline ? el("textarea", "p-input") : el("input", "p-input");
   if (!opts.multiline) input.type = "text";
   input.placeholder = opts.placeholder;
   input.value = opts.value ?? "";
   input.maxLength = opts.max * 2;
   const count = el("span", "p-field-count");
-  const sync = () => {
+  const showCount = () => {
     const points = [...input.value].length;
     count.textContent = `${points}`;
     count.classList.toggle("over", points > opts.max);
-    opts.onInput?.(input.value);
   };
-  input.addEventListener("input", sync);
-  sync();
+  input.addEventListener("input", () => {
+    showCount();
+    opts.onInput?.(input.value);
+  });
+  showCount();
   wrap.append(input, count);
   return { wrap, input };
 }
