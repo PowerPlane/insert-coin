@@ -12,7 +12,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "sprites": "python3 tools/gen-sprites.py",
-    "cards:import": "tsx tools/import-cards.ts"
+    "cards:import": "tsx tools/import-cards.ts",
+    "cards:check": "tsx tools/check-card.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

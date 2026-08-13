@@ -88,12 +88,43 @@ flashing host and the firmware still agree.
 3. **Tap it.** Confirms the URL resolves and the fortune digit changes. This
    is the real test and it takes three seconds.
 
+   Then paste what the phone showed:
+
+   ```bash
+   cd pond && npm run cards:check -- "<the URL>"
+   ```
+
+   It checks the shape, whether the card is in `cards.csv`, and the one
+   thing no amount of looking will reveal: whether the card was flashed
+   with the real signing key or with the all-zero placeholder from
+   `secrets.h.example`.
+
 Roughly two minutes a card once you have a rhythm. A hundred cards is an
 evening.
 
 ---
 
-## The one risk
+## The other one risk: a card flashed before secrets.h was filled in
+
+`board_hardware.eesave = yes` preserves EEPROM across a reflash. That is
+deliberate — it is how a card keeps its claim counter through firmware
+updates — but it has a sharp edge:
+
+**A card provisioned with the placeholder key keeps its forgeable token
+forever.** Re-flashing does not fix it. The firmware reads a valid
+provisioning flag, concludes it is done, and skips the write entirely.
+
+The recovery is to erase EEPROM first:
+
+```bash
+avrdude -c serialupdi -p t1616 -P /dev/cu.usbserial-XXXX -e
+pio run -e production-pond -t upload --upload-port /dev/cu.usbserial-XXXX
+```
+
+`npm run cards:check` is what tells you a card is in this state, and it is
+worth running on every card that was flashed before the key was set.
+
+## The main risk
 
 **A failed first-boot write ships a blank card.** Low battery or a bad solder
 joint on the I2C lines and the record is never written.
