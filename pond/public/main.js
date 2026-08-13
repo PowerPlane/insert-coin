@@ -1826,7 +1826,7 @@ function releaseFlow(opts) {
       state: draft.studio,
       onChange: persist,
       onNext: sign,
-      onBack: arrival
+      onBack: arrival2
     });
   }
   function signBody() {
@@ -1986,7 +1986,7 @@ function releaseFlow(opts) {
     );
     root2.append(sheetRoot);
   }
-  function arrival() {
+  function arrival2() {
     screen(root2, arrivalBody);
   }
   function sign() {
@@ -2000,7 +2000,7 @@ function releaseFlow(opts) {
   }
   const started = draft.name || draft.message || draft.studio.stickers.length || draft.studio.tint !== 0 || draft.studio.paint.some((v) => v !== 0);
   if (started) studio();
-  else arrival();
+  else arrival2();
 }
 
 // src/client/gestures.ts
@@ -2125,6 +2125,127 @@ var Gestures = class {
   };
 };
 
+// src/client/sparkle.ts
+var ON_PER_PX = 36;
+var OFF_PER_PX = 42;
+var HOLD = 170;
+function schedule(shape) {
+  let maxOn = 0;
+  const withDistance = shape.cells.map((c) => {
+    const d = Math.hypot(c.x, c.y);
+    const jitter = (Math.abs(c.x * 31 + c.y * 17) % 7 - 3) * 6;
+    const on = Math.max(0, d * ON_PER_PX + jitter);
+    maxOn = Math.max(maxOn, on);
+    return { ...c, d, on };
+  });
+  return withDistance.map((c) => ({
+    x: c.x,
+    y: c.y,
+    colour: c.colour,
+    on: shape.at + c.on,
+    // Everything waits for the slowest pixel, holds, then leaves outward.
+    off: shape.at + maxOn + HOLD + c.d * OFF_PER_PX
+  }));
+}
+function duration(pixels) {
+  return pixels.reduce((m, p) => Math.max(m, p.off), 0);
+}
+var GOLD = ["#FFCA00", "#FFE9A8", "#FF8953"];
+var PETAL = ["#FF6FA5", "#FF8FB8", "#FFFFFF"];
+var SUN = ["#FFCA00", "#FFE9A8"];
+var CLOUD = ["#FFFFFF", "#C9D6DC"];
+function ring(radius, count, colours, phase = 0) {
+  return Array.from({ length: count }, (_, i) => {
+    const a = phase + i / count * Math.PI * 2;
+    return {
+      x: Math.round(Math.cos(a) * radius),
+      y: Math.round(Math.sin(a) * radius),
+      colour: colours[i % colours.length]
+    };
+  });
+}
+function greatLuck(wx, wy) {
+  const shapes = [];
+  for (let i = 0; i < 7; i++) {
+    const a = i / 7 * Math.PI * 2;
+    const spread = 14 + i % 3 * 5;
+    shapes.push({
+      wx: wx + Math.cos(a) * spread,
+      wy: wy + Math.sin(a) * spread * 0.7,
+      at: i / 7 * 700,
+      // Two waves: an inner burst and an outer one behind it.
+      cells: [...ring(3, 8, GOLD), ...ring(6, 12, GOLD, 0.26)]
+    });
+  }
+  return shapes;
+}
+function littleLuck(wx, wy) {
+  return [0, 1, 2, 3].map((i) => {
+    const a = i / 4 * Math.PI * 2 + 0.4;
+    return {
+      wx: wx + Math.cos(a) * 13,
+      wy: wy + Math.sin(a) * 9,
+      at: i * 160,
+      cells: [{ x: 0, y: 0, colour: "#FFCA00" }, ...ring(2, 6, PETAL)]
+    };
+  });
+}
+function uncertain(wx, wy) {
+  return [
+    {
+      wx,
+      wy: wy - 14,
+      at: 0,
+      cells: [...ring(4, 10, SUN), ...ring(6, 14, SUN, 0.3)]
+    },
+    {
+      wx: wx + 8,
+      wy: wy - 12,
+      at: 520,
+      cells: [
+        ...ring(3, 8, CLOUD),
+        { x: -4, y: 1, colour: CLOUD[0] },
+        { x: 4, y: 1, colour: CLOUD[1] },
+        { x: 0, y: 2, colour: CLOUD[0] }
+      ]
+    }
+  ];
+}
+function badLuck(wx, wy) {
+  return [
+    {
+      wx,
+      wy: wy - 10,
+      at: 0,
+      cells: [...ring(2, 6, ["#FF4B4B", "#FF8953"]), ...ring(4, 9, ["#FF8953"], 0.4)]
+    },
+    {
+      wx,
+      wy: wy - 4,
+      at: 420,
+      cells: [...ring(5, 12, ["#FFFFFF", "#EDFAFE"]), ...ring(8, 16, ["#EDFAFE"], 0.2)]
+    }
+  ];
+}
+function arrival(fortune, wx, wy) {
+  const shapes = fortune === 0 ? greatLuck(wx, wy) : fortune === 1 ? littleLuck(wx, wy) : fortune === 2 ? uncertain(wx, wy) : badLuck(wx, wy);
+  return shapes.flatMap(
+    (s) => schedule(s).map((p) => ({ ...p, x: s.wx + p.x, y: s.wy + p.y }))
+  );
+}
+var PETAL_LIFE_MS = 3 * 60 * 1e3;
+function petals(wx, wy, now) {
+  return Array.from({ length: 9 }, (_, i) => ({
+    wx: wx + Math.cos(i / 9 * Math.PI * 2) * (8 + i % 3 * 4),
+    wy: wy + Math.sin(i / 9 * Math.PI * 2) * (6 + i % 2 * 3),
+    // A gentle sideways drift, different per petal so they do not move as
+    // one sheet.
+    drift: (i % 5 - 2) * 22e-4,
+    born: now,
+    colour: PETAL[i % PETAL.length]
+  }));
+}
+
 // src/client/pond-view.ts
 var WORLD_FPS = 12;
 var WORLD_MS = 1e3 / WORLD_FPS;
@@ -2203,6 +2324,9 @@ var PondView = class {
   lastWorldTick = 0;
   lastDebug = 0;
   gatherStart = 0;
+  sparkles = [];
+  sparkleStart = 0;
+  petals = [];
   debugging = typeof location !== "undefined" && location.search.includes("debug");
   // Two different kinds of handle. Holding both in one field and cancelling
   // it as both was an id-collision waiting to happen: cancelAnimationFrame
@@ -2400,7 +2524,7 @@ var PondView = class {
         this.lastDebug = now;
         this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
       }
-      if (camMoving || this.ripples.length || this.gathering) {
+      if (camMoving || this.ripples.length || this.gathering || this.sparkles.length) {
         this.raf = requestAnimationFrame(loop);
       } else {
         this.timer = window.setTimeout(() => {
@@ -2415,6 +2539,19 @@ var PondView = class {
     cancelAnimationFrame(this.raf);
     clearTimeout(this.timer);
     this.gestures.destroy();
+  }
+  /**
+   * Play a fortune's arrival over a duck.
+   *
+   * 小吉 is the only one that leaves anything behind: petals, for about
+   * three minutes, drifting and dithering out rather than blinking away.
+   */
+  arrive(duck) {
+    const now = performance.now();
+    this.sparkles = arrival(duck.fortune, duck.wx, duck.wy);
+    this.sparkleStart = now;
+    if (duck.fortune === 1) this.petals.push(...petals(duck.wx, duck.wy, now));
+    this.splash(duck.wx, duck.wy, 18);
   }
   /**
    * A ripple where something happened. Discrete rings, not a wave sim.
@@ -2518,6 +2655,44 @@ var PondView = class {
       );
     }
     this.ripples = this.ripples.filter((r) => now - r.t < RIPPLE_MS);
+    if (this.sparkles.length) {
+      const t2 = now - this.sparkleStart;
+      for (const p of this.sparkles) {
+        if (t2 < p.on || t2 > p.off) continue;
+        const at = project(
+          p.x,
+          p.y,
+          this.camera.cam,
+          renderCell,
+          canvas.width,
+          canvas.height,
+          this.camera.side
+        );
+        ctx.fillStyle = p.colour;
+        ctx.fillRect(at.x, at.y, renderCell, renderCell);
+      }
+      if (t2 > duration(this.sparkles)) this.sparkles = [];
+    }
+    if (this.petals.length) {
+      this.petals = this.petals.filter((p) => now - p.born < PETAL_LIFE_MS);
+      for (const p of this.petals) {
+        const age = (now - p.born) / PETAL_LIFE_MS;
+        if (age > 0.6 && (this.frame + Math.round(p.wx)) % 3 < Math.round((age - 0.6) * 7)) {
+          continue;
+        }
+        const at = project(
+          p.wx + (now - p.born) * p.drift,
+          p.wy,
+          this.camera.cam,
+          renderCell,
+          canvas.width,
+          canvas.height,
+          this.camera.side
+        );
+        ctx.fillStyle = p.colour;
+        ctx.fillRect(at.x, at.y, renderCell, renderCell);
+      }
+    }
     canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
   }
   /** Nearest duck within a forgiving radius. Front-most wins. */
@@ -2661,40 +2836,55 @@ async function pondScreen(bootstrap) {
     }
   };
   await refresh();
-  const session = await api.session().catch(() => ({ active: false }));
   const mine = recallEditKey();
-  if (session.active && !session.spent) {
-    const go = el2("button", "p-btn", t("arrival.04"));
-    go.type = "button";
-    go.addEventListener("click", () => {
-      pausePolling();
-      releaseFlow({
-        root: overlay,
-        fortune: session.fortune ?? 1,
-        // The keeper's name decides whether the scope picker can offer to
-        // share with them at all.
-        keeper: keeperOf(ducks),
-        onBrowse: () => {
-          overlay.replaceChildren();
-          resumePolling();
-        },
-        onDone: (made) => {
-          overlay.replaceChildren();
-          resumePolling();
-          void refresh().then(() => view.lookAt(made.id, true));
-        }
-      });
-    });
-    cta.append(go);
-  } else if (mine) {
-    const back = el2("button", "p-btn p-btn-quiet", t("mine.05"));
-    back.type = "button";
-    back.addEventListener("click", () => {
-      const d = ducks.find((x) => x.id === bootstrap.duck?.id);
-      if (d) view.lookAt(d.id);
-    });
-    cta.append(back);
+  async function syncCta() {
+    cta.replaceChildren();
+    const session = await api.session().catch(() => ({ active: false }));
+    buildCta(session);
   }
+  function buildCta(session) {
+    if (session.active && !session.spent) {
+      const go = el2("button", "p-btn", t("arrival.04"));
+      go.type = "button";
+      go.addEventListener("click", () => {
+        pausePolling();
+        releaseFlow({
+          root: overlay,
+          fortune: session.fortune ?? 1,
+          // The keeper's name decides whether the scope picker can offer to
+          // share with them at all.
+          keeper: keeperOf(ducks),
+          onBrowse: () => {
+            overlay.replaceChildren();
+            resumePolling();
+            void syncCta();
+          },
+          onDone: (made) => {
+            overlay.replaceChildren();
+            resumePolling();
+            void syncCta();
+            void refresh().then(() => {
+              view.lookAt(made.id, true);
+              const duck = view.find(made.id);
+              if (duck) view.arrive(duck);
+            });
+          }
+        });
+      });
+      cta.append(go);
+      return;
+    }
+    if (mine) {
+      const back = el2("button", "p-btn p-btn-quiet", t("mine.05"));
+      back.type = "button";
+      back.addEventListener("click", () => {
+        const d = ducks.find((x) => x.id === bootstrap.duck?.id);
+        if (d) view.lookAt(d.id);
+      });
+      cta.append(back);
+    }
+  }
+  await syncCta();
   if (bootstrap.duck) view.lookAt(bootstrap.duck.id, true);
   let polling = true;
   function pausePolling() {

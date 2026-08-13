@@ -243,10 +243,21 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   await refresh();
 
   // ── what this visitor can do ──────────────────────────────────────────
-  const session = await api.session().catch(() => ({ active: false }) as SessionState);
+  //
+  // Re-checked rather than remembered: the CTA is built once, and after a
+  // duck is released the session is spent — so leaving it on screen offers
+  // a second fortune that the server will refuse. `syncCta` runs again when
+  // the flow hands back.
   const mine = recallEditKey();
 
-  if (session.active && !session.spent) {
+  async function syncCta(): Promise<void> {
+    cta.replaceChildren();
+    const session = await api.session().catch(() => ({ active: false }) as SessionState);
+    buildCta(session);
+  }
+
+  function buildCta(session: SessionState): void {
+    if (session.active && !session.spent) {
     // A fortune is waiting. This is the only CTA that ever appears, and it
     // is the whole reason the pond can be the default screen: someone with
     // nothing to make sees a pond, not a form.
@@ -266,28 +277,42 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
         onBrowse: () => {
           overlay.replaceChildren();
           resumePolling();
+          void syncCta();
         },
         onDone: (made) => {
           // Back to the water, and the camera goes to look at what they
           // just made — the one move that is watched rather than operated.
           overlay.replaceChildren();
           resumePolling();
-          void refresh().then(() => view.lookAt(made.id, true));
+          // The duck enters with its fortune's own arrival — FLOW.md § 06.
+          // The camera takes CAM_MOMENT rather than CAM_UI: this is the one
+          // thing that is watched rather than operated.
+          void syncCta();
+          void refresh().then(() => {
+            view.lookAt(made.id, true);
+            const duck = view.find(made.id);
+            if (duck) view.arrive(duck);
+          });
         },
       });
     });
-    cta.append(go);
-  } else if (mine) {
+      cta.append(go);
+      return;
+    }
+    if (mine) {
     // "Find my duck" was removed on purpose — once your duck is in the
     // pond there is no action you still owe it, so the CTA hides entirely.
     const back = el("button", "p-btn p-btn-quiet", t("mine.05"));
     back.type = "button";
-    back.addEventListener("click", () => {
-      const d = ducks.find((x) => x.id === bootstrap.duck?.id);
-      if (d) view.lookAt(d.id);
-    });
-    cta.append(back);
+      back.addEventListener("click", () => {
+        const d = ducks.find((x) => x.id === bootstrap.duck?.id);
+        if (d) view.lookAt(d.id);
+      });
+      cta.append(back);
+    }
   }
+
+  await syncCta();
 
 
   // Arrival zoom: land at arm's length from your own duck rather than

@@ -42,6 +42,14 @@ import {
   type WaterBuffer,
 } from "./render.js";
 import { decodePaint } from "./codec.js";
+import {
+  PETAL_LIFE_MS,
+  type Petal,
+  type SparklePixel,
+  arrival,
+  duration as sparkleDuration,
+  petals,
+} from "./sparkle.js";
 import type { PondDuck } from "./types.js";
 
 /** Stop-motion. The look, not a performance ceiling. */
@@ -162,6 +170,9 @@ export class PondView {
   private lastWorldTick = 0;
   private lastDebug = 0;
   private gatherStart = 0;
+  private sparkles: SparklePixel[] = [];
+  private sparkleStart = 0;
+  private petals: Petal[] = [];
   private readonly debugging =
     typeof location !== "undefined" && location.search.includes("debug");
   // Two different kinds of handle. Holding both in one field and cancelling
@@ -426,7 +437,7 @@ export class PondView {
       // Display rate while moving or rippling; stop-motion otherwise.
       // Display rate whenever the view is under anyone's control — a
       // finger, a fling, a glide, a settle — and stop-motion otherwise.
-      if (camMoving || this.ripples.length || this.gathering) {
+      if (camMoving || this.ripples.length || this.gathering || this.sparkles.length) {
         this.raf = requestAnimationFrame(loop);
       } else {
         this.timer = window.setTimeout(() => {
@@ -442,6 +453,20 @@ export class PondView {
     cancelAnimationFrame(this.raf);
     clearTimeout(this.timer);
     this.gestures.destroy();
+  }
+
+  /**
+   * Play a fortune's arrival over a duck.
+   *
+   * 小吉 is the only one that leaves anything behind: petals, for about
+   * three minutes, drifting and dithering out rather than blinking away.
+   */
+  arrive(duck: Placed): void {
+    const now = performance.now();
+    this.sparkles = arrival(duck.fortune, duck.wx, duck.wy);
+    this.sparkleStart = now;
+    if (duck.fortune === 1) this.petals.push(...petals(duck.wx, duck.wy, now));
+    this.splash(duck.wx, duck.wy, 18);
   }
 
   /**
@@ -552,6 +577,45 @@ export class PondView {
     }
 
     this.ripples = this.ripples.filter((r) => now - r.t < RIPPLE_MS);
+
+    // ── arrivals, over the ducks ────────────────────────────────────────
+    //
+    // Drawn as whole sprite pixels on the same grid as everything else, so
+    // a sparkle is the same size as a pixel of duck. Anything smoother
+    // would be the one thing on screen that is not stop-motion.
+    if (this.sparkles.length) {
+      const t = now - this.sparkleStart;
+      for (const p of this.sparkles) {
+        if (t < p.on || t > p.off) continue;
+        const at = project(
+          p.x, p.y, this.camera.cam, renderCell,
+          canvas.width, canvas.height, this.camera.side,
+        );
+        ctx.fillStyle = p.colour;
+        ctx.fillRect(at.x, at.y, renderCell, renderCell);
+      }
+      if (t > sparkleDuration(this.sparkles)) this.sparkles = [];
+    }
+
+    // Petals outlive their arrival: 小吉 leaves them for about three
+    // minutes. They dither out — dropped pixels, never a fade — because
+    // opacity is the one thing this pond never animates.
+    if (this.petals.length) {
+      this.petals = this.petals.filter((p) => now - p.born < PETAL_LIFE_MS);
+      for (const p of this.petals) {
+        const age = (now - p.born) / PETAL_LIFE_MS;
+        // Toward the end, drop pixels rather than fading them.
+        if (age > 0.6 && (this.frame + Math.round(p.wx)) % 3 < Math.round((age - 0.6) * 7)) {
+          continue;
+        }
+        const at = project(
+          p.wx + (now - p.born) * p.drift, p.wy, this.camera.cam, renderCell,
+          canvas.width, canvas.height, this.camera.side,
+        );
+        ctx.fillStyle = p.colour;
+        ctx.fillRect(at.x, at.y, renderCell, renderCell);
+      }
+    }
 
     // The sub-integer remainder ONLY. The render stays on an integer grid;
     // the motion stays continuous. Dividing by OVERSCAN here was wrong —
