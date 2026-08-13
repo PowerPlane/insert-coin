@@ -120,277 +120,6 @@ function recallEditKey() {
   }
 }
 
-// src/client/camera.ts
-var CELLS = [2, 3, 4, 6, 8];
-var HOME_CELL = 4;
-var CAM_UI = 480;
-var CAM_MOMENT = 1100;
-var FLING_TAU = 325;
-var FLING_REST = 4e-3;
-var FLING_MAX_SCREEN_PX_PER_MS = 4;
-var SETTLE_TAU = 90;
-var OVERSCAN = 1.5;
-function easeInOutCubic(p) {
-  return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-}
-function worldSide(frameSpritePx, ducks) {
-  return Math.max(frameSpritePx * 2.4, duckSpread(ducks));
-}
-function duckSpread(ducks) {
-  return Math.ceil(Math.sqrt(Math.max(ducks, 1)) * 34);
-}
-function wrapDelta(a, b, side) {
-  let d = (b - a) % side;
-  if (d > side / 2) d -= side;
-  if (d < -side / 2) d += side;
-  return d;
-}
-function wrap(v, side) {
-  return (v % side + side) % side;
-}
-var PondCamera = class {
-  constructor(cam = { x: 0, y: 0, cell: HOME_CELL }, side = 1) {
-    this.cam = cam;
-    this.side = side;
-  }
-  cam;
-  side;
-  move = null;
-  flung = null;
-  /** Set while fingers are on the glass, so the world holds still. */
-  held = false;
-  /**
-   * Is anything moving the view right now?
-   *
-   * This is what drives BOTH the display-rate redraw and the world freeze,
-   * and it deliberately includes a finger on the glass. Before it did, a
-   * drag fell through to the 83 ms stop-motion path and tracked a thumb at
-   * twelve frames a second — the exact thing POND-CAMERA's two-clocks rule
-   * exists to prevent, and invisible in a screenshot.
-   */
-  get moving() {
-    return this.move !== null || this.flung !== null || this.held || this.settling;
-  }
-  /** Mid-pinch, cell is off the ladder and easing back onto it. */
-  get settling() {
-    return !this.held && Math.abs(this.cam.cell - nearestCell(this.cam.cell)) > 1e-3;
-  }
-  /**
-   * Start a move. Position and zoom travel together, one easing.
-   *
-   * The target is resolved through `wrapDelta`, so gliding to a duck near
-   * the seam goes the short way round rather than scrolling the whole world.
-   */
-  glide(to, ms = CAM_UI, now = performance.now()) {
-    const from = { ...this.cam };
-    const target = {
-      x: to.x === void 0 ? from.x : from.x + wrapDelta(from.x, to.x, this.side),
-      y: to.y === void 0 ? from.y : from.y + wrapDelta(from.y, to.y, this.side),
-      cell: to.cell === void 0 ? from.cell : clampCell(to.cell)
-    };
-    this.move = { from, to: target, start: now, ms };
-  }
-  /** Jump with no animation. For arrival, and for a finger on the glass. */
-  snap(to) {
-    this.move = null;
-    if (to.x !== void 0) this.cam.x = wrap(to.x, this.side);
-    if (to.y !== void 0) this.cam.y = wrap(to.y, this.side);
-    if (to.cell !== void 0) this.cam.cell = clampCell(to.cell);
-  }
-  /** Drag by a world delta, in sprite pixels. Wraps; never clamps. */
-  pan(dxSprite, dySprite) {
-    this.move = null;
-    this.flung = null;
-    this.cam.x = wrap(this.cam.x - dxSprite, this.side);
-    this.cam.y = wrap(this.cam.y - dySprite, this.side);
-  }
-  /**
-   * Zoom about a point, keeping the world under it still.
-   *
-   * The anchor is what makes a pinch feel like handling the water rather
-   * than operating a slider: whatever is between the fingers stays between
-   * the fingers.
-   *
-   * `ax`/`ay` are offsets from the view centre in DEVICE pixels, because
-   * that is what `cell` is denominated in — "device pixels per sprite
-   * pixel". Passing CSS pixels instead under-corrects by exactly the
-   * device-pixel ratio, which on a 2x screen is half: measured as 24.75
-   * world pixels of drift at a 200-pixel anchor, which is
-   * `200 x (2 - 1) x (1/8)` to the decimal.
-   */
-  zoomAbout(nextCell, ax, ay) {
-    this.move = null;
-    const from = this.cam.cell;
-    const to = clampCell(nextCell);
-    if (to === from) return;
-    this.cam.x = wrap(this.cam.x + ax * (1 / from - 1 / to), this.side);
-    this.cam.y = wrap(this.cam.y + ay * (1 / from - 1 / to), this.side);
-    this.cam.cell = to;
-  }
-  /**
-   * Release a flick. Velocity is in WORLD units per millisecond, already
-   * measured across a buffer rather than from the last event — a single
-   * delta is mostly sensor noise, and a finger that paused before lifting
-   * must not fling.
-   */
-  fling(vx, vy, now = performance.now()) {
-    const speed = Math.hypot(vx, vy);
-    if (speed < FLING_REST) return;
-    const cap = FLING_MAX_SCREEN_PX_PER_MS / this.cam.cell / speed;
-    const k = Math.min(1, cap);
-    this.move = null;
-    this.flung = { vx: vx * k, vy: vy * k, last: now };
-  }
-  /** A finger has landed: stop everything and hand over control. */
-  grab() {
-    this.move = null;
-    this.flung = null;
-    this.held = true;
-  }
-  release() {
-    this.held = false;
-  }
-  /** Advance whatever is moving. Returns true while still animating. */
-  tick(now = performance.now()) {
-    if (this.held) return true;
-    if (this.flung) {
-      const f = this.flung;
-      const dt = Math.max(0, now - f.last);
-      f.last = now;
-      const decay = Math.exp(-dt / FLING_TAU);
-      const travel = FLING_TAU * (1 - decay);
-      this.cam.x = wrap(this.cam.x - f.vx * travel, this.side);
-      this.cam.y = wrap(this.cam.y - f.vy * travel, this.side);
-      f.vx *= decay;
-      f.vy *= decay;
-      if (Math.hypot(f.vx, f.vy) < FLING_REST) this.flung = null;
-      this.settle(now, dt);
-      return this.flung !== null || this.settling;
-    }
-    if (!this.move) {
-      if (this.settling) {
-        this.settle(now, 16);
-        return true;
-      }
-      return false;
-    }
-    const m = this.move;
-    const p = Math.min(1, (now - m.start) / m.ms);
-    const e = easeInOutCubic(p);
-    this.cam.x = wrap(m.from.x + (m.to.x - m.from.x) * e, this.side);
-    this.cam.y = wrap(m.from.y + (m.to.y - m.from.y) * e, this.side);
-    this.cam.cell = m.from.cell + (m.to.cell - m.from.cell) * e;
-    if (p >= 1) {
-      this.move = null;
-      return false;
-    }
-    return true;
-  }
-  /**
-   * Ease an off-ladder zoom back onto the nearest rung.
-   *
-   * Mid-pinch the cell is continuous, which is a legal render state — the
-   * remainder is a CSS scale. It is not a legal RESTING state, because at
-   * rest an integer cell is what keeps outlines from crawling.
-   */
-  settle(now, dt) {
-    if (this.held) return;
-    const target = nearestCell(this.cam.cell);
-    const k = 1 - Math.exp(-dt / SETTLE_TAU);
-    this.cam.cell += (target - this.cam.cell) * k;
-    if (Math.abs(this.cam.cell - target) < 1e-3) this.cam.cell = target;
-  }
-  /**
-   * How to draw this frame.
-   *
-   * `renderCell` is the integer the canvas is drawn at; `scale` is the
-   * leftover, applied as a CSS transform about the centre. The remainder is
-   * at most ±25%, which the overscan covers — so the render is always on an
-   * integer grid and the motion is still continuous.
-   */
-  frame() {
-    const nearest = nearestCell(this.cam.cell);
-    return { renderCell: nearest, scale: this.cam.cell / nearest };
-  }
-  /** The next zoom step in or out, or null at the end of the range. */
-  step(direction) {
-    const i = CELLS.indexOf(nearestCell(this.cam.cell));
-    const next = CELLS[i + direction];
-    return next ?? null;
-  }
-};
-function nearestCell(cell) {
-  let best = CELLS[0];
-  let bestD = Infinity;
-  for (const c of CELLS) {
-    const d = Math.abs(c - cell);
-    if (d < bestD) {
-      bestD = d;
-      best = c;
-    }
-  }
-  return best;
-}
-function clampCell(cell) {
-  return Math.max(CELLS[0], Math.min(CELLS[CELLS.length - 1], cell));
-}
-function project(wx, wy, cam, renderCell, canvasW, canvasH, side) {
-  const dx = wrapDelta(cam.x, wx, side);
-  const dy = wrapDelta(cam.y, wy, side);
-  return {
-    x: Math.round(canvasW / 2 + dx * renderCell),
-    y: Math.round(canvasH / 2 + dy * renderCell)
-  };
-}
-
-// src/client/codec.ts
-var GRID = 24;
-var CELLS2 = GRID * GRID;
-var PACKED_BYTES = CELLS2 / 2;
-var MAX_PALETTE = 15;
-function encodePaint(cells) {
-  if (cells.length !== CELLS2) throw new RangeError(`paint must be ${CELLS2} cells`);
-  let any = false;
-  for (let i = 0; i < CELLS2; i++) {
-    if (cells[i]) {
-      any = true;
-      break;
-    }
-  }
-  if (!any) return "";
-  const bytes = new Uint8Array(PACKED_BYTES);
-  for (let i = 0; i < PACKED_BYTES; i++) {
-    const hi = (cells[i * 2] ?? 0) & 15;
-    const lo = (cells[i * 2 + 1] ?? 0) & 15;
-    bytes[i] = hi << 4 | lo;
-  }
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
-function decodePaint(b64) {
-  const cells = new Uint8Array(CELLS2);
-  if (!b64) return cells;
-  let bin;
-  try {
-    bin = atob(b64);
-  } catch {
-    return cells;
-  }
-  if (bin.length !== PACKED_BYTES) return cells;
-  for (let i = 0; i < PACKED_BYTES; i++) {
-    const byte = bin.charCodeAt(i);
-    cells[i * 2] = byte >> 4 & 15;
-    cells[i * 2 + 1] = byte & 15;
-  }
-  return cells;
-}
-function clampPaintValue(v) {
-  if (!Number.isFinite(v)) return 0;
-  const n = Math.trunc(v);
-  return n < 0 ? 0 : n > MAX_PALETTE ? MAX_PALETTE : n;
-}
-
 // src/client/dom.ts
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -439,6 +168,54 @@ function screen(root2, render) {
     );
     root2.append(wrap2);
   }
+}
+
+// src/client/codec.ts
+var GRID = 24;
+var CELLS = GRID * GRID;
+var PACKED_BYTES = CELLS / 2;
+var MAX_PALETTE = 15;
+function encodePaint(cells) {
+  if (cells.length !== CELLS) throw new RangeError(`paint must be ${CELLS} cells`);
+  let any = false;
+  for (let i = 0; i < CELLS; i++) {
+    if (cells[i]) {
+      any = true;
+      break;
+    }
+  }
+  if (!any) return "";
+  const bytes = new Uint8Array(PACKED_BYTES);
+  for (let i = 0; i < PACKED_BYTES; i++) {
+    const hi = (cells[i * 2] ?? 0) & 15;
+    const lo = (cells[i * 2 + 1] ?? 0) & 15;
+    bytes[i] = hi << 4 | lo;
+  }
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+function decodePaint(b64) {
+  const cells = new Uint8Array(CELLS);
+  if (!b64) return cells;
+  let bin;
+  try {
+    bin = atob(b64);
+  } catch {
+    return cells;
+  }
+  if (bin.length !== PACKED_BYTES) return cells;
+  for (let i = 0; i < PACKED_BYTES; i++) {
+    const byte = bin.charCodeAt(i);
+    cells[i * 2] = byte >> 4 & 15;
+    cells[i * 2 + 1] = byte & 15;
+  }
+  return cells;
+}
+function clampPaintValue(v) {
+  if (!Number.isFinite(v)) return 0;
+  const n = Math.trunc(v);
+  return n < 0 ? 0 : n > MAX_PALETTE ? MAX_PALETTE : n;
 }
 
 // src/client/sprites.ts
@@ -1063,7 +840,24 @@ var LIVE_STRINGS = {
   "live.error": "the pond is not answering",
   "live.via": "via {keeper}",
   "live.bumps": "{n} bumps",
-  "live.bumps.one": "1 bump"
+  "live.bumps.one": "1 bump",
+  "live.bumps.none": "nobody has bumped it yet",
+  "live.today": "in the pond since today",
+  "live.day": "in the pond for a day",
+  "live.days": "in the pond for {n} days",
+  "live.loading": "finding your duck",
+  "live.saved": "saved",
+  "live.nolink": "That link does not open a duck",
+  "live.nolink.body": "It may have been taken out, or the link may be incomplete.",
+  // Deletion says what goes, in full, before the second tap. There is no
+  // account to restore from and the private link dies with the duck.
+  "live.remove.sure": "Take your duck out for good?",
+  "live.remove.yes": "Yes, take it out",
+  "live.removed": "Your duck is out",
+  "live.removed.body": "Everything you left has been deleted.",
+  // The ten-unreturned cap is an answer, not a failure: it is the poke
+  // dynamic asking for reciprocity.
+  "live.capped": "bump them back first"
 };
 var EN = {
   "arrival.01": "Your fortune",
@@ -1292,6 +1086,405 @@ function t(key, vars) {
   const text = table[key] ?? EN[key] ?? SCOPE_STRINGS[key] ?? LIVE_STRINGS[key] ?? "";
   if (!vars) return text;
   return text.replace(/\{(\w+)\}/g, (whole, name) => vars[name] ?? whole);
+}
+
+// src/client/mine.ts
+function since(created) {
+  const days = Math.floor((Date.now() / 1e3 - created) / 86400);
+  if (days <= 0) return t("live.today");
+  if (days === 1) return t("live.day");
+  return t("live.days", { n: String(days) });
+}
+function mineScreen(opts) {
+  const { root: root2, editKey } = opts;
+  screen(root2, () => {
+    root2.replaceChildren();
+    root2.append(el("div", "p-screen p-centre").appendChild(el("p", "p-body", t("live.loading"))).parentElement);
+  });
+  void (async () => {
+    let duck;
+    try {
+      const res = await api.mine(editKey);
+      duck = res.duck;
+    } catch (err) {
+      return screen(root2, () => {
+        root2.replaceChildren();
+        const wrap2 = el("div", "p-screen p-centre");
+        wrap2.append(
+          el("p", "p-title", t("live.nolink")),
+          el("p", "p-body", t("live.nolink.body")),
+          button("p-btn", t("mine.05"), opts.onPond)
+        );
+        root2.append(wrap2);
+        void err;
+      });
+    }
+    view(duck);
+  })();
+  function preview(duck, size = 8) {
+    const c = el("canvas", "p-preview");
+    c.width = GRID * size;
+    c.height = GRID * size;
+    const ctx = c.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    drawDuck(
+      ctx,
+      {
+        fortune: duck.fortune,
+        tint: duck.tint,
+        paint: decodePaint(duck.paint),
+        stickers: duck.stickers
+      },
+      0,
+      0,
+      size
+    );
+    return c;
+  }
+  function view(duck) {
+    screen(root2, () => {
+      root2.replaceChildren();
+      const wrap2 = el("div", "p-screen p-centre");
+      wrap2.append(
+        el("p", "p-eyebrow", t("mine.01")),
+        preview(duck, 10),
+        el("h1", "p-title", duck.name || t("mine.02"))
+      );
+      const bumps = duck.bumps === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(duck.bumps) });
+      wrap2.append(el("p", "p-body", `${since(duck.created)} · ${bumps}`));
+      const actions = el("div", "p-actions");
+      actions.append(
+        button("p-btn", t("mine.05"), opts.onPond),
+        button("p-btn p-btn-quiet", t("mine.06"), () => opts.onRedecorate(duck)),
+        button("p-btn p-btn-quiet", t("mine.07"), () => settings(duck))
+      );
+      wrap2.append(actions);
+      root2.append(wrap2);
+    });
+  }
+  function settings(duck) {
+    screen(root2, () => {
+      root2.replaceChildren();
+      const wrap2 = el("div", "p-screen");
+      wrap2.append(
+        el("p", "p-eyebrow", t("manage.01")),
+        el("h2", "p-title", t("manage.02"))
+      );
+      let name = duck.name;
+      let message = duck.message;
+      const nameField = field({
+        label: t("sign.03"),
+        placeholder: t("sign.04"),
+        max: 18,
+        value: name,
+        onInput: (v) => {
+          name = v;
+        }
+      });
+      const messageField = field({
+        label: t("sign.06"),
+        placeholder: t("sign.07"),
+        max: 90,
+        value: message,
+        multiline: true,
+        onInput: (v) => {
+          message = v;
+        }
+      });
+      wrap2.append(nameField.wrap, messageField.wrap);
+      const status = el("p", "p-note", "");
+      const save = button("p-btn", t("manage.08"), () => {
+        status.textContent = "";
+        void api.update(editKey, {
+          tint: duck.tint,
+          stickers: duck.stickers,
+          paint: duck.paint,
+          name,
+          message
+        }).then(
+          () => {
+            duck.name = name;
+            duck.message = message;
+            status.textContent = t("live.saved");
+          },
+          (err) => {
+            status.textContent = err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
+          }
+        );
+      });
+      const actions = el("div", "p-actions");
+      actions.append(save, button("p-btn p-btn-quiet", t("mine.05"), () => view(duck)));
+      wrap2.append(actions, status);
+      const danger = el("div", "p-danger");
+      const remove = button("p-btn p-btn-danger", t("manage.09"), () => {
+        danger.replaceChildren(
+          el("p", "p-body", t("live.remove.sure")),
+          // The deck's own sentence, not a paraphrase of it. This is the
+          // promise the contact screen made, repeated at the moment it is
+          // being kept.
+          el("p", "p-note", t("manage.07"))
+        );
+        const confirm = el("div", "p-actions");
+        confirm.append(
+          button("p-btn p-btn-danger", t("live.remove.yes"), () => {
+            void api.remove(editKey).then(
+              () => {
+                try {
+                  localStorage.removeItem("pond.editKey.v1");
+                } catch {
+                }
+                clearDraft();
+                gone();
+              },
+              () => {
+                danger.replaceChildren(el("p", "p-note", t("live.error")));
+              }
+            );
+          }),
+          button("p-btn p-btn-quiet", t("pond.37"), () => settings(duck))
+        );
+        danger.append(confirm);
+      });
+      danger.append(remove);
+      wrap2.append(danger);
+      root2.append(wrap2);
+    });
+  }
+  function gone() {
+    screen(root2, () => {
+      root2.replaceChildren();
+      const wrap2 = el("div", "p-screen p-centre");
+      wrap2.append(
+        el("h2", "p-title", t("live.removed")),
+        el("p", "p-body", t("live.removed.body")),
+        button("p-btn", t("mine.05"), opts.onPond)
+      );
+      root2.append(wrap2);
+    });
+  }
+}
+
+// src/client/camera.ts
+var CELLS2 = [2, 3, 4, 6, 8];
+var HOME_CELL = 4;
+var CAM_UI = 480;
+var CAM_MOMENT = 1100;
+var FLING_TAU = 325;
+var FLING_REST = 4e-3;
+var FLING_MAX_SCREEN_PX_PER_MS = 4;
+var SETTLE_TAU = 90;
+var OVERSCAN = 1.5;
+function easeInOutCubic(p) {
+  return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+}
+function worldSide(frameSpritePx, ducks) {
+  return Math.max(frameSpritePx * 2.4, duckSpread(ducks));
+}
+function duckSpread(ducks) {
+  return Math.ceil(Math.sqrt(Math.max(ducks, 1)) * 34);
+}
+function wrapDelta(a, b, side) {
+  let d = (b - a) % side;
+  if (d > side / 2) d -= side;
+  if (d < -side / 2) d += side;
+  return d;
+}
+function wrap(v, side) {
+  return (v % side + side) % side;
+}
+var PondCamera = class {
+  constructor(cam = { x: 0, y: 0, cell: HOME_CELL }, side = 1) {
+    this.cam = cam;
+    this.side = side;
+  }
+  cam;
+  side;
+  move = null;
+  flung = null;
+  /** Set while fingers are on the glass, so the world holds still. */
+  held = false;
+  /**
+   * Is anything moving the view right now?
+   *
+   * This is what drives BOTH the display-rate redraw and the world freeze,
+   * and it deliberately includes a finger on the glass. Before it did, a
+   * drag fell through to the 83 ms stop-motion path and tracked a thumb at
+   * twelve frames a second — the exact thing POND-CAMERA's two-clocks rule
+   * exists to prevent, and invisible in a screenshot.
+   */
+  get moving() {
+    return this.move !== null || this.flung !== null || this.held || this.settling;
+  }
+  /** Mid-pinch, cell is off the ladder and easing back onto it. */
+  get settling() {
+    return !this.held && Math.abs(this.cam.cell - nearestCell(this.cam.cell)) > 1e-3;
+  }
+  /**
+   * Start a move. Position and zoom travel together, one easing.
+   *
+   * The target is resolved through `wrapDelta`, so gliding to a duck near
+   * the seam goes the short way round rather than scrolling the whole world.
+   */
+  glide(to, ms = CAM_UI, now = performance.now()) {
+    const from = { ...this.cam };
+    const target = {
+      x: to.x === void 0 ? from.x : from.x + wrapDelta(from.x, to.x, this.side),
+      y: to.y === void 0 ? from.y : from.y + wrapDelta(from.y, to.y, this.side),
+      cell: to.cell === void 0 ? from.cell : clampCell(to.cell)
+    };
+    this.move = { from, to: target, start: now, ms };
+  }
+  /** Jump with no animation. For arrival, and for a finger on the glass. */
+  snap(to) {
+    this.move = null;
+    if (to.x !== void 0) this.cam.x = wrap(to.x, this.side);
+    if (to.y !== void 0) this.cam.y = wrap(to.y, this.side);
+    if (to.cell !== void 0) this.cam.cell = clampCell(to.cell);
+  }
+  /** Drag by a world delta, in sprite pixels. Wraps; never clamps. */
+  pan(dxSprite, dySprite) {
+    this.move = null;
+    this.flung = null;
+    this.cam.x = wrap(this.cam.x - dxSprite, this.side);
+    this.cam.y = wrap(this.cam.y - dySprite, this.side);
+  }
+  /**
+   * Zoom about a point, keeping the world under it still.
+   *
+   * The anchor is what makes a pinch feel like handling the water rather
+   * than operating a slider: whatever is between the fingers stays between
+   * the fingers.
+   *
+   * `ax`/`ay` are offsets from the view centre in DEVICE pixels, because
+   * that is what `cell` is denominated in — "device pixels per sprite
+   * pixel". Passing CSS pixels instead under-corrects by exactly the
+   * device-pixel ratio, which on a 2x screen is half: measured as 24.75
+   * world pixels of drift at a 200-pixel anchor, which is
+   * `200 x (2 - 1) x (1/8)` to the decimal.
+   */
+  zoomAbout(nextCell, ax, ay) {
+    this.move = null;
+    const from = this.cam.cell;
+    const to = clampCell(nextCell);
+    if (to === from) return;
+    this.cam.x = wrap(this.cam.x + ax * (1 / from - 1 / to), this.side);
+    this.cam.y = wrap(this.cam.y + ay * (1 / from - 1 / to), this.side);
+    this.cam.cell = to;
+  }
+  /**
+   * Release a flick. Velocity is in WORLD units per millisecond, already
+   * measured across a buffer rather than from the last event — a single
+   * delta is mostly sensor noise, and a finger that paused before lifting
+   * must not fling.
+   */
+  fling(vx, vy, now = performance.now()) {
+    const speed = Math.hypot(vx, vy);
+    if (speed < FLING_REST) return;
+    const cap = FLING_MAX_SCREEN_PX_PER_MS / this.cam.cell / speed;
+    const k = Math.min(1, cap);
+    this.move = null;
+    this.flung = { vx: vx * k, vy: vy * k, last: now };
+  }
+  /** A finger has landed: stop everything and hand over control. */
+  grab() {
+    this.move = null;
+    this.flung = null;
+    this.held = true;
+  }
+  release() {
+    this.held = false;
+  }
+  /** Advance whatever is moving. Returns true while still animating. */
+  tick(now = performance.now()) {
+    if (this.held) return true;
+    if (this.flung) {
+      const f = this.flung;
+      const dt = Math.max(0, now - f.last);
+      f.last = now;
+      const decay = Math.exp(-dt / FLING_TAU);
+      const travel = FLING_TAU * (1 - decay);
+      this.cam.x = wrap(this.cam.x - f.vx * travel, this.side);
+      this.cam.y = wrap(this.cam.y - f.vy * travel, this.side);
+      f.vx *= decay;
+      f.vy *= decay;
+      if (Math.hypot(f.vx, f.vy) < FLING_REST) this.flung = null;
+      this.settle(now, dt);
+      return this.flung !== null || this.settling;
+    }
+    if (!this.move) {
+      if (this.settling) {
+        this.settle(now, 16);
+        return true;
+      }
+      return false;
+    }
+    const m = this.move;
+    const p = Math.min(1, (now - m.start) / m.ms);
+    const e = easeInOutCubic(p);
+    this.cam.x = wrap(m.from.x + (m.to.x - m.from.x) * e, this.side);
+    this.cam.y = wrap(m.from.y + (m.to.y - m.from.y) * e, this.side);
+    this.cam.cell = m.from.cell + (m.to.cell - m.from.cell) * e;
+    if (p >= 1) {
+      this.move = null;
+      return false;
+    }
+    return true;
+  }
+  /**
+   * Ease an off-ladder zoom back onto the nearest rung.
+   *
+   * Mid-pinch the cell is continuous, which is a legal render state — the
+   * remainder is a CSS scale. It is not a legal RESTING state, because at
+   * rest an integer cell is what keeps outlines from crawling.
+   */
+  settle(now, dt) {
+    if (this.held) return;
+    const target = nearestCell(this.cam.cell);
+    const k = 1 - Math.exp(-dt / SETTLE_TAU);
+    this.cam.cell += (target - this.cam.cell) * k;
+    if (Math.abs(this.cam.cell - target) < 1e-3) this.cam.cell = target;
+  }
+  /**
+   * How to draw this frame.
+   *
+   * `renderCell` is the integer the canvas is drawn at; `scale` is the
+   * leftover, applied as a CSS transform about the centre. The remainder is
+   * at most ±25%, which the overscan covers — so the render is always on an
+   * integer grid and the motion is still continuous.
+   */
+  frame() {
+    const nearest = nearestCell(this.cam.cell);
+    return { renderCell: nearest, scale: this.cam.cell / nearest };
+  }
+  /** The next zoom step in or out, or null at the end of the range. */
+  step(direction) {
+    const i = CELLS2.indexOf(nearestCell(this.cam.cell));
+    const next = CELLS2[i + direction];
+    return next ?? null;
+  }
+};
+function nearestCell(cell) {
+  let best = CELLS2[0];
+  let bestD = Infinity;
+  for (const c of CELLS2) {
+    const d = Math.abs(c - cell);
+    if (d < bestD) {
+      bestD = d;
+      best = c;
+    }
+  }
+  return best;
+}
+function clampCell(cell) {
+  return Math.max(CELLS2[0], Math.min(CELLS2[CELLS2.length - 1], cell));
+}
+function project(wx, wy, cam, renderCell, canvasW, canvasH, side) {
+  const dx = wrapDelta(cam.x, wx, side);
+  const dy = wrapDelta(cam.y, wy, side);
+  return {
+    x: Math.round(canvasW / 2 + dx * renderCell),
+    y: Math.round(canvasH / 2 + dy * renderCell)
+  };
 }
 
 // src/client/studio.ts
@@ -2299,32 +2492,100 @@ async function pondScreen(bootstrap) {
     teardown = null;
   };
 }
-function openDuckCard(view, duck) {
-  view.lookAt(duck.id);
-  view.splash(duck.wx, duck.wy);
-  const existing = document.querySelector(".p-card");
-  existing?.remove();
-  const card = el2("div", "p-card");
-  const name = el2("p", "p-card-name", duck.name || t("pond.24"));
-  card.append(name);
-  if (duck.keeper) card.append(el2("p", "p-card-via", t("live.via", { keeper: duck.keeper })));
-  if (duck.message) card.append(el2("p", "p-card-msg", duck.message));
-  const stats = el2("p", "p-card-stats");
-  stats.textContent = `${duck.bumps} · ${duck.rescues}`;
-  card.append(stats);
-  const close = el2("button", "p-btn p-btn-quiet", t("pond.37"));
-  close.type = "button";
-  close.addEventListener("click", () => card.remove());
-  card.append(close);
-  root.append(card);
-}
 function keeperOf(ducks) {
   const names = new Set(ducks.map((d) => d.keeper).filter(Boolean));
   return names.size === 1 ? [...names][0] : null;
 }
+function openDuckCard(view, duck) {
+  view.lookAt(duck.id);
+  view.splash(duck.wx, duck.wy);
+  document.querySelector(".p-card")?.remove();
+  const card = el2("div", "p-card");
+  card.append(el2("p", "p-card-name", duck.name || FORTUNES[duck.fortune]?.jp || ""));
+  if (duck.keeper) card.append(el2("p", "p-card-via", t("live.via", { keeper: duck.keeper })));
+  if (duck.message) card.append(el2("p", "p-card-msg", duck.message));
+  const stats = el2("p", "p-card-stats");
+  const showStats = (bumps) => {
+    stats.textContent = bumps === 0 ? t("live.bumps.none") : bumps === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(bumps) });
+  };
+  showStats(duck.bumps);
+  card.append(stats);
+  const actions = el2("div", "p-actions");
+  const mine = recallEditKey();
+  if (mine && mine !== duck.id) {
+    const bump = button("p-btn", t("pond.38").split(" ·")[0], () => {
+      bump.disabled = true;
+      void api.bump(mine, duck.id).then(
+        (res) => {
+          showStats(res.bumps);
+          view.splash(duck.wx, duck.wy);
+          bump.textContent = "✓";
+        },
+        (err) => {
+          bump.textContent = err instanceof ApiError && err.status === 409 ? t("live.capped") : t("live.error");
+        }
+      );
+    });
+    actions.append(bump);
+  } else if (!mine) {
+    actions.append(el2("span", "p-card-stats", t("code.03")));
+  }
+  actions.append(button("p-btn p-btn-quiet", t("pond.39"), () => reportSheet(card, duck)));
+  actions.append(button("p-btn p-btn-quiet", t("pond.23"), () => card.remove()));
+  card.append(actions);
+  root.append(card);
+}
+function reportSheet(card, duck) {
+  card.replaceChildren();
+  card.append(el2("p", "p-card-name", t("pond.29")));
+  let reason = null;
+  const note = field({ label: t("pond.34"), placeholder: t("pond.35"), max: 200 });
+  const reasons = el2("div", "p-actions");
+  const options = [
+    ["rude", t("pond.30")],
+    ["private", t("pond.31")],
+    ["spam", t("pond.32")],
+    ["other", t("pond.33")]
+  ];
+  const buttons = options.map(
+    ([value, label]) => button("p-chip", label, () => {
+      reason = value;
+      buttons.forEach((b, i) => b.classList.toggle("on", options[i][0] === value));
+      send.disabled = false;
+    })
+  );
+  buttons.forEach((b) => reasons.append(b));
+  const send = button("p-btn", t("pond.36"), () => {
+    if (!reason) return;
+    send.disabled = true;
+    void api.report(duck.id, reason, note.input.value).then(
+      () => {
+        card.replaceChildren(el2("p", "p-card-name", t("code.05")));
+      },
+      () => {
+        card.replaceChildren(el2("p", "p-card-name", t("live.error")));
+      }
+    );
+  });
+  send.disabled = true;
+  const actions = el2("div", "p-actions");
+  actions.append(send, button("p-btn p-btn-quiet", t("pond.37"), () => card.remove()));
+  card.append(reasons, note.wrap, actions);
+}
 async function main() {
   const b = boot();
   setLang(document.documentElement.lang || "en");
+  if (b.view === "edit" && b.editKey) {
+    mineScreen({
+      root,
+      editKey: b.editKey,
+      onPond: () => void pondScreen({}),
+      onRedecorate: () => {
+        void pondScreen({});
+      }
+    });
+    return;
+  }
   await pondScreen(b);
 }
 void main();

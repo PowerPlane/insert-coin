@@ -503,3 +503,24 @@ a.p-btn {
   align-items: center;
   text-decoration: none;
 }
+
+/* ── taking a duck out ────────────────────────────────────────────────── */
+
+/*
+ * Set apart, below everything else, and never the first thing a thumb
+ * finds. It cannot be undone: there is no account to restore from and the
+ * private link dies with the duck.
+ */
+.p-danger {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 2px solid rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.p-btn-danger {
+  background: #a01818;
+  color: var(--p-paper);
+}

@@ -11,7 +11,10 @@
  * from a duck card back to the water rather than navigating.
  */
 
-import { ApiError, api, recallEditKey, type SessionState } from "./api.js";
+import { ApiError, api, recallEditKey, type ReportReason, type SessionState } from "./api.js";
+import { button, field } from "./dom.js";
+import { mineScreen } from "./mine.js";
+import { FORTUNES } from "./sprites.js";
 import { CAM_UI } from "./camera.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, type Placed } from "./pond-view.js";
@@ -219,38 +222,6 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
 }
 
 /**
- * A duck's card.
- *
- * Deliberately not a route: the camera glides to the duck and the card
- * opens over the water, so closing it puts you back where you were.
- */
-function openDuckCard(view: PondView, duck: Placed): void {
-  view.lookAt(duck.id);
-  view.splash(duck.wx, duck.wy);
-
-  const existing = document.querySelector(".p-card");
-  existing?.remove();
-
-  const card = el("div", "p-card");
-  const name = el("p", "p-card-name", duck.name || t("pond.24"));
-  card.append(name);
-
-  if (duck.keeper) card.append(el("p", "p-card-via", t("live.via", { keeper: duck.keeper })));
-  if (duck.message) card.append(el("p", "p-card-msg", duck.message));
-
-  const stats = el("p", "p-card-stats");
-  stats.textContent = `${duck.bumps} · ${duck.rescues}`;
-  card.append(stats);
-
-  const close = el("button", "p-btn p-btn-quiet", t("pond.37"));
-  close.type = "button";
-  close.addEventListener("click", () => card.remove());
-  card.append(close);
-
-  root.append(card);
-}
-
-/**
  * The keeper's name, if every duck from this card agrees on one.
  *
  * The pond payload carries `keeper` per duck rather than per card, so this
@@ -263,13 +234,140 @@ function keeperOf(ducks: PondDuck[]): string | null {
   return names.size === 1 ? [...names][0]! : null;
 }
 
+/**
+ * A duck's card.
+ *
+ * Deliberately not a route: the camera glides to the duck and the card
+ * opens over the water, so closing it puts you back where you were.
+ */
+function openDuckCard(view: PondView, duck: Placed): void {
+  view.lookAt(duck.id);
+  view.splash(duck.wx, duck.wy);
+  document.querySelector(".p-card")?.remove();
+
+  const card = el("div", "p-card");
+  card.append(el("p", "p-card-name", duck.name || FORTUNES[duck.fortune]?.jp || ""));
+  if (duck.keeper) card.append(el("p", "p-card-via", t("live.via", { keeper: duck.keeper })));
+  if (duck.message) card.append(el("p", "p-card-msg", duck.message));
+
+  const stats = el("p", "p-card-stats");
+  const showStats = (bumps: number) => {
+    stats.textContent =
+      bumps === 0 ? t("live.bumps.none")
+      : bumps === 1 ? t("live.bumps.one")
+      : t("live.bumps", { n: String(bumps) });
+  };
+  showStats(duck.bumps);
+  card.append(stats);
+
+  const actions = el("div", "p-actions");
+
+  /**
+   * Bump.
+   *
+   * A bump is a thing one duck does to another, so it needs a duck of your
+   * own — "Make a duck to bump" is the shape of the feature, not a nag. The
+   * server refuses an unauthenticated sender, which is what stops anyone
+   * spending a stranger's ten unreturned bumps for them.
+   */
+  const mine = recallEditKey();
+  if (mine && mine !== duck.id) {
+    const bump = button("p-btn", t("pond.38").split(" ·")[0]!, () => {
+      bump.disabled = true;
+      void api.bump(mine, duck.id).then(
+        (res) => {
+          showStats(res.bumps);
+          view.splash(duck.wx, duck.wy);
+          bump.textContent = "✓";
+        },
+        (err: unknown) => {
+          // 409 is the ten-unreturned cap, which is a real answer rather
+          // than a failure: bump them back to free a slot.
+          bump.textContent =
+            err instanceof ApiError && err.status === 409 ? t("live.capped") : t("live.error");
+        },
+      );
+    });
+    actions.append(bump);
+  } else if (!mine) {
+    actions.append(el("span", "p-card-stats", t("code.03")));
+  }
+
+  actions.append(button("p-btn p-btn-quiet", t("pond.39"), () => reportSheet(card, duck)));
+  actions.append(button("p-btn p-btn-quiet", t("pond.23"), () => card.remove()));
+  card.append(actions);
+  root.append(card);
+}
+
+/**
+ * The report sheet.
+ *
+ * A reason is required and a note is optional, because a bare report tells
+ * whoever reads the queue nothing they can act on — "Rude or abusive" and
+ * "Private details" need different responses, and the second needs one
+ * quickly. Reporting twice is the same report and says so.
+ */
+function reportSheet(card: HTMLElement, duck: Placed): void {
+  card.replaceChildren();
+  card.append(el("p", "p-card-name", t("pond.29")));
+
+  let reason: ReportReason | null = null;
+  const note = field({ label: t("pond.34"), placeholder: t("pond.35"), max: 200 });
+
+  const reasons = el("div", "p-actions");
+  const options: [ReportReason, string][] = [
+    ["rude", t("pond.30")], ["private", t("pond.31")],
+    ["spam", t("pond.32")], ["other", t("pond.33")],
+  ];
+  const buttons = options.map(([value, label]) =>
+    button("p-chip", label, () => {
+      reason = value;
+      buttons.forEach((b, i) => b.classList.toggle("on", options[i]![0] === value));
+      send.disabled = false;
+    }),
+  );
+  buttons.forEach((b) => reasons.append(b));
+
+  const send = button("p-btn", t("pond.36"), () => {
+    if (!reason) return;
+    send.disabled = true;
+    void api.report(duck.id, reason, note.input.value).then(
+      () => {
+        card.replaceChildren(el("p", "p-card-name", t("code.05")));
+      },
+      () => {
+        card.replaceChildren(el("p", "p-card-name", t("live.error")));
+      },
+    );
+  });
+  send.disabled = true;
+
+  const actions = el("div", "p-actions");
+  actions.append(send, button("p-btn p-btn-quiet", t("pond.37"), () => card.remove()));
+  card.append(reasons, note.wrap, actions);
+}
+
 async function main(): Promise<void> {
   const b = boot();
   setLang((document.documentElement.lang as Lang) || "en");
 
-  // Every view is the pond today; the decorating flow, the duck card and
-  // settings land in the next clusters. Keeping one entry point means the
-  // camera never has to be torn down and rebuilt between screens.
+  // `/e/<key>` is the private link — the only credential a duck has, and
+  // the whole reason coming back is worth doing.
+  if (b.view === "edit" && b.editKey) {
+    mineScreen({
+      root,
+      editKey: b.editKey,
+      onPond: () => void pondScreen({}),
+      onRedecorate: () => {
+        // Redecorating routes into the same studio but saves quietly — the
+        // arrival animation belongs to the first arrival only. That is the
+        // next cluster; until then, settings is where edits happen.
+        void pondScreen({});
+      },
+    });
+    return;
+  }
+
   await pondScreen(b);
 }
 

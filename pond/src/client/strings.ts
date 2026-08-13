@@ -66,6 +66,23 @@ export const LIVE_STRINGS = {
   "live.via": "via {keeper}",
   "live.bumps": "{n} bumps",
   "live.bumps.one": "1 bump",
+  "live.bumps.none": "nobody has bumped it yet",
+  "live.today": "in the pond since today",
+  "live.day": "in the pond for a day",
+  "live.days": "in the pond for {n} days",
+  "live.loading": "finding your duck",
+  "live.saved": "saved",
+  "live.nolink": "That link does not open a duck",
+  "live.nolink.body": "It may have been taken out, or the link may be incomplete.",
+  // Deletion says what goes, in full, before the second tap. There is no
+  // account to restore from and the private link dies with the duck.
+  "live.remove.sure": "Take your duck out for good?",
+  "live.remove.yes": "Yes, take it out",
+  "live.removed": "Your duck is out",
+  "live.removed.body": "Everything you left has been deleted.",
+  // The ten-unreturned cap is an answer, not a failure: it is the poke
+  // dynamic asking for reciprocity.
+  "live.capped": "bump them back first",
 } as const;
 
 export const EN = {
