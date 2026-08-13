@@ -20,6 +20,7 @@ import { cardSetup, claimFromUrl } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, type Placed } from "./pond-view.js";
 import { setLang, t, type Lang } from "./strings.js";
+import { watchSize } from "./viewport.js";
 import type { PondDuck } from "./types.js";
 
 interface Bootstrap {
@@ -148,7 +149,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
 
   const fit = () => view.resize();
   fit();
-  window.addEventListener("resize", fit);
+  watchSize(canvas, fit);
   view.start();
   syncZoom();
   // A pinch changes the zoom without touching a button, so the buttons have

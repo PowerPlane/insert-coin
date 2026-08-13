@@ -3059,6 +3059,37 @@ var PondView = class {
   }
 };
 
+// src/client/viewport.ts
+function watchSize(el3, onChange) {
+  const stops = [];
+  const ro = new ResizeObserver(() => onChange());
+  ro.observe(el3);
+  stops.push(() => ro.disconnect());
+  const vv = window.visualViewport;
+  if (vv) {
+    const on = () => onChange();
+    vv.addEventListener("resize", on);
+    vv.addEventListener("scroll", on);
+    stops.push(() => {
+      vv.removeEventListener("resize", on);
+      vv.removeEventListener("scroll", on);
+    });
+  }
+  let dprQuery = null;
+  const watchDpr = () => {
+    dprQuery?.removeEventListener("change", onDpr);
+    dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    dprQuery.addEventListener("change", onDpr);
+  };
+  const onDpr = () => {
+    onChange();
+    watchDpr();
+  };
+  watchDpr();
+  stops.push(() => dprQuery?.removeEventListener("change", onDpr));
+  return () => stops.forEach((stop) => stop());
+}
+
 // src/client/main.ts
 function boot() {
   const el3 = document.getElementById("pond-bootstrap");
@@ -3118,7 +3149,7 @@ async function pondScreen(bootstrap) {
   window.__pond = view;
   const fit = () => view.resize();
   fit();
-  window.addEventListener("resize", fit);
+  watchSize(canvas, fit);
   view.start();
   syncZoom();
   const zoomPoll = window.setInterval(syncZoom, 500);
