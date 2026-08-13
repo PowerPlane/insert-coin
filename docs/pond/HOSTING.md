@@ -136,6 +136,24 @@ static file before any function runs, so an index.html would mean `/` could
 never exchange a tap for a session — and that exchange gets exactly one
 chance. `public/` is therefore committed, not generated, and not gitignored.
 
+### app.js and app.css are `no-cache`, and that is deliberate
+
+They are the application. They change on every deploy and their names never
+do, so a long `max-age` means a deploy is invisible for that long — to a
+returning visitor, and to whoever is trying to check the deploy worked.
+
+This was found the hard way: `max-age=3600` was set on `.js`, a fix was
+deployed and verified with `curl`, and the browser kept running the old
+bundle for another fifty minutes. Two subsequent "fixes" were written for
+symptoms that had already been fixed.
+
+`no-cache` does not mean "do not cache" — it means revalidate first. An
+unchanged file costs a 304, not a download.
+
+**Note for the next time this bites:** a response already stored under the
+OLD policy stays fresh until it expires, whatever the new header says. To
+check a deploy immediately, use a private window or a fresh browser profile.
+
 ### Checking it worked
 
 ```bash

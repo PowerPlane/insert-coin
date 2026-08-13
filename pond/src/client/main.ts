@@ -77,6 +77,16 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     onTapWater: (wx, wy) => view.splash(wx, wy),
   });
 
+  // A handle for looking at the real thing in a real browser. The pond is
+  // canvas, so nothing about its state is visible in the DOM inspector —
+  // and reasoning about geometry instead of measuring it has already cost
+  // two wrong fixes.
+  //
+  // NOT `window.pond`: an element with id="pond" already claims that name
+  // through the legacy named-access behaviour, so the assignment silently
+  // did nothing and the handle read back as an HTMLDivElement.
+  (window as unknown as { __pond?: unknown }).__pond = view;
+
   const fit = () => view.resize();
   fit();
   window.addEventListener("resize", fit);

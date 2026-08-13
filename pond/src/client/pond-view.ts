@@ -20,6 +20,7 @@ import {
   CAM_MOMENT,
   CAM_UI,
   HOME_CELL,
+  duckSpread,
   OVERSCAN,
   PondCamera,
   project,
@@ -77,10 +78,23 @@ function hashId(id: string): number {
  * a rendering bug.
  */
 export function placeDucks(ducks: PondDuck[], side: number): Placed[] {
+  // Ducks occupy the population area, centred in the world — NOT the whole
+  // world, which has a floor of 2.4 frames so there is somewhere to drag to.
+  // Scattering across all of it put three ducks in a 1036-pixel world seen
+  // through a 432-pixel window: an empty screen, and no way to know which
+  // way to look.
+  const spread = Math.min(duckSpread(ducks.length), side);
+  const origin = (side - spread) / 2;
+
   const placed: Placed[] = ducks.map((d) => {
     const a = hashId(d.id);
     const b = hashId(d.id + "y");
-    return { ...d, wx: a * side, wy: b * side, flip: hashId(d.id + "f") > 0.5 };
+    return {
+      ...d,
+      wx: origin + a * spread,
+      wy: origin + b * spread,
+      flip: hashId(d.id + "f") > 0.5,
+    };
   });
 
   // A few relaxation passes. More than this and it stops being worth it.
@@ -130,6 +144,9 @@ export class PondView {
   private ripples: Ripple[] = [];
   private frame = 0;
   private lastWorldTick = 0;
+  private lastDebug = 0;
+  private readonly debugging =
+    typeof location !== "undefined" && location.search.includes("debug");
   private raf = 0;
   private running = false;
   /** Visible frame in sprite pixels — NOT the overscanned canvas. */
@@ -142,8 +159,36 @@ export class PondView {
   }
 
   setDucks(ducks: PondDuck[]): void {
+    const wasEmpty = this.ducks.length === 0;
     this.camera.side = worldSide(Math.max(this.frameSprite.w, this.frameSprite.h), ducks.length);
     this.ducks = placeDucks(ducks, this.camera.side);
+    // Open looking at the ducks. The camera starts at the world origin,
+    // which is a corner — and a corner of a pond 2.4 frames wide is water
+    // with nothing in it.
+    if (wasEmpty) this.camera.snap({ x: this.camera.side / 2, y: this.camera.side / 2 });
+  }
+
+  /** What the view actually believes, for debugging against a real browser. */
+  debug(): Record<string, unknown> {
+    const { renderCell, scale } = this.camera.frame();
+    return {
+      cam: { ...this.camera.cam },
+      side: this.camera.side,
+      renderCell,
+      scale,
+      frameSprite: this.frameSprite,
+      canvas: [this.opts.canvas.width, this.opts.canvas.height],
+      water: this.water ? [this.water.cols, this.water.rows] : null,
+      ducks: this.ducks.map((d) => ({
+        id: d.id,
+        wx: Math.round(d.wx),
+        wy: Math.round(d.wy),
+        at: project(
+          d.wx, d.wy, this.camera.cam, renderCell,
+          this.opts.canvas.width, this.opts.canvas.height, this.camera.side,
+        ),
+      })),
+    };
   }
 
   /** Find a duck by id, for the arrival zoom and the whistle. */
@@ -161,10 +206,15 @@ export class PondView {
    */
   resize(): void {
     const el = this.opts.canvas;
+    // The ELEMENT is already 150% of the stage — `width: 150%` in app.css.
+    // So the backing store is its own rect at device resolution, and
+    // multiplying by OVERSCAN again here made the canvas 2.25x too large,
+    // which is 2.25x too small a duck. Overscan lives in exactly one place:
+    // the stylesheet.
     const rect = el.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.round(rect.width * dpr * OVERSCAN);
-    const h = Math.round(rect.height * dpr * OVERSCAN);
+    const w = Math.round(rect.width * dpr);
+    const h = Math.round(rect.height * dpr);
     if (el.width === w && el.height === h) return;
 
     el.width = w;
@@ -172,9 +222,12 @@ export class PondView {
     this.ctx.imageSmoothingEnabled = false;
 
     const cell = this.camera.frame().renderCell;
+    // The VISIBLE frame is the stage, which is the element divided back
+    // down by the overscan — not the element itself. Measuring against the
+    // element is what put a duck 5% down the screen, behind the notch.
     this.frameSprite = {
-      w: (rect.width * dpr) / cell,
-      h: (rect.height * dpr) / cell,
+      w: (rect.width / OVERSCAN) * dpr / cell,
+      h: (rect.height / OVERSCAN) * dpr / cell,
     };
     // Water is drawn at one water-pixel per sprite-pixel and scaled up.
     this.water = createWaterBuffer(Math.ceil(w / cell), Math.ceil(h / cell));
@@ -198,6 +251,19 @@ export class PondView {
       }
 
       this.draw(now);
+
+      // Publish state into the DOM, throttled, behind `?debug`.
+      //
+      // The pond is canvas, so none of this is inspectable otherwise. It
+      // goes in the DOM rather than on `window` because a browser
+      // automation tool evaluates in an ISOLATED WORLD: it shares the DOM
+      // but not page globals, so a `window` handle reads back as undefined
+      // from outside — and `window.pond` is doubly useless, because an
+      // element with id="pond" already claims that name.
+      if (this.debugging && now - this.lastDebug > 400) {
+        this.lastDebug = now;
+        this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
+      }
 
       // Display rate while moving or rippling; stop-motion otherwise.
       if (camMoving || this.ripples.length) {
@@ -293,9 +359,11 @@ export class PondView {
 
     this.ripples = this.ripples.filter((r) => now - r.t < RIPPLE_MS);
 
-    // The sub-integer remainder, as a CSS scale about the centre. The
-    // render stays on an integer grid; the motion stays continuous.
-    canvas.style.transform = `translate(-50%, -50%) scale(${scale / OVERSCAN})`;
+    // The sub-integer remainder ONLY. The render stays on an integer grid;
+    // the motion stays continuous. Dividing by OVERSCAN here was wrong —
+    // the element's 150% width already places it, and scaling it back down
+    // shrank every duck by a further third on top of the backing-store bug.
+    canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
   }
 
   /** Drag to pan, tap to open. A tap is a press that did not travel far. */

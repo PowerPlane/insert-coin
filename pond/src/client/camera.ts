@@ -75,7 +75,25 @@ export function easeInOutCubic(p: number): number {
  * it all".
  */
 export function worldSide(frameSpritePx: number, ducks: number): number {
-  return Math.max(frameSpritePx * 2.4, Math.ceil(Math.sqrt(Math.max(ducks, 1)) * 34));
+  return Math.max(frameSpritePx * 2.4, duckSpread(ducks));
+}
+
+/**
+ * How far the POPULATION spreads, which is not the same as how far you can
+ * pan.
+ *
+ * `worldSide` has a 2.4x floor so there is somewhere to drag to even when
+ * the pond is nearly empty. Scattering ducks across all of that is a
+ * different thing, and doing it put three ducks in a 1036-pixel world with
+ * a 432-pixel window — an empty screen and no way to know which way to
+ * look.
+ *
+ * So ducks occupy this much, centred, and the extra world is water around
+ * them. More cards means a bigger pond, never a more crowded one; an empty
+ * pond means a small crowd in a large lake, not three specks in a desert.
+ */
+export function duckSpread(ducks: number): number {
+  return Math.ceil(Math.sqrt(Math.max(ducks, 1)) * 34);
 }
 
 /**

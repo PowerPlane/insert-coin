@@ -99,7 +99,10 @@ function easeInOutCubic(p) {
   return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
 }
 function worldSide(frameSpritePx, ducks) {
-  return Math.max(frameSpritePx * 2.4, Math.ceil(Math.sqrt(Math.max(ducks, 1)) * 34));
+  return Math.max(frameSpritePx * 2.4, duckSpread(ducks));
+}
+function duckSpread(ducks) {
+  return Math.ceil(Math.sqrt(Math.max(ducks, 1)) * 34);
 }
 function wrapDelta(a, b, side) {
   let d = (b - a) % side;
@@ -838,10 +841,17 @@ function hashId(id) {
   return (h >>> 0) / 4294967296;
 }
 function placeDucks(ducks, side) {
+  const spread = Math.min(duckSpread(ducks.length), side);
+  const origin = (side - spread) / 2;
   const placed = ducks.map((d) => {
     const a = hashId(d.id);
     const b = hashId(d.id + "y");
-    return { ...d, wx: a * side, wy: b * side, flip: hashId(d.id + "f") > 0.5 };
+    return {
+      ...d,
+      wx: origin + a * spread,
+      wy: origin + b * spread,
+      flip: hashId(d.id + "f") > 0.5
+    };
   });
   for (let pass = 0; pass < 4; pass++) {
     for (let i = 0; i < placed.length; i++) {
@@ -883,13 +893,44 @@ var PondView = class {
   ripples = [];
   frame = 0;
   lastWorldTick = 0;
+  lastDebug = 0;
+  debugging = typeof location !== "undefined" && location.search.includes("debug");
   raf = 0;
   running = false;
   /** Visible frame in sprite pixels — NOT the overscanned canvas. */
   frameSprite = { w: 0, h: 0 };
   setDucks(ducks) {
+    const wasEmpty = this.ducks.length === 0;
     this.camera.side = worldSide(Math.max(this.frameSprite.w, this.frameSprite.h), ducks.length);
     this.ducks = placeDucks(ducks, this.camera.side);
+    if (wasEmpty) this.camera.snap({ x: this.camera.side / 2, y: this.camera.side / 2 });
+  }
+  /** What the view actually believes, for debugging against a real browser. */
+  debug() {
+    const { renderCell, scale } = this.camera.frame();
+    return {
+      cam: { ...this.camera.cam },
+      side: this.camera.side,
+      renderCell,
+      scale,
+      frameSprite: this.frameSprite,
+      canvas: [this.opts.canvas.width, this.opts.canvas.height],
+      water: this.water ? [this.water.cols, this.water.rows] : null,
+      ducks: this.ducks.map((d) => ({
+        id: d.id,
+        wx: Math.round(d.wx),
+        wy: Math.round(d.wy),
+        at: project(
+          d.wx,
+          d.wy,
+          this.camera.cam,
+          renderCell,
+          this.opts.canvas.width,
+          this.opts.canvas.height,
+          this.camera.side
+        )
+      }))
+    };
   }
   /** Find a duck by id, for the arrival zoom and the whistle. */
   find(id) {
@@ -907,16 +948,16 @@ var PondView = class {
     const el2 = this.opts.canvas;
     const rect = el2.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.round(rect.width * dpr * OVERSCAN);
-    const h = Math.round(rect.height * dpr * OVERSCAN);
+    const w = Math.round(rect.width * dpr);
+    const h = Math.round(rect.height * dpr);
     if (el2.width === w && el2.height === h) return;
     el2.width = w;
     el2.height = h;
     this.ctx.imageSmoothingEnabled = false;
     const cell = this.camera.frame().renderCell;
     this.frameSprite = {
-      w: rect.width * dpr / cell,
-      h: rect.height * dpr / cell
+      w: rect.width / OVERSCAN * dpr / cell,
+      h: rect.height / OVERSCAN * dpr / cell
     };
     this.water = createWaterBuffer(Math.ceil(w / cell), Math.ceil(h / cell));
     this.camera.side = worldSide(
@@ -935,6 +976,10 @@ var PondView = class {
         this.frame++;
       }
       this.draw(now);
+      if (this.debugging && now - this.lastDebug > 400) {
+        this.lastDebug = now;
+        this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
+      }
       if (camMoving || this.ripples.length) {
         this.raf = requestAnimationFrame(loop);
       } else {
@@ -1022,7 +1067,7 @@ var PondView = class {
       );
     }
     this.ripples = this.ripples.filter((r) => now - r.t < RIPPLE_MS);
-    canvas.style.transform = `translate(-50%, -50%) scale(${scale / OVERSCAN})`;
+    canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
   }
   /** Drag to pan, tap to open. A tap is a press that did not travel far. */
   attachGestures() {
@@ -1371,6 +1416,7 @@ async function pondScreen(bootstrap) {
     onTapDuck: (d) => openDuckCard(view, d),
     onTapWater: (wx, wy) => view.splash(wx, wy)
   });
+  window.__pond = view;
   const fit = () => view.resize();
   fit();
   window.addEventListener("resize", fit);
