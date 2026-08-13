@@ -42,7 +42,14 @@ async function count(db: Db, sql: string, ...args: unknown[]): Promise<number> {
   return Number(row?.n ?? -1);
 }
 
-const db = await connect(url, process.env.TURSO_TOKEN);
+let db;
+try {
+  db = await connect(url, process.env.TURSO_TOKEN);
+} catch (err) {
+  const { explainConnectionFailure } = await import("../src/worker/env.js");
+  console.error(`\n${explainConnectionFailure(url, err)}`);
+  process.exit(1);
+}
 
 try {
   // Reported, not asserted. This is the fact Phase 1a could not check; now

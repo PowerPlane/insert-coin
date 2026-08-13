@@ -20,7 +20,14 @@ if (!url) {
 }
 
 const sql = readFileSync(new URL("../schema/0001_init.sql", import.meta.url), "utf8");
-const db = await connect(url, process.env.TURSO_TOKEN);
+let db;
+try {
+  db = await connect(url, process.env.TURSO_TOKEN);
+} catch (err) {
+  const { explainConnectionFailure } = await import("../src/worker/env.js");
+  console.error(`\n${explainConnectionFailure(url, err)}`);
+  process.exit(1);
+}
 
 let applied = 0;
 for (const stmt of statements(sql)) {

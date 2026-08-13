@@ -30,6 +30,47 @@ function required(name: string): string {
   return value;
 }
 
+/**
+ * Turn a connection failure into something a person can act on.
+ *
+ * These run at a bench, with a card in hand, from a shell where the
+ * likeliest mistake by far is a mistyped or expired token — and libSQL
+ * reports that as a bare `SERVER_ERROR: HTTP status 400` on top of a
+ * fifteen-line stack trace, which names neither the cause nor the fix.
+ */
+export function explainConnectionFailure(url: string, err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  const token = process.env.TURSO_TOKEN ?? "";
+
+  // 400 is what Turso returns for a MALFORMED token, which is the common
+  // case here — 401/403 are for a well-formed one that has been revoked.
+  // The first version of this checked only 401/403 and therefore stayed
+  // silent on the exact mistake it was written for.
+  if (/\b40[0-3]\b/.test(message) || /auth|token/i.test(message)) {
+    const looksLikePlaceholder = /[<>]/.test(token) || token.trim() === "";
+    return [
+      `Turso refused the connection to ${url.replace(/\?.*$/, "")}.`,
+      "",
+      looksLikePlaceholder
+        ? "TURSO_TOKEN is empty or still a placeholder — the shell pasted the" +
+          "\n  angle brackets rather than a token."
+        : "TURSO_TOKEN was rejected. It may have been invalidated.",
+      "",
+      "  Let the shell fetch it, so there is nothing to paste:",
+      "",
+      '    TURSO_TOKEN="$(turso db tokens create pond)" \\',
+      "      npm run <the command you just ran>",
+      "",
+    ].join("\n");
+  }
+
+  if (/ENOTFOUND|EAI_AGAIN|fetch failed/i.test(message)) {
+    return `Could not reach ${url}. Check the URL and the network.`;
+  }
+
+  return message;
+}
+
 export function db(): Promise<Db> {
   if (!connecting) {
     const url = required("TURSO_URL");

@@ -16,6 +16,7 @@
 import { readFileSync } from "node:fs";
 import { connect } from "../src/db/libsql.js";
 import { importCards, parseCardsCsv } from "../src/card/cards-csv.js";
+import { explainConnectionFailure } from "../src/worker/env.js";
 import type { Env } from "../src/worker/types.js";
 
 const path = process.argv[2];
@@ -44,7 +45,13 @@ if (rows.length === 0) {
   process.exit(0);
 }
 
-const db = await connect(url, process.env.TURSO_TOKEN);
+let db;
+try {
+  db = await connect(url, process.env.TURSO_TOKEN);
+} catch (err) {
+  console.error(`\n${explainConnectionFailure(url, err)}`);
+  process.exit(1);
+}
 const env: Env = { DB: db, SESSION_SECRET: "", ADMIN_PASSWORD: "" };
 
 const result = await importCards(env, rows);
