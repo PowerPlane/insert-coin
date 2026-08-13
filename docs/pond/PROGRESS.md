@@ -4,7 +4,7 @@ The tracker. Tick things off here as they land; `BUILD-PLAN.md` is the
 detail behind each line.
 
 **Branch** `pond` · **PR** [#11](https://github.com/PowerPlane/insert-coin/pull/11)
-· **Tests** 167 + 100 native C · **Live** <https://ducky.davidyang.work>
+· **Tests** 180 + 100 native C · **Live** <https://ducky.davidyang.work>
 
 ---
 
@@ -26,9 +26,9 @@ flashed identically, each giving itself an identity on first boot.
 | **1a** | Turso adapter | ✅ **done** | D1-shaped interface, batch, `meta.changes`. |
 | **1b** | Port to Vercel | ✅ **done, deployed** | Contract frozen, routes ported. Live and verified end to end. |
 | **2** | One real card | ✅ **done** | Two cards flashed, recorded, tapped, imported. Attribution proved on production. |
-| **3** | The client | 🟡 **nearly done** | Pond, camera, making flow, return path, redecorate and the whistle — all live. Only the per-fortune arrival animations remain. |
-| **4** | Admin | ⬜ | `/pondkeeper` — ducks, contacts, cards, CSV. |
-| **5** | Keepers | ⬜ | Blow gesture, signed claim, Card setup. Schema is already in. |
+| **3** | The client | ✅ **done** | All ten screens, the camera with inertia and pinch, the whistle, and the four arrivals. Matched to the prototype. |
+| **4** | Admin | ✅ **done** | `/pondkeeper` — ducks, contacts, cards, CSV, behind the password. |
+| **5** | Keepers | ⬜ next | Blow gesture, signed claim, Card setup. Schema and token verification are already in. |
 | **6** | 繁體中文 | ⬜ | ~80 strings. `lang` negotiation already works. |
 
 ---
@@ -107,11 +107,30 @@ a ~120 ms buffer so a deliberate pause does not fling, closed-form travel
 so a dropped frame does not lose distance, and a pinch anchored on the
 centroid. No rubber-banding, ever — the world wraps, so there are no edges.
 
-**Left in Phase 3:** the per-fortune arrival animations. FLOW.md § Arrivals
-specifies four, built on the sparkle engine already on byproductlab.com —
-大吉 fireworks, 小吉 flowers that leave tappable petals for ~3 minutes,
-末吉 a sun a cloud drifts over, and 凶 arriving already alight until the
-water puts it out.
+### The arrivals, and the visual match
+
+All four are in: 大吉 fireworks (seven shapes, two waves, the loudest by a
+tested margin), 小吉 flowers leaving petals for three minutes, 末吉 a sun a
+cloud drifts over, 凶 already alight until the water puts it out. The
+sparkle engine's 170 ms hold is tested by the property it exists for —
+there is a moment when every pixel of a shape is on at once.
+
+**The screens were rebuilt against the prototype**, which had never actually
+been opened: the palette, the gold buttons with their 4px shadow, the
+two-step pixel corner, the uppercase mono voice, the serif headings, the
+typefaces, and — most of all — sheets that rise over water that stays
+visible rather than a flat panel that replaces it.
+
+### Phase 4 — done
+
+`/pondkeeper`, behind the password, with the path treated as convenience
+rather than a secret. Ducks (hide, unhide, clear reports), Contacts (the one
+place a contact is ever read, with its consent stated in names), Cards, and
+a CSV generated on demand rather than synced.
+
+**The first migration.** `0001` closed when the database went live, so admin
+state is `0002` and `db:apply` is a migration runner with a ledger — plus a
+baseline step for the production database, which predates the ledger.
 
 ---
 
