@@ -282,6 +282,13 @@ that class of gap closes.
 
 ## Open questions
 
+- **KS0KEKBX is a bench card, deliberately left broken.** Flashed before
+  `secrets.h` was filled in, so its claim token is signed with the all-zero
+  placeholder, and it is not in `cards.csv`. Harmless as a test card — it
+  still deals fortunes, its ducks are just unattributed — but it must be
+  erased and reflashed before it goes to anybody.
+  `npm run cards:check` identifies it in three seconds.
+
 None blocking. Everything below has a decision; these are worth revisiting
 once something is running.
 
