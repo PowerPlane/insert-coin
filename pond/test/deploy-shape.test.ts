@@ -73,13 +73,26 @@ describe("the shape Vercel's CDN requires", () => {
     expect(existsSync(join(root, "public", "index.html"))).toBe(false);
   });
 
-  it("the assets the shell asks for are actually there", () => {
+  it("every asset the page asks for is actually there", () => {
     // `public/` used to be gitignored, from when Wrangler generated it. On
     // Vercel it is the output directory and nothing generates it, so a
     // missing file here is a blank page in production and a clean local run.
+    //
+    // Follows CSS @import as well as the shell's own tags: the typefaces
+    // are reached that way, and a stylesheet that 404s costs the whole
+    // visual identity while every test still passes.
+    const wanted = new Set<string>();
+
     const shell = readFileSync(join(root, "src", "worker", "shell.ts"), "utf8");
-    for (const m of shell.matchAll(/(?:href|src)="(\/[^"]+)"/g)) {
-      const asset = m[1] ?? "";
+    for (const m of shell.matchAll(/(?:href|src)="(\/[^"]+)"/g)) wanted.add(m[1]!);
+
+    for (const asset of [...wanted]) {
+      if (!asset.endsWith(".css")) continue;
+      const css = readFileSync(join(root, "public", asset), "utf8");
+      for (const m of css.matchAll(/@import\s+url\("([^"]+)"\)/g)) wanted.add(m[1]!);
+    }
+
+    for (const asset of wanted) {
       expect(existsSync(join(root, "public", asset)), `missing public${asset}`).toBe(true);
     }
   });

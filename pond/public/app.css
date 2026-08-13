@@ -1,23 +1,67 @@
 /*
  * The pond.
  *
- * Written against docs/pond/UI.md, which is the authority — where this and
- * a screen disagree, one of the two is wrong and it is usually this.
+ * ══ THE PROTOTYPE IS THE SPEC ══
+ * Every token here is lifted from tools/prototype-flow.html. The first
+ * version of this file was written from UI.md alone and drifted badly:
+ * dark buttons where the prototype has gold, cream paper where it uses a
+ * cool near-white, a one-step corner where it uses a two-step staircase,
+ * sentence case where it uses uppercase mono with wide tracking.
  *
- * Mobile-first is not a preference here. Every visitor arrives by tapping a
- * card with a phone; desktop is a courtesy.
+ * None of that reads as "slightly off". It reads as a different product.
+ *
+ * Where this and UI.md disagree, UI.md wins — its own rule. Where UI.md is
+ * silent, the prototype decides, because it is what was reviewed.
  */
 
-:root {
-  /* Brand sky-blue, the colour the product photos are anchored to. */
-  --p-water: #8ecae6;
-  --p-ink: #123;
-  --p-paper: #fdfcf7;
-  --p-shadow: #0a2a3a;
+@import url("/fonts.css");
 
-  /* Everything a finger touches is at least this tall. UI.md audited six
-     violations into existence by writing this number down. */
-  --p-tap: 44px;
+:root {
+  --p-water: #8ecae6;
+  --p-ink: #0b3d52;
+  --p-soft: #2d6076;
+  --p-faint: #5b8699;
+  --p-surface: #f2fbfe;
+
+  /* The duck's own yellow is the primary action, its shadow 4px below. */
+  --duck: #ffca00;
+  --duck-shadow: #c08508;
+  --duck-text: #4a3a06;
+
+  --quiet: #dff2fb;
+  --quiet-shadow: #b9d9e6;
+
+  /* Warm, not alarming: it is somebody's own duck, not a system action. */
+  --danger: #ffdcd6;
+  --danger-shadow: #efb0a5;
+  --danger-text: #8f2b20;
+
+  --focus: #3fb5d8;
+
+  --mono: "Zen Kaku Gothic New", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --serif: "Zen Kaku Gothic New", "Young Serif", Georgia, serif;
+  --display: "Dela Gothic One", "Zen Kaku Gothic New", sans-serif;
+  --body: "Zen Kaku Gothic New", system-ui, sans-serif;
+
+  /*
+   * A two-step 3px staircase, not a radius. A 99px pill next to a 24x24
+   * sprite is the one shape in the pond that could not have been drawn on
+   * the grid; the staircase shares the water's edge vocabulary.
+   */
+  --px-corner: polygon(
+    0 6px, 3px 6px, 3px 3px, 6px 3px, 6px 0,
+    calc(100% - 6px) 0, calc(100% - 6px) 3px, calc(100% - 3px) 3px,
+    calc(100% - 3px) 6px, 100% 6px,
+    100% calc(100% - 6px), calc(100% - 3px) calc(100% - 6px),
+    calc(100% - 3px) calc(100% - 3px), calc(100% - 6px) calc(100% - 3px),
+    calc(100% - 6px) 100%,
+    6px 100%, 6px calc(100% - 3px), 3px calc(100% - 3px),
+    3px calc(100% - 6px), 0 calc(100% - 6px)
+  );
+
+  /* Everything a finger touches. UI.md's audit found six violations by
+     writing this number down. */
+  --tap: 44px;
 }
 
 * {
@@ -32,15 +76,15 @@ body {
   overflow: hidden; /* the pond pans; the page does not scroll */
   background: var(--p-water);
   color: var(--p-ink);
-  font: 16px/1.4 ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
-  /* Correct letterforms per language — UI.md § 8. Several characters are
-     drawn differently in Japanese and Traditional Chinese, and a Chinese
-     reader with a Japanese face in the stack gets the wrong ones. */
+  font: 16px/1.45 var(--body);
   font-synthesis: none;
 }
 
+/* UI.md § 8: several characters are drawn differently in Japanese and
+   Traditional Chinese. A Chinese reader with a Japanese face gets the
+   wrong ones. */
 html[lang="zh-Hant"] body {
-  font-family: ui-monospace, "PingFang TC", "Noto Sans CJK TC", "Microsoft JhengHei", monospace;
+  font-family: "PingFang TC", "Noto Sans CJK TC", "Microsoft JhengHei", var(--body);
 }
 
 #pond {
@@ -57,11 +101,8 @@ html[lang="zh-Hant"] body {
   overflow: hidden;
 }
 
-/*
- * The canvas is drawn at 150% of its frame and clipped, so a camera
- * translate always has real rendered water to move into. It is centred by
- * transform, and the camera writes the scale — see PondView.draw.
- */
+/* Drawn at 150% and clipped, so a camera translate always has real
+   rendered water to move into. The camera writes the scale. */
 .p-canvas {
   position: absolute;
   left: 50%;
@@ -70,7 +111,47 @@ html[lang="zh-Hant"] body {
   height: 150%;
   transform: translate(-50%, -50%);
   image-rendering: pixelated;
-  touch-action: none; /* the canvas handles its own pan */
+  touch-action: none;
+}
+
+/* ── shared shapes ────────────────────────────────────────────────────── */
+
+/*
+ * Anything that sits on the water or holds content: the count, chips,
+ * cards, sheets, fields. One rule rather than six copies of a clip-path.
+ */
+.p-count,
+.p-chip,
+.p-tab,
+.p-icon-btn,
+.p-swatch,
+.p-sticker,
+.p-input,
+.p-linkbox,
+.p-card,
+.p-sheet {
+  clip-path: var(--px-corner);
+}
+
+/* Labels, counts, buttons — the uppercase mono voice the prototype uses
+   for everything that is chrome rather than content. */
+.p-count,
+.p-chip,
+.p-tab,
+.p-btn,
+.p-eyebrow,
+.p-field-label,
+.p-nav-title,
+.p-hint,
+.p-card-via,
+.p-card-stats {
+  font-family: var(--mono);
+  text-transform: uppercase;
+}
+
+:where(.p-btn, .p-chip, .p-tab, .p-icon-btn, .p-swatch, .p-sticker, .p-count):focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--focus);
 }
 
 /* ── the HUD ──────────────────────────────────────────────────────────── */
@@ -78,161 +159,138 @@ html[lang="zh-Hant"] body {
 .p-hud {
   position: absolute;
   top: max(12px, env(safe-area-inset-top));
-  left: 12px;
-  right: 12px;
+  left: 16px;
+  right: 16px;
   display: flex;
+  justify-content: space-between;
   gap: 8px;
   pointer-events: none;
+  z-index: 30;
 }
 
 .p-hud > * {
   pointer-events: auto;
 }
 
-/*
- * The count IS the whistle — tapping it opens the gather list. That is why
- * it is a button and not a label, and why it carries no extra chrome over
- * the water.
- */
+/* The count IS the whistle — tapping it opens the gather list. */
 .p-count {
-  min-height: var(--p-tap);
-  padding: 0 14px;
-  border: 0;
-  background: var(--p-paper);
-  color: var(--p-ink);
-  font: inherit;
-  font-weight: 600;
+  all: unset;
   cursor: pointer;
-  /* The pixel-cut corner, UI.md's house shape. clip-path clips box-shadow
-     too, which is why the depth below is a sibling rather than a shadow. */
-  clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px,
-                     100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                     calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px));
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0 0.8rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--p-ink);
+  background: var(--p-surface);
 }
 
 /* ── buttons ──────────────────────────────────────────────────────────── */
 
-.p-cta {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: max(16px, env(safe-area-inset-bottom));
-  display: flex;
-  justify-content: center;
-  gap: 8px;
+/*
+ * A button is a physical thing: face on ::before, 4px shadow on ::after,
+ * and pressing moves the face down onto the shadow.
+ *
+ * The depth is a pseudo-element rather than a box-shadow because clip-path
+ * clips box-shadow too — UI.md § 4 warns about exactly this.
+ */
+.p-btn {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-height: var(--tap);
+  padding: 0.85rem 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: var(--duck-text);
 }
 
-.p-btn {
-  min-height: var(--p-tap);
-  padding: 0 20px;
-  border: 0;
-  background: var(--p-ink);
-  color: var(--p-paper);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px,
-                     100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                     calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px));
+.p-btn::before,
+.p-btn::after {
+  content: "";
+  position: absolute;
+  clip-path: var(--px-corner);
+}
+
+.p-btn::before {
+  inset: 0;
+  background: var(--duck);
+  z-index: -1;
+}
+
+.p-btn::after {
+  inset: 4px 0 -4px 0;
+  background: var(--duck-shadow);
+  z-index: -2;
 }
 
 .p-btn:active {
-  /* 4px is the depth the 3D buttons draw with; pressing takes it away. */
-  transform: translateY(2px);
+  transform: translateY(3px);
 }
 
-.p-btn-quiet {
-  background: var(--p-paper);
+.p-btn:active::after {
+  inset: 1px 0 -1px 0;
+}
+
+.p-btn[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.p-btn-quiet { color: var(--p-ink); }
+.p-btn-quiet::before { background: var(--quiet); }
+.p-btn-quiet::after { background: var(--quiet-shadow); }
+
+.p-btn-danger { color: var(--danger-text); }
+.p-btn-danger::before { background: var(--danger); }
+.p-btn-danger::after { background: var(--danger-shadow); }
+
+/* A chip is a button without the depth: a choice, not a commitment. */
+.p-chip,
+.p-tab {
+  all: unset;
+  cursor: pointer;
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0 0.85rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.09em;
   color: var(--p-ink);
+  background: var(--quiet);
 }
 
-/* ── a duck's card ────────────────────────────────────────────────────── */
-
-.p-card {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
-  padding: 16px;
-  background: var(--p-paper);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  clip-path: polygon(0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px,
-                     100% 6px, 100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px),
-                     calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px));
+.p-tab {
+  flex: 1;
+  font-size: 0.66rem;
 }
 
-.p-card p {
-  margin: 0;
-}
-
-.p-card-name {
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.p-card-via,
-.p-card-stats {
-  opacity: 0.65;
-  font-size: 0.85rem;
-}
-
-/* A message is somebody else's words: let them wrap, never let them
-   overflow into the layout. */
-.p-card-msg {
-  overflow-wrap: anywhere;
-}
-
-.p-card .p-btn {
-  margin-top: 8px;
-  align-self: flex-start;
-}
-
-/*
- * Reduced motion never removes information — UI.md § 5. A reduced-motion
- * bump still bumps, it just does not travel. The canvas honours this in
- * render.ts; here it only stops the button depth from animating.
- */
-@media (prefers-reduced-motion: reduce) {
-  .p-btn:active {
-    transform: none;
-  }
-}
-
-/* ── zoom ─────────────────────────────────────────────────────────────── */
-
-/*
- * Pinch and wheel are the direct way to zoom; these are the discoverable
- * one, and the only one for somebody who cannot pinch. Bottom right, out of
- * the way of a thumb reaching for the CTA.
- */
-.p-zoom {
-  position: absolute;
-  right: 12px;
-  bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.p-chip.on,
+.p-tab.on {
+  background: var(--duck);
+  color: var(--duck-text);
 }
 
 .p-icon-btn {
-  width: var(--p-tap);
-  height: var(--p-tap);
-  border: 0;
-  background: var(--p-paper);
-  color: var(--p-ink);
-  font: inherit;
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1;
+  all: unset;
   cursor: pointer;
-  clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px,
-                     100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                     calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px));
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--p-ink);
+  background: var(--p-surface);
 }
 
-/* At the end of the ladder the control says so rather than doing nothing. */
 .p-icon-btn:disabled {
   opacity: 0.4;
   cursor: default;
@@ -242,63 +300,107 @@ html[lang="zh-Hant"] body {
   transform: translateY(2px);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .p-icon-btn:not(:disabled):active {
-    transform: none;
-  }
+.p-zoom {
+  position: absolute;
+  right: 16px;
+  bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 30;
 }
 
 /* ── the making screens ───────────────────────────────────────────────── */
 
 /*
- * Arrival, studio, sign, contact, release, keep. These sit OVER the pond
- * rather than replacing it, so the water is still the background of every
- * screen — the thing being made is going somewhere specific.
+ * ══ THE SCREENS SIT ON THE WATER, THEY DO NOT REPLACE IT ══
+ * A sheet rises from the bottom and the pond stays visible above it. That
+ * is what makes the duck being decorated feel like it is going somewhere
+ * specific, rather than being configured in a form and posted.
+ *
+ * The first version replaced the whole viewport with a flat panel, which
+ * looked tidy and lost the entire idea.
  */
 .p-screen {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 88%;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * The dithered edge, verbatim from the prototype: three 4px strips at 25%,
+ * 50% and 75% coverage. The panel does not meet the water on a hard line,
+ * it dissolves into it on the same 4px grid everything else is drawn on.
+ */
+.p-edge {
+  height: 12px;
+  flex: none;
+}
+
+.p-edge > i {
+  display: block;
+  height: 4px;
+}
+
+.p-d25{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='1' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='0' y='2' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
+.p-d50{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='1' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='0' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='3' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='3' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
+.p-d75{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='4' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='1' fill='%23f2fbfe'/><rect width='4' height='1' x='0' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='3' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='3' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
+
+.p-sheet-body {
+  background: var(--p-surface);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: max(16px, env(safe-area-inset-top)) 16px
-           max(16px, env(safe-area-inset-bottom));
-  background: var(--p-water);
+  gap: 0.75rem;
+  /* Clears the home indicator on iPhone, zero everywhere else. */
+  padding: 1.15rem 20px calc(20px + env(safe-area-inset-bottom, 0px));
 }
 
 .p-centre {
-  justify-content: center;
   align-items: center;
   text-align: center;
 }
 
 .p-eyebrow {
   margin: 0;
-  font-size: 0.8rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.6;
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  color: var(--p-soft);
 }
 
+/*
+ * 1.55rem, not a clamp up to 3rem. The heading shares a sheet with body
+ * copy and two buttons on a 390px screen; the prototype's size is what
+ * makes all four fit without the fortune shouting over the duck it names.
+ */
 .p-title {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.55rem;
+  line-height: 1.12;
+  color: var(--p-ink);
 }
 
 .p-body {
   margin: 0;
-  max-width: 34ch;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--p-soft);
 }
 
 /* Said at the point of asking, never in a footer. */
 .p-note {
   margin: 0;
-  font-size: 0.85rem;
-  opacity: 0.75;
   max-width: 42ch;
+  font-size: 0.85rem;
+  color: var(--p-faint);
 }
 
 .p-preview,
@@ -308,7 +410,7 @@ html[lang="zh-Hant"] body {
   touch-action: none;
 }
 
-/* ── nav and tabs ─────────────────────────────────────────────────────── */
+/* ── nav, tabs, panels ────────────────────────────────────────────────── */
 
 .p-nav {
   display: flex;
@@ -319,22 +421,9 @@ html[lang="zh-Hant"] body {
 .p-nav-title {
   flex: 1;
   text-align: center;
+  font-size: 0.8rem;
   font-weight: 700;
-}
-
-.p-chip {
-  min-height: var(--p-tap);
-  padding: 0 14px;
-  border: 0;
-  background: var(--p-paper);
-  color: var(--p-ink);
-  font: inherit;
-  cursor: pointer;
-}
-
-.p-chip.on {
-  background: var(--p-ink);
-  color: var(--p-paper);
+  letter-spacing: 0.12em;
 }
 
 .p-tabs {
@@ -342,48 +431,51 @@ html[lang="zh-Hant"] body {
   gap: 8px;
 }
 
-.p-tab {
-  flex: 1;
-  /* 44px, not 40 — the audit in UI.md found three of these too short. */
-  min-height: var(--p-tap);
-  border: 0;
-  background: var(--p-paper);
-  color: var(--p-ink);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.p-tab.on {
-  background: var(--p-ink);
-  color: var(--p-paper);
-}
-
 .p-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.7rem;
 }
 
 .p-hint {
   margin: 0;
-  font-size: 0.85rem;
-  opacity: 0.7;
+  font-size: 0.61rem;
+  letter-spacing: 0.1em;
+  color: var(--p-faint);
 }
 
 /* ── swatches and stickers ────────────────────────────────────────────── */
 
-.p-swatches {
+.p-swatches,
+.p-stickers {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--p-tap), 1fr));
   gap: 8px;
+}
+
+.p-swatches {
+  grid-template-columns: repeat(auto-fill, minmax(var(--tap), 1fr));
+}
+
+.p-stickers {
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+}
+
+.p-swatch,
+.p-sticker {
+  all: unset;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
 }
 
 .p-swatch {
   aspect-ratio: 1;
-  min-height: var(--p-tap);
-  border: 0;
-  cursor: pointer;
+  min-height: var(--tap);
+}
+
+.p-sticker {
+  min-height: 56px;
+  background: #fff;
 }
 
 .p-swatch.on {
@@ -391,165 +483,219 @@ html[lang="zh-Hant"] body {
   outline-offset: 2px;
 }
 
-.p-stickers {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
-  gap: 8px;
-}
-
-.p-sticker {
-  min-height: 56px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  background: var(--p-paper);
-  cursor: pointer;
-}
-
 .p-sticker.on {
-  outline: 3px solid var(--p-ink);
-  outline-offset: -3px;
+  background: var(--duck);
 }
 
 .p-sticker-art {
   image-rendering: pixelated;
 }
 
+/* ── fields ───────────────────────────────────────────────────────────── */
+
+.p-field {
+  position: relative;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.p-field-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: var(--p-soft);
+}
+
+.p-input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.7rem;
+  border: 0;
+  background: #fff;
+  color: var(--p-ink);
+  font-family: var(--body);
+  /* 16px is a hard floor: iOS Safari zooms the page when focusing a
+     smaller input and never zooms back out. */
+  font-size: 16px;
+  resize: none;
+}
+
+textarea.p-input {
+  min-height: calc(var(--tap) * 2);
+}
+
+.p-field-count {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--p-faint);
+}
+
+.p-field-count.over {
+  color: var(--danger-text);
+}
+
+/* ── layout groups ───────────────────────────────────────────────────── */
+
+/*
+ * Actions stack full-width; choices sit in a row. On a phone that is the
+ * difference between two comfortable targets and two cramped ones.
+ */
+.p-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.p-scopes,
 .p-tools {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-/* ── fields ───────────────────────────────────────────────────────────── */
-
-.p-field {
-  display: grid;
-  gap: 4px;
-  position: relative;
-}
-
-.p-field-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.p-input {
-  /* 44px. Text inputs were 40 before the audit. */
-  min-height: var(--p-tap);
-  padding: 10px 12px;
-  border: 0;
-  background: var(--p-paper);
-  color: var(--p-ink);
-  font: inherit;
-  /* 16px minimum, or iOS zooms the page on focus and never zooms back. */
-  font-size: 16px;
-}
-
-textarea.p-input {
-  min-height: calc(var(--p-tap) * 2);
-  resize: vertical;
-}
-
-.p-field-count {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  font-size: 0.75rem;
-  opacity: 0.5;
-}
-
-.p-field-count.over {
-  color: #b00;
-  opacity: 1;
-}
-
-/* Scope is stated in names, and only exists once there is a contact. */
-.p-scopes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .p-scopes[hidden],
-.p-field-label[hidden] {
+.p-field-label[hidden],
+.p-sheet[hidden] {
   display: none;
+}
+
+a.p-btn {
+  text-decoration: none;
 }
 
 /* ── the private link ─────────────────────────────────────────────────── */
 
 .p-linkbox {
-  padding: 12px;
-  background: var(--p-paper);
+  padding: 0.8rem;
+  background: #fff;
   overflow-wrap: anywhere;
 }
 
 .p-link {
-  font: inherit;
-  font-size: 0.9rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--p-ink);
   user-select: all;
 }
 
-.p-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
+/* ── a duck's card, and the gather sheet ─────────────────────────────── */
 
-/* An <a> styled as a button still needs to look like one. */
-a.p-btn {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-}
-
-/* ── taking a duck out ────────────────────────────────────────────────── */
-
-/*
- * Set apart, below everything else, and never the first thing a thumb
- * finds. It cannot be undone: there is no account to restore from and the
- * private link dies with the duck.
- */
-.p-danger {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 2px solid rgba(0, 0, 0, 0.12);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.p-btn-danger {
-  background: #a01818;
-  color: var(--p-paper);
-}
-
-/* ── the gather sheet ─────────────────────────────────────────────────── */
-
-/*
- * Opened by tapping the count, because the count IS the whistle. It sits
- * under the HUD rather than over the middle: the point of gathering is to
- * watch the ducks arrive, so the sheet must not cover the water they
- * arrive in.
- */
+.p-card,
 .p-sheet {
   position: absolute;
-  top: calc(max(12px, env(safe-area-inset-top)) + var(--p-tap) + 8px);
-  left: 12px;
-  right: 12px;
-  padding: 12px;
-  background: var(--p-paper);
+  left: 16px;
+  right: 16px;
+  z-index: 35;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--p-surface);
+}
+
+.p-card {
+  bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
+}
+
+.p-sheet {
+  top: calc(max(12px, env(safe-area-inset-top)) + var(--tap) + 8px);
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.p-card p {
+  margin: 0;
+}
+
+.p-card-name {
+  font-family: var(--display);
+  font-size: 1.15rem;
+}
+
+.p-card-via,
+.p-card-stats {
+  font-size: 0.64rem;
+  letter-spacing: 0.09em;
+  color: var(--p-faint);
+}
+
+/* Somebody else's words: let them wrap, never let them break the layout. */
+.p-card-msg {
+  color: var(--p-soft);
+  overflow-wrap: anywhere;
+}
+
+/* ── taking a duck out ───────────────────────────────────────────────── */
+
+.p-danger {
+  margin-top: 1.4rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--quiet-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* ── motion ──────────────────────────────────────────────────────────── */
+
+/*
+ * Stepped, never smooth. Everything in the pond is stop-motion, and a
+ * smoothly easing panel beside a duck that walks at 12 fps is the one
+ * thing on screen that gives away that this is a web page. UI.md § 5.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .p-card,
+  .p-sheet {
+    animation: p-rise 0.28s steps(5, end);
+  }
+}
+
+@keyframes p-rise {
+  from { transform: translateY(14%); }
+  to { transform: translateY(0); }
+}
+
+/* Reduced motion never removes information — it only stops things moving. */
+@media (prefers-reduced-motion: reduce) {
+  .p-btn:active,
+  .p-icon-btn:not(:disabled):active {
+    transform: none;
+  }
+}
+
+/*
+ * The overlay the making screens render into. Empty most of the time, and
+ * ignoring pointers when it is, so a tap lands on the water rather than on
+ * an invisible sheet.
+ */
+.p-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.p-overlay:not(:empty) {
+  pointer-events: auto;
+}
+
+/*
+ * The pond's one call to action, when there is one. A fortune waiting is
+ * the only thing that ever puts a button over the water.
+ */
+.p-cta {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 45vh;
-  overflow-y: auto;
-  clip-path: polygon(0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px,
-                     100% 6px, 100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px),
-                     calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px));
+  z-index: 30;
 }
 
-.p-sheet[hidden] {
+.p-cta:empty {
   display: none;
 }

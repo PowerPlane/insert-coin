@@ -17,7 +17,7 @@
 import { ApiError, api, clearDraft, loadDraft, rememberEditKey, saveDraft } from "./api.js";
 import type { ContactScope } from "./api.js";
 import { GRID, decodePaint } from "./codec.js";
-import { button, el, field, screen } from "./dom.js";
+import { button, el, field, screen, sheet } from "./dom.js";
 import { drawDuck } from "./render.js";
 import { FORTUNES } from "./sprites.js";
 import { type StudioState, studioScreen, toPayload } from "./studio.js";
@@ -87,8 +87,15 @@ export function releaseFlow(opts: FlowOptions): void {
     });
   };
 
-  /** A duck at a readable size, for the screens that are not the studio. */
-  function preview(size = 8): HTMLCanvasElement {
+  /**
+   * A duck at a readable size, for the screens that are not the studio.
+   *
+   * Five, not ten. At ten a 24-pixel sprite is 240 CSS pixels — more than
+   * half the width of a phone — and it pushed the fortune, the sentence and
+   * both buttons off the bottom of the sheet. The prototype's is small
+   * enough that the whole screen is one thought.
+   */
+  function preview(size = 5): HTMLCanvasElement {
     const c = el("canvas", "p-preview");
     c.width = GRID * size;
     c.height = GRID * size;
@@ -111,10 +118,10 @@ export function releaseFlow(opts: FlowOptions): void {
   function arrivalBody(): void {
     root.replaceChildren();
     const f = FORTUNES[opts.fortune] ?? FORTUNES[1];
-    const wrap = el("div", "p-screen p-centre");
+    const { root: sheetRoot, body: wrap } = sheet(true);
     wrap.append(
       el("p", "p-eyebrow", t("arrival.01")),
-      preview(10),
+      preview(6),
       el("h1", "p-title", `${f.jp} · ${f.en}`),
       el("p", "p-body", t("arrival.03")),
     );
@@ -126,7 +133,7 @@ export function releaseFlow(opts: FlowOptions): void {
       button("p-btn p-btn-quiet", t("arrival.05"), opts.onBrowse),
     );
     wrap.append(actions);
-    root.append(wrap);
+    root.append(sheetRoot);
   }
 
   // ── 02 · studio ───────────────────────────────────────────────────────
@@ -143,7 +150,7 @@ export function releaseFlow(opts: FlowOptions): void {
   // ── 03 · sign it ──────────────────────────────────────────────────────
   function signBody(): void {
     root.replaceChildren();
-    const wrap = el("div", "p-screen");
+    const { root: sheetRoot, body: wrap } = sheet();
     wrap.append(el("p", "p-eyebrow", t("sign.01")), preview(6), el("h2", "p-title", t("sign.02")));
 
     const name = field({
@@ -162,13 +169,13 @@ export function releaseFlow(opts: FlowOptions): void {
     wrap.append(
       el("div", "p-actions").appendChild(button("p-btn", t("sign.09"), contact)).parentElement!,
     );
-    root.append(wrap);
+    root.append(sheetRoot);
   }
 
   // ── 04 · contact ──────────────────────────────────────────────────────
   function contactBody(): void {
     root.replaceChildren();
-    const wrap = el("div", "p-screen");
+    const { root: sheetRoot, body: wrap } = sheet();
     wrap.append(
       el("p", "p-eyebrow", t("contact.01")),
       el("h2", "p-title", t("contact.02")),
@@ -236,17 +243,17 @@ export function releaseFlow(opts: FlowOptions): void {
       }),
     );
     wrap.append(actions);
-    root.append(wrap);
+    root.append(sheetRoot);
     syncScope();
   }
 
   // ── 05 · release ──────────────────────────────────────────────────────
   async function release(): Promise<void> {
     root.replaceChildren();
-    const wrap = el("div", "p-screen p-centre");
+    const { root: sheetRoot, body: wrap } = sheet(true);
     const status = el("p", "p-body", t("pond.14"));
-    wrap.append(preview(10), status);
-    root.append(wrap);
+    wrap.append(preview(6), status);
+    root.append(sheetRoot);
 
     const { tint, stickers, paint } = toPayload(draft.studio);
     const contactValue = draft.contact.trim();
@@ -283,7 +290,7 @@ export function releaseFlow(opts: FlowOptions): void {
   function keepBody(made: ReleaseResult): void {
     root.replaceChildren();
     const url = `${location.origin}/e/${made.editKey}`;
-    const wrap = el("div", "p-screen");
+    const { root: sheetRoot, body: wrap } = sheet();
     wrap.append(
       el("p", "p-eyebrow", t("pond.14")),
       el("h2", "p-title", t("pond.15")),
@@ -324,7 +331,7 @@ export function releaseFlow(opts: FlowOptions): void {
         button("p-btn", t("pond.22"), () => opts.onDone(made)),
       ).parentElement!,
     );
-    root.append(wrap);
+    root.append(sheetRoot);
   }
 
   // Each screen renders inside a guard: a throw after replaceChildren

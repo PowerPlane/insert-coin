@@ -87,6 +87,16 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
 
   const cta = el("div", "p-cta");
 
+  /*
+   * Where the making screens render.
+   *
+   * They sit OVER the water rather than replacing it, so the pond keeps
+   * moving behind every sheet. That is what makes decorating feel like
+   * making something for a specific place — and it is why nothing below
+   * ever calls `replaceChildren` on the root itself.
+   */
+  const overlay = el("div", "p-overlay");
+
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
@@ -122,7 +132,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   };
   zoom.append(zoomIn, zoomOut);
 
-  root.append(stage, hud, zoom, cta);
+  root.append(stage, hud, zoom, cta, overlay);
 
 
   // A handle for looking at the real thing in a real browser. The pond is
@@ -145,60 +155,13 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const zoomPoll = window.setInterval(syncZoom, 500);
 
   // ── the pond itself ───────────────────────────────────────────────────
+  //
+  // The whistle's state is declared BEFORE `refresh`, because refresh calls
+  // `syncCount`. Declared after, it sat in the temporal dead zone during
+  // the first refresh, threw, and was caught by refresh's own error handler
+  // — so a working pond reported "the pond is not answering". The second
+  // time this exact shape of bug has bitten in this file.
   let ducks: PondDuck[] = [];
-  const refresh = async (): Promise<void> => {
-    try {
-      const res = await api.pond();
-      ducks = res.ducks;
-      view.setDucks(ducks);
-      syncCount();
-    } catch (err) {
-      count.textContent =
-        err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
-    }
-  };
-  await refresh();
-
-  // ── what this visitor can do ──────────────────────────────────────────
-  const session = await api.session().catch(() => ({ active: false }) as SessionState);
-  const mine = recallEditKey();
-
-  if (session.active && !session.spent) {
-    // A fortune is waiting. This is the only CTA that ever appears, and it
-    // is the whole reason the pond can be the default screen: someone with
-    // nothing to make sees a pond, not a form.
-    const go = el("button", "p-btn", t("arrival.04"));
-    go.type = "button";
-    go.addEventListener("click", () => {
-      // Stop the pollers and the render loop before handing the root over.
-      teardown?.();
-      releaseFlow({
-        root,
-        fortune: session.fortune ?? 1,
-        // The keeper's name decides whether the scope picker can offer to
-        // share with them at all.
-        keeper: keeperOf(ducks),
-        onBrowse: () => void pondScreen(bootstrap),
-        onDone: (made) => {
-          // Back to the water, and the camera goes to look at what they
-          // just made — the one move that is watched rather than operated.
-          void pondScreen({ ...bootstrap, duck: { id: made.id } as PondDuck });
-        },
-      });
-    });
-    cta.append(go);
-  } else if (mine) {
-    // "Find my duck" was removed on purpose — once your duck is in the
-    // pond there is no action you still owe it, so the CTA hides entirely.
-    const back = el("button", "p-btn p-btn-quiet", t("mine.05"));
-    back.type = "button";
-    back.addEventListener("click", () => {
-      const d = ducks.find((x) => x.id === bootstrap.duck?.id);
-      if (d) view.lookAt(d.id);
-    });
-    cta.append(back);
-  }
-
   /**
    * The whistle.
    *
@@ -266,17 +229,89 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
 
   root.append(sheet);
 
+  const refresh = async (): Promise<void> => {
+    try {
+      const res = await api.pond();
+      ducks = res.ducks;
+      view.setDucks(ducks);
+      syncCount();
+    } catch (err) {
+      count.textContent =
+        err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
+    }
+  };
+  await refresh();
+
+  // ── what this visitor can do ──────────────────────────────────────────
+  const session = await api.session().catch(() => ({ active: false }) as SessionState);
+  const mine = recallEditKey();
+
+  if (session.active && !session.spent) {
+    // A fortune is waiting. This is the only CTA that ever appears, and it
+    // is the whole reason the pond can be the default screen: someone with
+    // nothing to make sees a pond, not a form.
+    const go = el("button", "p-btn", t("arrival.04"));
+    go.type = "button";
+    go.addEventListener("click", () => {
+      // The pollers stop; the WATER DOES NOT. A pond that freezes the
+      // moment you start decorating stops being a place you are making
+      // something for.
+      pausePolling();
+      releaseFlow({
+        root: overlay,
+        fortune: session.fortune ?? 1,
+        // The keeper's name decides whether the scope picker can offer to
+        // share with them at all.
+        keeper: keeperOf(ducks),
+        onBrowse: () => {
+          overlay.replaceChildren();
+          resumePolling();
+        },
+        onDone: (made) => {
+          // Back to the water, and the camera goes to look at what they
+          // just made — the one move that is watched rather than operated.
+          overlay.replaceChildren();
+          resumePolling();
+          void refresh().then(() => view.lookAt(made.id, true));
+        },
+      });
+    });
+    cta.append(go);
+  } else if (mine) {
+    // "Find my duck" was removed on purpose — once your duck is in the
+    // pond there is no action you still owe it, so the CTA hides entirely.
+    const back = el("button", "p-btn p-btn-quiet", t("mine.05"));
+    back.type = "button";
+    back.addEventListener("click", () => {
+      const d = ducks.find((x) => x.id === bootstrap.duck?.id);
+      if (d) view.lookAt(d.id);
+    });
+    cta.append(back);
+  }
+
+
   // Arrival zoom: land at arm's length from your own duck rather than
   // somewhere out there.
   if (bootstrap.duck) view.lookAt(bootstrap.duck.id, true);
 
-  // The pond is polled. A fire that ignites on someone else's read should
-  // show up here within a reasonable time without a socket.
-  const pondPoll = window.setInterval(refresh, 20_000);
+  // Polling pauses while a sheet is open — there is nothing on screen for
+  // a refresh to update, and a duck arriving mid-decoration would move the
+  // water under the sheet for no reason.
+  let polling = true;
+  function pausePolling(): void {
+    polling = false;
+  }
+  function resumePolling(): void {
+    polling = true;
+    void refresh();
+  }
+  const poll = window.setInterval(() => {
+    if (polling) void refresh();
+  }, 20_000);
 
   teardown = () => {
     clearInterval(zoomPoll);
-    clearInterval(pondPoll);
+    clearInterval(poll);
     window.removeEventListener("resize", fit);
     view.stop();
     teardown = null;
@@ -416,10 +451,12 @@ async function main(): Promise<void> {
   // `/e/<key>` is the private link — the only credential a duck has, and
   // the whole reason coming back is worth doing.
   if (b.view === "edit" && b.editKey) {
+    // The pond renders first, so the water is already there behind it.
+    await pondScreen({});
     mineScreen({
-      root,
+      root: document.querySelector(".p-overlay")!,
       editKey: b.editKey,
-      onPond: () => void pondScreen({}),
+      onPond: () => document.querySelector(".p-overlay")!.replaceChildren(),
     });
     return;
   }

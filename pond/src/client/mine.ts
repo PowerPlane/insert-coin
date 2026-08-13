@@ -14,7 +14,7 @@
  */
 
 import { ApiError, api, clearDraft } from "./api.js";
-import { button, el, field, screen } from "./dom.js";
+import { button, el, field, screen, sheet } from "./dom.js";
 import { drawDuck } from "./render.js";
 import { GRID, decodePaint } from "./codec.js";
 import { studioScreen, toPayload } from "./studio.js";
@@ -51,20 +51,20 @@ export function mineScreen(opts: MineOptions): void {
     } catch (err) {
       return screen(root, () => {
         root.replaceChildren();
-        const wrap = el("div", "p-screen p-centre");
+        const { root: sheetRoot, body: wrap } = sheet(true);
         wrap.append(
           el("p", "p-title", t("live.nolink")),
           el("p", "p-body", t("live.nolink.body")),
           button("p-btn", t("mine.05"), opts.onPond),
         );
-        root.append(wrap);
+        root.append(sheetRoot);
         void err;
       });
     }
     view(duck);
   })();
 
-  function preview(duck: PondDuck, size = 8): HTMLCanvasElement {
+  function preview(duck: PondDuck, size = 5): HTMLCanvasElement {
     const c = el("canvas", "p-preview");
     c.width = GRID * size;
     c.height = GRID * size;
@@ -87,10 +87,10 @@ export function mineScreen(opts: MineOptions): void {
   function view(duck: PondDuck): void {
     screen(root, () => {
       root.replaceChildren();
-      const wrap = el("div", "p-screen p-centre");
+      const { root: sheetRoot, body: wrap } = sheet(true);
       wrap.append(
         el("p", "p-eyebrow", t("mine.01")),
-        preview(duck, 10),
+        preview(duck, 6),
         el("h1", "p-title", duck.name || t("mine.02")),
       );
 
@@ -106,7 +106,7 @@ export function mineScreen(opts: MineOptions): void {
         button("p-btn p-btn-quiet", t("mine.07"), () => settings(duck)),
       );
       wrap.append(actions);
-      root.append(wrap);
+      root.append(sheetRoot);
     });
   }
 
@@ -162,7 +162,7 @@ export function mineScreen(opts: MineOptions): void {
   function settings(duck: PondDuck): void {
     screen(root, () => {
       root.replaceChildren();
-      const wrap = el("div", "p-screen");
+      const { root: sheetRoot, body: wrap } = sheet();
       wrap.append(
         el("p", "p-eyebrow", t("manage.01")),
         el("h2", "p-title", t("manage.02")),
@@ -249,20 +249,20 @@ export function mineScreen(opts: MineOptions): void {
       });
       danger.append(remove);
       wrap.append(danger);
-      root.append(wrap);
+      root.append(sheetRoot);
     });
   }
 
   function gone(): void {
     screen(root, () => {
       root.replaceChildren();
-      const wrap = el("div", "p-screen p-centre");
+      const { root: sheetRoot, body: wrap } = sheet(true);
       wrap.append(
         el("h2", "p-title", t("live.removed")),
         el("p", "p-body", t("live.removed.body")),
         button("p-btn", t("mine.05"), opts.onPond),
       );
-      root.append(wrap);
+      root.append(sheetRoot);
     });
   }
 }

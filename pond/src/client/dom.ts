@@ -70,6 +70,27 @@ export function field(opts: {
 }
 
 /**
+ * A sheet that rises from the bottom, over the water.
+ *
+ * The pond stays visible above it — that is what makes the duck being
+ * decorated feel like it is going somewhere specific rather than being
+ * configured in a form. The first version replaced the whole viewport with
+ * a flat panel, which looked tidy and lost the entire idea.
+ *
+ * The three strips are a dithered edge at 25%, 50% and 75% coverage, so
+ * the panel dissolves into the water on the same 4px grid everything else
+ * is drawn on instead of meeting it on a hard line.
+ */
+export function sheet(centred = false): { root: HTMLElement; body: HTMLElement } {
+  const root = el("div", `p-screen${centred ? " p-centre" : ""}`);
+  const edge = el("div", "p-edge");
+  edge.append(el("i", "p-d25"), el("i", "p-d50"), el("i", "p-d75"));
+  const body = el("div", `p-sheet-body${centred ? " p-centre" : ""}`);
+  root.append(edge, body);
+  return { root, body };
+}
+
+/**
  * Render a screen, and never leave a blank page behind.
  *
  * Every screen starts with `replaceChildren()`, so a throw ANYWHERE after
@@ -87,12 +108,12 @@ export function screen(root: HTMLElement, render: () => void): void {
   } catch (err) {
     console.error("[pond] screen failed", err);
     root.replaceChildren();
-    const wrap = el("div", "p-screen p-centre");
-    wrap.append(
+    const s = sheet(true);
+    s.body.append(
       el("p", "p-title", "Something went wrong"),
       el("p", "p-body", "Nothing you made has been lost. Reload to pick it back up."),
       button("p-btn", "Reload", () => location.reload()),
     );
-    root.append(wrap);
+    root.append(s.root);
   }
 }

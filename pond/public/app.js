@@ -154,19 +154,27 @@ function field(opts) {
   wrap2.append(input, count);
   return { wrap: wrap2, input };
 }
+function sheet(centred = false) {
+  const root2 = el("div", `p-screen${centred ? " p-centre" : ""}`);
+  const edge = el("div", "p-edge");
+  edge.append(el("i", "p-d25"), el("i", "p-d50"), el("i", "p-d75"));
+  const body = el("div", `p-sheet-body${centred ? " p-centre" : ""}`);
+  root2.append(edge, body);
+  return { root: root2, body };
+}
 function screen(root2, render) {
   try {
     render();
   } catch (err) {
     console.error("[pond] screen failed", err);
     root2.replaceChildren();
-    const wrap2 = el("div", "p-screen p-centre");
-    wrap2.append(
+    const s = sheet(true);
+    s.body.append(
       el("p", "p-title", "Something went wrong"),
       el("p", "p-body", "Nothing you made has been lost. Reload to pick it back up."),
       button("p-btn", "Reload", () => location.reload())
     );
-    root2.append(wrap2);
+    root2.append(s.root);
   }
 }
 
@@ -1326,19 +1334,19 @@ function mineScreen(opts) {
     } catch (err) {
       return screen(root2, () => {
         root2.replaceChildren();
-        const wrap2 = el("div", "p-screen p-centre");
+        const { root: sheetRoot, body: wrap2 } = sheet(true);
         wrap2.append(
           el("p", "p-title", t("live.nolink")),
           el("p", "p-body", t("live.nolink.body")),
           button("p-btn", t("mine.05"), opts.onPond)
         );
-        root2.append(wrap2);
+        root2.append(sheetRoot);
         void err;
       });
     }
     view(duck);
   })();
-  function preview(duck, size = 8) {
+  function preview(duck, size = 5) {
     const c = el("canvas", "p-preview");
     c.width = GRID * size;
     c.height = GRID * size;
@@ -1361,10 +1369,10 @@ function mineScreen(opts) {
   function view(duck) {
     screen(root2, () => {
       root2.replaceChildren();
-      const wrap2 = el("div", "p-screen p-centre");
+      const { root: sheetRoot, body: wrap2 } = sheet(true);
       wrap2.append(
         el("p", "p-eyebrow", t("mine.01")),
-        preview(duck, 10),
+        preview(duck, 6),
         el("h1", "p-title", duck.name || t("mine.02"))
       );
       const bumps = duck.bumps === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(duck.bumps) });
@@ -1376,7 +1384,7 @@ function mineScreen(opts) {
         button("p-btn p-btn-quiet", t("mine.07"), () => settings(duck))
       );
       wrap2.append(actions);
-      root2.append(wrap2);
+      root2.append(sheetRoot);
     });
   }
   function redecorate(duck) {
@@ -1411,7 +1419,7 @@ function mineScreen(opts) {
   function settings(duck) {
     screen(root2, () => {
       root2.replaceChildren();
-      const wrap2 = el("div", "p-screen");
+      const { root: sheetRoot, body: wrap2 } = sheet();
       wrap2.append(
         el("p", "p-eyebrow", t("manage.01")),
         el("h2", "p-title", t("manage.02"))
@@ -1493,19 +1501,19 @@ function mineScreen(opts) {
       });
       danger.append(remove);
       wrap2.append(danger);
-      root2.append(wrap2);
+      root2.append(sheetRoot);
     });
   }
   function gone() {
     screen(root2, () => {
       root2.replaceChildren();
-      const wrap2 = el("div", "p-screen p-centre");
+      const { root: sheetRoot, body: wrap2 } = sheet(true);
       wrap2.append(
         el("h2", "p-title", t("live.removed")),
         el("p", "p-body", t("live.removed.body")),
         button("p-btn", t("mine.05"), opts.onPond)
       );
-      root2.append(wrap2);
+      root2.append(sheetRoot);
     });
   }
 }
@@ -1772,7 +1780,7 @@ function releaseFlow(opts) {
       scope: draft.scope
     });
   };
-  function preview(size = 8) {
+  function preview(size = 5) {
     const c = el("canvas", "p-preview");
     c.width = GRID * size;
     c.height = GRID * size;
@@ -1795,10 +1803,10 @@ function releaseFlow(opts) {
   function arrivalBody() {
     root2.replaceChildren();
     const f = FORTUNES[opts.fortune] ?? FORTUNES[1];
-    const wrap2 = el("div", "p-screen p-centre");
+    const { root: sheetRoot, body: wrap2 } = sheet(true);
     wrap2.append(
       el("p", "p-eyebrow", t("arrival.01")),
-      preview(10),
+      preview(6),
       el("h1", "p-title", `${f.jp} · ${f.en}`),
       el("p", "p-body", t("arrival.03"))
     );
@@ -1810,7 +1818,7 @@ function releaseFlow(opts) {
       button("p-btn p-btn-quiet", t("arrival.05"), opts.onBrowse)
     );
     wrap2.append(actions);
-    root2.append(wrap2);
+    root2.append(sheetRoot);
   }
   function studio() {
     studioScreen(root2, {
@@ -1823,7 +1831,7 @@ function releaseFlow(opts) {
   }
   function signBody() {
     root2.replaceChildren();
-    const wrap2 = el("div", "p-screen");
+    const { root: sheetRoot, body: wrap2 } = sheet();
     wrap2.append(el("p", "p-eyebrow", t("sign.01")), preview(6), el("h2", "p-title", t("sign.02")));
     const name = field({
       label: t("sign.03"),
@@ -1851,11 +1859,11 @@ function releaseFlow(opts) {
     wrap2.append(
       el("div", "p-actions").appendChild(button("p-btn", t("sign.09"), contact)).parentElement
     );
-    root2.append(wrap2);
+    root2.append(sheetRoot);
   }
   function contactBody() {
     root2.replaceChildren();
-    const wrap2 = el("div", "p-screen");
+    const { root: sheetRoot, body: wrap2 } = sheet();
     wrap2.append(
       el("p", "p-eyebrow", t("contact.01")),
       el("h2", "p-title", t("contact.02")),
@@ -1905,15 +1913,15 @@ function releaseFlow(opts) {
       })
     );
     wrap2.append(actions);
-    root2.append(wrap2);
+    root2.append(sheetRoot);
     syncScope();
   }
   async function release() {
     root2.replaceChildren();
-    const wrap2 = el("div", "p-screen p-centre");
+    const { root: sheetRoot, body: wrap2 } = sheet(true);
     const status = el("p", "p-body", t("pond.14"));
-    wrap2.append(preview(10), status);
-    root2.append(wrap2);
+    wrap2.append(preview(6), status);
+    root2.append(sheetRoot);
     const { tint, stickers, paint } = toPayload(draft.studio);
     const contactValue = draft.contact.trim();
     try {
@@ -1940,7 +1948,7 @@ function releaseFlow(opts) {
   function keepBody(made) {
     root2.replaceChildren();
     const url = `${location.origin}/e/${made.editKey}`;
-    const wrap2 = el("div", "p-screen");
+    const { root: sheetRoot, body: wrap2 } = sheet();
     wrap2.append(
       el("p", "p-eyebrow", t("pond.14")),
       el("h2", "p-title", t("pond.15")),
@@ -1976,7 +1984,7 @@ function releaseFlow(opts) {
         button("p-btn", t("pond.22"), () => opts.onDone(made))
       ).parentElement
     );
-    root2.append(wrap2);
+    root2.append(sheetRoot);
   }
   function arrival() {
     screen(root2, arrivalBody);
@@ -2560,6 +2568,7 @@ async function pondScreen(bootstrap) {
   count.setAttribute("aria-label", t("pond.13"));
   hud.append(count);
   const cta = el2("div", "p-cta");
+  const overlay = el2("div", "p-overlay");
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
@@ -2584,7 +2593,7 @@ async function pondScreen(bootstrap) {
     zoomOut.disabled = view.camera.step(-1) === null;
   };
   zoom.append(zoomIn, zoomOut);
-  root.append(stage, hud, zoom, cta);
+  root.append(stage, hud, zoom, cta, overlay);
   window.__pond = view;
   const fit = () => view.resize();
   fit();
@@ -2593,6 +2602,54 @@ async function pondScreen(bootstrap) {
   syncZoom();
   const zoomPoll = window.setInterval(syncZoom, 500);
   let ducks = [];
+  let calling = null;
+  const sheet2 = el2("div", "p-sheet");
+  sheet2.hidden = true;
+  const syncCount = () => {
+    if (calling === null) {
+      count.textContent = ducks.length === 0 ? t("live.count.none") : ducks.length === 1 ? t("live.count.one") : t("live.count", { n: String(ducks.length) });
+      return;
+    }
+    const n = ducks.filter((d) => d.keeper === calling).length;
+    count.textContent = t("live.count.of", { n: String(n), total: String(ducks.length) });
+  };
+  const call = (keeper) => {
+    calling = keeper;
+    view.gather(keeper === null ? null : (d) => d.keeper === keeper);
+    syncCount();
+    sheet2.hidden = true;
+  };
+  count.addEventListener("click", () => {
+    const keepers = [...new Set(ducks.map((d) => d.keeper).filter(Boolean))];
+    sheet2.replaceChildren();
+    if (keepers.length === 0) {
+      sheet2.append(el2("p", "p-note", t("live.nokeepers")));
+    } else {
+      sheet2.append(el2("p", "p-field-label", t("pond.04")));
+      const list = el2("div", "p-actions");
+      for (const k of keepers) {
+        const n = ducks.filter((d) => d.keeper === k).length;
+        list.append(button("p-chip", `${k} · ${n}`, () => call(k)));
+      }
+      sheet2.append(list);
+    }
+    if (calling !== null) {
+      sheet2.append(
+        el2("div", "p-actions").appendChild(
+          button("p-btn p-btn-quiet", t("pond.03"), () => call(null))
+        ).parentElement
+      );
+    }
+    sheet2.append(
+      el2("div", "p-actions").appendChild(
+        button("p-chip", t("pond.23"), () => {
+          sheet2.hidden = true;
+        })
+      ).parentElement
+    );
+    sheet2.hidden = !sheet2.hidden;
+  });
+  root.append(sheet2);
   const refresh = async () => {
     try {
       const res = await api.pond();
@@ -2610,16 +2667,21 @@ async function pondScreen(bootstrap) {
     const go = el2("button", "p-btn", t("arrival.04"));
     go.type = "button";
     go.addEventListener("click", () => {
-      teardown?.();
+      pausePolling();
       releaseFlow({
-        root,
+        root: overlay,
         fortune: session.fortune ?? 1,
         // The keeper's name decides whether the scope picker can offer to
         // share with them at all.
         keeper: keeperOf(ducks),
-        onBrowse: () => void pondScreen(bootstrap),
+        onBrowse: () => {
+          overlay.replaceChildren();
+          resumePolling();
+        },
         onDone: (made) => {
-          void pondScreen({ ...bootstrap, duck: { id: made.id } });
+          overlay.replaceChildren();
+          resumePolling();
+          void refresh().then(() => view.lookAt(made.id, true));
         }
       });
     });
@@ -2633,59 +2695,21 @@ async function pondScreen(bootstrap) {
     });
     cta.append(back);
   }
-  let calling = null;
-  const sheet = el2("div", "p-sheet");
-  sheet.hidden = true;
-  const syncCount = () => {
-    if (calling === null) {
-      count.textContent = ducks.length === 0 ? t("live.count.none") : ducks.length === 1 ? t("live.count.one") : t("live.count", { n: String(ducks.length) });
-      return;
-    }
-    const n = ducks.filter((d) => d.keeper === calling).length;
-    count.textContent = t("live.count.of", { n: String(n), total: String(ducks.length) });
-  };
-  const call = (keeper) => {
-    calling = keeper;
-    view.gather(keeper === null ? null : (d) => d.keeper === keeper);
-    syncCount();
-    sheet.hidden = true;
-  };
-  count.addEventListener("click", () => {
-    const keepers = [...new Set(ducks.map((d) => d.keeper).filter(Boolean))];
-    sheet.replaceChildren();
-    if (keepers.length === 0) {
-      sheet.append(el2("p", "p-note", t("live.nokeepers")));
-    } else {
-      sheet.append(el2("p", "p-field-label", t("pond.04")));
-      const list = el2("div", "p-actions");
-      for (const k of keepers) {
-        const n = ducks.filter((d) => d.keeper === k).length;
-        list.append(button("p-chip", `${k} · ${n}`, () => call(k)));
-      }
-      sheet.append(list);
-    }
-    if (calling !== null) {
-      sheet.append(
-        el2("div", "p-actions").appendChild(
-          button("p-btn p-btn-quiet", t("pond.03"), () => call(null))
-        ).parentElement
-      );
-    }
-    sheet.append(
-      el2("div", "p-actions").appendChild(
-        button("p-chip", t("pond.23"), () => {
-          sheet.hidden = true;
-        })
-      ).parentElement
-    );
-    sheet.hidden = !sheet.hidden;
-  });
-  root.append(sheet);
   if (bootstrap.duck) view.lookAt(bootstrap.duck.id, true);
-  const pondPoll = window.setInterval(refresh, 2e4);
+  let polling = true;
+  function pausePolling() {
+    polling = false;
+  }
+  function resumePolling() {
+    polling = true;
+    void refresh();
+  }
+  const poll = window.setInterval(() => {
+    if (polling) void refresh();
+  }, 2e4);
   teardown = () => {
     clearInterval(zoomPoll);
-    clearInterval(pondPoll);
+    clearInterval(poll);
     window.removeEventListener("resize", fit);
     view.stop();
     teardown = null;
@@ -2775,10 +2799,11 @@ async function main() {
   const b = boot();
   setLang(document.documentElement.lang || "en");
   if (b.view === "edit" && b.editKey) {
+    await pondScreen({});
     mineScreen({
-      root,
+      root: document.querySelector(".p-overlay"),
       editKey: b.editKey,
-      onPond: () => void pondScreen({})
+      onPond: () => document.querySelector(".p-overlay").replaceChildren()
     });
     return;
   }
