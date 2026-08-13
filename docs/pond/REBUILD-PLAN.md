@@ -155,3 +155,20 @@ table.
 **Work:** a stepped-transition scale in the stylesheet, applied to sheet
 entry, scrim fade, button press, chip changes and tab switches — with
 `prefers-reduced-motion` honoured, as rev E does via its `reduce` flag.
+
+### Sticker slots must fit all four ducks
+
+Both artifacts place stickers at fixed sprite coordinates:
+
+```
+SLOTS = { hat:[15,2], face:[15,5], neck:[13,10], body:[10,15], float:[5,7], held:[7,…] }
+```
+
+One table, four different duck outlines. A hat anchored for 小吉 sits in the
+air on 凶 if their heads are at different heights, and "Surprise me" places
+into the same slots, so it produces a wrong-looking duck rather than a
+random one. The four sprites have to be checked slot by slot — and where a
+slot genuinely differs, the offset belongs **per fortune** rather than one
+table stretched over all of them.
+
+This applies equally to the random decoration path and to hand placement.
