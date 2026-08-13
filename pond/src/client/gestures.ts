@@ -135,7 +135,12 @@ export class Gestures {
 
     const dx = after.x - before.x;
     const dy = after.y - before.y;
-    this.travelled += Math.abs(dx) + Math.abs(dy);
+    // The CENTROID barely moves in a symmetric pinch, so counting only its
+    // travel let a big deliberate zoom finish under the tap threshold — and
+    // lifting the second finger opened whatever duck happened to be under
+    // it. Spreading the fingers is travel too.
+    this.travelled +=
+      Math.abs(dx) + Math.abs(dy) + Math.abs(this.gap() - beforeGap);
 
     const { camera } = this.target;
 

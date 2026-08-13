@@ -79,8 +79,39 @@ var api = {
   update: (editKey, duck) => request(`/duck/${editKey}`, { method: "PATCH", body: JSON.stringify(duck) }),
   remove: (editKey) => request(`/duck/${editKey}`, { method: "DELETE" })
 };
+var DRAFT_KEY = "pond.draft.v1";
 var DRAFT_TTL_MS = 60 * 60 * 1e3;
+function saveDraft(d) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...d, savedAt: Date.now() }));
+  } catch {
+  }
+}
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || typeof d !== "object") return null;
+    if (Date.now() - (d.savedAt ?? 0) > DRAFT_TTL_MS) return null;
+    return d;
+  } catch {
+    return null;
+  }
+}
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+  }
+}
 var KEY_STORE = "pond.editKey.v1";
+function rememberEditKey(key) {
+  try {
+    localStorage.setItem(KEY_STORE, key);
+  } catch {
+  }
+}
 function recallEditKey() {
   try {
     return localStorage.getItem(KEY_STORE);
@@ -316,6 +347,27 @@ function project(wx, wy, cam, renderCell, canvasW, canvasH, side) {
 var GRID = 24;
 var CELLS2 = GRID * GRID;
 var PACKED_BYTES = CELLS2 / 2;
+var MAX_PALETTE = 15;
+function encodePaint(cells) {
+  if (cells.length !== CELLS2) throw new RangeError(`paint must be ${CELLS2} cells`);
+  let any = false;
+  for (let i = 0; i < CELLS2; i++) {
+    if (cells[i]) {
+      any = true;
+      break;
+    }
+  }
+  if (!any) return "";
+  const bytes = new Uint8Array(PACKED_BYTES);
+  for (let i = 0; i < PACKED_BYTES; i++) {
+    const hi = (cells[i * 2] ?? 0) & 15;
+    const lo = (cells[i * 2 + 1] ?? 0) & 15;
+    bytes[i] = hi << 4 | lo;
+  }
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
 function decodePaint(b64) {
   const cells = new Uint8Array(CELLS2);
   if (!b64) return cells;
@@ -332,6 +384,61 @@ function decodePaint(b64) {
     cells[i * 2 + 1] = byte & 15;
   }
   return cells;
+}
+function clampPaintValue(v) {
+  if (!Number.isFinite(v)) return 0;
+  const n = Math.trunc(v);
+  return n < 0 ? 0 : n > MAX_PALETTE ? MAX_PALETTE : n;
+}
+
+// src/client/dom.ts
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== void 0) node.textContent = text;
+  return node;
+}
+function button(className, label, onClick, aria) {
+  const b = el("button", className, label);
+  b.type = "button";
+  if (aria) b.setAttribute("aria-label", aria);
+  b.addEventListener("click", onClick);
+  return b;
+}
+function field(opts) {
+  const wrap2 = el("label", "p-field");
+  wrap2.append(el("span", "p-field-label", opts.label));
+  const input = opts.multiline ? el("textarea", "p-input") : el("input", "p-input");
+  if (!opts.multiline) input.type = "text";
+  input.placeholder = opts.placeholder;
+  input.value = opts.value ?? "";
+  input.maxLength = opts.max * 2;
+  const count = el("span", "p-field-count");
+  const sync = () => {
+    const points = [...input.value].length;
+    count.textContent = `${points}`;
+    count.classList.toggle("over", points > opts.max);
+    opts.onInput?.(input.value);
+  };
+  input.addEventListener("input", sync);
+  sync();
+  wrap2.append(input, count);
+  return { wrap: wrap2, input };
+}
+function screen(root2, render) {
+  try {
+    render();
+  } catch (err) {
+    console.error("[pond] screen failed", err);
+    root2.replaceChildren();
+    const wrap2 = el("div", "p-screen p-centre");
+    wrap2.append(
+      el("p", "p-title", "Something went wrong"),
+      el("p", "p-body", "Nothing you made has been lost. Reload to pick it back up."),
+      button("p-btn", "Reload", () => location.reload())
+    );
+    root2.append(wrap2);
+  }
 }
 
 // src/client/sprites.ts
@@ -778,6 +885,15 @@ var STICKERS = {
     rows: [".y.", "yyy", ".y."]
   }
 };
+var SLOT_ORIGIN = {
+  hat: [15, 2],
+  face: [15, 5],
+  neck: [13, 10],
+  body: [10, 15],
+  held: [7, 13],
+  float: [5, 7]
+};
+var MAX_STICKERS = 6;
 
 // src/client/render.ts
 function tintOf(d) {
@@ -928,424 +1044,6 @@ function drawRipples(buf, ripples, now) {
   }
   buf.canvas.getContext("2d").putImageData(buf.image, 0, 0);
 }
-
-// src/client/gestures.ts
-var VELOCITY_WINDOW_MS = 120;
-var TAP_SLOP_PX = 8;
-var Gestures = class {
-  constructor(el2, target) {
-    this.el = el2;
-    this.target = target;
-    el2.addEventListener("pointerdown", this.down);
-    el2.addEventListener("pointermove", this.move);
-    el2.addEventListener("pointerup", this.up);
-    el2.addEventListener("pointercancel", this.up);
-    el2.addEventListener("wheel", this.wheel, { passive: false });
-  }
-  el;
-  target;
-  /** Live pointers, each with a short trail of where it has been. */
-  points = /* @__PURE__ */ new Map();
-  travelled = 0;
-  /** Distance between two fingers when the pinch was last measured. */
-  pinchGap = 0;
-  destroy() {
-    this.el.removeEventListener("pointerdown", this.down);
-    this.el.removeEventListener("pointermove", this.move);
-    this.el.removeEventListener("pointerup", this.up);
-    this.el.removeEventListener("pointercancel", this.up);
-    this.el.removeEventListener("wheel", this.wheel);
-  }
-  trail(id) {
-    let t2 = this.points.get(id);
-    if (!t2) {
-      t2 = [];
-      this.points.set(id, t2);
-    }
-    return t2;
-  }
-  push(e) {
-    const t2 = this.trail(e.pointerId);
-    t2.push({ t: e.timeStamp, x: e.clientX, y: e.clientY });
-    while (t2.length > 2 && e.timeStamp - t2[0].t > VELOCITY_WINDOW_MS) t2.shift();
-  }
-  latest() {
-    return [...this.points.values()].map((t2) => t2[t2.length - 1]).filter(Boolean);
-  }
-  centroid() {
-    const now = this.latest();
-    const sum = now.reduce((a, p) => ({ x: a.x + p.x, y: a.y + p.y }), { x: 0, y: 0 });
-    return { x: sum.x / now.length, y: sum.y / now.length };
-  }
-  gap() {
-    const [a, b] = this.latest();
-    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
-  }
-  down = (e) => {
-    this.push(e);
-    if (this.points.size === 1) this.travelled = 0;
-    this.pinchGap = this.gap();
-    this.target.camera.grab();
-    try {
-      this.el.setPointerCapture(e.pointerId);
-    } catch {
-    }
-  };
-  move = (e) => {
-    if (!this.points.has(e.pointerId)) return;
-    const before = this.centroid();
-    const beforeGap = this.gap();
-    this.push(e);
-    const after = this.centroid();
-    const dx = after.x - before.x;
-    const dy = after.y - before.y;
-    this.travelled += Math.abs(dx) + Math.abs(dy);
-    const { camera } = this.target;
-    if (this.points.size >= 2 && beforeGap > 0 && this.pinchGap > 0) {
-      const gap = this.gap();
-      const ratio = gap / beforeGap;
-      if (Number.isFinite(ratio) && ratio > 0) {
-        const d = this.target.dpr();
-        const rect = this.el.getBoundingClientRect();
-        camera.zoomAbout(
-          camera.cam.cell * ratio,
-          (after.x - (rect.left + rect.width / 2)) * d,
-          (after.y - (rect.top + rect.height / 2)) * d
-        );
-      }
-    }
-    const k = 1 / this.target.scale();
-    camera.pan(dx * k, dy * k);
-  };
-  up = (e) => {
-    const trail = this.points.get(e.pointerId);
-    this.points.delete(e.pointerId);
-    if (this.points.size > 0) {
-      this.pinchGap = this.gap();
-      return;
-    }
-    this.target.camera.release();
-    if (this.travelled <= TAP_SLOP_PX) {
-      this.target.onTap(e.clientX, e.clientY);
-      return;
-    }
-    if (prefersReducedMotion() || !trail || trail.length < 2) return;
-    const first = trail[0];
-    const last = trail[trail.length - 1];
-    const dt = last.t - first.t;
-    if (dt <= 0) return;
-    const k = 1 / this.target.scale();
-    this.target.camera.fling((last.x - first.x) / dt * k, (last.y - first.y) / dt * k);
-  };
-  wheel = (e) => {
-    e.preventDefault();
-    const rect = this.el.getBoundingClientRect();
-    const { camera } = this.target;
-    const factor = Math.exp(-e.deltaY / 400);
-    const d = this.target.dpr();
-    camera.zoomAbout(
-      camera.cam.cell * factor,
-      (e.clientX - (rect.left + rect.width / 2)) * d,
-      (e.clientY - (rect.top + rect.height / 2)) * d
-    );
-  };
-};
-
-// src/client/pond-view.ts
-var WORLD_FPS = 12;
-var WORLD_MS = 1e3 / WORLD_FPS;
-var SEPARATION = 30;
-function hashId(id) {
-  let h = 2166136261;
-  for (let i = 0; i < id.length; i++) {
-    h ^= id.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return (h >>> 0) / 4294967296;
-}
-function placeDucks(ducks, side) {
-  const spread = Math.min(duckSpread(ducks.length), side);
-  const origin = (side - spread) / 2;
-  const placed = ducks.map((d) => {
-    const a = hashId(d.id);
-    const b = hashId(d.id + "y");
-    return {
-      ...d,
-      wx: origin + a * spread,
-      wy: origin + b * spread,
-      flip: hashId(d.id + "f") > 0.5
-    };
-  });
-  for (let pass = 0; pass < 4; pass++) {
-    for (let i = 0; i < placed.length; i++) {
-      for (let j = i + 1; j < placed.length; j++) {
-        const a = placed[i];
-        const b = placed[j];
-        let dx = b.wx - a.wx;
-        let dy = b.wy - a.wy;
-        if (dx > side / 2) dx -= side;
-        if (dx < -side / 2) dx += side;
-        if (dy > side / 2) dy -= side;
-        if (dy < -side / 2) dy += side;
-        const dist = Math.hypot(dx, dy);
-        if (dist >= SEPARATION || dist === 0) continue;
-        const push = (SEPARATION - dist) / 2;
-        const ux = dx / dist;
-        const uy = dy / dist;
-        a.wx = wrap(a.wx - ux * push, side);
-        a.wy = wrap(a.wy - uy * push, side);
-        b.wx = wrap(b.wx + ux * push, side);
-        b.wy = wrap(b.wy + uy * push, side);
-      }
-    }
-  }
-  return placed;
-}
-var PondView = class {
-  constructor(opts) {
-    this.opts = opts;
-    this.ctx = opts.canvas.getContext("2d");
-    this.ctx.imageSmoothingEnabled = false;
-    this.gestures = new Gestures(opts.canvas, {
-      // The CONTINUOUS cell, not the render cell. Mid-pinch they differ by
-      // up to 25%, and every screen-to-world conversion would be wrong by
-      // that much — taps landing on the wrong duck, drags outrunning the
-      // finger.
-      scale: () => this.camera.cam.cell / this.dpr(),
-      dpr: () => this.dpr(),
-      camera: this.camera,
-      onTap: (cx, cy) => this.tap(cx, cy)
-    });
-  }
-  opts;
-  camera = new PondCamera({ x: 0, y: 0, cell: HOME_CELL }, 1);
-  ctx;
-  gestures;
-  water = null;
-  ducks = [];
-  ripples = [];
-  frame = 0;
-  lastWorldTick = 0;
-  lastDebug = 0;
-  debugging = typeof location !== "undefined" && location.search.includes("debug");
-  // Two different kinds of handle. Holding both in one field and cancelling
-  // it as both was an id-collision waiting to happen: cancelAnimationFrame
-  // and clearTimeout share a numeric space, so stopping the view could
-  // cancel an unrelated animation somewhere else on the page.
-  raf = 0;
-  timer = 0;
-  running = false;
-  /** Visible frame in sprite pixels — NOT the overscanned canvas. */
-  frameSprite = { w: 0, h: 0 };
-  dpr() {
-    return Math.min(window.devicePixelRatio || 1, 2);
-  }
-  /** Screen point to world point, through the same numbers used to draw. */
-  toWorld(clientX, clientY) {
-    const rect = this.opts.canvas.getBoundingClientRect();
-    const cell = this.camera.cam.cell / this.dpr();
-    return {
-      wx: wrap(this.camera.cam.x + (clientX - (rect.left + rect.width / 2)) / cell, this.camera.side),
-      wy: wrap(this.camera.cam.y + (clientY - (rect.top + rect.height / 2)) / cell, this.camera.side)
-    };
-  }
-  tap(clientX, clientY) {
-    const { wx, wy } = this.toWorld(clientX, clientY);
-    const hit = this.hitTest(wx, wy);
-    if (hit) this.opts.onTapDuck?.(hit);
-    else this.opts.onTapWater?.(wx, wy);
-  }
-  setDucks(ducks) {
-    const wasEmpty = this.ducks.length === 0;
-    this.camera.side = worldSide(Math.max(this.frameSprite.w, this.frameSprite.h), ducks.length);
-    this.ducks = placeDucks(ducks, this.camera.side);
-    if (wasEmpty) this.camera.snap({ x: this.camera.side / 2, y: this.camera.side / 2 });
-  }
-  /** What the view actually believes, for debugging against a real browser. */
-  debug() {
-    const { renderCell, scale } = this.camera.frame();
-    return {
-      cam: { ...this.camera.cam },
-      side: this.camera.side,
-      renderCell,
-      scale,
-      frameSprite: this.frameSprite,
-      canvas: [this.opts.canvas.width, this.opts.canvas.height],
-      water: this.water ? [this.water.cols, this.water.rows] : null,
-      ducks: this.ducks.map((d) => ({
-        id: d.id,
-        wx: Math.round(d.wx),
-        wy: Math.round(d.wy),
-        at: project(
-          d.wx,
-          d.wy,
-          this.camera.cam,
-          renderCell,
-          this.opts.canvas.width,
-          this.opts.canvas.height,
-          this.camera.side
-        )
-      }))
-    };
-  }
-  /** Find a duck by id, for the arrival zoom and the whistle. */
-  find(id) {
-    return this.ducks.find((d) => d.id === id);
-  }
-  /**
-   * Resize to the element, at 150% overscan.
-   *
-   * The camera addresses the canvas, but only the middle two-thirds is ever
-   * seen. Anything measuring a fraction of what a person can see must use
-   * `frameSprite` — measuring against the canvas put a duck 5% down the
-   * screen, behind the notch.
-   */
-  resize() {
-    const el2 = this.opts.canvas;
-    const rect = el2.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.round(rect.width * dpr);
-    const h = Math.round(rect.height * dpr);
-    if (el2.width === w && el2.height === h) return;
-    el2.width = w;
-    el2.height = h;
-    this.ctx.imageSmoothingEnabled = false;
-    const cell = this.camera.frame().renderCell;
-    this.frameSprite = {
-      w: rect.width / OVERSCAN * dpr / cell,
-      h: rect.height / OVERSCAN * dpr / cell
-    };
-    this.water = createWaterBuffer(Math.ceil(w / cell), Math.ceil(h / cell));
-    this.camera.side = worldSide(
-      Math.max(this.frameSprite.w, this.frameSprite.h),
-      this.ducks.length
-    );
-    if (this.ducks.length) this.ducks = placeDucks(this.ducks, this.camera.side);
-  }
-  start() {
-    if (this.running) return;
-    this.running = true;
-    const loop = (now) => {
-      if (!this.running) return;
-      const camMoving = this.camera.tick(now);
-      if (!camMoving && now - this.lastWorldTick >= WORLD_MS) {
-        this.lastWorldTick = now;
-        this.frame++;
-      }
-      this.draw(now);
-      if (this.debugging && now - this.lastDebug > 50) {
-        this.lastDebug = now;
-        this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
-      }
-      if (camMoving || this.ripples.length) {
-        this.raf = requestAnimationFrame(loop);
-      } else {
-        this.timer = window.setTimeout(() => {
-          this.raf = requestAnimationFrame(loop);
-        }, WORLD_MS);
-      }
-    };
-    this.raf = requestAnimationFrame(loop);
-  }
-  stop() {
-    this.running = false;
-    cancelAnimationFrame(this.raf);
-    clearTimeout(this.timer);
-    this.gestures.destroy();
-  }
-  /**
-   * A ripple where something happened. Discrete rings, not a wave sim.
-   *
-   * Ripples are drawn INTO the water buffer, in buffer pixels, before it is
-   * scaled up — so they dither with the water instead of sitting on top of
-   * it as smooth circles. That is why this converts through the projection
-   * rather than storing world coordinates.
-   */
-  splash(wx, wy, max = 14) {
-    this.ripples.push({ x: wx, y: wy, t: performance.now(), max });
-  }
-  /** Centre on a duck. `moment` is the one thing watched, not operated. */
-  lookAt(id, moment = false) {
-    const d = this.find(id);
-    if (!d) return;
-    this.camera.glide({ x: d.wx, y: d.wy, cell: HOME_CELL }, moment ? CAM_MOMENT : CAM_UI);
-  }
-  draw(now) {
-    const { canvas } = this.opts;
-    const { renderCell, scale } = this.camera.frame();
-    const { ctx } = this;
-    if (this.water) {
-      drawWater(this.water, this.frame);
-      if (this.ripples.length) {
-        const inBuffer = this.ripples.map((r) => {
-          const p = project(
-            r.x,
-            r.y,
-            this.camera.cam,
-            renderCell,
-            canvas.width,
-            canvas.height,
-            this.camera.side
-          );
-          return { ...r, x: Math.round(p.x / renderCell), y: Math.round(p.y / renderCell) };
-        });
-        drawRipples(this.water, inBuffer, now);
-      }
-      blitWater(ctx, this.water, canvas.width, canvas.height);
-    }
-    const sorted = [...this.ducks].sort((a, b) => a.wy - b.wy);
-    for (const d of sorted) {
-      const p = project(
-        d.wx,
-        d.wy,
-        this.camera.cam,
-        renderCell,
-        canvas.width,
-        canvas.height,
-        this.camera.side
-      );
-      const pad = 24 * renderCell;
-      if (p.x < -pad || p.y < -pad || p.x > canvas.width + pad || p.y > canvas.height + pad) {
-        continue;
-      }
-      drawDuck(
-        ctx,
-        {
-          fortune: d.fortune,
-          tint: d.tint,
-          paint: d.paint ? decodePaint(d.paint) : null,
-          stickers: d.stickers,
-          burning: d.burning,
-          flip: d.flip,
-          // Reduced motion never removes information — a still duck is
-          // still a duck, it just does not walk.
-          frame: prefersReducedMotion() ? 0 : this.frame
-        },
-        p.x - 12 * renderCell,
-        p.y - 12 * renderCell,
-        renderCell
-      );
-    }
-    this.ripples = this.ripples.filter((r) => now - r.t < RIPPLE_MS);
-    canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
-  }
-  /** Nearest duck within a forgiving radius. Front-most wins. */
-  hitTest(wx, wy) {
-    let best;
-    let bestD = 16;
-    for (const d of this.ducks) {
-      const dist = Math.hypot(
-        wrapDelta(wx, d.wx, this.camera.side),
-        wrapDelta(wy, d.wy, this.camera.side)
-      );
-      if (dist < bestD) {
-        bestD = dist;
-        best = d;
-      }
-    }
-    return best;
-  }
-};
 
 // src/client/strings.ts
 var SCOPE_STRINGS = {
@@ -1596,41 +1294,936 @@ function t(key, vars) {
   return text.replace(/\{(\w+)\}/g, (whole, name) => vars[name] ?? whole);
 }
 
+// src/client/studio.ts
+var EDIT_CELL = 12;
+function studioScreen(root2, opts) {
+  const { state } = opts;
+  root2.replaceChildren();
+  const wrap2 = el("div", "p-screen");
+  const nav = el("div", "p-nav");
+  nav.append(
+    button("p-chip", t("studio.01"), opts.onBack),
+    el("span", "p-nav-title", t("studio.02")),
+    button("p-chip", t("studio.17"), opts.onNext)
+  );
+  const canvas = el("canvas", "p-edit");
+  canvas.width = GRID * EDIT_CELL;
+  canvas.height = GRID * EDIT_CELL;
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", t("studio.04"));
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  const redraw = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawDuck(
+      ctx,
+      { fortune: opts.fortune, tint: state.tint, paint: state.paint, stickers: state.stickers },
+      0,
+      0,
+      EDIT_CELL
+    );
+    opts.onChange(state);
+  };
+  let tab = "colour";
+  const panel = el("div", "p-panel");
+  const tabs = el("div", "p-tabs");
+  const setTab = (next) => {
+    tab = next;
+    [...tabs.children].forEach(
+      (c) => c.classList.toggle("on", c.dataset.tab === next)
+    );
+    drawPanel();
+  };
+  for (const [key, label] of [
+    ["colour", t("studio.08")],
+    ["stickers", t("studio.09")],
+    ["draw", t("studio.10")]
+  ]) {
+    const b = button("p-tab", label, () => setTab(key));
+    b.dataset.tab = key;
+    tabs.append(b);
+  }
+  function drawPanel() {
+    panel.replaceChildren();
+    if (tab === "colour") return colourPanel();
+    if (tab === "stickers") return stickerPanel();
+    return paintPanel();
+  }
+  function colourPanel() {
+    const swatches = el("div", "p-swatches");
+    TINTS.forEach((colour, i) => {
+      const b = button("p-swatch", "", () => {
+        state.tint = i;
+        redraw();
+        drawPanel();
+      }, `${t("studio.11")} ${i + 1}`);
+      b.style.background = colour;
+      b.classList.toggle("on", state.tint === i);
+      swatches.append(b);
+    });
+    panel.append(swatches);
+  }
+  function stickerPanel() {
+    const hint = el("p", "p-hint", t("studio.18"));
+    const grid = el("div", "p-stickers");
+    for (const [id, def] of Object.entries(STICKERS)) {
+      const already = state.stickers.find((s) => s.id === id);
+      const b = button("p-sticker", "", () => {
+        if (already) {
+          state.stickers = state.stickers.filter((s) => s.id !== id);
+        } else {
+          if (state.stickers.length >= MAX_STICKERS) state.stickers.shift();
+          const [ox, oy] = SLOT_ORIGIN[def.slot];
+          state.stickers.push({ id, x: ox, y: oy });
+        }
+        redraw();
+        drawPanel();
+      }, def.name);
+      b.classList.toggle("on", Boolean(already));
+      const c = el("canvas", "p-sticker-art");
+      const cell = 4;
+      c.width = def.rows[0].length * cell;
+      c.height = def.rows.length * cell;
+      const cc = c.getContext("2d");
+      cc.imageSmoothingEnabled = false;
+      def.rows.forEach((row, y) => {
+        [...row].forEach((ch, x) => {
+          if (ch === ".") return;
+          cc.fillStyle = STICKER_COLOURS[ch] ?? "#2B2B24";
+          cc.fillRect(x * cell, y * cell, cell, cell);
+        });
+      });
+      b.append(c);
+      grid.append(b);
+    }
+    panel.append(hint, grid);
+  }
+  function paintPanel() {
+    let colour = 1;
+    let brush = 1;
+    let erasing = false;
+    const tools = el("div", "p-tools");
+    const brush1 = button("p-chip", t("studio.13"), () => {
+      brush = 1;
+      erasing = false;
+      syncTools();
+    });
+    const brush2 = button("p-chip", t("studio.14"), () => {
+      brush = 2;
+      erasing = false;
+      syncTools();
+    });
+    const erase = button("p-chip", t("studio.15"), () => {
+      erasing = !erasing;
+      syncTools();
+    });
+    const syncTools = () => {
+      brush1.classList.toggle("on", brush === 1 && !erasing);
+      brush2.classList.toggle("on", brush === 2 && !erasing);
+      erase.classList.toggle("on", erasing);
+    };
+    syncTools();
+    const undo = button("p-chip", "↶", () => {
+      const last = history.pop();
+      if (last) {
+        state.paint = last;
+        redraw();
+      }
+    }, t("studio.05"));
+    const clear = button("p-chip", "×", () => {
+      history.push(state.paint.slice());
+      state.paint = new Uint8Array(GRID * GRID);
+      redraw();
+    }, t("studio.06"));
+    tools.append(brush1, brush2, erase, undo, clear);
+    const swatches = el("div", "p-swatches");
+    PAINT_COLOURS.forEach((c, i) => {
+      const b = button("p-swatch", "", () => {
+        colour = i + 1;
+        erasing = false;
+        syncTools();
+        drawPanel();
+      }, `${t("studio.16")} ${i + 1}`);
+      b.style.background = c;
+      b.classList.toggle("on", colour === i + 1);
+      swatches.append(b);
+    });
+    let painting = false;
+    const paintAt = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / rect.width * GRID);
+      const y = Math.floor((e.clientY - rect.top) / rect.height * GRID);
+      for (let dy = 0; dy < brush; dy++) {
+        for (let dx = 0; dx < brush; dx++) {
+          const px = x + dx;
+          const py = y + dy;
+          if (px < 0 || py < 0 || px >= GRID || py >= GRID) continue;
+          state.paint[py * GRID + px] = erasing ? 0 : clampPaintValue(colour);
+        }
+      }
+      redraw();
+    };
+    canvas.onpointerdown = (e) => {
+      history.push(state.paint.slice());
+      if (history.length > 24) history.shift();
+      painting = true;
+      canvas.setPointerCapture(e.pointerId);
+      paintAt(e);
+    };
+    canvas.onpointermove = (e) => {
+      if (painting) paintAt(e);
+    };
+    canvas.onpointerup = () => {
+      painting = false;
+    };
+    panel.append(tools, swatches);
+  }
+  const history = [];
+  wrap2.append(nav, canvas, tabs, panel);
+  root2.append(wrap2);
+  setTab("colour");
+  redraw();
+}
+var STICKER_COLOURS = {
+  k: "#2B2B24",
+  w: "#FFFFFF",
+  r: "#FF4B4B",
+  y: "#FFCA00",
+  b: "#3FB5D8",
+  g: "#5AD08A",
+  p: "#FF6FA5",
+  o: "#FF8953",
+  n: "#8B5E34",
+  s: "#C9D6DC"
+};
+function toPayload(state) {
+  const painted = state.paint.some((v) => v !== 0);
+  return {
+    tint: state.tint,
+    stickers: state.stickers,
+    // Empty means empty. Sending 384 characters of zeros would store a
+    // blank layer on every duck that never used the brush.
+    paint: painted ? encodePaint(state.paint) : ""
+  };
+}
+
+// src/client/release-flow.ts
+function blankDraft() {
+  return {
+    studio: { tint: 0, stickers: [], paint: new Uint8Array(GRID * GRID) },
+    name: "",
+    message: "",
+    contact: "",
+    // The narrowest scope, which is the only one the screen promises.
+    scope: "david"
+  };
+}
+function restore() {
+  const d = blankDraft();
+  const saved = loadDraft();
+  if (!saved) return d;
+  d.studio.tint = saved.tint ?? 0;
+  d.studio.stickers = saved.stickers ?? [];
+  d.studio.paint = decodePaint(saved.paint);
+  d.name = saved.name ?? "";
+  d.message = saved.message ?? "";
+  d.contact = saved.contact ?? "";
+  d.scope = saved.scope ?? "david";
+  return d;
+}
+function releaseFlow(opts) {
+  const { root: root2 } = opts;
+  const draft = restore();
+  const persist = () => {
+    const { tint, stickers, paint } = toPayload(draft.studio);
+    saveDraft({
+      tint,
+      stickers,
+      paint,
+      name: draft.name,
+      message: draft.message,
+      contact: draft.contact,
+      scope: draft.scope
+    });
+  };
+  function preview(size = 8) {
+    const c = el("canvas", "p-preview");
+    c.width = GRID * size;
+    c.height = GRID * size;
+    const ctx = c.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    drawDuck(
+      ctx,
+      {
+        fortune: opts.fortune,
+        tint: draft.studio.tint,
+        paint: draft.studio.paint,
+        stickers: draft.studio.stickers
+      },
+      0,
+      0,
+      size
+    );
+    return c;
+  }
+  function arrivalBody() {
+    root2.replaceChildren();
+    const f = FORTUNES[opts.fortune] ?? FORTUNES[1];
+    const wrap2 = el("div", "p-screen p-centre");
+    wrap2.append(
+      el("p", "p-eyebrow", t("arrival.01")),
+      preview(10),
+      el("h1", "p-title", `${f.jp} · ${f.en}`),
+      el("p", "p-body", t("arrival.03"))
+    );
+    const actions = el("div", "p-actions");
+    actions.append(
+      button("p-btn", t("arrival.04"), studio),
+      // The escape hatch matters: someone who just wants to look must not
+      // have to make a duck first.
+      button("p-btn p-btn-quiet", t("arrival.05"), opts.onBrowse)
+    );
+    wrap2.append(actions);
+    root2.append(wrap2);
+  }
+  function studio() {
+    studioScreen(root2, {
+      fortune: opts.fortune,
+      state: draft.studio,
+      onChange: persist,
+      onNext: sign,
+      onBack: arrival
+    });
+  }
+  function signBody() {
+    root2.replaceChildren();
+    const wrap2 = el("div", "p-screen");
+    wrap2.append(el("p", "p-eyebrow", t("sign.01")), preview(6), el("h2", "p-title", t("sign.02")));
+    const name = field({
+      label: t("sign.03"),
+      placeholder: t("sign.04"),
+      max: 18,
+      value: draft.name,
+      onInput: (v) => {
+        draft.name = v;
+        persist();
+      }
+    });
+    const message = field({
+      label: t("sign.06"),
+      placeholder: t("sign.07"),
+      max: 90,
+      value: draft.message,
+      multiline: true,
+      onInput: (v) => {
+        draft.message = v;
+        persist();
+      }
+    });
+    wrap2.append(name.wrap, message.wrap);
+    wrap2.append(el("p", "p-note", t("sign.08")));
+    wrap2.append(
+      el("div", "p-actions").appendChild(button("p-btn", t("sign.09"), contact)).parentElement
+    );
+    root2.append(wrap2);
+  }
+  function contactBody() {
+    root2.replaceChildren();
+    const wrap2 = el("div", "p-screen");
+    wrap2.append(
+      el("p", "p-eyebrow", t("contact.01")),
+      el("h2", "p-title", t("contact.02")),
+      el("p", "p-body", t("contact.03"))
+    );
+    const scopes = el("div", "p-scopes");
+    const scopeLabel = el("p", "p-field-label", SCOPE_STRINGS["scope.01"]);
+    const options = [["david", t("scope.02")]];
+    if (opts.keeper) {
+      options.push(["keeper", t("scope.03", { keeper: opts.keeper })]);
+      options.push(["keeper_and_david", t("scope.04", { keeper: opts.keeper })]);
+    }
+    const syncScope = () => {
+      const given = draft.contact.trim().length > 0;
+      scopeLabel.hidden = !given;
+      scopes.hidden = !given;
+      scopeButtons.forEach((b, i) => b.classList.toggle("on", options[i][0] === draft.scope));
+    };
+    const scopeButtons = options.map(
+      ([value, label]) => button("p-chip", label, () => {
+        draft.scope = value;
+        persist();
+        syncScope();
+      })
+    );
+    scopeButtons.forEach((b) => scopes.append(b));
+    const input = field({
+      label: t("contact.04"),
+      placeholder: t("contact.05"),
+      max: 120,
+      value: draft.contact,
+      onInput: (v) => {
+        draft.contact = v;
+        persist();
+        syncScope();
+      }
+    });
+    wrap2.append(input.wrap);
+    wrap2.append(scopeLabel, scopes, el("p", "p-note", t("contact.06")));
+    const actions = el("div", "p-actions");
+    actions.append(
+      button("p-btn", t("contact.07"), () => void release()),
+      button("p-btn p-btn-quiet", t("contact.08"), () => {
+        draft.contact = "";
+        persist();
+        void release();
+      })
+    );
+    wrap2.append(actions);
+    root2.append(wrap2);
+    syncScope();
+  }
+  async function release() {
+    root2.replaceChildren();
+    const wrap2 = el("div", "p-screen p-centre");
+    const status = el("p", "p-body", t("pond.14"));
+    wrap2.append(preview(10), status);
+    root2.append(wrap2);
+    const { tint, stickers, paint } = toPayload(draft.studio);
+    const contactValue = draft.contact.trim();
+    try {
+      const made = await api.release({
+        tint,
+        stickers,
+        paint,
+        name: draft.name,
+        message: draft.message,
+        ...contactValue ? { contact: contactValue, scope: draft.scope } : {}
+      });
+      rememberEditKey(made.editKey);
+      clearDraft();
+      keep(made);
+    } catch (err) {
+      status.textContent = err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
+      wrap2.append(
+        el("div", "p-actions").appendChild(
+          button("p-btn", t("contact.07"), () => void release())
+        ).parentElement
+      );
+    }
+  }
+  function keepBody(made) {
+    root2.replaceChildren();
+    const url = `${location.origin}/e/${made.editKey}`;
+    const wrap2 = el("div", "p-screen");
+    wrap2.append(
+      el("p", "p-eyebrow", t("pond.14")),
+      el("h2", "p-title", t("pond.15")),
+      el("p", "p-body", t("pond.16"))
+    );
+    const box = el("div", "p-linkbox");
+    const text = el("code", "p-link", url);
+    box.append(text);
+    const actions = el("div", "p-actions");
+    const copy = button("p-btn", t("pond.19"), () => {
+      void navigator.clipboard?.writeText(url).then(
+        () => {
+          copy.textContent = "✓";
+        },
+        () => {
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          getSelection()?.removeAllRanges();
+          getSelection()?.addRange(range);
+        }
+      );
+    });
+    const smsHref = `sms:?&body=${encodeURIComponent(url)}`;
+    const mailHref = `mailto:?subject=${encodeURIComponent(t("pond.15"))}&body=${encodeURIComponent(url)}`;
+    const sms = el("a", "p-btn p-btn-quiet", t("pond.20"));
+    sms.href = smsHref;
+    const mail = el("a", "p-btn p-btn-quiet", t("pond.21"));
+    mail.href = mailHref;
+    actions.append(copy, sms, mail);
+    wrap2.append(box, actions);
+    wrap2.append(
+      el("div", "p-actions").appendChild(
+        button("p-btn", t("pond.22"), () => opts.onDone(made))
+      ).parentElement
+    );
+    root2.append(wrap2);
+  }
+  function arrival() {
+    screen(root2, arrivalBody);
+  }
+  function sign() {
+    screen(root2, signBody);
+  }
+  function contact() {
+    screen(root2, contactBody);
+  }
+  function keep(made) {
+    screen(root2, () => keepBody(made));
+  }
+  const started = draft.name || draft.message || draft.studio.stickers.length || draft.studio.tint !== 0 || draft.studio.paint.some((v) => v !== 0);
+  if (started) studio();
+  else arrival();
+}
+
+// src/client/gestures.ts
+var VELOCITY_WINDOW_MS = 120;
+var TAP_SLOP_PX = 8;
+var Gestures = class {
+  constructor(el3, target) {
+    this.el = el3;
+    this.target = target;
+    el3.addEventListener("pointerdown", this.down);
+    el3.addEventListener("pointermove", this.move);
+    el3.addEventListener("pointerup", this.up);
+    el3.addEventListener("pointercancel", this.up);
+    el3.addEventListener("wheel", this.wheel, { passive: false });
+  }
+  el;
+  target;
+  /** Live pointers, each with a short trail of where it has been. */
+  points = /* @__PURE__ */ new Map();
+  travelled = 0;
+  /** Distance between two fingers when the pinch was last measured. */
+  pinchGap = 0;
+  destroy() {
+    this.el.removeEventListener("pointerdown", this.down);
+    this.el.removeEventListener("pointermove", this.move);
+    this.el.removeEventListener("pointerup", this.up);
+    this.el.removeEventListener("pointercancel", this.up);
+    this.el.removeEventListener("wheel", this.wheel);
+  }
+  trail(id) {
+    let t2 = this.points.get(id);
+    if (!t2) {
+      t2 = [];
+      this.points.set(id, t2);
+    }
+    return t2;
+  }
+  push(e) {
+    const t2 = this.trail(e.pointerId);
+    t2.push({ t: e.timeStamp, x: e.clientX, y: e.clientY });
+    while (t2.length > 2 && e.timeStamp - t2[0].t > VELOCITY_WINDOW_MS) t2.shift();
+  }
+  latest() {
+    return [...this.points.values()].map((t2) => t2[t2.length - 1]).filter(Boolean);
+  }
+  centroid() {
+    const now = this.latest();
+    const sum = now.reduce((a, p) => ({ x: a.x + p.x, y: a.y + p.y }), { x: 0, y: 0 });
+    return { x: sum.x / now.length, y: sum.y / now.length };
+  }
+  gap() {
+    const [a, b] = this.latest();
+    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+  }
+  down = (e) => {
+    this.push(e);
+    if (this.points.size === 1) this.travelled = 0;
+    this.pinchGap = this.gap();
+    this.target.camera.grab();
+    try {
+      this.el.setPointerCapture(e.pointerId);
+    } catch {
+    }
+  };
+  move = (e) => {
+    if (!this.points.has(e.pointerId)) return;
+    const before = this.centroid();
+    const beforeGap = this.gap();
+    this.push(e);
+    const after = this.centroid();
+    const dx = after.x - before.x;
+    const dy = after.y - before.y;
+    this.travelled += Math.abs(dx) + Math.abs(dy) + Math.abs(this.gap() - beforeGap);
+    const { camera } = this.target;
+    if (this.points.size >= 2 && beforeGap > 0 && this.pinchGap > 0) {
+      const gap = this.gap();
+      const ratio = gap / beforeGap;
+      if (Number.isFinite(ratio) && ratio > 0) {
+        const d = this.target.dpr();
+        const rect = this.el.getBoundingClientRect();
+        camera.zoomAbout(
+          camera.cam.cell * ratio,
+          (after.x - (rect.left + rect.width / 2)) * d,
+          (after.y - (rect.top + rect.height / 2)) * d
+        );
+      }
+    }
+    const k = 1 / this.target.scale();
+    camera.pan(dx * k, dy * k);
+  };
+  up = (e) => {
+    const trail = this.points.get(e.pointerId);
+    this.points.delete(e.pointerId);
+    if (this.points.size > 0) {
+      this.pinchGap = this.gap();
+      return;
+    }
+    this.target.camera.release();
+    if (this.travelled <= TAP_SLOP_PX) {
+      this.target.onTap(e.clientX, e.clientY);
+      return;
+    }
+    if (prefersReducedMotion() || !trail || trail.length < 2) return;
+    const first = trail[0];
+    const last = trail[trail.length - 1];
+    const dt = last.t - first.t;
+    if (dt <= 0) return;
+    const k = 1 / this.target.scale();
+    this.target.camera.fling((last.x - first.x) / dt * k, (last.y - first.y) / dt * k);
+  };
+  wheel = (e) => {
+    e.preventDefault();
+    const rect = this.el.getBoundingClientRect();
+    const { camera } = this.target;
+    const factor = Math.exp(-e.deltaY / 400);
+    const d = this.target.dpr();
+    camera.zoomAbout(
+      camera.cam.cell * factor,
+      (e.clientX - (rect.left + rect.width / 2)) * d,
+      (e.clientY - (rect.top + rect.height / 2)) * d
+    );
+  };
+};
+
+// src/client/pond-view.ts
+var WORLD_FPS = 12;
+var WORLD_MS = 1e3 / WORLD_FPS;
+var SEPARATION = 30;
+function hashId(id) {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) / 4294967296;
+}
+function placeDucks(ducks, side) {
+  const spread = Math.min(duckSpread(ducks.length), side);
+  const origin = (side - spread) / 2;
+  const placed = ducks.map((d) => {
+    const a = hashId(d.id);
+    const b = hashId(d.id + "y");
+    return {
+      ...d,
+      wx: origin + a * spread,
+      wy: origin + b * spread,
+      flip: hashId(d.id + "f") > 0.5
+    };
+  });
+  for (let pass = 0; pass < 4; pass++) {
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        const a = placed[i];
+        const b = placed[j];
+        let dx = b.wx - a.wx;
+        let dy = b.wy - a.wy;
+        if (dx > side / 2) dx -= side;
+        if (dx < -side / 2) dx += side;
+        if (dy > side / 2) dy -= side;
+        if (dy < -side / 2) dy += side;
+        const dist = Math.hypot(dx, dy);
+        if (dist >= SEPARATION || dist === 0) continue;
+        const push = (SEPARATION - dist) / 2;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        a.wx = wrap(a.wx - ux * push, side);
+        a.wy = wrap(a.wy - uy * push, side);
+        b.wx = wrap(b.wx + ux * push, side);
+        b.wy = wrap(b.wy + uy * push, side);
+      }
+    }
+  }
+  return placed;
+}
+var PondView = class {
+  constructor(opts) {
+    this.opts = opts;
+    this.ctx = opts.canvas.getContext("2d");
+    this.ctx.imageSmoothingEnabled = false;
+    this.gestures = new Gestures(opts.canvas, {
+      // The CONTINUOUS cell, not the render cell. Mid-pinch they differ by
+      // up to 25%, and every screen-to-world conversion would be wrong by
+      // that much — taps landing on the wrong duck, drags outrunning the
+      // finger.
+      scale: () => this.camera.cam.cell / this.dpr(),
+      dpr: () => this.dpr(),
+      camera: this.camera,
+      onTap: (cx, cy) => this.tap(cx, cy)
+    });
+  }
+  opts;
+  camera = new PondCamera({ x: 0, y: 0, cell: HOME_CELL }, 1);
+  ctx;
+  gestures;
+  water = null;
+  ducks = [];
+  ripples = [];
+  frame = 0;
+  lastWorldTick = 0;
+  lastDebug = 0;
+  debugging = typeof location !== "undefined" && location.search.includes("debug");
+  // Two different kinds of handle. Holding both in one field and cancelling
+  // it as both was an id-collision waiting to happen: cancelAnimationFrame
+  // and clearTimeout share a numeric space, so stopping the view could
+  // cancel an unrelated animation somewhere else on the page.
+  raf = 0;
+  timer = 0;
+  running = false;
+  /** Visible frame in sprite pixels — NOT the overscanned canvas. */
+  frameSprite = { w: 0, h: 0 };
+  dpr() {
+    return Math.min(window.devicePixelRatio || 1, 2);
+  }
+  /** Screen point to world point, through the same numbers used to draw. */
+  toWorld(clientX, clientY) {
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const cell = this.camera.cam.cell / this.dpr();
+    return {
+      wx: wrap(this.camera.cam.x + (clientX - (rect.left + rect.width / 2)) / cell, this.camera.side),
+      wy: wrap(this.camera.cam.y + (clientY - (rect.top + rect.height / 2)) / cell, this.camera.side)
+    };
+  }
+  tap(clientX, clientY) {
+    const { wx, wy } = this.toWorld(clientX, clientY);
+    const hit = this.hitTest(wx, wy);
+    if (hit) this.opts.onTapDuck?.(hit);
+    else this.opts.onTapWater?.(wx, wy);
+  }
+  setDucks(ducks) {
+    const wasEmpty = this.ducks.length === 0;
+    this.camera.side = worldSide(Math.max(this.frameSprite.w, this.frameSprite.h), ducks.length);
+    this.ducks = placeDucks(ducks, this.camera.side);
+    if (wasEmpty) this.camera.snap({ x: this.camera.side / 2, y: this.camera.side / 2 });
+  }
+  /** What the view actually believes, for debugging against a real browser. */
+  debug() {
+    const { renderCell, scale } = this.camera.frame();
+    return {
+      cam: { ...this.camera.cam },
+      side: this.camera.side,
+      renderCell,
+      scale,
+      frameSprite: this.frameSprite,
+      canvas: [this.opts.canvas.width, this.opts.canvas.height],
+      water: this.water ? [this.water.cols, this.water.rows] : null,
+      ducks: this.ducks.map((d) => ({
+        id: d.id,
+        wx: Math.round(d.wx),
+        wy: Math.round(d.wy),
+        at: project(
+          d.wx,
+          d.wy,
+          this.camera.cam,
+          renderCell,
+          this.opts.canvas.width,
+          this.opts.canvas.height,
+          this.camera.side
+        )
+      }))
+    };
+  }
+  /** Find a duck by id, for the arrival zoom and the whistle. */
+  find(id) {
+    return this.ducks.find((d) => d.id === id);
+  }
+  /**
+   * Resize to the element, at 150% overscan.
+   *
+   * The camera addresses the canvas, but only the middle two-thirds is ever
+   * seen. Anything measuring a fraction of what a person can see must use
+   * `frameSprite` — measuring against the canvas put a duck 5% down the
+   * screen, behind the notch.
+   */
+  resize() {
+    const el3 = this.opts.canvas;
+    const rect = el3.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.round(rect.width * dpr);
+    const h = Math.round(rect.height * dpr);
+    if (el3.width === w && el3.height === h) return;
+    el3.width = w;
+    el3.height = h;
+    this.ctx.imageSmoothingEnabled = false;
+    const cell = this.camera.frame().renderCell;
+    this.frameSprite = {
+      w: rect.width / OVERSCAN * dpr / cell,
+      h: rect.height / OVERSCAN * dpr / cell
+    };
+    this.water = createWaterBuffer(Math.ceil(w / cell), Math.ceil(h / cell));
+    this.camera.side = worldSide(
+      Math.max(this.frameSprite.w, this.frameSprite.h),
+      this.ducks.length
+    );
+    if (this.ducks.length) this.ducks = placeDucks(this.ducks, this.camera.side);
+  }
+  start() {
+    if (this.running) return;
+    this.running = true;
+    const loop = (now) => {
+      if (!this.running) return;
+      const camMoving = this.camera.tick(now);
+      if (!camMoving && now - this.lastWorldTick >= WORLD_MS) {
+        this.lastWorldTick = now;
+        this.frame++;
+      }
+      this.draw(now);
+      if (this.debugging && now - this.lastDebug > 50) {
+        this.lastDebug = now;
+        this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
+      }
+      if (camMoving || this.ripples.length) {
+        this.raf = requestAnimationFrame(loop);
+      } else {
+        this.timer = window.setTimeout(() => {
+          this.raf = requestAnimationFrame(loop);
+        }, WORLD_MS);
+      }
+    };
+    this.raf = requestAnimationFrame(loop);
+  }
+  stop() {
+    this.running = false;
+    cancelAnimationFrame(this.raf);
+    clearTimeout(this.timer);
+    this.gestures.destroy();
+  }
+  /**
+   * A ripple where something happened. Discrete rings, not a wave sim.
+   *
+   * Ripples are drawn INTO the water buffer, in buffer pixels, before it is
+   * scaled up — so they dither with the water instead of sitting on top of
+   * it as smooth circles. That is why this converts through the projection
+   * rather than storing world coordinates.
+   */
+  splash(wx, wy, max = 14) {
+    this.ripples.push({ x: wx, y: wy, t: performance.now(), max });
+  }
+  /** Centre on a duck. `moment` is the one thing watched, not operated. */
+  lookAt(id, moment = false) {
+    const d = this.find(id);
+    if (!d) return;
+    this.camera.glide({ x: d.wx, y: d.wy, cell: HOME_CELL }, moment ? CAM_MOMENT : CAM_UI);
+  }
+  draw(now) {
+    const { canvas } = this.opts;
+    const { renderCell, scale } = this.camera.frame();
+    const { ctx } = this;
+    if (this.water) {
+      drawWater(this.water, this.frame);
+      if (this.ripples.length) {
+        const inBuffer = this.ripples.map((r) => {
+          const p = project(
+            r.x,
+            r.y,
+            this.camera.cam,
+            renderCell,
+            canvas.width,
+            canvas.height,
+            this.camera.side
+          );
+          return { ...r, x: Math.round(p.x / renderCell), y: Math.round(p.y / renderCell) };
+        });
+        drawRipples(this.water, inBuffer, now);
+      }
+      blitWater(ctx, this.water, canvas.width, canvas.height);
+    }
+    const sorted = [...this.ducks].sort((a, b) => a.wy - b.wy);
+    for (const d of sorted) {
+      const p = project(
+        d.wx,
+        d.wy,
+        this.camera.cam,
+        renderCell,
+        canvas.width,
+        canvas.height,
+        this.camera.side
+      );
+      const pad = 24 * renderCell;
+      if (p.x < -pad || p.y < -pad || p.x > canvas.width + pad || p.y > canvas.height + pad) {
+        continue;
+      }
+      drawDuck(
+        ctx,
+        {
+          fortune: d.fortune,
+          tint: d.tint,
+          paint: d.paint ? decodePaint(d.paint) : null,
+          stickers: d.stickers,
+          burning: d.burning,
+          flip: d.flip,
+          // Reduced motion never removes information — a still duck is
+          // still a duck, it just does not walk.
+          frame: prefersReducedMotion() ? 0 : this.frame
+        },
+        p.x - 12 * renderCell,
+        p.y - 12 * renderCell,
+        renderCell
+      );
+    }
+    this.ripples = this.ripples.filter((r) => now - r.t < RIPPLE_MS);
+    canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+  /** Nearest duck within a forgiving radius. Front-most wins. */
+  hitTest(wx, wy) {
+    let best;
+    let bestD = 16;
+    for (const d of this.ducks) {
+      const dist = Math.hypot(
+        wrapDelta(wx, d.wx, this.camera.side),
+        wrapDelta(wy, d.wy, this.camera.side)
+      );
+      if (dist < bestD) {
+        bestD = dist;
+        best = d;
+      }
+    }
+    return best;
+  }
+};
+
 // src/client/main.ts
 function boot() {
-  const el2 = document.getElementById("pond-bootstrap");
-  if (!el2?.textContent) return {};
+  const el3 = document.getElementById("pond-bootstrap");
+  if (!el3?.textContent) return {};
   try {
-    return JSON.parse(el2.textContent);
+    return JSON.parse(el3.textContent);
   } catch {
     return {};
   }
 }
 var root = document.getElementById("pond");
-function el(tag, className, text) {
+function el2(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (text !== void 0) node.textContent = text;
   return node;
 }
+var teardown = null;
 async function pondScreen(bootstrap) {
+  teardown?.();
   root.replaceChildren();
-  const stage = el("div", "p-stage");
-  const canvas = el("canvas", "p-canvas");
+  const stage = el2("div", "p-stage");
+  const canvas = el2("canvas", "p-canvas");
   stage.append(canvas);
-  const hud = el("div", "p-hud");
-  const count = el("button", "p-count");
+  const hud = el2("div", "p-hud");
+  const count = el2("button", "p-count");
   count.type = "button";
   hud.append(count);
-  const cta = el("div", "p-cta");
+  const cta = el2("div", "p-cta");
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
     onTapWater: (wx, wy) => view.splash(wx, wy)
   });
-  const zoom = el("div", "p-zoom");
+  const zoom = el2("div", "p-zoom");
   const zoomBtn = (label, aria, dir) => {
-    const b = el("button", "p-icon-btn", label);
+    const b = el2("button", "p-icon-btn", label);
     b.type = "button";
     b.setAttribute("aria-label", aria);
     b.addEventListener("click", () => {
@@ -1654,7 +2247,7 @@ async function pondScreen(bootstrap) {
   window.addEventListener("resize", fit);
   view.start();
   syncZoom();
-  setInterval(syncZoom, 500);
+  const zoomPoll = window.setInterval(syncZoom, 500);
   let ducks = [];
   const refresh = async () => {
     try {
@@ -1670,14 +2263,25 @@ async function pondScreen(bootstrap) {
   const session = await api.session().catch(() => ({ active: false }));
   const mine = recallEditKey();
   if (session.active && !session.spent) {
-    const go = el("button", "p-btn", t("arrival.04"));
+    const go = el2("button", "p-btn", t("arrival.04"));
     go.type = "button";
     go.addEventListener("click", () => {
-      location.href = "/#studio";
+      teardown?.();
+      releaseFlow({
+        root,
+        fortune: session.fortune ?? 1,
+        // The keeper's name decides whether the scope picker can offer to
+        // share with them at all.
+        keeper: keeperOf(ducks),
+        onBrowse: () => void pondScreen(bootstrap),
+        onDone: (made) => {
+          void pondScreen({ ...bootstrap, duck: { id: made.id } });
+        }
+      });
     });
     cta.append(go);
   } else if (mine) {
-    const back = el("button", "p-btn p-btn-quiet", t("mine.05"));
+    const back = el2("button", "p-btn p-btn-quiet", t("mine.05"));
     back.type = "button";
     back.addEventListener("click", () => {
       const d = ducks.find((x) => x.id === bootstrap.duck?.id);
@@ -1686,26 +2290,37 @@ async function pondScreen(bootstrap) {
     cta.append(back);
   }
   if (bootstrap.duck) view.lookAt(bootstrap.duck.id, true);
-  setInterval(refresh, 2e4);
+  const pondPoll = window.setInterval(refresh, 2e4);
+  teardown = () => {
+    clearInterval(zoomPoll);
+    clearInterval(pondPoll);
+    window.removeEventListener("resize", fit);
+    view.stop();
+    teardown = null;
+  };
 }
 function openDuckCard(view, duck) {
   view.lookAt(duck.id);
   view.splash(duck.wx, duck.wy);
   const existing = document.querySelector(".p-card");
   existing?.remove();
-  const card = el("div", "p-card");
-  const name = el("p", "p-card-name", duck.name || t("pond.24"));
+  const card = el2("div", "p-card");
+  const name = el2("p", "p-card-name", duck.name || t("pond.24"));
   card.append(name);
-  if (duck.keeper) card.append(el("p", "p-card-via", t("live.via", { keeper: duck.keeper })));
-  if (duck.message) card.append(el("p", "p-card-msg", duck.message));
-  const stats = el("p", "p-card-stats");
+  if (duck.keeper) card.append(el2("p", "p-card-via", t("live.via", { keeper: duck.keeper })));
+  if (duck.message) card.append(el2("p", "p-card-msg", duck.message));
+  const stats = el2("p", "p-card-stats");
   stats.textContent = `${duck.bumps} · ${duck.rescues}`;
   card.append(stats);
-  const close = el("button", "p-btn p-btn-quiet", t("pond.37"));
+  const close = el2("button", "p-btn p-btn-quiet", t("pond.37"));
   close.type = "button";
   close.addEventListener("click", () => card.remove());
   card.append(close);
   root.append(card);
+}
+function keeperOf(ducks) {
+  const names = new Set(ducks.map((d) => d.keeper).filter(Boolean));
+  return names.size === 1 ? [...names][0] : null;
 }
 async function main() {
   const b = boot();

@@ -13,6 +13,7 @@
 
 import { ApiError, api, recallEditKey, type SessionState } from "./api.js";
 import { CAM_UI } from "./camera.js";
+import { releaseFlow } from "./release-flow.js";
 import { PondView, type Placed } from "./pond-view.js";
 import { setLang, t, type Lang } from "./strings.js";
 import type { PondDuck } from "./types.js";
@@ -56,7 +57,19 @@ function el<K extends keyof HTMLElementTagNameMap>(
  * gets exactly this, minus the CTA. FLOW.md is explicit that a visitor
  * still has something to do: they can put out fires.
  */
+/**
+ * Everything the pond screen has to undo before another screen replaces it.
+ *
+ * `pondScreen` used to run exactly once per page load, so leaking two
+ * intervals and a resize listener cost nothing. It is re-entrant now —
+ * "Just look around" and finishing a duck both come back to it — and
+ * without this every round trip would leave another poller running against
+ * a canvas that no longer exists.
+ */
+let teardown: (() => void) | null = null;
+
 async function pondScreen(bootstrap: Bootstrap): Promise<void> {
+  teardown?.();
   root.replaceChildren();
 
   const stage = el("div", "p-stage");
@@ -125,7 +138,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   syncZoom();
   // A pinch changes the zoom without touching a button, so the buttons have
   // to notice. Cheap, and only while something is happening.
-  setInterval(syncZoom, 500);
+  const zoomPoll = window.setInterval(syncZoom, 500);
 
   // ── the pond itself ───────────────────────────────────────────────────
   let ducks: PondDuck[] = [];
@@ -153,13 +166,27 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const mine = recallEditKey();
 
   if (session.active && !session.spent) {
-    // A fortune is waiting. This is the only CTA that ever appears.
+    // A fortune is waiting. This is the only CTA that ever appears, and it
+    // is the whole reason the pond can be the default screen: someone with
+    // nothing to make sees a pond, not a form.
     const go = el("button", "p-btn", t("arrival.04"));
     go.type = "button";
     go.addEventListener("click", () => {
-      // The decorating flow is the next cluster of screens; until it lands
-      // this at least proves the session survived the tap.
-      location.href = "/#studio";
+      // Stop the pollers and the render loop before handing the root over.
+      teardown?.();
+      releaseFlow({
+        root,
+        fortune: session.fortune ?? 1,
+        // The keeper's name decides whether the scope picker can offer to
+        // share with them at all.
+        keeper: keeperOf(ducks),
+        onBrowse: () => void pondScreen(bootstrap),
+        onDone: (made) => {
+          // Back to the water, and the camera goes to look at what they
+          // just made — the one move that is watched rather than operated.
+          void pondScreen({ ...bootstrap, duck: { id: made.id } as PondDuck });
+        },
+      });
     });
     cta.append(go);
   } else if (mine) {
@@ -180,7 +207,15 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
 
   // The pond is polled. A fire that ignites on someone else's read should
   // show up here within a reasonable time without a socket.
-  setInterval(refresh, 20_000);
+  const pondPoll = window.setInterval(refresh, 20_000);
+
+  teardown = () => {
+    clearInterval(zoomPoll);
+    clearInterval(pondPoll);
+    window.removeEventListener("resize", fit);
+    view.stop();
+    teardown = null;
+  };
 }
 
 /**
@@ -213,6 +248,19 @@ function openDuckCard(view: PondView, duck: Placed): void {
   card.append(close);
 
   root.append(card);
+}
+
+/**
+ * The keeper's name, if every duck from this card agrees on one.
+ *
+ * The pond payload carries `keeper` per duck rather than per card, so this
+ * is the only place the client can learn it before Phase 5's Card setup
+ * exists. Null is the safe answer: with no name, the scope picker does not
+ * offer to share with a person it cannot name.
+ */
+function keeperOf(ducks: PondDuck[]): string | null {
+  const names = new Set(ducks.map((d) => d.keeper).filter(Boolean));
+  return names.size === 1 ? [...names][0]! : null;
 }
 
 async function main(): Promise<void> {

@@ -523,3 +523,53 @@ describe("the HTML routes", () => {
     expect(res.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
   });
 });
+
+describe("every response carries the security headers, errors included", () => {
+  /**
+   * `securityHeaders()` is documented in index.ts as "applied to every
+   * response", and it was not: `badRequest()` and `notFound()` built their
+   * own responses from scratch, so every 400 and 404 went out with no CSP,
+   * no `referrer-policy: no-referrer`, no frame protection — and dropped
+   * the pending visitor `set-cookie` on the floor.
+   *
+   * A 404 is a perfectly good place to be handed a page that then leaks an
+   * edit key in a Referer header, which is exactly what no-referrer exists
+   * to prevent.
+   */
+  const REQUIRED = [
+    "x-content-type-options",
+    "x-frame-options",
+    "referrer-policy",
+    "content-security-policy",
+  ];
+
+  it("on a 404 from an unknown route", async () => {
+    const e = await env();
+    const res = await handle(new Request(`${ORIGIN}/api/nothing`), e);
+    expect(res.status).toBe(404);
+    for (const h of REQUIRED) expect(res.headers.get(h), h).not.toBeNull();
+  });
+
+  it("on a 404 from a duck that is not there", async () => {
+    const e = await env();
+    const res = await handle(new Request(`${ORIGIN}/api/duck/by-slug/nope-nope`), e);
+    expect(res.status).toBe(404);
+    for (const h of REQUIRED) expect(res.headers.get(h), h).not.toBeNull();
+  });
+
+  it("on a 400 from a bad id, and it keeps the visitor cookie", async () => {
+    const e = await env();
+    const res = await handle(
+      new Request(`${ORIGIN}/api/bump`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: "!!" }),
+      }),
+      e,
+    );
+    expect(res.status).toBe(400);
+    for (const h of REQUIRED) expect(res.headers.get(h), h).not.toBeNull();
+    // The cookie was minted for this request and would have been lost.
+    expect(res.headers.getSetCookie?.().some((c) => c.startsWith("pond_v="))).toBe(true);
+  });
+});

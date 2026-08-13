@@ -51,6 +51,8 @@ export async function createDuck(
   cardId: string | null,
   duck: ValidatedDuck,
   contact?: { value: string; scope: ContactScope } | null,
+  /** Retry depth. One retry only — see the catch below. */
+  attempt = 0,
 ): Promise<CreatedDuck | { error: string }> {
   const id = randomId(10);
   // Separate, longer secret. Never derived from `id` or the slug, so a
@@ -111,8 +113,21 @@ export async function createDuck(
     );
   }
 
-  const [, claim] = await env.DB.batch(writes);
-  if (!claim?.meta.changes) return { error: "session already used or expired" };
+  try {
+    const [, claim] = await env.DB.batch(writes);
+    if (!claim?.meta.changes) return { error: "session already used or expired" };
+  } catch (err) {
+    // `freeSlug` is advisory — slug.ts says so, and says the UNIQUE index is
+    // what actually makes two simultaneous releases safe. It does, but by
+    // THROWING: two visitors landing on the same generated name, or one
+    // racing a rename into it, would otherwise surface as a 500 and lose a
+    // duck somebody just spent minutes decorating.
+    //
+    // One retry with a fresh name. Two collisions in a row is not a race,
+    // it is something else, and pretending otherwise would hide it.
+    if (attempt > 0) throw err;
+    return createDuck(env, sessionId, cardId, duck, contact, attempt + 1);
+  }
 
   return { id, slug, editKey };
 }

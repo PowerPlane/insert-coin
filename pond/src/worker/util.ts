@@ -40,12 +40,24 @@ export function json(data: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(data), { ...init, headers });
 }
 
-export function badRequest(message: string): Response {
-  return json({ error: message }, { status: 400 });
+/**
+ * The error responses take headers like every other response.
+ *
+ * They did not, and index.ts describes `securityHeaders()` as "applied to
+ * every response" — so every 400 and 404 went out with no CSP, no
+ * `referrer-policy: no-referrer`, no frame protection, and dropped the
+ * pending visitor `set-cookie` on the floor. A 404 is a perfectly good
+ * place to be handed a page that then leaks an edit key in a Referer.
+ *
+ * Optional so the signature stays convenient, but every caller in the
+ * router passes them.
+ */
+export function badRequest(message: string, headers?: Headers): Response {
+  return json({ error: message }, { status: 400, headers });
 }
 
-export function notFound(): Response {
-  return json({ error: "not found" }, { status: 404 });
+export function notFound(headers?: Headers): Response {
+  return json({ error: "not found" }, { status: 404, headers });
 }
 
 /**

@@ -247,3 +247,259 @@ html[lang="zh-Hant"] body {
     transform: none;
   }
 }
+
+/* ── the making screens ───────────────────────────────────────────────── */
+
+/*
+ * Arrival, studio, sign, contact, release, keep. These sit OVER the pond
+ * rather than replacing it, so the water is still the background of every
+ * screen — the thing being made is going somewhere specific.
+ */
+.p-screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: max(16px, env(safe-area-inset-top)) 16px
+           max(16px, env(safe-area-inset-bottom));
+  background: var(--p-water);
+}
+
+.p-centre {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.p-eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.p-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.p-body {
+  margin: 0;
+  max-width: 34ch;
+}
+
+/* Said at the point of asking, never in a footer. */
+.p-note {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+  max-width: 42ch;
+}
+
+.p-preview,
+.p-edit {
+  image-rendering: pixelated;
+  align-self: center;
+  touch-action: none;
+}
+
+/* ── nav and tabs ─────────────────────────────────────────────────────── */
+
+.p-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.p-nav-title {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+}
+
+.p-chip {
+  min-height: var(--p-tap);
+  padding: 0 14px;
+  border: 0;
+  background: var(--p-paper);
+  color: var(--p-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.p-chip.on {
+  background: var(--p-ink);
+  color: var(--p-paper);
+}
+
+.p-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.p-tab {
+  flex: 1;
+  /* 44px, not 40 — the audit in UI.md found three of these too short. */
+  min-height: var(--p-tap);
+  border: 0;
+  background: var(--p-paper);
+  color: var(--p-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.p-tab.on {
+  background: var(--p-ink);
+  color: var(--p-paper);
+}
+
+.p-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.p-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+/* ── swatches and stickers ────────────────────────────────────────────── */
+
+.p-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--p-tap), 1fr));
+  gap: 8px;
+}
+
+.p-swatch {
+  aspect-ratio: 1;
+  min-height: var(--p-tap);
+  border: 0;
+  cursor: pointer;
+}
+
+.p-swatch.on {
+  outline: 3px solid var(--p-ink);
+  outline-offset: 2px;
+}
+
+.p-stickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 8px;
+}
+
+.p-sticker {
+  min-height: 56px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: var(--p-paper);
+  cursor: pointer;
+}
+
+.p-sticker.on {
+  outline: 3px solid var(--p-ink);
+  outline-offset: -3px;
+}
+
+.p-sticker-art {
+  image-rendering: pixelated;
+}
+
+.p-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── fields ───────────────────────────────────────────────────────────── */
+
+.p-field {
+  display: grid;
+  gap: 4px;
+  position: relative;
+}
+
+.p-field-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.p-input {
+  /* 44px. Text inputs were 40 before the audit. */
+  min-height: var(--p-tap);
+  padding: 10px 12px;
+  border: 0;
+  background: var(--p-paper);
+  color: var(--p-ink);
+  font: inherit;
+  /* 16px minimum, or iOS zooms the page on focus and never zooms back. */
+  font-size: 16px;
+}
+
+textarea.p-input {
+  min-height: calc(var(--p-tap) * 2);
+  resize: vertical;
+}
+
+.p-field-count {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  font-size: 0.75rem;
+  opacity: 0.5;
+}
+
+.p-field-count.over {
+  color: #b00;
+  opacity: 1;
+}
+
+/* Scope is stated in names, and only exists once there is a contact. */
+.p-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.p-scopes[hidden],
+.p-field-label[hidden] {
+  display: none;
+}
+
+/* ── the private link ─────────────────────────────────────────────────── */
+
+.p-linkbox {
+  padding: 12px;
+  background: var(--p-paper);
+  overflow-wrap: anywhere;
+}
+
+.p-link {
+  font: inherit;
+  font-size: 0.9rem;
+  user-select: all;
+}
+
+.p-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* An <a> styled as a button still needs to look like one. */
+a.p-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}

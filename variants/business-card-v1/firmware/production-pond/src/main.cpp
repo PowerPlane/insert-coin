@@ -32,9 +32,11 @@
 //     previous visitor's fortune -- on the pond that means claiming
 //     someone else's duck.
 //
-//   * The digit offset moved by one byte (0x001D -> 0x001E) because the
-//     path gained "/p". The per-card "&c=" suffix goes AFTER the digit so
-//     every card runs this same binary.
+//   * The digit offset is 0x0023, and it is DERIVED rather than chosen:
+//     shared/firmware/card-identity/ndef_record.h computes it from the URL
+//     strings at compile time, so the constant in config.h cannot drift
+//     from the record it indexes. The per-card "&c=", "&g=" and "&t=" all
+//     go AFTER the digit, so every card runs this same binary.
 
 #include <Arduino.h>
 

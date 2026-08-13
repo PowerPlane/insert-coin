@@ -169,7 +169,7 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
   // obvious rather than something you have to work out.
   if (path.startsWith("/api/duck/by-slug/") && req.method === "GET") {
     const duck = await duckBySlug(env, path.slice("/api/duck/by-slug/".length));
-    if (!duck) return notFound();
+    if (!duck) return notFound(headers);
     // "Most bumps from" — free, now that bumps are per-pair.
     return json({ duck, bumpers: await topBumpers(env, duck.id) }, { headers });
   }
@@ -201,12 +201,12 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     if (s.spentDuck) return json({ error: "already released" }, { status: 409, headers });
 
     const body = await readJson(req);
-    if (!body) return badRequest("bad body");
+    if (!body) return badRequest("bad body", headers);
 
     // The fortune comes from the SESSION, never from the client — the
     // browser can ask for a duck, it cannot choose which fortune it got.
     const checked = validateDuck({ ...body, fortune: s.fortune } as DuckInput);
-    if ("error" in checked) return badRequest(checked.error);
+    if ("error" in checked) return badRequest(checked.error, headers);
 
     // Same cleaning as public text. A contact never renders in the pond,
     // but it does render in admin, and a UTF-16 slice can split a surrogate
@@ -228,7 +228,7 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
   if (path === "/api/bump" && req.method === "POST") {
     const body = await readJson(req);
     const targetId = typeof body?.id === "string" ? body.id : "";
-    if (!DUCK_ID.test(targetId)) return badRequest("bad id");
+    if (!DUCK_ID.test(targetId)) return badRequest("bad id", headers);
 
     // The bumper proves it owns the duck doing the bumping. Without this,
     // anyone could spend a stranger's ten unreturned bumps for them — which
@@ -257,7 +257,7 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
 
   if (path.startsWith("/api/fire/") && path.endsWith("/out") && req.method === "POST") {
     const duckId = path.slice("/api/fire/".length, -"/out".length);
-    if (!DUCK_ID.test(duckId)) return badRequest("bad id");
+    if (!DUCK_ID.test(duckId)) return badRequest("bad id", headers);
     // Being late is not an error — animate the extinguish regardless.
     const r = await extinguish(env, duckId, visitor);
     return json({ ok: true, ...r }, { headers });
@@ -267,7 +267,7 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
   if (path === "/api/report" && req.method === "POST") {
     const body = await readJson(req);
     const duckId = typeof body?.id === "string" ? body.id : "";
-    if (!DUCK_ID.test(duckId)) return badRequest("bad id");
+    if (!DUCK_ID.test(duckId)) return badRequest("bad id", headers);
 
     const result = await report(env, duckId, visitor, body?.reason, body?.note);
     if (!result.ok) {
@@ -283,15 +283,15 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
   if (path.startsWith("/api/duck/")) {
     const editKey = path.slice("/api/duck/".length);
     const duck = await duckByEditKey(env, editKey);
-    if (!duck) return notFound();
+    if (!duck) return notFound(headers);
 
     if (req.method === "GET") return json({ duck }, { headers });
 
     if (req.method === "PATCH") {
       const body = await readJson(req);
-      if (!body) return badRequest("bad body");
+      if (!body) return badRequest("bad body", headers);
       const checked = validateDuck({ ...body, fortune: duck.fortune } as DuckInput);
-      if ("error" in checked) return badRequest(checked.error);
+      if ("error" in checked) return badRequest(checked.error, headers);
       const ok = await updateDuck(env, editKey, checked);
       return ok ? json({ ok: true }, { headers }) : notFound();
     }
@@ -303,7 +303,7 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     }
   }
 
-  return notFound();
+  return notFound(headers);
 }
 
 /**
