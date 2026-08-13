@@ -70,8 +70,22 @@ RAW="$("$AVRDUDE" \
         -p t1616 -c serialupdi -P "$PORT" -b "${UPDI_BAUD:-230400}" \
         -qq -U sernum:r:-:h 2>/dev/null || true)"
 
-SERNUM="$(printf '%s' "$RAW" | tr -cd '0-9A-Fa-fxX,' | tr 'A-F' 'a-f' \
-          | tr ',' '\n' | sed 's/^0x//' | tr -d '\n')"
+# ══ EACH FIELD IS PADDED SEPARATELY, AND THAT IS THE WHOLE POINT ══
+# avrdude does NOT zero-pad: a byte below 0x10 prints as `0x6`, not `0x06`.
+# Stripping the `0x` and concatenating therefore drops a nibble and yields
+# nineteen characters instead of twenty — which is not a silent corruption,
+# it fails the length check below, but it fails on 48% OF ALL CARDS
+# (1 - (15/16)^10 — the chance that at least one of ten bytes is < 0x10).
+#
+# The first card ever flashed happened to have all ten bytes >= 0x10 and
+# recorded perfectly. The second one did not. This is exactly why the
+# done-when is two cards and not one.
+SERNUM="$(printf '%s' "$RAW" \
+          | tr -d '[:space:]' \
+          | tr ',' '\n' \
+          | sed -n 's/^0[xX]\([0-9A-Fa-f]\{1,2\}\)$/\1/p' \
+          | awk '{ printf "%02s", tolower($0) }' \
+          | tr ' ' '0')"
 
 if [ "${#SERNUM}" -ne 20 ]; then
     echo "Expected twenty hex characters of SIGROW.SERNUM, got '${SERNUM}'" >&2

@@ -108,15 +108,48 @@ Handled three ways, and all three have to hold:
 
 ---
 
-## The bench, so far
+## The bench — done, on two cards
 
-**One card flashed and tapped, 2026-08-12, and it worked.**
+**2026-08-12. Both cards flashed from one binary, both correct.**
 
 ```
-SERNUM   30 54 30 4c 49 32 68 72 16 26   (read with avrdude)
-recorded 0YBSVSVN                        (record-card.sh)
-tapped   /?d=1&c=0YBSVSVN&g=0000&t=5d29221795
+card 1   SERNUM 30 54 30 4c 49 32 68 72 16 26
+         tapped /?d=1&c=0YBSVSVN&g=0000&t=5d29221795
+
+card 2   SERNUM 30 54 30 4c 49 32 47 48 24 06
+         tapped /?d=2&c=G5JNY9HG&g=0000&t=764c1cde6a
 ```
+
+Both `&c=` values match what the host derives from the chip's own SERNUM,
+character for character. **That is Phase 2's done-when, met.**
+
+Note what the two SERNUMs have in common: the first SIX bytes are
+identical, because both chips came off one reel. Only the last four differ.
+That is 60% of the entropy gone before you start, on a sample of two — and
+it is exactly why the serial hashes all ten bytes instead of slicing a
+window out of them, as the plan originally said. The synthetic vectors
+predicted this shape; the real chips confirmed it.
+
+### And the second card immediately earned its keep
+
+`record-card.sh` FAILED on card 2, and the reason is worth writing down:
+**avrdude does not zero-pad.** A byte below 0x10 prints as `0x6`, not
+`0x06`. The parser stripped `0x` and concatenated, producing nineteen
+characters instead of twenty.
+
+Card 1 had all ten bytes ≥ 0x10 and recorded perfectly. Card 2's last byte
+is 0x06. The chance a card is affected is `1 - (15/16)^10` — **48%.** Very
+nearly half of every card would have failed to record, and a single card
+would never have shown it.
+
+The firmware was never wrong: it reads SIGROW registers directly and had
+already written the correct serial into its own tag. The bug lived only in
+the host shell script. Fixed by padding each field separately, and tested
+against the unpadded output verbatim.
+
+**This is the argument for the done-when being two cards rather than one**,
+though not the argument anyone expected — it caught a host-tooling bug
+rather than a derivation disagreement.
 
 The `&c=` matches the recorded serial character for character, which is the
 thing this whole phase was built to make certain of: the C on the ATtiny and
@@ -132,11 +165,6 @@ with room to spare.
 
 Its values are pinned in `pond/test/card-identity.test.ts` as the one vector
 that did not come from our own code.
-
-**Still to do: a SECOND card.** "Two cards open two pages" would pass even
-with the derivations disagreeing; two cards whose recorded serials both
-match their tapped URLs is the real check, and it is what catches a
-derivation that happens to be stable but wrong.
 
 ## Still to prove on the bench
 
@@ -157,5 +185,6 @@ Before committing to a hundred:
   is unproven is whether a FAILED provision is distinguishable from a
   successful one at a glance.)
 
-One card down. Do the rest on a second before committing to a hundred —
-everything else about this is mechanical.
+Two cards down, and the derivation is proved. What remains before a hundred
+is the brownout behaviour and the LED question above — both are about
+failure modes, not about correctness.

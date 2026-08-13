@@ -243,37 +243,59 @@ describe("the layout, in the third place it appears", () => {
   });
 });
 
-describe("a real card, from the bench", () => {
+describe("real cards, from the bench", () => {
   /**
-   * The first physical ATtiny1616 ever flashed with this firmware, recorded
-   * here because it is the only vector in this file that did not come from
-   * our own code.
+   * The only vectors in this file that did not come from our own code.
    *
-   * The SERNUM was read off the chip with avrdude; the serial is what the
-   * card actually wrote into its own tag and what a phone actually read
-   * back. Everything else in this file proves the two implementations agree
-   * with each other. This proves they agree with SILICON.
+   * Each SERNUM was read off a physical ATtiny1616 with avrdude; each
+   * serial is what that card actually wrote into its own tag and what a
+   * phone actually read back. Everything else here proves the two
+   * implementations agree with EACH OTHER. These prove they agree with
+   * silicon.
    *
-   *   tapped: /?d=1&c=0YBSVSVN&g=0000&t=5d29221795
+   *   card 1  /?d=1&c=0YBSVSVN&g=0000&t=5d29221795
+   *   card 2  /?d=2&c=G5JNY9HG&g=0000&t=764c1cde6a
    *
-   * If this ever fails, the derivation changed under a card that already
-   * exists in the world — and that card's ducks would become unattributed.
+   * Two, not one, because a derivation that is wrong CONSISTENTLY would
+   * still make a single card match itself.
+   *
+   * If either ever fails, the derivation moved under a card that already
+   * exists in the world, and that card's ducks become unattributed.
    */
-  const BENCH_SERNUM = "3054304c493268721626";
-  const BENCH_SERIAL = "0YBSVSVN";
+  const CARDS = [
+    { sernum: "3054304c493268721626", serial: "0YBSVSVN" },
+    { sernum: "3054304c493247482406", serial: "G5JNY9HG" },
+  ];
 
-  it("derives the serial a real chip put in its own tag", () => {
-    const bytes = new Uint8Array(
-      (BENCH_SERNUM.match(/../g) ?? []).map((b) => parseInt(b, 16)),
-    );
-    expect(cardSerial(bytes)).toBe(BENCH_SERIAL);
+  it("derives what each real chip put in its own tag", () => {
+    for (const c of CARDS) {
+      const bytes = new Uint8Array((c.sernum.match(/../g) ?? []).map((b) => parseInt(b, 16)));
+      expect(cardSerial(bytes), c.sernum).toBe(c.serial);
+      expect(isSerial(c.serial)).toBe(true);
+    }
   });
 
-  it("shows real SERNUMs are nothing like the synthetic ones", () => {
-    // 30 54 30 4c 49 32 68 72 16 26 — ASCII-ish lot characters in the high
-    // bytes, which is exactly why the serial hashes all ten rather than
-    // slicing a window out of them.
-    expect(BENCH_SERNUM.slice(0, 8)).toBe("3054304c");
-    expect(isSerial(BENCH_SERIAL)).toBe(true);
+  it("gives two chips from one reel unrelated serials, in reality and not just in theory", () => {
+    // These two came off the same reel: their SERNUMs share the first SIX
+    // bytes (30 54 30 4c 49 32) and differ only in the last four. A
+    // derivation that sliced a fixed window out of them could easily have
+    // collided — and 60% of the bytes being identical across the batch is
+    // precisely the entropy problem the hash exists to solve.
+    expect(CARDS[0]!.sernum.slice(0, 12)).toBe(CARDS[1]!.sernum.slice(0, 12));
+    expect(CARDS[0]!.serial).not.toBe(CARDS[1]!.serial);
+    expect(CARDS[0]!.serial[0]).not.toBe(CARDS[1]!.serial[0]);
+  });
+
+  it("shows why the low bytes could not be trusted as a serial", () => {
+    // 30 54 30 4c 49 32 — ASCII-ish lot characters filling the high bytes
+    // on both cards, which is exactly the pattern that made "the low 40
+    // bits" the wrong derivation. The synthetic vectors guessed this
+    // shape; the real chips confirm it.
+    for (const c of CARDS) expect(c.sernum.startsWith("3054304c4932")).toBe(true);
+
+    // And card 2's last byte is 0x06 — below 0x10. avrdude prints that as
+    // `0x6`, unpadded, which broke record-card.sh's parser on the second
+    // card it ever saw. 48% of cards have at least one such byte.
+    expect(CARDS[1]!.sernum.endsWith("06")).toBe(true);
   });
 });
