@@ -42,6 +42,9 @@ import {
   type WaterBuffer,
 } from "./render.js";
 import { GRID, decodePaint } from "./codec.js";
+import {
+  advanceParticles, splashDroplets, type Particle,
+} from "./particles.js";
 import { DWELL } from "./render.js";
 import {
   PETAL_LIFE_MS,
@@ -187,6 +190,11 @@ export const SPLASH_DOUSE = 1.1;
 /** Rings live 480ms; more than this on screen at once cannot be told apart. */
 const MAX_RIPPLES = 12;
 
+/** How far a splash shoves the ducks floating near it, in sprite cells. */
+const SHOCKWAVE_REACH = 26;
+/** And how hard, per unit of amplitude. */
+const SHOCKWAVE_FORCE = 1.5;
+
 /**
  * A stable pseudo-random number from a duck's id.
  *
@@ -276,6 +284,8 @@ export class PondView {
   private water: WaterBuffer | null = null;
   private ducks: Placed[] = [];
   private ripples: Ripple[] = [];
+  /** Thrown pixels: droplets, mist, streamers. */
+  private particles: Particle[] = [];
   private frame = 0;
   private lastWorldTick = 0;
   /** For the wander's dt. Clamped, so a backgrounded tab does not teleport. */
@@ -552,7 +562,7 @@ export class PondView {
       // Display rate while moving or rippling; stop-motion otherwise.
       // Display rate whenever the view is under anyone's control — a
       // finger, a fling, a glide, a settle — and stop-motion otherwise.
-      if (camMoving || this.ripples.length || this.sparkles.length) {
+      if (camMoving || this.ripples.length || this.sparkles.length || this.particles.length) {
         this.raf = requestAnimationFrame(loop);
       } else {
         this.timer = window.setTimeout(() => {
@@ -606,6 +616,26 @@ export class PondView {
      */
     const max = SPLASH_BASE + amplitude * SPLASH_PER_AMPLITUDE;
     this.ripples.push({ x: wx, y: wy, t: performance.now(), max });
+
+    // Water thrown, not just a ring. A ripple alone reads as a diagram of
+    // an impact; the droplets are the impact.
+    splashDroplets(this.particles, wx, wy, amplitude);
+
+    /*
+     * And the ducks nearby feel it. A splash that moves the water but not
+     * the things floating on it is the single clearest tell that this is a
+     * drawing rather than a pond.
+     */
+    const { side } = this.camera;
+    for (const d of this.ducks) {
+      const dx = wrapDelta(wx, d.wx, side);
+      const dy = wrapDelta(wy, d.wy, side);
+      const dist = Math.hypot(dx, dy) || 1;
+      if (dist >= SHOCKWAVE_REACH) continue;
+      const f = (1 - dist / SHOCKWAVE_REACH) * amplitude * SHOCKWAVE_FORCE;
+      d.vx = (d.vx ?? 0) + (dx / dist) * f;
+      d.vy = (d.vy ?? 0) + (dy / dist) * f;
+    }
     /*
      * A hand dragged across the water can queue hundreds of rings, each
      * one a full pass over the water buffer. Twelve is the prototype's
@@ -833,6 +863,7 @@ export class PondView {
     // a flock that has been whistled for is MEANT to be close.
     this.separate(this.whistling === null);
     this.advanceDarts(performance.now(), dt);
+    advanceParticles(this.particles, dt);
   }
 
   /**
@@ -1028,6 +1059,20 @@ export class PondView {
         ctx.fillStyle = p.colour;
         ctx.fillRect(at.x, at.y, renderCell, renderCell);
       }
+    }
+
+    /*
+     * Thrown pixels, over everything. They are in the air, so they go last
+     * — and they never fade: a pixel is on or it is off, the same rule the
+     * water and the ducks follow.
+     */
+    for (const p of this.particles) {
+      const at = project(
+        p.x, p.y, this.camera.cam, renderCell,
+        canvas.width, canvas.height, this.camera.side,
+      );
+      ctx.fillStyle = p.colour;
+      ctx.fillRect(at.x, at.y, renderCell, renderCell);
     }
 
     // The sub-integer remainder ONLY. The render stays on an integer grid;

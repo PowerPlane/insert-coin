@@ -2607,6 +2607,45 @@ var Gestures = class {
   };
 };
 
+// src/client/particles.ts
+var DRAG = 0.82;
+var SPEED = 8;
+var RISE = 9;
+var DROPLET_COLOURS = ["#FFFFFF", "#CFEDF8"];
+var DROPLET_WHITE_CHANCE = 0.45;
+function emit(list, x, y, vx, vy, colour, life, rise = false) {
+  list.push({ x, y, vx, vy, colour, life, rise });
+}
+function advanceParticles(list, dt) {
+  let live = 0;
+  for (const p of list) {
+    p.x += p.vx * dt * SPEED;
+    p.y += (p.vy - (p.rise ? RISE : 0)) * dt * SPEED;
+    p.vx *= DRAG;
+    p.vy *= DRAG;
+    p.life -= dt;
+    if (p.life > 0) list[live++] = p;
+  }
+  list.length = live;
+  return list;
+}
+function splashDroplets(list, x, y, amplitude, random = Math.random) {
+  const count = 6 + Math.floor(amplitude * 2);
+  for (let i = 0; i < count; i++) {
+    const angle = random() * Math.PI * 2;
+    const speed = (9 + random() * 9) * amplitude * 0.5;
+    emit(
+      list,
+      x,
+      y,
+      Math.cos(angle) * speed,
+      Math.sin(angle) * speed,
+      random() < DROPLET_WHITE_CHANCE ? DROPLET_COLOURS[0] : DROPLET_COLOURS[1],
+      0.24 + random() * 0.14
+    );
+  }
+}
+
 // src/client/sparkle.ts
 var ON_PER_PX = 36;
 var OFF_PER_PX = 42;
@@ -2761,6 +2800,8 @@ var SPLASH_TAP = 2.4;
 var SPLASH_LAND = 2.6;
 var SPLASH_BUMP = 1.5;
 var MAX_RIPPLES = 12;
+var SHOCKWAVE_REACH = 26;
+var SHOCKWAVE_FORCE = 1.5;
 function hashId(id) {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) {
@@ -2830,6 +2871,8 @@ var PondView = class {
   water = null;
   ducks = [];
   ripples = [];
+  /** Thrown pixels: droplets, mist, streamers. */
+  particles = [];
   frame = 0;
   lastWorldTick = 0;
   /** For the wander's dt. Clamped, so a backgrounded tab does not teleport. */
@@ -3021,7 +3064,7 @@ var PondView = class {
         this.lastDebug = now;
         this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
       }
-      if (camMoving || this.ripples.length || this.sparkles.length) {
+      if (camMoving || this.ripples.length || this.sparkles.length || this.particles.length) {
         this.raf = requestAnimationFrame(loop);
       } else {
         this.timer = window.setTimeout(() => {
@@ -3061,6 +3104,17 @@ var PondView = class {
   splash(wx, wy, amplitude = 1) {
     const max = SPLASH_BASE + amplitude * SPLASH_PER_AMPLITUDE;
     this.ripples.push({ x: wx, y: wy, t: performance.now(), max });
+    splashDroplets(this.particles, wx, wy, amplitude);
+    const { side } = this.camera;
+    for (const d of this.ducks) {
+      const dx = wrapDelta(wx, d.wx, side);
+      const dy = wrapDelta(wy, d.wy, side);
+      const dist = Math.hypot(dx, dy) || 1;
+      if (dist >= SHOCKWAVE_REACH) continue;
+      const f = (1 - dist / SHOCKWAVE_REACH) * amplitude * SHOCKWAVE_FORCE;
+      d.vx = (d.vx ?? 0) + dx / dist * f;
+      d.vy = (d.vy ?? 0) + dy / dist * f;
+    }
     if (this.ripples.length > MAX_RIPPLES) this.ripples.shift();
   }
   /**
@@ -3232,6 +3286,7 @@ var PondView = class {
     this.advanceWhistle();
     this.separate(this.whistling === null);
     this.advanceDarts(performance.now(), dt);
+    advanceParticles(this.particles, dt);
   }
   /**
    * ══ THE WHISTLE IS A FORCE FIELD, NOT A DESTINATION ══
@@ -3403,6 +3458,19 @@ var PondView = class {
         ctx.fillStyle = p.colour;
         ctx.fillRect(at.x, at.y, renderCell, renderCell);
       }
+    }
+    for (const p of this.particles) {
+      const at = project(
+        p.x,
+        p.y,
+        this.camera.cam,
+        renderCell,
+        canvas.width,
+        canvas.height,
+        this.camera.side
+      );
+      ctx.fillStyle = p.colour;
+      ctx.fillRect(at.x, at.y, renderCell, renderCell);
     }
     canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
   }
