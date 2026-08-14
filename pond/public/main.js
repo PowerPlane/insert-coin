@@ -2695,6 +2695,7 @@ var KNOCK_X = 3.6;
 var KNOCK_Y = 2.4;
 var REBOUND_X = 1.6;
 var REBOUND_Y = 1.1;
+var DUCK_ABOVE_SHEET = 0.32;
 var WANDER_TURN = 0.55;
 var WANDER_X = 0.14;
 var WANDER_Y = 0.11;
@@ -2704,6 +2705,7 @@ var SEP_CONTACT = GRID * 0.86;
 var SEP_ROOM = GRID * 1.75;
 var SEP_STRENGTH = 0.06;
 var SEP_ROOM_SCALE = 0.16;
+var BUMP_SPLASH_CELLS = 9;
 function hashId(id) {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) {
@@ -3042,6 +3044,29 @@ var PondView = class {
     this.camera.glide({ x: d.wx, y: d.wy, cell: HOME_CELL }, moment ? CAM_MOMENT : CAM_UI);
   }
   /**
+   * Bring a duck to where it can still be SEEN once its card is up.
+   *
+   * `lookAt` centres it, and the card covers the bottom of the screen — so
+   * tapping a duck put a panel over the exact thing you tapped. The
+   * prototype parks it `DUCK_ABOVE_SHEET` of the way down the visible
+   * frame instead, which is high enough to clear the panel and low enough
+   * not to sit under the HUD.
+   *
+   * Zoom is only ever raised, never lowered: somebody who has deliberately
+   * zoomed in to look at one corner should not be yanked back out because
+   * they tapped something.
+   */
+  lookAtAbove(id, yFrac = DUCK_ABOVE_SHEET) {
+    const d = this.find(id);
+    if (!d) return;
+    const cell = Math.max(this.camera.cam.cell, HOME_CELL);
+    const frameH = this.frameSprite.h * this.camera.frame().renderCell / cell;
+    this.camera.glide(
+      { x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell },
+      CAM_UI
+    );
+  }
+  /**
    * Move each duck toward wherever the whistle put it.
    *
    * Eased, and through `wrapDelta`, so a duck on the far side of the seam
@@ -3129,7 +3154,7 @@ var PondView = class {
             const ax = wrapDelta(d.wx, target.wx, side);
             const ay = wrapDelta(d.wy, target.wy, side);
             const m = Math.hypot(ax, ay) || 1;
-            this.splash(d.wx + ax * 0.5, d.wy + ay * 0.5, 1.5);
+            this.splash(d.wx + ax * 0.5, d.wy + ay * 0.5, BUMP_SPLASH_CELLS);
             target.vx = (target.vx ?? 0) + ax / m * KNOCK_X;
             target.vy = (target.vy ?? 0) + ay / m * KNOCK_Y;
             d.vx = -(ax / m) * REBOUND_X;
@@ -3535,7 +3560,7 @@ function shortDate(created) {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 function openDuckCard(view, duck) {
-  view.lookAt(duck.id);
+  view.lookAtAbove(duck.id);
   view.splash(duck.wx, duck.wy);
   document.querySelector(".p-card")?.remove();
   const scrim = el2("div", "p-scrim");

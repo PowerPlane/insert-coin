@@ -113,6 +113,14 @@ const KNOCK_DECAY = 0.86;
 /** Below this, in sprite cells per frame, the duck has stopped. */
 const KNOCK_REST = 0.02;
 
+/**
+ * How far down the visible frame a duck sits when its card is open.
+ *
+ * The card owns the bottom of the screen, so dead centre is behind it.
+ * A third of the way down clears the panel and stays under the HUD.
+ */
+const DUCK_ABOVE_SHEET = 0.32;
+
 /*
  * ══ THE POND IS ALIVE, AND THE DUCKS KEEP THEIR SPACE ══
  * A pond of perfectly still ducks is a diagram. Two rules make it a place:
@@ -141,6 +149,16 @@ const SEP_ROOM = GRID * 1.75;
 const SEP_STRENGTH = 0.06;
 /** Elbow room pushes far more gently than contact does. */
 const SEP_ROOM_SCALE = 0.16;
+
+/*
+ * The ripple where two ducks touch.
+ *
+ * In CELLS, which is what this codebase's `splash` takes — the prototype's
+ * third argument is an amplitude multiplier, so copying its `1.5` across
+ * gave a ripple a pixel and a half wide. Smaller than a finger tap (14),
+ * because a bump is a nudge and a tap is a whole hand.
+ */
+const BUMP_SPLASH_CELLS = 9;
 
 /**
  * A stable pseudo-random number from a duck's id.
@@ -575,6 +593,31 @@ export class PondView {
   }
 
   /**
+   * Bring a duck to where it can still be SEEN once its card is up.
+   *
+   * `lookAt` centres it, and the card covers the bottom of the screen — so
+   * tapping a duck put a panel over the exact thing you tapped. The
+   * prototype parks it `DUCK_ABOVE_SHEET` of the way down the visible
+   * frame instead, which is high enough to clear the panel and low enough
+   * not to sit under the HUD.
+   *
+   * Zoom is only ever raised, never lowered: somebody who has deliberately
+   * zoomed in to look at one corner should not be yanked back out because
+   * they tapped something.
+   */
+  lookAtAbove(id: string, yFrac = DUCK_ABOVE_SHEET): void {
+    const d = this.find(id);
+    if (!d) return;
+    const cell = Math.max(this.camera.cam.cell, HOME_CELL);
+    // The visible frame in sprite cells at the zoom we are about to be at.
+    const frameH = (this.frameSprite.h * this.camera.frame().renderCell) / cell;
+    this.camera.glide(
+      { x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell },
+      CAM_UI,
+    );
+  }
+
+  /**
    * Move each duck toward wherever the whistle put it.
    *
    * Eased, and through `wrapDelta`, so a duck on the far side of the seam
@@ -682,7 +725,7 @@ export class PondView {
             const ay = wrapDelta(d.wy, target.wy, side);
             const m = Math.hypot(ax, ay) || 1;
             // The splash goes where they actually touch, between the two.
-            this.splash(d.wx + ax * 0.5, d.wy + ay * 0.5, 1.5);
+            this.splash(d.wx + ax * 0.5, d.wy + ay * 0.5, BUMP_SPLASH_CELLS);
             target.vx = (target.vx ?? 0) + (ax / m) * KNOCK_X;
             target.vy = (target.vy ?? 0) + (ay / m) * KNOCK_Y;
             d.vx = -(ax / m) * REBOUND_X;

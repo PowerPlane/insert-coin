@@ -410,7 +410,8 @@ function shortDate(created: number): string {
 }
 
 function openDuckCard(view: PondView, duck: Placed): void {
-  view.lookAt(duck.id);
+  // Above the card, not behind it.
+  view.lookAtAbove(duck.id);
   view.splash(duck.wx, duck.wy);
   document.querySelector(".p-card")?.remove();
 
