@@ -689,9 +689,20 @@ html[lang="zh-Hant"] body {
   background: #fff;
 }
 
+/*
+ * ══ THE RING GOES INSIDE ══
+ * This was an `outline` with a positive offset — drawn OUTSIDE the box, on
+ * an element that wears `clip-path` for its pixel corners. clip-path
+ * removes everything outside the shape, so the selected swatch had no mark
+ * on it at all and there was no way to tell which colour you were painting
+ * with. The same trap as the focus ring, in a second place.
+ *
+ * Two rings, not one: ink alone disappears against the near-black swatch,
+ * and white alone disappears against the white one. Ink outside, white
+ * inside, and every colour in the palette has something to show it against.
+ */
 .p-swatch.on {
-  outline: 3px solid var(--p-ink);
-  outline-offset: 2px;
+  box-shadow: inset 0 0 0 3px var(--p-ink), inset 0 0 0 6px #ffffffcc;
 }
 
 .p-sticker.on {

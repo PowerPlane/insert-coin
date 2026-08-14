@@ -34,6 +34,8 @@ export const DWELL = [1.0, 1.45, 0.85, 1.25] as const;
 export interface Drawable {
   fortune: number;
   tint: number;
+  /** Yours. Wears a label, at zooms where a label is readable. */
+  mine?: boolean;
   paint?: Uint8Array | string | null;
   stickers?: Sticker[] | null;
   burning?: boolean;
@@ -106,6 +108,51 @@ export function drawDuck(
 
   for (const st of d.stickers ?? []) drawSticker(ctx, st, px, py, s, flip);
 }
+
+/*
+ * ══ THE ONE DUCK YOU ARE LOOKING FOR ══
+ * Thirteen ducks, all the same size, all bobbing. Without a label the duck
+ * you just made is the one duck on screen you cannot find — which is the
+ * whole reason the arrival exists.
+ *
+ * Gold on dark brown, sized in CELLS so it grows with the zoom rather than
+ * floating at a fixed size over shrinking art. Below cell 3 it is not
+ * drawn at all: four screen pixels of type is not text, and zoomed out you
+ * are reading the shape of the crowd rather than names.
+ */
+const TAG = {
+  MIN_CELL: 3,
+  /** In sprite cells, measured from the duck's top-left. */
+  X: 4, Y: -6, W: 16, H: 5,
+  BACK: "#FFCA00",
+  INK: "#4A3A06",
+  TEXT: "YOU",
+} as const;
+
+export function drawTag(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  s: number,
+): void {
+  if (s < TAG.MIN_CELL) return;
+  // Never above the top of the canvas: a tag drawn off-screen is the one
+  // label you needed and the one you cannot see.
+  const top = Math.max(0, py + TAG.Y * s);
+  ctx.fillStyle = TAG.BACK;
+  ctx.fillRect(px + TAG.X * s, top, TAG.W * s, TAG.H * s);
+  ctx.fillStyle = TAG.INK;
+  ctx.font = `bold ${4 * s}px ${MONO}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(TAG.TEXT, px + (TAG.X + TAG.W / 2) * s, top + (TAG.H / 2) * s);
+  // Canvas text state is global; leave it as it was found.
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+
+/** Matches --mono in app.css. */
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 
 export function drawSticker(
   ctx: CanvasRenderingContext2D,

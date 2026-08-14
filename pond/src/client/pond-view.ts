@@ -37,6 +37,7 @@ import {
   createWaterBuffer,
   drawDuck,
   drawRipples,
+  drawTag,
   drawWater,
   type WaterBuffer,
 } from "./render.js";
@@ -88,6 +89,13 @@ export interface Placed extends PondDuck {
   dartToY?: number;
   dartAt?: number;
   dartTarget?: string;
+  /** Yours: the one duck on screen you are actually looking for. */
+  mine?: boolean;
+  /**
+   * The caller is moving the camera itself, so landing must not.
+   * See `land`.
+   */
+  selfDirected?: boolean;
   /** Left over from being bumped, or from bumping. Decays to nothing. */
   vx?: number;
   vy?: number;
@@ -892,11 +900,25 @@ export class PondView {
     if (duck.fortune === 3) ignite(duck, BAD_LUCK_BURN_MS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
 
-    const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
-    window.setTimeout(() => {
-      // It may have been taken out while the sparkles were still going.
-      if (this.find(duck.id)) this.lookAt(duck.id, true);
-    }, delay);
+    /*
+     * ══ ONE THING DRIVES THE CAMERA AT A TIME ══
+     * A duck landing usually wants to be looked at, so by default it is.
+     * But the arrival screen has its OWN choreography — start wide, let
+     * the effect read, then close in to cell 8 — and the two fought: this
+     * timer fired at 950ms and glided back out to the pond's framing while
+     * the arrival was still on its way in. The zoom visibly went 4 → 6 →
+     * back to 4, which is the camera changing its mind on screen.
+     *
+     * So a caller that is driving the camera itself says so, and this
+     * stays out of its way.
+     */
+    if (!duck.selfDirected) {
+      const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
+      window.setTimeout(() => {
+        // It may have been taken out while the sparkles were still going.
+        if (this.find(duck.id)) this.lookAt(duck.id, true);
+      }, delay);
+    }
   }
 
   /** Turn the fall into a landing once its 340ms is up. */
@@ -1052,10 +1074,55 @@ export class PondView {
   }
 
   /** Centre on a duck. `moment` is the one thing watched, not operated. */
-  lookAt(id: string, moment = false): void {
+  lookAt(id: string, moment = false, cell = HOME_CELL, ms?: number): void {
     const d = this.find(id);
     if (!d) return;
-    this.camera.glide({ x: d.wx, y: d.wy, cell: HOME_CELL }, moment ? CAM_MOMENT : CAM_UI);
+    this.camera.glide({ x: d.wx, y: d.wy, cell }, ms ?? (moment ? CAM_MOMENT : CAM_UI));
+  }
+
+  /**
+   * A world position at a fraction across and down the VISIBLE frame.
+   *
+   * The arrival drops its duck at (0.5, 0.34) — a little above centre, so
+   * the sheet that rises afterwards never covers it. Expressed as a
+   * fraction of what can be SEEN rather than as world coordinates, because
+   * the world is bigger than the window and the answer has to be somewhere
+   * a person is actually looking.
+   */
+  frameAt(fx: number, fy: number): { x: number; y: number } {
+    const frame = this.visibleFrame();
+    return {
+      x: wrap(this.camera.cam.x + (fx - 0.5) * frame.w, this.camera.side),
+      y: wrap(this.camera.cam.y + (fy - 0.5) * frame.h, this.camera.side),
+    };
+  }
+
+  /**
+   * Put a duck in the water that the server has never heard of.
+   *
+   * The arrival screen shows YOUR duck before it exists: you are looking at
+   * a fortune, not at a record. It is the same duck object as any other so
+   * it falls, sparkles and floats through exactly the same code — the only
+   * difference is that nothing on the server will ever mention it, so the
+   * caller takes it out again when the screen is done.
+   *
+   * Safe because polling is paused for the whole of that flow; a poll would
+   * replace the list and this duck with it.
+   */
+  addLocal(
+    duck: Omit<PondDuck, "id"> & { id: string; mine?: boolean; selfDirected?: boolean },
+    at: { x: number; y: number },
+  ): Placed {
+    const placed: Placed = {
+      ...duck, wx: at.x, wy: at.y, flip: false, burning: Boolean(duck.fire),
+    };
+    this.ducks.push(placed);
+    return placed;
+  }
+
+  /** Take a local duck back out. Server ducks are managed by `setDucks`. */
+  removeLocal(id: string): void {
+    this.ducks = this.ducks.filter((d) => d.id !== id);
   }
 
   /**
@@ -1097,6 +1164,28 @@ export class PondView {
     const yFrac = clearBelowCss > 0 ? visibleCss / 2 / (rect.height / OVERSCAN) : DUCK_ABOVE_SHEET;
 
     this.camera.glide({ x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell }, CAM_UI);
+  }
+
+  /**
+   * Close in on a duck: raise the zoom, park it a fraction down the frame.
+   *
+   * The arrival's second beat. The prototype's `focus(d, 8, 0.3, 900)` —
+   * and the two things it is careful about are worth keeping:
+   *
+   *   The zoom is only ever RAISED. `minCell` is a floor, not a target, so
+   *   somebody already looking closely is never yanked back out.
+   *
+   *   `yFrac` is measured against the frame at the zoom we are ABOUT to be
+   *   at, not the current one. Using the old zoom is what once landed a
+   *   duck near the notch instead of in the water.
+   */
+  focus(id: string, minCell: number, yFrac: number, ms: number): void {
+    const d = this.find(id);
+    if (!d) return;
+    const cell = Math.max(this.camera.cam.cell, minCell);
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const frameH = ((rect.height / OVERSCAN) * this.dpr()) / cell;
+    this.camera.glide({ x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell }, ms);
   }
 
   /**
@@ -1537,6 +1626,8 @@ export class PondView {
         p.y - 12 * renderCell,
         renderCell,
       );
+      // Your own duck says so. Drawn after the duck, so nothing covers it.
+      if (d.mine) drawTag(ctx, p.x - 12 * renderCell, p.y - 12 * renderCell, renderCell);
     }
 
     this.ripples = this.ripples.filter((r) => now - r.t < RIPPLE_MS);

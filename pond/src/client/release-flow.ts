@@ -31,6 +31,15 @@ export interface ReleaseResult {
 export interface FlowOptions {
   root: HTMLElement;
   fortune: number;
+  /**
+   * Play the arrival in the pond behind this flow, and call back when the
+   * sheet should rise. Returns a cleanup to run on leaving the screen.
+   *
+   * The choreography belongs to whoever owns the water, not to the flow —
+   * this screen's job is to say what the fortune IS, once the duck that
+   * carries it has landed.
+   */
+  playArrival: (fortune: number, tint: number, onSheet: () => void) => () => void;
   /** The card keeper's name, if this card has one. Decides the scope picker. */
   keeper: string | null;
   onDone: (duck: ReleaseResult) => void;
@@ -117,22 +126,42 @@ export function releaseFlow(opts: FlowOptions): void {
   function arrivalBody(): void {
     root.replaceChildren();
     const { root: sheetRoot, body: wrap } = sheet(true);
+    /*
+     * No picture of a duck here. The duck is IN THE WATER behind this
+     * sheet, wearing a YOU tag, having just fallen — that is the whole
+     * arrival, and a thumbnail of it inside the panel was a photograph of
+     * a moment that was supposed to be happening.
+     */
     wrap.append(
       el("p", "p-eyebrow", t("arrival.01")),
-      preview(6),
       el("h1", "p-title p-fortune-title", fortuneTitle(opts.fortune)),
       el("p", "p-body", t("arrival.03")),
     );
     const actions = el("div", "p-actions");
     actions.append(
-      button("p-btn", t("arrival.04"), studio),
+      button("p-btn", t("arrival.04"), () => { endArrival(); studio(); }),
       // The escape hatch matters: someone who just wants to look must not
       // have to make a duck first.
-      button("p-btn p-btn-quiet", t("arrival.05"), opts.onBrowse),
+      button("p-btn p-btn-quiet", t("arrival.05"), () => { endArrival(); opts.onBrowse(); }),
     );
     wrap.append(actions);
+
+    // Held back until the duck has landed and its fortune has been seen.
+    sheetRoot.hidden = true;
     root.append(sheetRoot);
+    endArrival = opts.playArrival(opts.fortune, draft.studio.tint, () => {
+      sheetRoot.hidden = false;
+    });
   }
+
+  /**
+   * Stops the arrival and takes its stand-in duck back out.
+   *
+   * Called on every way OFF that screen, including the ones that are not
+   * buttons — leaving it running would drop a duck the server has never
+   * heard of into a pond that is about to be polled.
+   */
+  let endArrival: () => void = () => {};
 
   // ── 02 · studio ───────────────────────────────────────────────────────
   function studio(): void {

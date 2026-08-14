@@ -1008,6 +1008,31 @@ function drawDuck(ctx, d, px, py, s) {
   }
   for (const st of d.stickers ?? []) drawSticker(ctx, st, px, py, s, flip);
 }
+var TAG = {
+  MIN_CELL: 3,
+  /** In sprite cells, measured from the duck's top-left. */
+  X: 4,
+  Y: -6,
+  W: 16,
+  H: 5,
+  BACK: "#FFCA00",
+  INK: "#4A3A06",
+  TEXT: "YOU"
+};
+function drawTag(ctx, px, py, s) {
+  if (s < TAG.MIN_CELL) return;
+  const top = Math.max(0, py + TAG.Y * s);
+  ctx.fillStyle = TAG.BACK;
+  ctx.fillRect(px + TAG.X * s, top, TAG.W * s, TAG.H * s);
+  ctx.fillStyle = TAG.INK;
+  ctx.font = `bold ${4 * s}px ${MONO}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(TAG.TEXT, px + (TAG.X + TAG.W / 2) * s, top + TAG.H / 2 * s);
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+var MONO = "'IBM Plex Mono', ui-monospace, monospace";
 function drawSticker(ctx, st, px, py, s, flip = false) {
   const def = STICKERS[st.id];
   if (!def) return;
@@ -2621,20 +2646,31 @@ function releaseFlow(opts) {
     const { root: sheetRoot, body: wrap2 } = sheet(true);
     wrap2.append(
       el("p", "p-eyebrow", t("arrival.01")),
-      preview(6),
       el("h1", "p-title p-fortune-title", fortuneTitle(opts.fortune)),
       el("p", "p-body", t("arrival.03"))
     );
     const actions = el("div", "p-actions");
     actions.append(
-      button("p-btn", t("arrival.04"), studio),
+      button("p-btn", t("arrival.04"), () => {
+        endArrival();
+        studio();
+      }),
       // The escape hatch matters: someone who just wants to look must not
       // have to make a duck first.
-      button("p-btn p-btn-quiet", t("arrival.05"), opts.onBrowse)
+      button("p-btn p-btn-quiet", t("arrival.05"), () => {
+        endArrival();
+        opts.onBrowse();
+      })
     );
     wrap2.append(actions);
+    sheetRoot.hidden = true;
     root2.append(sheetRoot);
+    endArrival = opts.playArrival(opts.fortune, draft.studio.tint, () => {
+      sheetRoot.hidden = false;
+    });
   }
+  let endArrival = () => {
+  };
   function studio() {
     studioScreen(root2, {
       fortune: opts.fortune,
@@ -3636,10 +3672,12 @@ var PondView = class {
     if (duck.fortune === 0) fireworkStreamers(this.particles, duck.wx, duck.wy, GREAT_STREAMERS);
     if (duck.fortune === 3) ignite(duck, BAD_LUCK_BURN_MS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
-    const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
-    window.setTimeout(() => {
-      if (this.find(duck.id)) this.lookAt(duck.id, true);
-    }, delay);
+    if (!duck.selfDirected) {
+      const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
+      window.setTimeout(() => {
+        if (this.find(duck.id)) this.lookAt(duck.id, true);
+      }, delay);
+    }
   }
   /** Turn the fall into a landing once its 340ms is up. */
   advanceArrivals(now) {
@@ -3760,10 +3798,53 @@ var PondView = class {
     this.camera.glide({ x: centre, y: centre, cell: HOME_CELL }, CAM_UI);
   }
   /** Centre on a duck. `moment` is the one thing watched, not operated. */
-  lookAt(id, moment = false) {
+  lookAt(id, moment = false, cell = HOME_CELL, ms) {
     const d = this.find(id);
     if (!d) return;
-    this.camera.glide({ x: d.wx, y: d.wy, cell: HOME_CELL }, moment ? CAM_MOMENT : CAM_UI);
+    this.camera.glide({ x: d.wx, y: d.wy, cell }, ms ?? (moment ? CAM_MOMENT : CAM_UI));
+  }
+  /**
+   * A world position at a fraction across and down the VISIBLE frame.
+   *
+   * The arrival drops its duck at (0.5, 0.34) — a little above centre, so
+   * the sheet that rises afterwards never covers it. Expressed as a
+   * fraction of what can be SEEN rather than as world coordinates, because
+   * the world is bigger than the window and the answer has to be somewhere
+   * a person is actually looking.
+   */
+  frameAt(fx, fy) {
+    const frame = this.visibleFrame();
+    return {
+      x: wrap(this.camera.cam.x + (fx - 0.5) * frame.w, this.camera.side),
+      y: wrap(this.camera.cam.y + (fy - 0.5) * frame.h, this.camera.side)
+    };
+  }
+  /**
+   * Put a duck in the water that the server has never heard of.
+   *
+   * The arrival screen shows YOUR duck before it exists: you are looking at
+   * a fortune, not at a record. It is the same duck object as any other so
+   * it falls, sparkles and floats through exactly the same code — the only
+   * difference is that nothing on the server will ever mention it, so the
+   * caller takes it out again when the screen is done.
+   *
+   * Safe because polling is paused for the whole of that flow; a poll would
+   * replace the list and this duck with it.
+   */
+  addLocal(duck, at) {
+    const placed = {
+      ...duck,
+      wx: at.x,
+      wy: at.y,
+      flip: false,
+      burning: Boolean(duck.fire)
+    };
+    this.ducks.push(placed);
+    return placed;
+  }
+  /** Take a local duck back out. Server ducks are managed by `setDucks`. */
+  removeLocal(id) {
+    this.ducks = this.ducks.filter((d) => d.id !== id);
   }
   /**
    * Bring a duck to where it can still be SEEN once its card is up.
@@ -3788,6 +3869,27 @@ var PondView = class {
     const visibleCss = Math.max(0, rect.height / OVERSCAN - clearBelowCss);
     const yFrac = clearBelowCss > 0 ? visibleCss / 2 / (rect.height / OVERSCAN) : DUCK_ABOVE_SHEET;
     this.camera.glide({ x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell }, CAM_UI);
+  }
+  /**
+   * Close in on a duck: raise the zoom, park it a fraction down the frame.
+   *
+   * The arrival's second beat. The prototype's `focus(d, 8, 0.3, 900)` —
+   * and the two things it is careful about are worth keeping:
+   *
+   *   The zoom is only ever RAISED. `minCell` is a floor, not a target, so
+   *   somebody already looking closely is never yanked back out.
+   *
+   *   `yFrac` is measured against the frame at the zoom we are ABOUT to be
+   *   at, not the current one. Using the old zoom is what once landed a
+   *   duck near the notch instead of in the water.
+   */
+  focus(id, minCell, yFrac, ms) {
+    const d = this.find(id);
+    if (!d) return;
+    const cell = Math.max(this.camera.cam.cell, minCell);
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const frameH = rect.height / OVERSCAN * this.dpr() / cell;
+    this.camera.glide({ x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell }, ms);
   }
   /**
    * Move each duck toward wherever the whistle put it.
@@ -4151,6 +4253,7 @@ var PondView = class {
         p.y - 12 * renderCell,
         renderCell
       );
+      if (d.mine) drawTag(ctx, p.x - 12 * renderCell, p.y - 12 * renderCell, renderCell);
     }
     this.ripples = this.ripples.filter((r) => now - r.t < RIPPLE_MS);
     if (this.sparkles.length) {
@@ -4420,6 +4523,60 @@ async function pondScreen(bootstrap) {
   });
   count.addEventListener("click", openGather);
   root.append(whistle, sheet2);
+  function playArrival(fortune, tint, onSheet) {
+    const id = "arrival-preview";
+    view2.camera.snap({ cell: HOME_CELL });
+    const at = view2.frameAt(0.5, ARRIVAL_DROP_Y);
+    const duck = view2.addLocal({
+      id,
+      slug: id,
+      fortune,
+      tint,
+      stickers: [],
+      paint: "",
+      name: "",
+      message: "",
+      created: Date.now(),
+      bumps: 0,
+      rescues: 0,
+      fire: null,
+      say: null,
+      keeper: null,
+      mine: true,
+      // This screen closes in on it itself, on its own schedule.
+      selfDirected: true
+    }, at);
+    view2.arrive(duck);
+    const timers = [
+      // Close in, once the effect has said its piece.
+      window.setTimeout(
+        () => view2.focus(id, ARRIVAL_CLOSE_CELL, ARRIVAL_DUCK_Y, ARRIVAL_CLOSE_MS),
+        fortune === 0 ? ARRIVAL_CLOSE_GREAT_MS : ARRIVAL_CLOSE_WAIT_MS
+      ),
+      // And only then the sheet.
+      window.setTimeout(
+        onSheet,
+        prefersReducedMotion() ? ARRIVAL_SHEET_REDUCED_MS : fortune === 0 ? ARRIVAL_SHEET_GREAT_MS : ARRIVAL_SHEET_MS
+      )
+    ];
+    return () => {
+      timers.forEach(clearTimeout);
+      view2.removeLocal(id);
+    };
+  }
+  async function arriveWhenItLands(id) {
+    for (let attempt = 0; attempt < ARRIVAL_TRIES; attempt++) {
+      await refresh();
+      const duck = view2.find(id);
+      if (duck) {
+        view2.lookAt(id, true);
+        view2.arrive(duck);
+        return;
+      }
+      await new Promise((r) => setTimeout(r, ARRIVAL_RETRY_MS));
+    }
+    console.warn("[pond] released duck has not appeared yet:", id);
+  }
   const refresh = async () => {
     try {
       const res = await api.pond();
@@ -4454,6 +4611,7 @@ async function pondScreen(bootstrap) {
         releaseFlow({
           root: overlay,
           fortune: session.fortune ?? 1,
+          playArrival,
           // The keeper of the card that was TAPPED — from the session, which
           // knows the card. It used to be inferred from the ducks on screen,
           // which quietly stopped working the moment the pond held ducks from
@@ -4469,11 +4627,7 @@ async function pondScreen(bootstrap) {
             overlay.replaceChildren();
             resumePolling();
             void syncCta();
-            void refresh().then(() => {
-              view2.lookAt(made.id, true);
-              const duck = view2.find(made.id);
-              if (duck) view2.arrive(duck);
-            });
+            void arriveWhenItLands(made.id);
           }
         });
       });
@@ -4575,6 +4729,17 @@ async function pondScreen(bootstrap) {
   };
 }
 var BUMP_READ_MS = 520;
+var ARRIVAL_TRIES = 3;
+var ARRIVAL_RETRY_MS = 400;
+var ARRIVAL_DROP_Y = 0.34;
+var ARRIVAL_CLOSE_WAIT_MS = 700;
+var ARRIVAL_CLOSE_GREAT_MS = 850;
+var ARRIVAL_CLOSE_CELL = 8;
+var ARRIVAL_DUCK_Y = 0.3;
+var ARRIVAL_CLOSE_MS = 900;
+var ARRIVAL_SHEET_MS = 1100;
+var ARRIVAL_SHEET_GREAT_MS = 1500;
+var ARRIVAL_SHEET_REDUCED_MS = 340;
 var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function shortDate(created) {
   const d = new Date(created * 1e3);

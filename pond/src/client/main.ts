@@ -19,12 +19,13 @@ import { button, ditherEdge, field, sheet as makeSheet } from "./dom.js";
 import { icon } from "./icons.js";
 import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
-import { CAM_UI } from "./camera.js";
+import { CAM_UI, HOME_CELL } from "./camera.js";
 import { cardSetup, claimFromUrl } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, SPLASH_TAP, type Placed } from "./pond-view.js";
 import { GRID } from "./codec.js";
 import { drawDuck } from "./render.js";
+import { prefersReducedMotion } from "./viewport.js";
 import { fortuneTitle, setLang, t, type Lang } from "./strings.js";
 import { watchSize } from "./viewport.js";
 import type { PondDuck } from "./types.js";
@@ -458,6 +459,95 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
 
   root.append(whistle, sheet);
 
+  /**
+   * ══ THE ARRIVAL IS THE MOMENT THE WHOLE THING EXISTS FOR ══
+   *
+   * The prototype's sequence, and every beat of it is deliberate:
+   *
+   *   1. START WIDE. The fall and the fortune's effect need room — a 大吉
+   *      firework cropped to a close-up is not a firework.
+   *   2. DROP IT WHERE IT SHOULD APPEAR: a little above centre of the
+   *      VISIBLE frame, so the sheet that rises later never covers it.
+   *      Expressed as a fraction of what can be seen, because the world is
+   *      far bigger than the window.
+   *   3. Once the effect has READ — 850ms for 大吉, which is the loudest,
+   *      700 for the rest — close in on the duck. This is the moment the
+   *      card exists for, and a duck you have to look for is not a moment.
+   *   4. The sheet waits for all of that. Showing it immediately would put
+   *      chrome on top of the one thing this whole flow is for.
+   *
+   * What this replaced was a sheet containing a PICTURE of a duck, shown
+   * instantly. Everything above was already built and none of it ran.
+   */
+  function playArrival(fortune: number, tint: number, onSheet: () => void): () => void {
+    const id = "arrival-preview";
+    // Wide, and at the pond's own framing rather than wherever the camera
+    // was left. There is nothing to look at yet but the water it will hit.
+    view.camera.snap({ cell: HOME_CELL });
+    const at = view.frameAt(0.5, ARRIVAL_DROP_Y);
+    const duck = view.addLocal({
+      id, slug: id, fortune, tint, stickers: [], paint: "", name: "", message: "",
+      created: Date.now(), bumps: 0, rescues: 0, fire: null, say: null, keeper: null,
+      mine: true,
+      // This screen closes in on it itself, on its own schedule.
+      selfDirected: true,
+    }, at);
+    view.arrive(duck);
+
+    const timers = [
+      // Close in, once the effect has said its piece.
+      window.setTimeout(
+        () => view.focus(id, ARRIVAL_CLOSE_CELL, ARRIVAL_DUCK_Y, ARRIVAL_CLOSE_MS),
+        fortune === 0 ? ARRIVAL_CLOSE_GREAT_MS : ARRIVAL_CLOSE_WAIT_MS,
+      ),
+      // And only then the sheet.
+      window.setTimeout(
+        onSheet,
+        prefersReducedMotion() ? ARRIVAL_SHEET_REDUCED_MS
+          : fortune === 0 ? ARRIVAL_SHEET_GREAT_MS : ARRIVAL_SHEET_MS,
+      ),
+    ];
+
+    return () => {
+      timers.forEach(clearTimeout);
+      view.removeLocal(id);
+    };
+  }
+
+  /**
+   * Watch your own duck come down.
+   *
+   * ══ THE ONE ANIMATION THAT MUST NOT BE MISSED ══
+   * The duck enters with its fortune's own arrival — FLOW.md § 06 — and
+   * the camera goes to meet it. This is the moment the whole flow is for.
+   *
+   * It used to be one refresh and `if (duck) arrive(duck)`, which silently
+   * did nothing whenever the duck was not in that first response. The
+   * server writes it and the poll reads it back over two round trips, so
+   * losing that race costs the person the only time they will ever see
+   * their own duck arrive — and it fails SILENTLY, which is why it went
+   * unnoticed until somebody said "I don't see any arrival animation".
+   *
+   * So it asks again. A few short retries cover a slow write far better
+   * than one attempt, and if the pond still has not heard of it, the
+   * camera at least goes to where it will be — rather than the flow
+   * ending on nothing at all.
+   */
+  async function arriveWhenItLands(id: string): Promise<void> {
+    for (let attempt = 0; attempt < ARRIVAL_TRIES; attempt++) {
+      await refresh();
+      const duck = view.find(id);
+      if (duck) {
+        view.lookAt(id, true);
+        view.arrive(duck);
+        return;
+      }
+      await new Promise((r) => setTimeout(r, ARRIVAL_RETRY_MS));
+    }
+    // It is in the pond somewhere; the next poll will place it.
+    console.warn("[pond] released duck has not appeared yet:", id);
+  }
+
   const refresh = async (): Promise<void> => {
     try {
       const res = await api.pond();
@@ -528,6 +618,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       releaseFlow({
         root: overlay,
         fortune: session.fortune ?? 1,
+        playArrival,
         // The keeper of the card that was TAPPED — from the session, which
         // knows the card. It used to be inferred from the ducks on screen,
         // which quietly stopped working the moment the pond held ducks from
@@ -544,15 +635,8 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
           // just made — the one move that is watched rather than operated.
           overlay.replaceChildren();
           resumePolling();
-          // The duck enters with its fortune's own arrival — FLOW.md § 06.
-          // The camera takes CAM_MOMENT rather than CAM_UI: this is the one
-          // thing that is watched rather than operated.
           void syncCta();
-          void refresh().then(() => {
-            view.lookAt(made.id, true);
-            const duck = view.find(made.id);
-            if (duck) view.arrive(duck);
-          });
+          void arriveWhenItLands(made.id);
         },
       });
     });
@@ -732,6 +816,37 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
  * never feels like waiting. The crossing starts when this ends.
  */
 const BUMP_READ_MS = 520;
+
+/**
+ * How hard the pond tries to find your duck before giving up on showing it
+ * arrive. Three goes over about a second — long enough to cover a slow
+ * write, short enough that nobody is left staring at water.
+ */
+const ARRIVAL_TRIES = 3;
+const ARRIVAL_RETRY_MS = 400;
+
+/*
+ * The arrival's own clock. All of these are the prototype's, and they are
+ * an order rather than a set of independent knobs: the duck lands, its
+ * effect reads, the camera closes in, the sheet arrives. Shortening any one
+ * of them puts the next beat on top of the one before it.
+ */
+/** A little above centre, so the sheet never covers where it lands. */
+const ARRIVAL_DROP_Y = 0.34;
+/** How long the fortune's effect gets before the camera moves. */
+const ARRIVAL_CLOSE_WAIT_MS = 700;
+/** 大吉 is the loudest arrival; cutting it short throws the moment away. */
+const ARRIVAL_CLOSE_GREAT_MS = 850;
+/** Close enough to look at rather than to locate. */
+const ARRIVAL_CLOSE_CELL = 8;
+/** Where the duck sits once the camera arrives, down the visible frame. */
+const ARRIVAL_DUCK_Y = 0.3;
+const ARRIVAL_CLOSE_MS = 900;
+/** When the sheet rises. After the landing AND after the effect reads. */
+const ARRIVAL_SHEET_MS = 1100;
+const ARRIVAL_SHEET_GREAT_MS = 1500;
+/** With motion reduced there is no effect to wait for, only the fact. */
+const ARRIVAL_SHEET_REDUCED_MS = 340;
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
