@@ -44,6 +44,8 @@ async function request(path, init = {}) {
 var api = {
   session: () => request("/session"),
   pond: () => request("/pond"),
+  /** Who keeps bumping this duck. Fetched when its card opens, not before. */
+  bumpers: (duck) => request(`/bumpers?duck=${encodeURIComponent(duck)}`),
   release: (duck) => request("/duck", {
     method: "POST",
     body: JSON.stringify(duck)
@@ -2687,6 +2689,21 @@ var WORLD_FPS = 12;
 var WORLD_MS = 1e3 / WORLD_FPS;
 var SEPARATION = 30;
 var GATHER_MS = 900;
+var DART_MS = 420;
+var DART_STOP_SHORT = GRID * 0.7;
+var KNOCK_X = 3.6;
+var KNOCK_Y = 2.4;
+var REBOUND_X = 1.6;
+var REBOUND_Y = 1.1;
+var WANDER_TURN = 0.55;
+var WANDER_X = 0.14;
+var WANDER_Y = 0.11;
+var DRIFT_DECAY = 0.86;
+var DRIFT_SPEED = 8;
+var SEP_CONTACT = GRID * 0.86;
+var SEP_ROOM = GRID * 1.75;
+var SEP_STRENGTH = 0.06;
+var SEP_ROOM_SCALE = 0.16;
 function hashId(id) {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) {
@@ -2758,8 +2775,12 @@ var PondView = class {
   ripples = [];
   frame = 0;
   lastWorldTick = 0;
+  /** For the wander's dt. Clamped, so a backgrounded tab does not teleport. */
+  lastFrameAt = 0;
   lastDebug = 0;
   gatherStart = 0;
+  /** True while a whistle is up. A called flock is meant to be close. */
+  whistling = false;
   sparkles = [];
   sparkleStart = 0;
   petals = [];
@@ -2857,6 +2878,7 @@ var PondView = class {
    *     them back, so the pond refills.
    */
   gather(match) {
+    this.whistling = match !== null;
     const { side } = this.camera;
     const cx = this.camera.cam.x;
     const cy = this.camera.cam.y;
@@ -2965,6 +2987,9 @@ var PondView = class {
         this.frame++;
       }
       this.advanceGather(now);
+      this.separate(!this.whistling);
+      this.advanceDarts(now, Math.min(0.05, (now - this.lastFrameAt) / 1e3));
+      this.lastFrameAt = now;
       this.draw(now);
       if (this.debugging && now - this.lastDebug > 50) {
         this.lastDebug = now;
@@ -3022,6 +3047,110 @@ var PondView = class {
    * Eased, and through `wrapDelta`, so a duck on the far side of the seam
    * comes the short way round rather than swimming the length of the world.
    */
+  /**
+   * Send one duck to bump another.
+   *
+   * Returns false if it cannot: no such duck, the same duck twice, or one
+   * already mid-flight. The caller should not report a bump it did not
+   * get to watch.
+   */
+  bumpDuck(fromId, toId) {
+    const from = this.ducks.find((d) => d.id === fromId);
+    const to = this.ducks.find((d) => d.id === toId);
+    if (!from || !to || from === to || from.dartAt) return false;
+    const { side } = this.camera;
+    const dx = wrapDelta(from.wx, to.wx, side);
+    const dy = wrapDelta(from.wy, to.wy, side);
+    const dist = Math.hypot(dx, dy) || 1;
+    const stop = Math.max(0, dist - DART_STOP_SHORT);
+    from.dartFromX = from.wx;
+    from.dartFromY = from.wy;
+    from.dartToX = from.wx + dx / dist * stop;
+    from.dartToY = from.wy + dy / dist * stop;
+    from.dartTarget = to.id;
+    from.flip = dx < 0;
+    from.dartAt = prefersReducedMotion() ? 1 : performance.now();
+    return true;
+  }
+  /**
+   * Push overlapping ducks apart.
+   *
+   * Spatially hashed into buckets the size of the search radius, so this
+   * stays linear as the pond fills — the naive pairwise version is 10,000
+   * comparisons at a hundred ducks, every frame, on a phone.
+   */
+  separate(roomy) {
+    const { side } = this.camera;
+    const g = roomy ? SEP_ROOM : SEP_CONTACT;
+    const buckets = /* @__PURE__ */ new Map();
+    const keyOf = (x, y) => `${Math.floor(wrap(x, side) / g)},${Math.floor(wrap(y, side) / g)}`;
+    for (const d of this.ducks) {
+      const k = keyOf(d.wx, d.wy);
+      const arr = buckets.get(k);
+      if (arr) arr.push(d);
+      else buckets.set(k, [d]);
+    }
+    for (const d of this.ducks) {
+      const cx = Math.floor(wrap(d.wx, side) / g);
+      const cy = Math.floor(wrap(d.wy, side) / g);
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oy = -1; oy <= 1; oy++) {
+          const arr = buckets.get(`${cx + ox},${cy + oy}`);
+          if (!arr) continue;
+          for (const o of arr) {
+            if (o === d) continue;
+            const dx = wrapDelta(d.wx, o.wx, side);
+            const dy = wrapDelta(d.wy, o.wy, side);
+            const dist = Math.hypot(dx, dy);
+            if (dist <= 0.01 || dist >= g) continue;
+            const f = dist < SEP_CONTACT ? (SEP_CONTACT - dist) / dist * SEP_STRENGTH : roomy ? (SEP_ROOM - dist) / dist * SEP_STRENGTH * SEP_ROOM_SCALE : 0;
+            if (!f) continue;
+            d.vx = (d.vx ?? 0) - dx * f;
+            d.vy = (d.vy ?? 0) - dy * f;
+          }
+        }
+      }
+    }
+  }
+  /** Advance any bump in flight, and let the knock from one settle. */
+  advanceDarts(now, dt) {
+    const { side } = this.camera;
+    for (const d of this.ducks) {
+      if (d.dartAt) {
+        const p = d.dartAt === 1 ? 1 : Math.min(1, (now - d.dartAt) / DART_MS);
+        const e = 1 - Math.pow(1 - p, 3);
+        d.wx = wrap(d.dartFromX + (d.dartToX - d.dartFromX) * e, side);
+        d.wy = wrap(d.dartFromY + (d.dartToY - d.dartFromY) * e, side);
+        d.vx = 0;
+        d.vy = 0;
+        if (p >= 1) {
+          const target = this.ducks.find((o) => o.id === d.dartTarget);
+          if (target) {
+            const ax = wrapDelta(d.wx, target.wx, side);
+            const ay = wrapDelta(d.wy, target.wy, side);
+            const m = Math.hypot(ax, ay) || 1;
+            this.splash(d.wx + ax * 0.5, d.wy + ay * 0.5, 1.5);
+            target.vx = (target.vx ?? 0) + ax / m * KNOCK_X;
+            target.vy = (target.vy ?? 0) + ay / m * KNOCK_Y;
+            d.vx = -(ax / m) * REBOUND_X;
+            d.vy = -(ay / m) * REBOUND_Y;
+          }
+          d.dartAt = void 0;
+          d.dartTarget = void 0;
+        }
+        continue;
+      }
+      d.head ??= Math.random() * Math.PI * 2;
+      d.head += (Math.random() - 0.5) * WANDER_TURN;
+      const dx = Math.cos(d.head) * WANDER_X;
+      const dy = Math.sin(d.head) * WANDER_Y;
+      d.vx = (d.vx ?? 0) * DRIFT_DECAY;
+      d.vy = (d.vy ?? 0) * DRIFT_DECAY;
+      d.wx = wrap(d.wx + (d.vx + dx) * dt * DRIFT_SPEED, side);
+      d.wy = wrap(d.wy + (d.vy + dy) * dt * DRIFT_SPEED, side);
+      if (Math.abs(d.vx + dx) > 0.12) d.flip = d.vx + dx < 0;
+    }
+  }
   advanceGather(now) {
     if (this.gatherStart === 0) return;
     const p = Math.min(1, (now - this.gatherStart) / GATHER_MS);
@@ -3410,9 +3539,10 @@ function openDuckCard(view, duck) {
   view.splash(duck.wx, duck.wy);
   document.querySelector(".p-card")?.remove();
   const scrim = el2("div", "p-scrim");
-  const card = el2("div", "p-card");
+  const panel = el2("div", "p-card");
+  const card = el2("div", "p-card-body");
   const dismiss = () => {
-    card.remove();
+    panel.remove();
     scrim.remove();
   };
   scrim.addEventListener("click", dismiss);
@@ -3449,6 +3579,35 @@ function openDuckCard(view, duck) {
   };
   showStats(duck.bumps);
   card.append(stats);
+  const bumpers = el2("div", "p-bumpers");
+  bumpers.hidden = true;
+  card.append(bumpers);
+  void api.bumpers(duck.id).then(
+    (res) => {
+      if (!res.bumpers.length || !panel.isConnected) return;
+      bumpers.append(el2("p", "p-field-label", t("pond.28")));
+      const row = el2("div", "p-bumprow");
+      for (const b of res.bumpers) {
+        const box = el2("div", "p-bumper");
+        box.title = b.name || b.slug;
+        const cv = el2("canvas", "");
+        cv.width = 64;
+        cv.height = 64;
+        const c = cv.getContext("2d");
+        if (c) {
+          c.imageSmoothingEnabled = false;
+          drawDuck(c, b, 0, 0, 64 / 24);
+        }
+        box.append(cv, el2("i", "p-bumper-n", String(b.count)));
+        row.append(box);
+      }
+      bumpers.append(row);
+      bumpers.hidden = false;
+    },
+    // A card that opens without this row is still a card.
+    () => {
+    }
+  );
   const actions = el2("div", "p-actions");
   const mine = recallEditKey();
   if (mine && mine !== duck.id) {
@@ -3457,7 +3616,8 @@ function openDuckCard(view, duck) {
       void api.bump(mine, duck.id).then(
         (res) => {
           showStats(res.bumps);
-          view.splash(duck.wx, duck.wy);
+          if (view.bumpDuck(res.from, duck.id)) dismiss();
+          else view.splash(duck.wx, duck.wy);
           bump.textContent = "✓";
         },
         (err) => {
@@ -3476,8 +3636,8 @@ function openDuckCard(view, duck) {
   card.append(actions);
   const close = button("p-card-x", "✕", dismiss, t("pond.23"));
   card.append(close);
-  card.prepend(ditherEdge());
-  root.append(scrim, card);
+  panel.append(ditherEdge(), card);
+  root.append(scrim, panel);
 }
 function reportSheet(card, duck) {
   card.replaceChildren();

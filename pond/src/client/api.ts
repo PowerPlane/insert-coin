@@ -7,7 +7,7 @@
  * server has confirmed, and a draft survives a reload.
  */
 
-import type { PondDuck } from "./types.js";
+import type { PondDuck, Sticker } from "./types.js";
 
 const BASE = "/api";
 
@@ -53,6 +53,17 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
+/** A duck that keeps bumping this one — enough to draw it, and to name it. */
+export interface Bumper {
+  slug: string;
+  name: string;
+  count: number;
+  fortune: number;
+  tint: number;
+  stickers: Sticker[];
+  paint: string;
+}
+
 export interface SessionState {
   active: boolean;
   fortune?: number;
@@ -81,6 +92,9 @@ export const api = {
   session: () => request<SessionState>("/session"),
 
   pond: () => request<{ ducks: PondDuck[]; now: number }>("/pond"),
+  /** Who keeps bumping this duck. Fetched when its card opens, not before. */
+  bumpers: (duck: string) =>
+    request<{ bumpers: Bumper[] }>(`/bumpers?duck=${encodeURIComponent(duck)}`),
 
   release: (duck: {
     tint: number;
@@ -107,7 +121,7 @@ export const api = {
    * A 409 means the cap: bump them back to free a slot.
    */
   bump: (editKey: string, id: string) =>
-    request<{ ok: true; bumps: number; unreturned: number }>("/bump", {
+    request<{ ok: true; bumps: number; unreturned: number; from: string }>("/bump", {
       method: "POST",
       body: JSON.stringify({ editKey, id }),
     }),

@@ -723,6 +723,51 @@ a.p-btn {
   background: #0b3d5233;
 }
 
+/*
+ * "Most bumps from" — the ducks that keep coming back, at 32px in the same
+ * tinted wells the studio uses for stickers. A number is a score; a row of
+ * faces is a relationship.
+ */
+.p-bumpers {
+  margin-top: 0.7rem;
+}
+
+.p-bumpers[hidden] {
+  display: none;
+}
+
+.p-bumprow {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.p-bumper {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  background: var(--quiet);
+  clip-path: var(--px-corner);
+  display: grid;
+  place-items: center;
+}
+
+.p-bumper canvas {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+
+.p-bumper-n {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  font-style: normal;
+  color: var(--p-soft);
+}
+
 /* ── a duck's card, and the gather sheet ─────────────────────────────── */
 
 .p-sheet {
@@ -753,17 +798,22 @@ a.p-btn {
   z-index: 35;
   display: flex;
   flex-direction: column;
+  /*
+   * ══ NO BACKGROUND HERE ══
+   * The dither strips paint surface-coloured dots on transparency, so they
+   * only read as a waterline if there is WATER behind them. Giving the
+   * panel a background painted surface dots onto surface and the edge
+   * vanished — the hard line was the panel's own top, not a missing edge.
+   * The prototype splits it the same way: `.panel` is transparent and only
+   * `.panel-body` is opaque.
+   */
+}
+
+.p-card-body {
   background: var(--p-surface);
-}
-
-/* The body's padding, not the panel's — the edge has to reach the sides. */
-.p-card > :not(.p-edge) {
-  margin-left: 1rem;
-  margin-right: 1rem;
-}
-
-.p-card > .p-card-head {
-  margin-top: 0.9rem;
+  padding: 0.9rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
 }
 
 /*
@@ -795,8 +845,7 @@ a.p-btn {
   margin-top: 0.55rem;
 }
 
-.p-card > .p-actions {
-  margin-bottom: calc(1.1rem + env(safe-area-inset-bottom));
+.p-card .p-actions {
   flex-direction: row;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -926,7 +975,7 @@ a.p-btn {
   clip-path: var(--px-corner);
   background: var(--quiet);
   position: absolute;
-  top: 18px;
+  top: 20px;
   right: 16px;
   width: var(--tap);
   height: var(--tap);

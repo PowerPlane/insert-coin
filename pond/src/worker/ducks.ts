@@ -264,13 +264,29 @@ export async function duckBySlug(env: Env, slug: string): Promise<PublicDuck | n
  * instead of a counter: the duck card gets real names for free, and so does
  * whatever Phase 3 decides to do with them.
  */
+export interface Bumper {
+  slug: string;
+  name: string;
+  count: number;
+  /* Enough to DRAW them. The duck card shows a row of the actual ducks
+     rather than a list of names, because a number is a score and a row of
+     faces is a relationship — it is the one place the pond shows that the
+     same person came back. */
+  fortune: number;
+  tint: number;
+  stickers: unknown;
+  paint: string;
+}
+
 export async function topBumpers(
   env: Env,
   duckId: string,
   limit = TOP_BUMPERS,
-): Promise<{ slug: string; name: string; count: number }[]> {
+): Promise<Bumper[]> {
   const { results } = await env.DB.prepare(
-    `SELECT d.slug AS slug, d.name AS name, b.total AS total
+    `SELECT d.slug AS slug, d.name AS name, b.total AS total,
+            d.fortune AS fortune, d.tint AS tint,
+            d.stickers AS stickers, d.paint AS paint
        FROM bumps b
        JOIN ducks d ON d.id = b.from_duck
       WHERE b.to_duck = ?1 AND d.hidden = 0
@@ -284,6 +300,10 @@ export async function topBumpers(
     slug: String(r.slug ?? ""),
     name: String(r.name ?? ""),
     count: Number(r.total ?? 0),
+    fortune: Number(r.fortune ?? 1),
+    tint: Number(r.tint ?? 0),
+    stickers: safeParseStickers(r.stickers),
+    paint: String(r.paint ?? ""),
   }));
 }
 

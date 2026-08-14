@@ -41,7 +41,7 @@ import {
   prefersReducedMotion,
   type WaterBuffer,
 } from "./render.js";
-import { decodePaint } from "./codec.js";
+import { GRID, decodePaint } from "./codec.js";
 import {
   PETAL_LIFE_MS,
   type Petal,
@@ -72,10 +72,75 @@ export interface Placed extends PondDuck {
   /** Where this leg of the journey started. Cleared when it arrives. */
   gx?: number;
   gy?: number;
+  /** The heading it is currently wandering along, in radians. */
+  head?: number;
+  /** A bump in flight: where it left, where it stops, and when it set off. */
+  dartFromX?: number;
+  dartFromY?: number;
+  dartToX?: number;
+  dartToY?: number;
+  dartAt?: number;
+  dartTarget?: string;
+  /** Left over from being bumped, or from bumping. Decays to nothing. */
+  vx?: number;
+  vy?: number;
 }
 
 /** How long a duck takes to arc in, or back out again. */
 const GATHER_MS = 900;
+
+/*
+ * ══ A BUMP IS A DUCK CROSSING THE POND ══
+ * Not a counter going up. Your duck swims over, touches theirs, and both
+ * are knocked apart — which is the whole reason the interaction is called
+ * a bump and not a like.
+ *
+ * Fixed duration whatever the distance, so a bump across the pond is a
+ * FASTER duck rather than a longer wait. At 12fps a variable duration
+ * reads as a glitch; a constant one reads as intent.
+ */
+const DART_MS = 420;
+/** Stop this much short — measured in sprite cells — so they touch, not overlap. */
+const DART_STOP_SHORT = GRID * 0.7;
+/** What the bumped duck takes, along the axis of the hit. */
+const KNOCK_X = 3.6;
+const KNOCK_Y = 2.4;
+/** What you take back. Less: you were the one moving. */
+const REBOUND_X = 1.6;
+const REBOUND_Y = 1.1;
+/** Per-frame velocity decay, so a knock settles rather than drifting away. */
+const KNOCK_DECAY = 0.86;
+/** Below this, in sprite cells per frame, the duck has stopped. */
+const KNOCK_REST = 0.02;
+
+/*
+ * ══ THE POND IS ALIVE, AND THE DUCKS KEEP THEIR SPACE ══
+ * A pond of perfectly still ducks is a diagram. Two rules make it a place:
+ *
+ * WANDER — each duck holds a HEADING that meanders, rather than a fixed
+ * drift. A constant drift is a straight line, and a straight line always
+ * ends somewhere; a heading that wobbles keeps them milling about in open
+ * water, which is what ducks actually do.
+ *
+ * SEPARATE — they push apart. Two ducks occupying one spot read as one
+ * duck, and a duck you cannot tap separately is a duck you cannot open.
+ * Contact distance always; elbow room as well when nobody has been
+ * whistled for, because a flock that has been called is MEANT to be close.
+ */
+const WANDER_TURN = 0.55;
+const WANDER_X = 0.14;
+const WANDER_Y = 0.11;
+/** Velocity carried between frames. Lower is stickier. */
+const DRIFT_DECAY = 0.86;
+/** Cells per second, before decay. */
+const DRIFT_SPEED = 8;
+/** Touching. */
+const SEP_CONTACT = GRID * 0.86;
+/** Comfortable. Only enforced when the pond is not gathered. */
+const SEP_ROOM = GRID * 1.75;
+const SEP_STRENGTH = 0.06;
+/** Elbow room pushes far more gently than contact does. */
+const SEP_ROOM_SCALE = 0.16;
 
 /**
  * A stable pseudo-random number from a duck's id.
@@ -168,8 +233,12 @@ export class PondView {
   private ripples: Ripple[] = [];
   private frame = 0;
   private lastWorldTick = 0;
+  /** For the wander's dt. Clamped, so a backgrounded tab does not teleport. */
+  private lastFrameAt = 0;
   private lastDebug = 0;
   private gatherStart = 0;
+  /** True while a whistle is up. A called flock is meant to be close. */
+  private whistling = false;
   private sparkles: SparklePixel[] = [];
   private sparkleStart = 0;
   private petals: Petal[] = [];
@@ -290,6 +359,7 @@ export class PondView {
    *     them back, so the pond refills.
    */
   gather(match: ((d: Placed) => boolean) | null): void {
+    this.whistling = match !== null;
     const { side } = this.camera;
     const cx = this.camera.cam.x;
     const cy = this.camera.cam.y;
@@ -429,6 +499,12 @@ export class PondView {
       }
 
       this.advanceGather(now);
+      // Spacing first, so a push is felt in the same frame it is applied.
+      // Elbow room only when nobody has been whistled for: a flock that has
+      // been called is meant to be close.
+      this.separate(!this.whistling);
+      this.advanceDarts(now, Math.min(0.05, (now - this.lastFrameAt) / 1000));
+      this.lastFrameAt = now;
       this.draw(now);
 
       // Publish state into the DOM, throttled, behind `?debug`.
@@ -504,6 +580,137 @@ export class PondView {
    * Eased, and through `wrapDelta`, so a duck on the far side of the seam
    * comes the short way round rather than swimming the length of the world.
    */
+  /**
+   * Send one duck to bump another.
+   *
+   * Returns false if it cannot: no such duck, the same duck twice, or one
+   * already mid-flight. The caller should not report a bump it did not
+   * get to watch.
+   */
+  bumpDuck(fromId: string, toId: string): boolean {
+    const from = this.ducks.find((d) => d.id === fromId);
+    const to = this.ducks.find((d) => d.id === toId);
+    if (!from || !to || from === to || from.dartAt) return false;
+
+    const { side } = this.camera;
+    const dx = wrapDelta(from.wx, to.wx, side);
+    const dy = wrapDelta(from.wy, to.wy, side);
+    const dist = Math.hypot(dx, dy) || 1;
+    // Short of them, not into them. Ducks that overlap read as one duck.
+    const stop = Math.max(0, dist - DART_STOP_SHORT);
+
+    from.dartFromX = from.wx;
+    from.dartFromY = from.wy;
+    from.dartToX = from.wx + (dx / dist) * stop;
+    from.dartToY = from.wy + (dy / dist) * stop;
+    from.dartTarget = to.id;
+    from.flip = dx < 0;
+    // Reduced motion still bumps — it just does not travel. The knock and
+    // the splash are the information; the swim is the flourish.
+    from.dartAt = prefersReducedMotion() ? 1 : performance.now();
+    return true;
+  }
+
+  /**
+   * Push overlapping ducks apart.
+   *
+   * Spatially hashed into buckets the size of the search radius, so this
+   * stays linear as the pond fills — the naive pairwise version is 10,000
+   * comparisons at a hundred ducks, every frame, on a phone.
+   */
+  private separate(roomy: boolean): void {
+    const { side } = this.camera;
+    const g = roomy ? SEP_ROOM : SEP_CONTACT;
+    const buckets = new Map<string, Placed[]>();
+    const keyOf = (x: number, y: number) =>
+      `${Math.floor(wrap(x, side) / g)},${Math.floor(wrap(y, side) / g)}`;
+
+    for (const d of this.ducks) {
+      const k = keyOf(d.wx, d.wy);
+      const arr = buckets.get(k);
+      if (arr) arr.push(d);
+      else buckets.set(k, [d]);
+    }
+
+    for (const d of this.ducks) {
+      const cx = Math.floor(wrap(d.wx, side) / g);
+      const cy = Math.floor(wrap(d.wy, side) / g);
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oy = -1; oy <= 1; oy++) {
+          const arr = buckets.get(`${cx + ox},${cy + oy}`);
+          if (!arr) continue;
+          for (const o of arr) {
+            if (o === d) continue;
+            const dx = wrapDelta(d.wx, o.wx, side);
+            const dy = wrapDelta(d.wy, o.wy, side);
+            const dist = Math.hypot(dx, dy);
+            if (dist <= 0.01 || dist >= g) continue;
+            const f =
+              dist < SEP_CONTACT
+                ? ((SEP_CONTACT - dist) / dist) * SEP_STRENGTH
+                : roomy
+                  ? ((SEP_ROOM - dist) / dist) * SEP_STRENGTH * SEP_ROOM_SCALE
+                  : 0;
+            if (!f) continue;
+            d.vx = (d.vx ?? 0) - dx * f;
+            d.vy = (d.vy ?? 0) - dy * f;
+          }
+        }
+      }
+    }
+  }
+
+  /** Advance any bump in flight, and let the knock from one settle. */
+  private advanceDarts(now: number, dt: number): void {
+    const { side } = this.camera;
+
+    for (const d of this.ducks) {
+      if (d.dartAt) {
+        const p = d.dartAt === 1 ? 1 : Math.min(1, (now - d.dartAt) / DART_MS);
+        // Ease out: quick off the mark, arriving gently, which is what
+        // makes the contact read as a touch rather than a collision.
+        const e = 1 - Math.pow(1 - p, 3);
+        d.wx = wrap(d.dartFromX! + (d.dartToX! - d.dartFromX!) * e, side);
+        d.wy = wrap(d.dartFromY! + (d.dartToY! - d.dartFromY!) * e, side);
+        d.vx = 0;
+        d.vy = 0;
+
+        if (p >= 1) {
+          const target = this.ducks.find((o) => o.id === d.dartTarget);
+          if (target) {
+            const ax = wrapDelta(d.wx, target.wx, side);
+            const ay = wrapDelta(d.wy, target.wy, side);
+            const m = Math.hypot(ax, ay) || 1;
+            // The splash goes where they actually touch, between the two.
+            this.splash(d.wx + ax * 0.5, d.wy + ay * 0.5, 1.5);
+            target.vx = (target.vx ?? 0) + (ax / m) * KNOCK_X;
+            target.vy = (target.vy ?? 0) + (ay / m) * KNOCK_Y;
+            d.vx = -(ax / m) * REBOUND_X;
+            d.vy = -(ay / m) * REBOUND_Y;
+          }
+          d.dartAt = undefined;
+          d.dartTarget = undefined;
+        }
+        continue;
+      }
+
+      // A heading that meanders, not a fixed drift. A straight line always
+      // ends somewhere; a wobble keeps them milling in open water.
+      d.head ??= Math.random() * Math.PI * 2;
+      d.head += (Math.random() - 0.5) * WANDER_TURN;
+      const dx = Math.cos(d.head) * WANDER_X;
+      const dy = Math.sin(d.head) * WANDER_Y;
+
+      d.vx = (d.vx ?? 0) * DRIFT_DECAY;
+      d.vy = (d.vy ?? 0) * DRIFT_DECAY;
+      d.wx = wrap(d.wx + (d.vx + dx) * dt * DRIFT_SPEED, side);
+      d.wy = wrap(d.wy + (d.vy + dy) * dt * DRIFT_SPEED, side);
+      // Which way it is facing follows where it is going, not where it was
+      // put — a duck swimming backwards is the first thing anyone notices.
+      if (Math.abs(d.vx + dx) > 0.12) d.flip = d.vx + dx < 0;
+    }
+  }
+
   private advanceGather(now: number): void {
     if (this.gatherStart === 0) return;
     const p = Math.min(1, (now - this.gatherStart) / GATHER_MS);

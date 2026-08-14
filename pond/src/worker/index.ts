@@ -160,6 +160,14 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     return json({ ducks, now: nowSec() }, { headers });
   }
 
+  if (path === "/api/bumpers" && req.method === "GET") {
+    // Read-only and public, like the pond itself — it returns pictures of
+    // ducks that are already on screen, and no names.
+    const duck = url.searchParams.get("duck") ?? "";
+    if (!/^[A-Za-z0-9]{6,32}$/.test(duck)) return notFound(headers);
+    return json({ bumpers: await topBumpers(env, duck) }, { headers });
+  }
+
   if (path === "/api/session" && req.method === "GET") {
     const id = await readSessionCookie(env, req);
     const s = id ? await loadSession(env, id) : null;
@@ -253,7 +261,10 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     if (!mine) return json({ error: "make a duck to bump" }, { status: 403, headers });
 
     const result = await bump(env, mine.id, targetId);
-    if (result.ok) return json(result, { headers });
+    // `from` so the client can animate the right duck swimming over. It is
+    // the caller's own duck — they just proved they own it — so this
+    // discloses nothing they did not already send.
+    if (result.ok) return json({ ...result, from: mine.id }, { headers });
     return result.reason === "unknown"
       ? notFound()
       : json(result, { status: 409, headers });

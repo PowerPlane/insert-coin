@@ -420,9 +420,15 @@ function openDuckCard(view: PondView, duck: Placed): void {
    * tap on the water is a way out that needs no aim.
    */
   const scrim = el("div", "p-scrim");
-  const card = el("div", "p-card");
+  const panel = el("div", "p-card");
+  /*
+   * The panel is transparent and only its BODY is opaque, so the dithered
+   * edge has water behind it to dissolve into. Everything below appends to
+   * `card`, which is that body.
+   */
+  const card = el("div", "p-card-body");
   const dismiss = () => {
-    card.remove();
+    panel.remove();
     scrim.remove();
   };
   scrim.addEventListener("click", dismiss);
@@ -479,6 +485,44 @@ function openDuckCard(view: PondView, duck: Placed): void {
   showStats(duck.bumps);
   card.append(stats);
 
+  /*
+   * ══ MOST BUMPS FROM ══
+   * A number is a score; a row of ducks is a relationship. This is the one
+   * place the pond shows that the same person came back, so it is worth a
+   * request of its own rather than being folded into the pond payload.
+   *
+   * Appended only if there are any, and only after it arrives — an empty
+   * heading over nothing is worse than no heading.
+   */
+  const bumpers = el("div", "p-bumpers");
+  bumpers.hidden = true;
+  card.append(bumpers);
+  void api.bumpers(duck.id).then(
+    (res) => {
+      if (!res.bumpers.length || !panel.isConnected) return;
+      bumpers.append(el("p", "p-field-label", t("pond.28")));
+      const row = el("div", "p-bumprow");
+      for (const b of res.bumpers) {
+        const box = el("div", "p-bumper");
+        box.title = b.name || b.slug;
+        const cv = el("canvas", "");
+        cv.width = 64;
+        cv.height = 64;
+        const c = cv.getContext("2d");
+        if (c) {
+          c.imageSmoothingEnabled = false;
+          drawDuck(c, b, 0, 0, 64 / 24);
+        }
+        box.append(cv, el("i", "p-bumper-n", String(b.count)));
+        row.append(box);
+      }
+      bumpers.append(row);
+      bumpers.hidden = false;
+    },
+    // A card that opens without this row is still a card.
+    () => {},
+  );
+
   const actions = el("div", "p-actions");
 
   /**
@@ -496,7 +540,17 @@ function openDuckCard(view: PondView, duck: Placed): void {
       void api.bump(mine, duck.id).then(
         (res) => {
           showStats(res.bumps);
-          view.splash(duck.wx, duck.wy);
+          /*
+           * Your duck swims over and knocks theirs. That is the whole
+           * reason this is called a bump: a counter going up is a like,
+           * and two ducks touching is a bump.
+           *
+           * Animated on success rather than on tap, so a bump the cap
+           * refused never shows a duck crossing the pond for nothing. The
+           * card closes to get out of the way of the thing it started.
+           */
+          if (view.bumpDuck(res.from, duck.id)) dismiss();
+          else view.splash(duck.wx, duck.wy);
           bump.textContent = "✓";
         },
         (err: unknown) => {
@@ -525,9 +579,8 @@ function openDuckCard(view: PondView, duck: Placed): void {
   const close = button("p-card-x", "✕", dismiss, t("pond.23"));
   card.append(close);
 
-  // The edge goes on first so it sits above the body, where the water is.
-  card.prepend(ditherEdge());
-  root.append(scrim, card);
+  panel.append(ditherEdge(), card);
+  root.append(scrim, panel);
 }
 
 /**
