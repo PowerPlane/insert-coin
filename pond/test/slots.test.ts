@@ -13,8 +13,10 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { DUCKS, FORTUNES, slotOnDuck } from "../src/client/sprites.js";
-import { SLOT_ORIGIN, type SlotName } from "../src/client/stickers.js";
+import {
+  DUCKS, FORTUNES, STICKER_GRAB_SLACK, slotOnDuck, stickerAt,
+} from "../src/client/sprites.js";
+import { SLOT_ORIGIN, STICKERS, type SlotName } from "../src/client/stickers.js";
 import { surpriseStickers } from "../src/client/studio.js";
 
 const SLOTS = Object.keys(SLOT_ORIGIN) as SlotName[];
@@ -113,5 +115,73 @@ describe("surprise me", () => {
       ),
     );
     expect(seen.size).toBeGreaterThan(3);
+  });
+});
+
+/**
+ * Picking a sticker back up.
+ *
+ * The studio's copy has always said "Drag stickers to move them", and the
+ * canvas has always announced itself as "Tap to place or drag a sticker".
+ * Neither was true: a sticker landed on its slot and stayed there forever.
+ * These cover the hit test that makes the promise good.
+ */
+describe("what is under a finger", () => {
+  const hat = { id: "tophat", x: 12, y: 4 };
+  const def = STICKERS.tophat!;
+
+  it("finds a sticker under its own art", () => {
+    expect(stickerAt([hat], hat.x, hat.y)).toBe(0);
+  });
+
+  it("finds nothing on bare duck", () => {
+    expect(stickerAt([hat], 2, 20)).toBe(-1);
+  });
+
+  it("measures from the sticker's anchor, not its top-left", () => {
+    /*
+     * Every sticker carries an anchor (ax, ay) — the point that lands where
+     * you put it. A hat's anchor is near its brim, so its art extends UP
+     * and LEFT of the coordinate stored. Testing the stored point as if it
+     * were a corner would pass while the grabbable area sat below the hat.
+     */
+    const top = hat.y - def.ay;
+    const left = hat.x - def.ax;
+    expect(stickerAt([hat], left, top), "its own top-left corner").toBe(0);
+    expect(stickerAt([hat], left - 1, top)).toBe(-1);
+    expect(stickerAt([hat], left, top - 1)).toBe(-1);
+  });
+
+  it("gives the topmost one when they overlap", () => {
+    // They are drawn in order, so the one you can SEE is the last. Handing
+    // a tap to the buried one is the kind of thing that feels haunted.
+    const under = { id: "tophat", x: 12, y: 4 };
+    const over = { id: "crown", x: 12, y: 4 };
+    expect(stickerAt([under, over], 12, 4)).toBe(1);
+  });
+
+  it("lets a fingertip miss, by the slack and no more", () => {
+    /*
+     * A sticker can be 2×2 sprite pixels — around 24 screen pixels on a
+     * phone, well under the 44 a fingertip covers. Without slack there are
+     * stickers you can see and cannot pick up.
+     */
+    const spark = { id: "spark", x: 6, y: 6 };
+    const s = STICKERS.spark!;
+    const justOutside = spark.x - s.ax - 1;
+    expect(stickerAt([spark], justOutside, spark.y)).toBe(-1);
+    expect(stickerAt([spark], justOutside, spark.y, STICKER_GRAB_SLACK)).toBe(0);
+    // But not so generous that it swallows the whole duck.
+    expect(stickerAt([spark], justOutside - STICKER_GRAB_SLACK - 1, spark.y, STICKER_GRAB_SLACK))
+      .toBe(-1);
+  });
+
+  it("ignores a sticker id it does not know", () => {
+    // A duck saved before a sticker was renamed must not crash the studio.
+    expect(stickerAt([{ id: "not-a-sticker", x: 5, y: 5 }], 5, 5)).toBe(-1);
+  });
+
+  it("finds nothing at all in an empty list", () => {
+    expect(stickerAt([], 5, 5)).toBe(-1);
   });
 });

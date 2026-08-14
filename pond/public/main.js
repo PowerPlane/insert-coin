@@ -251,281 +251,6 @@ function clampPaintValue(v) {
   return n < 0 ? 0 : n > MAX_PALETTE ? MAX_PALETTE : n;
 }
 
-// src/client/sprites.ts
-var GRID2 = 24;
-var DUCKS = {
-  great: [
-    "........................",
-    "........................",
-    "........................",
-    "............AAAAA.......",
-    "...........AAAAAA.......",
-    "..........AAAAAAAA......",
-    "..........AAAAAAAAAA....",
-    ".....AA...AAAAAAAAA.....",
-    ".....AAAA..AAAAAA.......",
-    ".....AAAAAAAAAAAAA......",
-    "......AAAAAAAAAAAAA.....",
-    "......AAAAAAAAAAAAA.....",
-    ".......AAAAAAAAAAAAA....",
-    "......AAAAAAAAAAAAAA....",
-    "....AAAAAAAAAAAAAAAA....",
-    ".....AAAAAAAAAAAAAA.....",
-    ".....AAAAAAAAAAAAAA.....",
-    "......AAAAAAAAAAAA......",
-    ".......AAAAAAAAAA.......",
-    ".........AAAAAAA........",
-    "........................",
-    "........................",
-    "........................",
-    "........................"
-  ],
-  little: [
-    "........................",
-    "........................",
-    "..............A.........",
-    "............AAAAA.......",
-    "...........AAAAAAA......",
-    "..........AAAAAAAAAAA...",
-    "..........AAAAAAAAAAA...",
-    "..........AAAAAAAAAA....",
-    "...........AAAAAAAA.....",
-    "...........AAAAAAA......",
-    "..AAA......AAAAAAAA.....",
-    "..AAAAAAAAAAAAAAAAAA....",
-    "..AAAAAAAAAAAAAAAAAAA...",
-    "..AAAAAAAAAAAAAAAAAAA...",
-    "...AAAAAAAAAAAAAAAAAA...",
-    "...AAAAAAAAAAAAAAAAAA...",
-    "....AAAAAAAAAAAAAAAA....",
-    "....AAAAAAAAAAAAAAAA....",
-    ".....AAAAAAAAAAAAAA.....",
-    ".......AAAAAAAAAAA......",
-    ".........AAAAAA.........",
-    "........................",
-    "........................",
-    "........................"
-  ],
-  uncertain: [
-    "........................",
-    "........................",
-    "........................",
-    "........................",
-    "........................",
-    ".............AAAA.......",
-    "............AAAAAA......",
-    "...........AAAAAAAA.....",
-    "...........AAAAAAAA.....",
-    "...........AAAAAAAA.....",
-    "..........AAAAAAAAA.....",
-    ".......AAAAAAAAAAAAA....",
-    "....AAAAAAAAAAAAA.......",
-    "....AAAAAAAAAAAAA.......",
-    "....AAAAAAAAAAAAA.......",
-    "....AAAAAAAAAAAAA.......",
-    ".....AAAAAAAAAAAA.......",
-    "......AAAAAAAAAA........",
-    ".......AAAAAAAA.........",
-    "........................",
-    "........................",
-    "........................",
-    "........................",
-    "........................"
-  ]
-};
-DUCKS.bad = DUCKS.little.slice();
-var BEAKS = {
-  great: [[6, 18], [6, 19], [7, 17], [7, 18]],
-  little: [[5, 18], [5, 19], [5, 20], [6, 18], [6, 19], [6, 20]],
-  uncertain: [[10, 17], [10, 18], [11, 18], [11, 19]]
-};
-var EYES = {
-  great: [[4, 14], [4, 15], [5, 14], [5, 15]],
-  little: [[4, 15], [4, 16], [5, 15], [5, 16]],
-  uncertain: [[8, 15], [8, 16], [9, 15], [9, 16]]
-};
-BEAKS.bad = BEAKS.little;
-EYES.bad = EYES.little;
-for (const key of Object.keys(DUCKS)) {
-  const rows = DUCKS[key].map((r) => r.split(""));
-  for (const [y, x] of BEAKS[key] ?? []) if (rows[y]?.[x] === "A") rows[y][x] = "O";
-  for (const [y, x] of EYES[key] ?? []) if (rows[y]?.[x] === "A") rows[y][x] = "K";
-  DUCKS[key] = rows.map((r) => r.join(""));
-}
-var FORTUNES = [
-  { key: "great", jp: "大吉", en: "Great luck" },
-  { key: "little", jp: "小吉", en: "Little luck" },
-  { key: "uncertain", jp: "末吉", en: "Uncertain" },
-  { key: "bad", jp: "凶", en: "Bad luck" }
-];
-var BEAK_COLOUR = "#EF9F4E";
-var EYE_COLOUR = "#2B2B24";
-var TINTS = [
-  "#FFCA00",
-  "#FFE9A8",
-  "#FFB068",
-  "#FF8973",
-  "#FF8FB8",
-  "#C08BE0",
-  "#5CC7E4",
-  "#3FB5D8",
-  "#7BDCA4",
-  "#9DBE6A",
-  "#FFFFFF",
-  "#5A6660"
-];
-var BURNING_TINT = "#FF8953";
-var PAINT_COLOURS = [
-  "#FFFFFF",
-  "#2B2B24",
-  "#FF4B4B",
-  "#FF8953",
-  "#FFCA00",
-  "#5AD08A",
-  "#3FB5D8",
-  "#0FB1EC",
-  "#A06BD8",
-  "#FF6FA5",
-  "#8B5E34",
-  "#16718F",
-  "#EDFAFE",
-  "#C08508",
-  "#FFE9A8"
-];
-var FLAME_FIELD = 32;
-var FLAME_OFFSET = 4;
-var flameCache = /* @__PURE__ */ new Map();
-function flameMask(key) {
-  const cached = flameCache.get(key);
-  if (cached) return cached;
-  const rows = DUCKS[key] ?? DUCKS.little;
-  const solid = (x, y) => {
-    const sx = x - FLAME_OFFSET;
-    const sy = y - FLAME_OFFSET;
-    return sx >= 0 && sy >= 0 && sx < GRID2 && sy < GRID2 && rows[sy][sx] !== ".";
-  };
-  const mask = new Uint8Array(FLAME_FIELD * FLAME_FIELD);
-  for (let y = 0; y < FLAME_FIELD; y++) {
-    for (let x = 0; x < FLAME_FIELD; x++) {
-      if (solid(x, y)) continue;
-      let near = false;
-      for (let dy = -1; dy <= 1 && !near; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (solid(x + dx, y + dy)) {
-            near = true;
-            break;
-          }
-        }
-      }
-      if (near) mask[y * FLAME_FIELD + x] = 1;
-    }
-  }
-  let minX = FLAME_FIELD;
-  let maxX = 0;
-  let bottom = 0;
-  for (let x = 0; x < FLAME_FIELD; x++) {
-    for (let y = 0; y < FLAME_FIELD; y++) {
-      if (!solid(x, y)) continue;
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y > bottom) bottom = y;
-    }
-  }
-  const mid = (minX + maxX) / 2;
-  const half = Math.max(1, (maxX - minX) / 2);
-  for (let x = minX; x <= maxX; x++) {
-    let top = -1;
-    for (let y = 0; y < FLAME_FIELD; y++) if (solid(x, y)) {
-      top = y;
-      break;
-    }
-    if (top < 0) continue;
-    const bell = 1 - Math.pow(Math.abs(x - mid) / half, 1.7);
-    const h = Math.round(bell * 7) + x * 7 % 3;
-    for (let k = 1; k <= h; k++) {
-      const y = top - 1 - k;
-      if (y >= 0) mask[y * FLAME_FIELD + x] = 1;
-    }
-  }
-  for (let y = bottom - 2; y < FLAME_FIELD; y++) {
-    for (let x = 0; x < FLAME_FIELD; x++) mask[y * FLAME_FIELD + x] = 0;
-  }
-  flameCache.set(key, mask);
-  return mask;
-}
-var FLAME = { FIELD: FLAME_FIELD, OFFSET: FLAME_OFFSET };
-var FLAME_COLOURS = ["#FF4B4B", "#FF8953"];
-var SLOT_REFERENCE = "little";
-function inkedBox(key) {
-  const rows = DUCKS[key] ?? DUCKS[SLOT_REFERENCE];
-  let x0 = Infinity;
-  let y0 = Infinity;
-  let x1 = -1;
-  let y1 = -1;
-  rows.forEach((row, y) => {
-    [...row].forEach((cell, x) => {
-      if (cell === ".") return;
-      x0 = Math.min(x0, x);
-      x1 = Math.max(x1, x);
-      y0 = Math.min(y0, y);
-      y1 = Math.max(y1, y);
-    });
-  });
-  return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
-}
-function slotOnDuck(origin, fortuneKey) {
-  const ref = inkedBox(SLOT_REFERENCE);
-  const box = inkedBox(fortuneKey);
-  return [
-    Math.round(box.x + (origin[0] - ref.x) / ref.w * box.w),
-    Math.round(box.y + (origin[1] - ref.y) / ref.h * box.h)
-  ];
-}
-
-// src/client/viewport.ts
-var REDUCE = "(prefers-reduced-motion: reduce)";
-var reducedMotion = null;
-function prefersReducedMotion() {
-  if (reducedMotion === null) {
-    if (typeof matchMedia !== "function") return false;
-    const query = matchMedia(REDUCE);
-    reducedMotion = query.matches;
-    query.addEventListener("change", (e) => {
-      reducedMotion = e.matches;
-    });
-  }
-  return reducedMotion;
-}
-function watchSize(el3, onChange) {
-  const stops = [];
-  const ro = new ResizeObserver(() => onChange());
-  ro.observe(el3);
-  stops.push(() => ro.disconnect());
-  const vv = window.visualViewport;
-  if (vv) {
-    const on = () => onChange();
-    vv.addEventListener("resize", on);
-    vv.addEventListener("scroll", on);
-    stops.push(() => {
-      vv.removeEventListener("resize", on);
-      vv.removeEventListener("scroll", on);
-    });
-  }
-  let dprQuery = null;
-  const watchDpr = () => {
-    dprQuery?.removeEventListener("change", onDpr);
-    dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-    dprQuery.addEventListener("change", onDpr);
-  };
-  const onDpr = () => {
-    onChange();
-    watchDpr();
-  };
-  watchDpr();
-  stops.push(() => dprQuery?.removeEventListener("change", onDpr));
-  return () => stops.forEach((stop) => stop());
-}
-
 // src/client/stickers.ts
 var STICKER_PALETTE = {
   k: "#2B2B24",
@@ -774,6 +499,293 @@ var SLOT_ORIGIN = {
   float: [5, 7]
 };
 var MAX_STICKERS = 6;
+
+// src/client/sprites.ts
+var GRID2 = 24;
+var DUCKS = {
+  great: [
+    "........................",
+    "........................",
+    "........................",
+    "............AAAAA.......",
+    "...........AAAAAA.......",
+    "..........AAAAAAAA......",
+    "..........AAAAAAAAAA....",
+    ".....AA...AAAAAAAAA.....",
+    ".....AAAA..AAAAAA.......",
+    ".....AAAAAAAAAAAAA......",
+    "......AAAAAAAAAAAAA.....",
+    "......AAAAAAAAAAAAA.....",
+    ".......AAAAAAAAAAAAA....",
+    "......AAAAAAAAAAAAAA....",
+    "....AAAAAAAAAAAAAAAA....",
+    ".....AAAAAAAAAAAAAA.....",
+    ".....AAAAAAAAAAAAAA.....",
+    "......AAAAAAAAAAAA......",
+    ".......AAAAAAAAAA.......",
+    ".........AAAAAAA........",
+    "........................",
+    "........................",
+    "........................",
+    "........................"
+  ],
+  little: [
+    "........................",
+    "........................",
+    "..............A.........",
+    "............AAAAA.......",
+    "...........AAAAAAA......",
+    "..........AAAAAAAAAAA...",
+    "..........AAAAAAAAAAA...",
+    "..........AAAAAAAAAA....",
+    "...........AAAAAAAA.....",
+    "...........AAAAAAA......",
+    "..AAA......AAAAAAAA.....",
+    "..AAAAAAAAAAAAAAAAAA....",
+    "..AAAAAAAAAAAAAAAAAAA...",
+    "..AAAAAAAAAAAAAAAAAAA...",
+    "...AAAAAAAAAAAAAAAAAA...",
+    "...AAAAAAAAAAAAAAAAAA...",
+    "....AAAAAAAAAAAAAAAA....",
+    "....AAAAAAAAAAAAAAAA....",
+    ".....AAAAAAAAAAAAAA.....",
+    ".......AAAAAAAAAAA......",
+    ".........AAAAAA.........",
+    "........................",
+    "........................",
+    "........................"
+  ],
+  uncertain: [
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    ".............AAAA.......",
+    "............AAAAAA......",
+    "...........AAAAAAAA.....",
+    "...........AAAAAAAA.....",
+    "...........AAAAAAAA.....",
+    "..........AAAAAAAAA.....",
+    ".......AAAAAAAAAAAAA....",
+    "....AAAAAAAAAAAAA.......",
+    "....AAAAAAAAAAAAA.......",
+    "....AAAAAAAAAAAAA.......",
+    "....AAAAAAAAAAAAA.......",
+    ".....AAAAAAAAAAAA.......",
+    "......AAAAAAAAAA........",
+    ".......AAAAAAAA.........",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................"
+  ]
+};
+DUCKS.bad = DUCKS.little.slice();
+var BEAKS = {
+  great: [[6, 18], [6, 19], [7, 17], [7, 18]],
+  little: [[5, 18], [5, 19], [5, 20], [6, 18], [6, 19], [6, 20]],
+  uncertain: [[10, 17], [10, 18], [11, 18], [11, 19]]
+};
+var EYES = {
+  great: [[4, 14], [4, 15], [5, 14], [5, 15]],
+  little: [[4, 15], [4, 16], [5, 15], [5, 16]],
+  uncertain: [[8, 15], [8, 16], [9, 15], [9, 16]]
+};
+BEAKS.bad = BEAKS.little;
+EYES.bad = EYES.little;
+for (const key of Object.keys(DUCKS)) {
+  const rows = DUCKS[key].map((r) => r.split(""));
+  for (const [y, x] of BEAKS[key] ?? []) if (rows[y]?.[x] === "A") rows[y][x] = "O";
+  for (const [y, x] of EYES[key] ?? []) if (rows[y]?.[x] === "A") rows[y][x] = "K";
+  DUCKS[key] = rows.map((r) => r.join(""));
+}
+var FORTUNES = [
+  { key: "great", jp: "大吉", en: "Great luck" },
+  { key: "little", jp: "小吉", en: "Little luck" },
+  { key: "uncertain", jp: "末吉", en: "Uncertain" },
+  { key: "bad", jp: "凶", en: "Bad luck" }
+];
+var BEAK_COLOUR = "#EF9F4E";
+var EYE_COLOUR = "#2B2B24";
+var TINTS = [
+  "#FFCA00",
+  "#FFE9A8",
+  "#FFB068",
+  "#FF8973",
+  "#FF8FB8",
+  "#C08BE0",
+  "#5CC7E4",
+  "#3FB5D8",
+  "#7BDCA4",
+  "#9DBE6A",
+  "#FFFFFF",
+  "#5A6660"
+];
+var BURNING_TINT = "#FF8953";
+var PAINT_COLOURS = [
+  "#FFFFFF",
+  "#2B2B24",
+  "#FF4B4B",
+  "#FF8953",
+  "#FFCA00",
+  "#5AD08A",
+  "#3FB5D8",
+  "#0FB1EC",
+  "#A06BD8",
+  "#FF6FA5",
+  "#8B5E34",
+  "#16718F",
+  "#EDFAFE",
+  "#C08508",
+  "#FFE9A8"
+];
+var FLAME_FIELD = 32;
+var FLAME_OFFSET = 4;
+var flameCache = /* @__PURE__ */ new Map();
+function flameMask(key) {
+  const cached = flameCache.get(key);
+  if (cached) return cached;
+  const rows = DUCKS[key] ?? DUCKS.little;
+  const solid = (x, y) => {
+    const sx = x - FLAME_OFFSET;
+    const sy = y - FLAME_OFFSET;
+    return sx >= 0 && sy >= 0 && sx < GRID2 && sy < GRID2 && rows[sy][sx] !== ".";
+  };
+  const mask = new Uint8Array(FLAME_FIELD * FLAME_FIELD);
+  for (let y = 0; y < FLAME_FIELD; y++) {
+    for (let x = 0; x < FLAME_FIELD; x++) {
+      if (solid(x, y)) continue;
+      let near = false;
+      for (let dy = -1; dy <= 1 && !near; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (solid(x + dx, y + dy)) {
+            near = true;
+            break;
+          }
+        }
+      }
+      if (near) mask[y * FLAME_FIELD + x] = 1;
+    }
+  }
+  let minX = FLAME_FIELD;
+  let maxX = 0;
+  let bottom = 0;
+  for (let x = 0; x < FLAME_FIELD; x++) {
+    for (let y = 0; y < FLAME_FIELD; y++) {
+      if (!solid(x, y)) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y > bottom) bottom = y;
+    }
+  }
+  const mid = (minX + maxX) / 2;
+  const half = Math.max(1, (maxX - minX) / 2);
+  for (let x = minX; x <= maxX; x++) {
+    let top = -1;
+    for (let y = 0; y < FLAME_FIELD; y++) if (solid(x, y)) {
+      top = y;
+      break;
+    }
+    if (top < 0) continue;
+    const bell = 1 - Math.pow(Math.abs(x - mid) / half, 1.7);
+    const h = Math.round(bell * 7) + x * 7 % 3;
+    for (let k = 1; k <= h; k++) {
+      const y = top - 1 - k;
+      if (y >= 0) mask[y * FLAME_FIELD + x] = 1;
+    }
+  }
+  for (let y = bottom - 2; y < FLAME_FIELD; y++) {
+    for (let x = 0; x < FLAME_FIELD; x++) mask[y * FLAME_FIELD + x] = 0;
+  }
+  flameCache.set(key, mask);
+  return mask;
+}
+var FLAME = { FIELD: FLAME_FIELD, OFFSET: FLAME_OFFSET };
+var FLAME_COLOURS = ["#FF4B4B", "#FF8953"];
+var SLOT_REFERENCE = "little";
+function inkedBox(key) {
+  const rows = DUCKS[key] ?? DUCKS[SLOT_REFERENCE];
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -1;
+  let y1 = -1;
+  rows.forEach((row, y) => {
+    [...row].forEach((cell, x) => {
+      if (cell === ".") return;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    });
+  });
+  return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+}
+function slotOnDuck(origin, fortuneKey) {
+  const ref = inkedBox(SLOT_REFERENCE);
+  const box = inkedBox(fortuneKey);
+  return [
+    Math.round(box.x + (origin[0] - ref.x) / ref.w * box.w),
+    Math.round(box.y + (origin[1] - ref.y) / ref.h * box.h)
+  ];
+}
+function stickerAt(stickers, cx, cy, slack = 0) {
+  for (let i = stickers.length - 1; i >= 0; i--) {
+    const s = stickers[i];
+    const def = STICKERS[s.id];
+    if (!def) continue;
+    const left = s.x - def.ax - slack;
+    const top = s.y - def.ay - slack;
+    if (cx >= left && cx < left + def.rows[0].length + slack * 2 && cy >= top && cy < top + def.rows.length + slack * 2) return i;
+  }
+  return -1;
+}
+var STICKER_GRAB_SLACK = 2;
+
+// src/client/viewport.ts
+var REDUCE = "(prefers-reduced-motion: reduce)";
+var reducedMotion = null;
+function prefersReducedMotion() {
+  if (reducedMotion === null) {
+    if (typeof matchMedia !== "function") return false;
+    const query = matchMedia(REDUCE);
+    reducedMotion = query.matches;
+    query.addEventListener("change", (e) => {
+      reducedMotion = e.matches;
+    });
+  }
+  return reducedMotion;
+}
+function watchSize(el3, onChange) {
+  const stops = [];
+  const ro = new ResizeObserver(() => onChange());
+  ro.observe(el3);
+  stops.push(() => ro.disconnect());
+  const vv = window.visualViewport;
+  if (vv) {
+    const on = () => onChange();
+    vv.addEventListener("resize", on);
+    vv.addEventListener("scroll", on);
+    stops.push(() => {
+      vv.removeEventListener("resize", on);
+      vv.removeEventListener("scroll", on);
+    });
+  }
+  let dprQuery = null;
+  const watchDpr = () => {
+    dprQuery?.removeEventListener("change", onDpr);
+    dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    dprQuery.addEventListener("change", onDpr);
+  };
+  const onDpr = () => {
+    onChange();
+    watchDpr();
+  };
+  watchDpr();
+  stops.push(() => dprQuery?.removeEventListener("change", onDpr));
+  return () => stops.forEach((stop) => stop());
+}
 
 // src/client/render.ts
 var DWELL = [1, 1.45, 0.85, 1.25];
@@ -1425,6 +1437,7 @@ function fortuneTitle(fortune) {
 
 // src/client/studio.ts
 var EDIT_CELL = 12;
+var SELECT_INK = "#0b3d52";
 function studioScreen(root2, opts) {
   const { state } = opts;
   root2.replaceChildren();
@@ -1451,8 +1464,79 @@ function studioScreen(root2, opts) {
       0,
       EDIT_CELL
     );
+    if (dragging >= 0) {
+      const st = state.stickers[dragging];
+      const def = st ? STICKERS[st.id] : void 0;
+      if (st && def) {
+        ctx.strokeStyle = SELECT_INK;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+          (st.x - def.ax) * EDIT_CELL - 1,
+          (st.y - def.ay) * EDIT_CELL - 1,
+          def.rows[0].length * EDIT_CELL + 2,
+          def.rows.length * EDIT_CELL + 2
+        );
+      }
+    }
     opts.onChange(state);
   };
+  let colour = 1;
+  let brush = 1;
+  let erasing = false;
+  const cellOf = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / rect.width * GRID);
+    const y = Math.floor((e.clientY - rect.top) / rect.height * GRID);
+    return x < 0 || y < 0 || x >= GRID || y >= GRID ? null : { x, y };
+  };
+  let painting = false;
+  let dragging = -1;
+  const paintAt = (c) => {
+    for (let dy = 0; dy < brush; dy++) {
+      for (let dx = 0; dx < brush; dx++) {
+        const px = c.x + dx;
+        const py = c.y + dy;
+        if (px >= GRID || py >= GRID) continue;
+        state.paint[py * GRID + px] = erasing ? 0 : clampPaintValue(colour);
+      }
+    }
+    redraw();
+  };
+  canvas.onpointerdown = (e) => {
+    const c = cellOf(e);
+    if (!c) return;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    if (tab === "stickers") {
+      dragging = stickerAt(state.stickers, c.x, c.y, STICKER_GRAB_SLACK);
+      if (dragging >= 0) redraw();
+      return;
+    }
+    if (tab !== "draw") return;
+    history2.push(state.paint.slice());
+    if (history2.length > 24) history2.shift();
+    painting = true;
+    paintAt(c);
+  };
+  canvas.onpointermove = (e) => {
+    const c = cellOf(e);
+    if (!c) return;
+    if (dragging >= 0) {
+      state.stickers[dragging] = { ...state.stickers[dragging], x: c.x, y: c.y };
+      redraw();
+      return;
+    }
+    if (painting) paintAt(c);
+  };
+  const release = () => {
+    painting = false;
+    if (dragging >= 0) {
+      dragging = -1;
+      redraw();
+    }
+  };
+  canvas.onpointerup = release;
+  canvas.onpointercancel = release;
   let tab = "colour";
   const panel = el("div", "p-panel");
   const tabs = el("div", "p-tabs");
@@ -1480,13 +1564,13 @@ function studioScreen(root2, opts) {
   }
   function colourPanel() {
     const swatches = el("div", "p-swatches");
-    TINTS.forEach((colour, i) => {
+    TINTS.forEach((colour2, i) => {
       const b = button("p-swatch", "", () => {
         state.tint = i;
         redraw();
         drawPanel();
       }, `${t("studio.11")} ${i + 1}`);
-      b.style.background = colour;
+      b.style.background = colour2;
       b.classList.toggle("on", state.tint === i);
       swatches.append(b);
     });
@@ -1528,9 +1612,6 @@ function studioScreen(root2, opts) {
     panel.append(hint, grid);
   }
   function paintPanel() {
-    let colour = 1;
-    let brush = 1;
-    let erasing = false;
     const tools = el("div", "p-tools");
     const brush1 = button("p-chip", t("studio.13"), () => {
       brush = 1;
@@ -1583,34 +1664,6 @@ function studioScreen(root2, opts) {
       b.classList.toggle("on", colour === i + 1);
       swatches.append(b);
     });
-    let painting = false;
-    const paintAt = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = Math.floor((e.clientX - rect.left) / rect.width * GRID);
-      const y = Math.floor((e.clientY - rect.top) / rect.height * GRID);
-      for (let dy = 0; dy < brush; dy++) {
-        for (let dx = 0; dx < brush; dx++) {
-          const px = x + dx;
-          const py = y + dy;
-          if (px < 0 || py < 0 || px >= GRID || py >= GRID) continue;
-          state.paint[py * GRID + px] = erasing ? 0 : clampPaintValue(colour);
-        }
-      }
-      redraw();
-    };
-    canvas.onpointerdown = (e) => {
-      history2.push(state.paint.slice());
-      if (history2.length > 24) history2.shift();
-      painting = true;
-      canvas.setPointerCapture(e.pointerId);
-      paintAt(e);
-    };
-    canvas.onpointermove = (e) => {
-      if (painting) paintAt(e);
-    };
-    canvas.onpointerup = () => {
-      painting = false;
-    };
     panel.append(tools, swatches);
   }
   const history2 = [];

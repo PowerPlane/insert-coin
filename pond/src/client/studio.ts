@@ -12,7 +12,9 @@
 import { GRID, clampPaintValue, encodePaint } from "./codec.js";
 import { el, button, sheet } from "./dom.js";
 import { drawDuck } from "./render.js";
-import { FORTUNES, PAINT_COLOURS, TINTS, slotOnDuck } from "./sprites.js";
+import {
+  FORTUNES, PAINT_COLOURS, STICKER_GRAB_SLACK, TINTS, slotOnDuck, stickerAt,
+} from "./sprites.js";
 import { MAX_STICKERS, SLOT_ORIGIN, STICKERS, type SlotName } from "./stickers.js";
 import { t } from "./strings.js";
 import type { Sticker } from "./types.js";
@@ -41,6 +43,9 @@ export interface StudioOptions {
  * down costs nothing.
  */
 const EDIT_CELL = 12;
+
+/** The outline on a sticker being moved. The pond's ink, not a system blue. */
+const SELECT_INK = "#0b3d52";
 
 export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   const { state } = opts;
@@ -73,8 +78,125 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
       0,
       EDIT_CELL,
     );
+    /*
+     * The sticker in hand wears an outline. Without it there is no way to
+     * tell "I have picked this up" from "I tapped and nothing happened" —
+     * and on a small sticker under a fingertip, the sticker itself is the
+     * part you cannot see.
+     *
+     * Drawn OUTSIDE the sticker's box, on the same pixel grid as
+     * everything else, so it reads as a mark on the art rather than a
+     * browser widget that has wandered in.
+     */
+    if (dragging >= 0) {
+      const st = state.stickers[dragging];
+      const def = st ? STICKERS[st.id] : undefined;
+      if (st && def) {
+        ctx.strokeStyle = SELECT_INK;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+          (st.x - def.ax) * EDIT_CELL - 1,
+          (st.y - def.ay) * EDIT_CELL - 1,
+          def.rows[0]!.length * EDIT_CELL + 2,
+          def.rows.length * EDIT_CELL + 2,
+        );
+      }
+    }
     opts.onChange(state);
   };
+
+  /*
+   * ══ THE TOOLS BELONG TO THE STUDIO, NOT TO A PANEL ══
+   * These lived inside `paintPanel`, which is torn down and rebuilt on
+   * every tap — including the tap that picks a colour. So choosing any
+   * colour immediately reset the choice to the first one, and a duck could
+   * only ever be painted in one colour.
+   */
+  let colour = 1;
+  let brush = 1;
+  let erasing = false;
+
+  // ── what a touch on the duck means ────────────────────────────────────
+  //
+  // ONE set of handlers, branching on the current tab. They used to be
+  // installed by `paintPanel`, so once you had visited Draw they stayed
+  // bound for the rest of the session: tapping your duck to move a sticker
+  // painted on it instead.
+
+  /** Which cell of the duck a pointer is over. Outside the duck reads as null. */
+  const cellOf = (e: PointerEvent): { x: number; y: number } | null => {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor(((e.clientX - rect.left) / rect.width) * GRID);
+    const y = Math.floor(((e.clientY - rect.top) / rect.height) * GRID);
+    return x < 0 || y < 0 || x >= GRID || y >= GRID ? null : { x, y };
+  };
+
+  let painting = false;
+  /** Index of the sticker being moved, or -1. Also drives the outline. */
+  let dragging = -1;
+
+  const paintAt = (c: { x: number; y: number }) => {
+    for (let dy = 0; dy < brush; dy++) {
+      for (let dx = 0; dx < brush; dx++) {
+        const px = c.x + dx;
+        const py = c.y + dy;
+        if (px >= GRID || py >= GRID) continue;
+        state.paint[py * GRID + px] = erasing ? 0 : clampPaintValue(colour);
+      }
+    }
+    redraw();
+  };
+
+  canvas.onpointerdown = (e) => {
+    const c = cellOf(e);
+    if (!c) return;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+
+    if (tab === "stickers") {
+      /*
+       * Pick a sticker up. A tap that lands on nothing does nothing: the
+       * tray is where stickers come FROM, and it already puts each one on
+       * its own slot — a hat on the head — so the duck only has to answer
+       * for moving what is already there.
+       */
+      dragging = stickerAt(state.stickers, c.x, c.y, STICKER_GRAB_SLACK);
+      if (dragging >= 0) redraw();
+      return;
+    }
+
+    if (tab !== "draw") return;
+    history.push(state.paint.slice());
+    if (history.length > 24) history.shift();
+    painting = true;
+    paintAt(c);
+  };
+
+  canvas.onpointermove = (e) => {
+    const c = cellOf(e);
+    if (!c) return;
+    if (dragging >= 0) {
+      // Straight to the cell under the finger, snapped to the grid — the
+      // sticker follows the pointer rather than trailing behind wherever it
+      // was grabbed, which is what makes it feel picked up.
+      state.stickers[dragging] = { ...state.stickers[dragging]!, x: c.x, y: c.y };
+      redraw();
+      return;
+    }
+    if (painting) paintAt(c);
+  };
+
+  const release = () => {
+    painting = false;
+    if (dragging >= 0) {
+      dragging = -1;
+      redraw();
+    }
+  };
+  canvas.onpointerup = release;
+  // A pointer can be taken away — a system gesture, a call arriving. The
+  // sticker has to be put down either way, or it follows the next touch.
+  canvas.onpointercancel = release;
 
   // ── tabs ──────────────────────────────────────────────────────────────
   let tab: Tab = "colour";
@@ -167,9 +289,6 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   }
 
   function paintPanel(): void {
-    let colour = 1;
-    let brush = 1;
-    let erasing = false;
 
     const tools = el("div", "p-tools");
     const brush1 = button("p-chip", t("studio.13"), () => {
@@ -228,38 +347,6 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
       b.classList.toggle("on", colour === i + 1);
       swatches.append(b);
     });
-
-    // Painting happens on the duck canvas itself, so what you touch is what
-    // you get — no separate paint surface to line up with the drawing.
-    let painting = false;
-    const paintAt = (e: PointerEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = Math.floor(((e.clientX - rect.left) / rect.width) * GRID);
-      const y = Math.floor(((e.clientY - rect.top) / rect.height) * GRID);
-      for (let dy = 0; dy < brush; dy++) {
-        for (let dx = 0; dx < brush; dx++) {
-          const px = x + dx;
-          const py = y + dy;
-          if (px < 0 || py < 0 || px >= GRID || py >= GRID) continue;
-          state.paint[py * GRID + px] = erasing ? 0 : clampPaintValue(colour);
-        }
-      }
-      redraw();
-    };
-
-    canvas.onpointerdown = (e) => {
-      history.push(state.paint.slice());
-      if (history.length > 24) history.shift();
-      painting = true;
-      canvas.setPointerCapture(e.pointerId);
-      paintAt(e);
-    };
-    canvas.onpointermove = (e) => {
-      if (painting) paintAt(e);
-    };
-    canvas.onpointerup = () => {
-      painting = false;
-    };
 
     panel.append(tools, swatches);
   }

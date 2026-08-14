@@ -15,6 +15,9 @@
  * Character codes: A body (tinted) · O beak · K eye · . transparent
  */
 
+import { STICKERS } from "./stickers.js";
+import type { Sticker } from "./types.js";
+
 export const GRID = 24;
 
 export const DUCKS: Record<string, string[]> = {
@@ -237,3 +240,43 @@ export function slotOnDuck(origin: readonly [number, number], fortuneKey: string
     Math.round(box.y + ((origin[1] - ref.y) / ref.h) * box.h),
   ];
 }
+
+/**
+ * Which sticker is under a cell, or -1.
+ *
+ * ══ TOPMOST WINS, AND A FINGER IS NOT A CURSOR ══
+ * Searched last-first because that is the order they are drawn: the one
+ * you can see is the one you meant. Two stickers overlapping and the tap
+ * going to the buried one is the kind of thing that feels haunted.
+ *
+ * `slack` widens every box. A sticker can be 2x2 sprite pixels — about 24
+ * screen pixels on a phone, well under the 44 a fingertip actually covers —
+ * so an exact box means a sticker you can see but cannot pick up. The slack
+ * is invisible: it only decides who receives a tap, never where anything
+ * is drawn.
+ *
+ * It lives here rather than in stickers.ts because that file is generated
+ * and says so.
+ */
+export function stickerAt(
+  stickers: readonly Sticker[],
+  cx: number,
+  cy: number,
+  slack = 0,
+): number {
+  for (let i = stickers.length - 1; i >= 0; i--) {
+    const s = stickers[i]!;
+    const def = STICKERS[s.id];
+    if (!def) continue;
+    const left = s.x - def.ax - slack;
+    const top = s.y - def.ay - slack;
+    if (
+      cx >= left && cx < left + def.rows[0]!.length + slack * 2 &&
+      cy >= top && cy < top + def.rows.length + slack * 2
+    ) return i;
+  }
+  return -1;
+}
+
+/** How far a fingertip may miss a sticker by, in sprite pixels. */
+export const STICKER_GRAB_SLACK = 2;
