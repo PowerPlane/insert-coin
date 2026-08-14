@@ -28,7 +28,7 @@
  * a real thumb.
  */
 
-import type { PondCamera } from "./camera.js";
+import { HOME_CELL, type PondCamera } from "./camera.js";
 import { prefersReducedMotion } from "./render.js";
 
 /** How far back velocity is measured. Long enough to smooth, short enough to feel like now. */
@@ -36,6 +36,22 @@ const VELOCITY_WINDOW_MS = 120;
 
 /** A press that travels less than this is a tap, not a drag. */
 const TAP_SLOP_PX = 8;
+
+/*
+ * ══ DOUBLE TAP ══
+ * The one zoom gesture a thumb can do alone. Pinch needs two fingers and
+ * the buttons need aim; this needs neither, which is why every map has it.
+ *
+ * It is deliberately water-only. A duck tap opens its card, so a second tap
+ * there would zoom the water behind an open card — the tap that begins a
+ * double must be one whose single-tap meaning is cheap, and a ripple is.
+ *
+ * 300ms is the usual figure and it is a ceiling, not a target: longer and
+ * two deliberate ripples start being read as a zoom.
+ */
+const DOUBLE_TAP_MS = 300;
+/** Two taps further apart than this are two taps, not one gesture. */
+const DOUBLE_TAP_SLOP_PX = 32;
 
 interface Sample {
   t: number;
@@ -49,7 +65,8 @@ export interface GestureTarget {
   /** CSS pixels to device pixels. `camera.cell` is denominated in device pixels. */
   dpr(): number;
   camera: PondCamera;
-  onTap(clientX: number, clientY: number): void;
+  /** True when a duck was hit — such a tap never begins a double tap. */
+  onTap(clientX: number, clientY: number): boolean;
 }
 
 export class Gestures {
@@ -58,6 +75,8 @@ export class Gestures {
   private travelled = 0;
   /** Distance between two fingers when the pinch was last measured. */
   private pinchGap = 0;
+  /** The last tap that landed on water, and could still become a double. */
+  private lastTap: Sample | null = null;
 
   constructor(
     private readonly el: HTMLElement,
@@ -183,7 +202,11 @@ export class Gestures {
     if (this.travelled <= TAP_SLOP_PX) {
       // A finger never holds perfectly still, and a tap that demands
       // stillness reads as an unresponsive button.
-      this.target.onTap(e.clientX, e.clientY);
+      const hitDuck = this.target.onTap(e.clientX, e.clientY);
+      // The single tap has already happened either way — it is never held
+      // back waiting to see whether a second follows, because a delayed
+      // ripple reads as a dropped one.
+      this.lastTap = hitDuck ? null : this.doubleTap(e);
       return;
     }
 
@@ -202,6 +225,35 @@ export class Gestures {
     const k = 1 / this.target.scale();
     this.target.camera.fling(((last.x - first.x) / dt) * k, ((last.y - first.y) / dt) * k);
   };
+
+  /**
+   * Decide whether this water tap completes a double, zooming if it does.
+   * Returns the tap to remember, or null once a double has been spent — so
+   * three taps are one zoom and one ripple, not two zooms.
+   */
+  private doubleTap(e: PointerEvent): Sample | null {
+    const now = performance.now();
+    const previous = this.lastTap;
+    const isDouble =
+      previous !== null &&
+      now - previous.t <= DOUBLE_TAP_MS &&
+      Math.hypot(e.clientX - previous.x, e.clientY - previous.y) <= DOUBLE_TAP_SLOP_PX;
+
+    if (!isDouble) return { t: now, x: e.clientX, y: e.clientY };
+
+    const { camera } = this.target;
+    // In at the tap, and out to home from the top rung — the same toggle a
+    // map does, so nobody has to discover a way back.
+    const next = camera.step(1) ?? HOME_CELL;
+    const rect = this.el.getBoundingClientRect();
+    const d = this.target.dpr();
+    camera.zoomAbout(
+      next,
+      (e.clientX - (rect.left + rect.width / 2)) * d,
+      (e.clientY - (rect.top + rect.height / 2)) * d,
+    );
+    return null;
+  }
 
   private readonly wheel = (e: WheelEvent): void => {
     e.preventDefault();

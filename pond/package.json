@@ -2,10 +2,9 @@
   "name": "insert-coin-pond",
   "private": true,
   "version": "0.1.0",
-  "description": "The pond — ducky.davidyang.work, the web half of the BY-002 Insert Coin card",
+  "description": "The pond \u2014 ducky.davidyang.work, the web half of the BY-002 Insert Coin card",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
     "deploy": "vercel --prod",
     "db:apply": "tsx tools/db-apply.ts",
     "db:verify": "tsx tools/db-verify.ts",

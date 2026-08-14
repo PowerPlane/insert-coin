@@ -214,11 +214,21 @@ export class PondView {
     };
   }
 
-  private tap(clientX: number, clientY: number): void {
+  /**
+   * Returns whether a duck was hit — which decides whether the tap is
+   * allowed to begin a double-tap. Double-tapping a duck would open its
+   * card and then zoom the water behind it; tapping water only makes a
+   * ripple, so a second tap there costs nothing to reinterpret.
+   */
+  private tap(clientX: number, clientY: number): boolean {
     const { wx, wy } = this.toWorld(clientX, clientY);
     const hit = this.hitTest(wx, wy);
-    if (hit) this.opts.onTapDuck?.(hit);
-    else this.opts.onTapWater?.(wx, wy);
+    if (hit) {
+      this.opts.onTapDuck?.(hit);
+      return true;
+    }
+    this.opts.onTapWater?.(wx, wy);
+    return false;
   }
 
   /**

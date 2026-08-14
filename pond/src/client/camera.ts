@@ -26,6 +26,33 @@
  *     underneath a gliding view and it reads as the zoom stuttering.
  */
 
+/*
+ * ══ EVERY NUMBER THAT DECIDES HOW THE POND FEELS ══
+ * Each one lives beside the paragraph explaining it, because a tuning file
+ * full of bare numbers is a file nobody can safely change. This is the map.
+ *
+ *   camera.ts   CELLS                       the zoom ladder, integers only
+ *               HOME_CELL                   where the pond opens
+ *               CAM_UI / CAM_MOMENT         glide durations, ms
+ *               FLING_TAU                   how long a flick keeps going
+ *               FLING_REST                  when it has stopped
+ *               FLING_MAX_SCREEN_PX_PER_MS  the speed limit on a flick
+ *               SETTLE_TAU                  pinch settling onto a rung
+ *               OVERSCAN                    canvas margin beyond the frame
+ *               worldSide / duckSpread      how big the pond is, and how
+ *                                           far the ducks spread inside it
+ *
+ *   gestures.ts VELOCITY_WINDOW_MS          how far back a flick is measured
+ *               TAP_SLOP_PX                 tap vs drag
+ *               DOUBLE_TAP_MS / _SLOP_PX    double tap to zoom
+ *
+ *   app.css     --step-fade / --step-press  stepped DOM motion
+ *               .p-canvas width/height      OVERSCAN's other half
+ *
+ * Changing any of these needs no other change. Changing CELLS to
+ * non-integers does — see rule 1.
+ */
+
 /** Device pixels per sprite pixel. Integers only — see rule 1. */
 export const CELLS = [2, 3, 4, 6, 8] as const;
 export type Cell = (typeof CELLS)[number];

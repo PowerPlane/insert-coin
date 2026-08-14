@@ -158,9 +158,21 @@ const RESERVED = new Set([
   "system", "staff",
 ]);
 
-/** Case, spacing and punctuation folded away — the variations a list invites. */
+/**
+ * Case, spacing and punctuation folded away — the variations a list invites.
+ *
+ * NFKC first, and that is the load-bearing part: it maps the compatibility
+ * forms to their plain ASCII equivalents, so fullwidth Ｄａｖｉｄ and the
+ * mathematical alphabets fold to "david" rather than to nothing. Without it
+ * the ASCII-only filter below silently deleted every one of those
+ * characters, and a name that renders as David sailed through as empty.
+ *
+ * This is not a homoglyph defence — Cyrillic а is a different letter and
+ * NFKC keeps it so. That case is left to admin, which can rename in one
+ * tap, exactly as the design assumed.
+ */
 function fold(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return name.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 export function isReservedKeeperName(name: string): boolean {
@@ -189,16 +201,25 @@ export async function saveKeeper(
   s: KeeperSettings,
 ): Promise<{ ok: true; adopted: number } | { error: string }> {
   const epoch = await env.DB.prepare(
-    `SELECT id, card_id FROM card_epochs WHERE id = ?1 AND ended IS NULL`,
+    `SELECT id, card_id, keeper_name FROM card_epochs WHERE id = ?1 AND ended IS NULL`,
   )
     .bind(epochId)
-    .first<{ id: string; card_id: string }>();
+    .first<{ id: string; card_id: string; keeper_name: string }>();
   if (!epoch) return { error: "not the current keeper" };
 
   const name = cleanText(s.name, 18);
-  // Refused rather than silently blanked: a keeper who typed a name and got
-  // an empty card would have no idea why.
-  if (name && isReservedKeeperName(name)) return { error: "reserved name" };
+  /*
+   * Only a name that CHANGED can be refused. Card setup reposts every
+   * field together, so checking unconditionally would lock a keeper whose
+   * stored name is already reserved out of saving their language, their
+   * duck link or an adoption — punishing them for a row admin created.
+   * It also disarms the truncation case: `cleanText` cuts to 18 code
+   * points first, so a longer innocent name that happens to end up folding
+   * to a reserved word is only refused if they just typed it.
+   */
+  if (name && name !== epoch.keeper_name && isReservedKeeperName(name)) {
+    return { error: "reserved name" };
+  }
   const lang = s.lang === "zh-Hant" ? "zh-Hant" : "en";
 
   // The keeper's own duck, resolved from the edit key they pasted. Only

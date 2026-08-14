@@ -2360,6 +2360,8 @@ function releaseFlow(opts) {
 // src/client/gestures.ts
 var VELOCITY_WINDOW_MS = 120;
 var TAP_SLOP_PX = 8;
+var DOUBLE_TAP_MS = 300;
+var DOUBLE_TAP_SLOP_PX = 32;
 var Gestures = class {
   constructor(el3, target) {
     this.el = el3;
@@ -2377,6 +2379,8 @@ var Gestures = class {
   travelled = 0;
   /** Distance between two fingers when the pinch was last measured. */
   pinchGap = 0;
+  /** The last tap that landed on water, and could still become a double. */
+  lastTap = null;
   destroy() {
     this.el.removeEventListener("pointerdown", this.down);
     this.el.removeEventListener("pointermove", this.move);
@@ -2454,7 +2458,8 @@ var Gestures = class {
     }
     this.target.camera.release();
     if (this.travelled <= TAP_SLOP_PX) {
-      this.target.onTap(e.clientX, e.clientY);
+      const hitDuck = this.target.onTap(e.clientX, e.clientY);
+      this.lastTap = hitDuck ? null : this.doubleTap(e);
       return;
     }
     if (prefersReducedMotion() || !trail || trail.length < 2) return;
@@ -2465,6 +2470,27 @@ var Gestures = class {
     const k = 1 / this.target.scale();
     this.target.camera.fling((last.x - first.x) / dt * k, (last.y - first.y) / dt * k);
   };
+  /**
+   * Decide whether this water tap completes a double, zooming if it does.
+   * Returns the tap to remember, or null once a double has been spent — so
+   * three taps are one zoom and one ripple, not two zooms.
+   */
+  doubleTap(e) {
+    const now = performance.now();
+    const previous = this.lastTap;
+    const isDouble = previous !== null && now - previous.t <= DOUBLE_TAP_MS && Math.hypot(e.clientX - previous.x, e.clientY - previous.y) <= DOUBLE_TAP_SLOP_PX;
+    if (!isDouble) return { t: now, x: e.clientX, y: e.clientY };
+    const { camera } = this.target;
+    const next = camera.step(1) ?? HOME_CELL;
+    const rect = this.el.getBoundingClientRect();
+    const d = this.target.dpr();
+    camera.zoomAbout(
+      next,
+      (e.clientX - (rect.left + rect.width / 2)) * d,
+      (e.clientY - (rect.top + rect.height / 2)) * d
+    );
+    return null;
+  }
   wheel = (e) => {
     e.preventDefault();
     const rect = this.el.getBoundingClientRect();
@@ -2703,11 +2729,21 @@ var PondView = class {
       wy: wrap(this.camera.cam.y + (clientY - (rect.top + rect.height / 2)) / cell, this.camera.side)
     };
   }
+  /**
+   * Returns whether a duck was hit — which decides whether the tap is
+   * allowed to begin a double-tap. Double-tapping a duck would open its
+   * card and then zoom the water behind it; tapping water only makes a
+   * ripple, so a second tap there costs nothing to reinterpret.
+   */
   tap(clientX, clientY) {
     const { wx, wy } = this.toWorld(clientX, clientY);
     const hit = this.hitTest(wx, wy);
-    if (hit) this.opts.onTapDuck?.(hit);
-    else this.opts.onTapWater?.(wx, wy);
+    if (hit) {
+      this.opts.onTapDuck?.(hit);
+      return true;
+    }
+    this.opts.onTapWater?.(wx, wy);
+    return false;
   }
   /**
    * Take a fresh pond from the server.

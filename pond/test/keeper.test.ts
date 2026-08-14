@@ -279,7 +279,10 @@ describe("card setup", () => {
   describe("reserved keeper names", () => {
     it("refuses the pond's own names, however they are typed", () => {
       for (const taken of ["David", "david", "  DAVID  ", "D-a-v-i-d", "david.yang",
-                           "By Product Lab", "pondkeeper", "Admin", "official"]) {
+                           "By Product Lab", "pondkeeper", "Admin", "official",
+                           // Fullwidth. Renders as David; folded to nothing
+                           // before NFKC was added, so it walked straight past.
+                           "Ｄａｖｉｄ", "ＰＯＮＤＫＥＥＰＥＲ"]) {
         expect(isReservedKeeperName(taken)).toBe(true);
       }
     });
@@ -302,6 +305,29 @@ describe("card setup", () => {
       });
       // And nothing was written — the epoch keeps the name it had.
       expect(await keeperState(e, claim.epochId)).toMatchObject({ keeper: "" });
+    });
+
+    it("does not lock an existing reserved name out of its other settings", async () => {
+      /*
+       * Card setup reposts every field at once. A keeper whose stored name
+       * is already reserved — set before the list existed, or by admin —
+       * must still be able to save a language or link a duck, or the
+       * refusal quietly bricks their card.
+       */
+      const e = await env();
+      const claim = await claimCard(e, CARD, 1, sign(1));
+      if ("error" in claim) throw new Error("claim failed");
+      await e.DB.prepare(`UPDATE card_epochs SET keeper_name = 'David' WHERE id = ?1`)
+        .bind(claim.epochId)
+        .run();
+
+      expect(await saveKeeper(e, claim.epochId, { name: "David", lang: "zh-Hant" }))
+        .toEqual({ ok: true, adopted: 0 });
+      expect(await keeperState(e, claim.epochId)).toMatchObject({ lang: "zh-Hant" });
+
+      // But changing it TO a different reserved name is still refused.
+      expect(await saveKeeper(e, claim.epochId, { name: "Admin" }))
+        .toEqual({ error: "reserved name" });
     });
 
     it("still lets a keeper save everything else", async () => {

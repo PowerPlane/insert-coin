@@ -64,6 +64,9 @@
   /* A press is not travel. It lands. */
   --step-press: 0.08s steps(2, end);
 
+  /* The wordmark's line, and the room the CTA must leave for it. */
+  --wordmark-room: 20px;
+
   --px-corner: polygon(
     0 6px, 3px 6px, 3px 3px, 6px 3px, 6px 0,
     calc(100% - 6px) 0, calc(100% - 6px) 3px, calc(100% - 3px) 3px,
@@ -179,11 +182,6 @@ html[lang="zh-Hant"] body {
   text-transform: uppercase;
 }
 
-:where(.p-btn, .p-chip, .p-tab, .p-icon-btn, .p-swatch, .p-sticker, .p-count):focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 3px var(--focus);
-}
-
 /* ── the HUD ──────────────────────────────────────────────────────────── */
 
 .p-hud {
@@ -230,6 +228,9 @@ html[lang="zh-Hant"] body {
  */
 .p-wordmark {
   position: absolute;
+  height: var(--wordmark-room);
+  display: grid;
+  place-items: center;
   left: 0;
   right: 0;
   bottom: max(4px, env(safe-area-inset-bottom));
@@ -273,6 +274,9 @@ html[lang="zh-Hant"] body {
  */
 .p-btn {
   all: unset;
+  /* Below the reset, or it does not survive it. */
+  font-family: var(--mono);
+  text-transform: uppercase;
   box-sizing: border-box;
   cursor: pointer;
   position: relative;
@@ -331,6 +335,10 @@ html[lang="zh-Hant"] body {
 .p-chip,
 .p-tab {
   all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  font-family: var(--mono);
+  text-transform: uppercase;
   cursor: pointer;
   min-height: var(--tap);
   display: grid;
@@ -541,6 +549,8 @@ html[lang="zh-Hant"] body {
 .p-swatch,
 .p-sticker {
   all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -800,7 +810,10 @@ a.p-btn {
   position: absolute;
   left: 16px;
   right: 16px;
-  bottom: max(16px, env(safe-area-inset-bottom));
+  /* Clears the wordmark, which sits below it. `--wordmark-room` is that
+     line's height plus its gap — the two are positioned from the same
+     edge, so one has to know about the other. */
+  bottom: max(calc(16px + var(--wordmark-room)), calc(env(safe-area-inset-bottom) + var(--wordmark-room)));
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -963,4 +976,27 @@ a.p-chip {
   min-height: 38px;
   font-size: 0.6rem;
   text-decoration: none;
+}
+
+/*
+ * ══ THE FOCUS RING GOES LAST, AND WITHOUT :where() ══
+ * This lived near the top inside `:where(...)`, which contributes no
+ * specificity at all. Every component below then declared `all: unset`,
+ * matched at the same specificity, came later, and won — so a keyboard
+ * user got no ring on any of the controls this rule names. The one rule
+ * on the page that exists for people who cannot see the pointer was the
+ * one being erased.
+ *
+ * Last in the file and named plainly, so a reset can no longer outrank it.
+ */
+.p-btn:focus-visible,
+.p-chip:focus-visible,
+.p-tab:focus-visible,
+.p-icon-btn:focus-visible,
+.p-swatch:focus-visible,
+.p-sticker:focus-visible,
+.p-count:focus-visible,
+.p-mark:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--focus);
 }
