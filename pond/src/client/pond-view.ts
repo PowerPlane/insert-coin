@@ -167,14 +167,25 @@ const EVICT_FAN = 0.5;
 const RETURN_PULL = 0.30;
 
 /*
- * The ripple where two ducks touch.
- *
- * In CELLS, which is what this codebase's `splash` takes — the prototype's
- * third argument is an amplitude multiplier, so copying its `1.5` across
- * gave a ripple a pixel and a half wide. Smaller than a finger tap (14),
- * because a bump is a nudge and a tap is a whole hand.
+ * ══ HOW HARD THE WATER WAS HIT ══
+ * `splash` takes an amplitude and derives the radius, so the callers carry
+ * only relative weight and cannot disagree about units. The prototype's
+ * numbers, and its scale: radius = 14 + amplitude * 7.
  */
-const BUMP_SPLASH_CELLS = 9;
+const SPLASH_BASE = 14;
+const SPLASH_PER_AMPLITUDE = 7;
+
+/** A finger on the water. The unit everything else is measured against. */
+export const SPLASH_TAP = 2.4;
+/** A duck landing — the heaviest thing that happens to this pond. */
+export const SPLASH_LAND = 2.6;
+/** Two ducks touching. A nudge, not a whole hand. */
+const SPLASH_BUMP = 1.5;
+/** A fire going out: mostly steam, little water moved. */
+export const SPLASH_DOUSE = 1.1;
+
+/** Rings live 480ms; more than this on screen at once cannot be told apart. */
+const MAX_RIPPLES = 12;
 
 /**
  * A stable pseudo-random number from a duck's id.
@@ -570,7 +581,7 @@ export class PondView {
     this.sparkles = arrival(duck.fortune, duck.wx, duck.wy);
     this.sparkleStart = now;
     if (duck.fortune === 1) this.petals.push(...petals(duck.wx, duck.wy, now));
-    this.splash(duck.wx, duck.wy, 18);
+    this.splash(duck.wx, duck.wy, SPLASH_LAND);
   }
 
   /**
@@ -581,8 +592,27 @@ export class PondView {
    * it as smooth circles. That is why this converts through the projection
    * rather than storing world coordinates.
    */
-  splash(wx: number, wy: number, max = 14): void {
+  splash(wx: number, wy: number, amplitude = 1): void {
+    /*
+     * ══ AMPLITUDE, NOT RADIUS ══
+     * Callers used to pass a radius in cells, so every one of them had to
+     * know how big a ripple should be — and they disagreed. Worse, the
+     * prototype's third argument is an amplitude, so copying a number
+     * across from it silently produced a ripple a sixth of the intended
+     * size. That happened once already, to the bump.
+     *
+     * Now a caller says how HARD the water was hit, on a scale where 1 is
+     * an ordinary touch, and the radius is derived in one place.
+     */
+    const max = SPLASH_BASE + amplitude * SPLASH_PER_AMPLITUDE;
     this.ripples.push({ x: wx, y: wy, t: performance.now(), max });
+    /*
+     * A hand dragged across the water can queue hundreds of rings, each
+     * one a full pass over the water buffer. Twelve is the prototype's
+     * cap and is more than can be told apart on screen; the oldest goes,
+     * because it is the faintest.
+     */
+    if (this.ripples.length > MAX_RIPPLES) this.ripples.shift();
   }
 
   /**
@@ -760,7 +790,7 @@ export class PondView {
             const ay = wrapDelta(d.wy, target.wy, side);
             const m = Math.hypot(ax, ay) || 1;
             // The splash goes where they actually touch, between the two.
-            this.splash(d.wx + ax * 0.5, d.wy + ay * 0.5, BUMP_SPLASH_CELLS);
+            this.splash(d.wx + ax * 0.5, d.wy + ay * 0.5, SPLASH_BUMP);
             target.vx = (target.vx ?? 0) + (ax / m) * KNOCK_X;
             target.vy = (target.vy ?? 0) + (ay / m) * KNOCK_Y;
             d.vx = -(ax / m) * REBOUND_X;

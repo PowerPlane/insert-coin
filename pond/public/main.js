@@ -2755,7 +2755,12 @@ var CALL_SEPARATE = 0.13;
 var EVICT_PUSH = 1.35;
 var EVICT_FAN = 0.5;
 var RETURN_PULL = 0.3;
-var BUMP_SPLASH_CELLS = 9;
+var SPLASH_BASE = 14;
+var SPLASH_PER_AMPLITUDE = 7;
+var SPLASH_TAP = 2.4;
+var SPLASH_LAND = 2.6;
+var SPLASH_BUMP = 1.5;
+var MAX_RIPPLES = 12;
 function hashId(id) {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) {
@@ -3043,7 +3048,7 @@ var PondView = class {
     this.sparkles = arrival(duck.fortune, duck.wx, duck.wy);
     this.sparkleStart = now;
     if (duck.fortune === 1) this.petals.push(...petals(duck.wx, duck.wy, now));
-    this.splash(duck.wx, duck.wy, 18);
+    this.splash(duck.wx, duck.wy, SPLASH_LAND);
   }
   /**
    * A ripple where something happened. Discrete rings, not a wave sim.
@@ -3053,8 +3058,10 @@ var PondView = class {
    * it as smooth circles. That is why this converts through the projection
    * rather than storing world coordinates.
    */
-  splash(wx, wy, max = 14) {
+  splash(wx, wy, amplitude = 1) {
+    const max = SPLASH_BASE + amplitude * SPLASH_PER_AMPLITUDE;
     this.ripples.push({ x: wx, y: wy, t: performance.now(), max });
+    if (this.ripples.length > MAX_RIPPLES) this.ripples.shift();
   }
   /**
    * Back to the pond's own framing: the middle of the world, at the zoom it
@@ -3191,7 +3198,7 @@ var PondView = class {
             const ax = wrapDelta(d.wx, target.wx, side);
             const ay = wrapDelta(d.wy, target.wy, side);
             const m = Math.hypot(ax, ay) || 1;
-            this.splash(d.wx + ax * 0.5, d.wy + ay * 0.5, BUMP_SPLASH_CELLS);
+            this.splash(d.wx + ax * 0.5, d.wy + ay * 0.5, SPLASH_BUMP);
             target.vx = (target.vx ?? 0) + ax / m * KNOCK_X;
             target.vy = (target.vy ?? 0) + ay / m * KNOCK_Y;
             d.vx = -(ax / m) * REBOUND_X;
@@ -3488,7 +3495,7 @@ async function pondScreen(bootstrap) {
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
-    onTapWater: (wx, wy) => view.splash(wx, wy)
+    onTapWater: (wx, wy) => view.splash(wx, wy, SPLASH_TAP)
   });
   const zoom = el2("div", "p-zoom");
   const zoomBtn = (label, aria, dir) => {

@@ -21,7 +21,7 @@ import { FORTUNES } from "./sprites.js";
 import { CAM_UI } from "./camera.js";
 import { cardSetup, claimFromUrl } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
-import { PondView, type Placed } from "./pond-view.js";
+import { PondView, SPLASH_TAP, type Placed } from "./pond-view.js";
 import { drawDuck } from "./render.js";
 import { fortuneTitle, setLang, t, type Lang } from "./strings.js";
 import { watchSize } from "./viewport.js";
@@ -122,7 +122,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
-    onTapWater: (wx, wy) => view.splash(wx, wy),
+    onTapWater: (wx, wy) => view.splash(wx, wy, SPLASH_TAP),
   });
 
   /**

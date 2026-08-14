@@ -1121,9 +1121,29 @@ a.p-btn {
  * thing on screen that gives away that this is a web page. UI.md § 5.
  */
 @media (prefers-reduced-motion: no-preference) {
-  .p-card,
+  /*
+   * ══ A SHEET RISES OUT OF THE WATER ══
+   * It travelled 14%, which is a nudge — the panel appeared and then
+   * shifted slightly, so the motion read as a wobble rather than as
+   * something arriving. The prototype starts it fully off-screen and it
+   * comes up, which is the whole metaphor: these screens rise out of the
+   * pond rather than being switched on over it.
+   *
+   * The card gets its own shorter timing. It is a glance, not a screen,
+   * and it is opened far more often — the sheet's 280ms starts to feel
+   * like waiting when you are tapping ducks one after another.
+   */
   .p-sheet {
     animation: p-rise 0.28s steps(5, end);
+  }
+
+  .p-card {
+    animation: p-rise 0.22s steps(4, end);
+  }
+
+  /* The water dims behind it rather than snapping dark. */
+  .p-scrim {
+    animation: p-fade 0.18s steps(3, end);
   }
 
   /* Selection: the colour steps across rather than crossfading. */
@@ -1161,8 +1181,14 @@ a.p-btn {
 }
 
 @keyframes p-rise {
-  from { transform: translateY(14%); }
+  /* All the way off, not a nudge. */
+  from { transform: translateY(102%); }
   to { transform: translateY(0); }
+}
+
+@keyframes p-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Reduced motion never removes information — it only stops things moving. */
