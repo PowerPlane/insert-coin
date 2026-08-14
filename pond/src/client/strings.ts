@@ -92,6 +92,9 @@ export const LIVE_STRINGS = {
   // The hint shows what the name will DO rather than describing it.
   "live.keeper.hint": "Ducks from this card say via {keeper}.",
   "live.keeper.adopt": "Add the {n} earlier ducks",
+  // Named, not "invalid": the keeper needs to know it is this word, not
+  // their typing, and that the pond is not accusing them of anything.
+  "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
 } as const;
 
 /**
@@ -292,6 +295,7 @@ export const ZH_HANT: Record<StringKey, string> = {
   "live.nokeepers": "還沒有卡片取過名字，所以沒有人可以呼喚。",
   "live.keeper.hint": "這張卡片放出的鴨子會寫「來自 {keeper}」。",
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
+  "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
 
   // ── card setup ────────────────────────────────────────────────────────
   "keeper.01": "卡片設定",

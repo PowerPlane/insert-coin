@@ -136,6 +136,37 @@ export async function keeperNameOfCard(env: Env, cardId: string | null): Promise
   return (row?.keeper_name ?? "").trim() || null;
 }
 
+/*
+ * ══ A KEEPER MAY NOT CLAIM TO BE THE POND ══
+ * The contact screen asks, in names: "Only David", "{keeper} and David".
+ * A keeper who names themselves David turns that picker into a working
+ * phishing page — two options that read the same, one of which quietly
+ * routes a stranger's address somewhere else. The name is the one keeper
+ * field a visitor is asked to trust, so it is the one that needs a floor.
+ *
+ * Compared on a folded form rather than literally: spacing, case and
+ * punctuation are exactly what somebody would vary to get around a list.
+ * This does not attempt homoglyphs — a Cyrillic а is a different problem,
+ * and admin can rename in one tap, which the artifact's threat model
+ * already relies on.
+ */
+const RESERVED = new Set([
+  "david", "davidyang", "davidyangwork",
+  "byproduct", "byproductlab",
+  "thepond", "pond", "pondkeeper", "ducky",
+  "admin", "administrator", "moderator", "support", "help", "official",
+  "system", "staff",
+]);
+
+/** Case, spacing and punctuation folded away — the variations a list invites. */
+function fold(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+export function isReservedKeeperName(name: string): boolean {
+  return RESERVED.has(fold(name));
+}
+
 export interface KeeperSettings {
   name?: unknown;
   lang?: unknown;
@@ -165,6 +196,9 @@ export async function saveKeeper(
   if (!epoch) return { error: "not the current keeper" };
 
   const name = cleanText(s.name, 18);
+  // Refused rather than silently blanked: a keeper who typed a name and got
+  // an empty card would have no idea why.
+  if (name && isReservedKeeperName(name)) return { error: "reserved name" };
   const lang = s.lang === "zh-Hant" ? "zh-Hant" : "en";
 
   // The keeper's own duck, resolved from the edit key they pasted. Only

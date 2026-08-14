@@ -48,6 +48,22 @@
    * sprite is the one shape in the pond that could not have been drawn on
    * the grid; the staircase shares the water's edge vocabulary.
    */
+/*
+   * ══ MOTION IS STEPPED, INCLUDING STATE CHANGES ══
+   * The sheet already rose in steps. Everything else — a chip turning on,
+   * a tab taking over, a button going down — changed instantly, because
+   * this file had no `transition` at all. Instant is not neutral: beside a
+   * duck walking at 12 fps, a chip that snaps reads as a different medium
+   * from one that steps.
+   *
+   * Two scales, from rev E. Nothing here travels far enough to want the
+   * four-frame transform scale — the sheet, which does travel, has its own
+   * `p-rise` keyframe below. Add it back when something needs it.
+   */
+  --step-fade: 0.18s steps(3, end);
+  /* A press is not travel. It lands. */
+  --step-press: 0.08s steps(2, end);
+
   --px-corner: polygon(
     0 6px, 3px 6px, 3px 3px, 6px 3px, 6px 0,
     calc(100% - 6px) 0, calc(100% - 6px) 3px, calc(100% - 3px) 3px,
@@ -133,8 +149,22 @@ html[lang="zh-Hant"] body {
   clip-path: var(--px-corner);
 }
 
-/* Labels, counts, buttons — the uppercase mono voice the prototype uses
-   for everything that is chrome rather than content. */
+/*
+ * ══ `all: unset` DESTROYS WHAT THESE RULES SET ══
+ * Both groups below name `.p-count` and `.p-icon-btn`, and both were
+ * silently doing nothing: each of those components later declares
+ * `all: unset` to reset the browser's button styling, and `all` resets
+ * EVERYTHING — including the clip-path and text-transform set here, at
+ * equal specificity but earlier in the file.
+ *
+ * The pond's chips and zoom buttons therefore rendered as plain rectangles
+ * in the browser's own font while the stylesheet read as though they were
+ * styled. Anything a component needs after its own `all: unset` has to be
+ * declared inside that component's block, below the reset.
+ *
+ * Labels, counts, buttons — the uppercase mono voice the prototype uses
+ * for everything that is chrome rather than content.
+ */
 .p-count,
 .p-chip,
 .p-tab,
@@ -172,9 +202,55 @@ html[lang="zh-Hant"] body {
   pointer-events: auto;
 }
 
+/*
+ * The card's mark, opposite the count. Same physical treatment as the
+ * count — this is chrome, and chrome on the water is always a white chip
+ * on the pixel staircase. Declared after its own reset, as everything in
+ * this file now must be.
+ */
+.p-mark {
+  all: unset;
+  clip-path: var(--px-corner);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0 0.8rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--p-ink);
+  background: var(--p-surface);
+}
+
+/*
+ * Where you are, and the only place the address is written down. It sits
+ * under everything and takes no pointers — reading it is the whole job.
+ */
+.p-wordmark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(4px, env(safe-area-inset-bottom));
+  margin: 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--p-ink);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 20;
+}
+
 /* The count IS the whistle — tapping it opens the gather list. */
 .p-count {
   all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  font-family: var(--mono);
+  text-transform: uppercase;
   cursor: pointer;
   min-height: var(--tap);
   display: grid;
@@ -279,6 +355,8 @@ html[lang="zh-Hant"] body {
 
 .p-icon-btn {
   all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
   cursor: pointer;
   width: var(--tap);
   height: var(--tap);
@@ -649,6 +727,39 @@ a.p-btn {
   .p-card,
   .p-sheet {
     animation: p-rise 0.28s steps(5, end);
+  }
+
+  /* Selection: the colour steps across rather than crossfading. */
+  .p-chip,
+  .p-tab,
+  .p-swatch {
+    transition:
+      background-color var(--step-fade),
+      color var(--step-fade);
+  }
+
+  /* The press. Face down onto its shadow, and back. */
+  .p-btn,
+  .p-icon-btn,
+  .p-count,
+  .p-mark {
+    transition: transform var(--step-press);
+  }
+
+  .p-btn::after {
+    transition: height var(--step-press);
+  }
+
+  /* The overlay dimming the water while a screen is up. */
+  .p-overlay {
+    transition: background-color var(--step-fade);
+  }
+
+  /* The scope picker appearing when a contact is typed — it arrives,
+     rather than being there suddenly. */
+  .p-scopes,
+  .p-hint {
+    transition: opacity var(--step-fade);
   }
 }
 

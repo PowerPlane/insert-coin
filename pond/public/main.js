@@ -885,7 +885,10 @@ var LIVE_STRINGS = {
   "live.nokeepers": "No cards have been named yet, so there is nobody to whistle for.",
   // The hint shows what the name will DO rather than describing it.
   "live.keeper.hint": "Ducks from this card say via {keeper}.",
-  "live.keeper.adopt": "Add the {n} earlier ducks"
+  "live.keeper.adopt": "Add the {n} earlier ducks",
+  // Named, not "invalid": the keeper needs to know it is this word, not
+  // their typing, and that the pond is not accusing them of anything.
+  "live.keeper.reserved": "That name is kept for the pond itself. Try another."
 };
 var KEEPER_STRINGS = {
   "keeper.01": "Card setup",
@@ -1168,6 +1171,7 @@ var ZH_HANT = {
   "live.nokeepers": "還沒有卡片取過名字，所以沒有人可以呼喚。",
   "live.keeper.hint": "這張卡片放出的鴨子會寫「來自 {keeper}」。",
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
+  "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
   // ── card setup ────────────────────────────────────────────────────────
   "keeper.01": "卡片設定",
   "keeper.02": "設定這張卡片",
@@ -2064,7 +2068,11 @@ function cardSetup(opts) {
             headers: { "content-type": "application/json" },
             body: JSON.stringify(body)
           });
-          if (!res.ok) throw new Error(String(res.status));
+          if (!res.ok) {
+            const why = await res.json().catch(() => null);
+            status.textContent = why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
+            return;
+          }
           opts.onDone();
         } catch {
           status.textContent = t("live.error");
@@ -3118,8 +3126,14 @@ async function pondScreen(bootstrap) {
   const count = el2("button", "p-count");
   count.type = "button";
   count.setAttribute("aria-label", t("pond.13"));
-  hud.append(count);
+  const mark = el2("a", "p-mark", "BY-002");
+  mark.href = "https://davidyang.work";
+  mark.target = "_blank";
+  mark.rel = "noopener noreferrer";
+  mark.setAttribute("aria-label", t("pond.02"));
+  hud.append(count, mark);
   const cta = el2("div", "p-cta");
+  const wordmark = el2("p", "p-wordmark", "ducky.davidyang.work");
   const overlay = el2("div", "p-overlay");
   const view = new PondView({
     canvas,
@@ -3145,7 +3159,7 @@ async function pondScreen(bootstrap) {
     zoomOut.disabled = view.camera.step(-1) === null;
   };
   zoom.append(zoomIn, zoomOut);
-  root.append(stage, hud, zoom, cta, overlay);
+  root.append(stage, hud, zoom, cta, wordmark, overlay);
   window.__pond = view;
   const fit = () => view.resize();
   fit();

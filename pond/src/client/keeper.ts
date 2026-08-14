@@ -157,7 +157,14 @@ export function cardSetup(opts: CardSetupOptions): void {
             headers: { "content-type": "application/json" },
             body: JSON.stringify(body),
           });
-          if (!res.ok) throw new Error(String(res.status));
+          if (!res.ok) {
+            // The one refusal a keeper can act on, so it is the one that
+            // gets its own sentence rather than "something went wrong".
+            const why = (await res.json().catch(() => null)) as { error?: string } | null;
+            status.textContent =
+              why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
+            return;
+          }
           opts.onDone();
         } catch {
           status.textContent = t("live.error");

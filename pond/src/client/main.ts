@@ -85,9 +85,25 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const count = el("button", "p-count");
   count.type = "button";
   count.setAttribute("aria-label", t("pond.13"));
-  hud.append(count);
+
+  /*
+   * The card's own mark, opposite the count. It is the only thing on the
+   * water that leaves the pond, so it says where it goes before it is
+   * tapped — pond.02 is the whole sentence, not a decoration.
+   */
+  const mark = el("a", "p-mark", "BY-002");
+  mark.href = "https://davidyang.work";
+  mark.target = "_blank";
+  mark.rel = "noopener noreferrer";
+  mark.setAttribute("aria-label", t("pond.02"));
+
+  hud.append(count, mark);
 
   const cta = el("div", "p-cta");
+
+  // Where you are. Small, permanent, and the only place the address is
+  // written down for somebody who wants to type it in later.
+  const wordmark = el("p", "p-wordmark", "ducky.davidyang.work");
 
   /*
    * Where the making screens render.
@@ -134,7 +150,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   };
   zoom.append(zoomIn, zoomOut);
 
-  root.append(stage, hud, zoom, cta, overlay);
+  root.append(stage, hud, zoom, cta, wordmark, overlay);
 
 
   // A handle for looking at the real thing in a real browser. The pond is

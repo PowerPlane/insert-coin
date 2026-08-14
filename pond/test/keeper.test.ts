@@ -13,7 +13,9 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cardToken } from "../src/card/identity.js";
-import { claimCard, keeperNameOfCard, keeperState, saveKeeper } from "../src/worker/keeper.js";
+import {
+  claimCard, isReservedKeeperName, keeperNameOfCard, keeperState, saveKeeper,
+} from "../src/worker/keeper.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/worker/types.js";
 import { count, editKeyFor, fresh, makeDuck } from "./helpers.js";
@@ -264,6 +266,50 @@ describe("card setup", () => {
 
       await saveKeeper(e, mika.epochId, { name: "Mika" });
       expect(await keeperNameOfCard(e, CARD)).toBe("Mika");
+    });
+  });
+
+  /*
+   * ══ A NAME A VISITOR IS ASKED TO TRUST ══
+   * The contact screen offers "Only David" and "{keeper} and David". A
+   * keeper called David makes those two options indistinguishable, and the
+   * one a stranger picks decides where their address goes. That is a
+   * phishing page built out of the product's own copy.
+   */
+  describe("reserved keeper names", () => {
+    it("refuses the pond's own names, however they are typed", () => {
+      for (const taken of ["David", "david", "  DAVID  ", "D-a-v-i-d", "david.yang",
+                           "By Product Lab", "pondkeeper", "Admin", "official"]) {
+        expect(isReservedKeeperName(taken)).toBe(true);
+      }
+    });
+
+    it("leaves ordinary names alone, including ones that merely contain them", () => {
+      // "Davidson" is a person. Substring matching would refuse them, so
+      // the comparison is whole-name and folded, never `includes`.
+      for (const fine of ["Sam", "Mika", "Davidson", "Dave", "小鴨", "David's Friend"]) {
+        expect(isReservedKeeperName(fine)).toBe(false);
+      }
+    });
+
+    it("refuses the save rather than silently blanking the card", async () => {
+      const e = await env();
+      const claim = await claimCard(e, CARD, 1, sign(1));
+      if ("error" in claim) throw new Error("claim failed");
+
+      expect(await saveKeeper(e, claim.epochId, { name: "David" })).toEqual({
+        error: "reserved name",
+      });
+      // And nothing was written — the epoch keeps the name it had.
+      expect(await keeperState(e, claim.epochId)).toMatchObject({ keeper: "" });
+    });
+
+    it("still lets a keeper save everything else", async () => {
+      const e = await env();
+      const claim = await claimCard(e, CARD, 1, sign(1));
+      if ("error" in claim) throw new Error("claim failed");
+      expect(await saveKeeper(e, claim.epochId, { name: "Sam", lang: "zh-Hant" }))
+        .toEqual({ ok: true, adopted: 0 });
     });
   });
 });
