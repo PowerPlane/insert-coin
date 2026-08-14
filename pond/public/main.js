@@ -2662,6 +2662,25 @@ function douseMist(list, x, y, count = 20, random = Math.random) {
     );
   }
 }
+function fireworkStreamers(list, x, y, colours, random = Math.random) {
+  for (let wave = 0; wave < 2; wave++) {
+    for (let i = 0; i < 20; i++) {
+      const angle = random() * Math.PI * 2;
+      const speed = (11 + random() * 22) * (wave ? 0.7 : 1);
+      emit(
+        list,
+        x,
+        y,
+        Math.cos(angle) * speed,
+        Math.sin(angle) * speed,
+        colours[i % colours.length],
+        // The later wave lives longer, so both are still in the air together.
+        0.5 + random() * 0.3 + wave * 0.2,
+        true
+      );
+    }
+  }
+}
 
 // src/client/sparkle.ts
 var ON_PER_PX = 36;
@@ -2810,7 +2829,8 @@ var RING_SQUASH = 0.8;
 var CALL_SEPARATE = 0.13;
 var EVICT_PUSH = 1.35;
 var EVICT_FAN = 0.5;
-var RETURN_PULL = 0.3;
+var RETURN_PULL = 0.6;
+var RETURN_INSIDE = 0.35;
 var SPLASH_BASE = 14;
 var SPLASH_PER_AMPLITUDE = 7;
 var SPLASH_TAP = 2.4;
@@ -2818,6 +2838,16 @@ var SPLASH_LAND = 2.6;
 var SPLASH_BUMP = 1.5;
 var SPLASH_DOUSE = 1.1;
 var MAX_RIPPLES = 12;
+var FALL_MS = 340;
+var SHADOW_MIN = 2;
+var SHADOW_GROWTH = 6;
+var SHADOW_ALPHA_MIN = 0.1;
+var SHADOW_ALPHA_GROWTH = 0.16;
+var EMBER_COUNT = 9;
+var EMBER_LIFT = 4;
+var GREAT_STREAMERS = ["#FFCA00", "#FFE9A8", "#3AC1F2"];
+var LOOK_DELAY_MS = 700;
+var LOOK_DELAY_GREAT_MS = 950;
 var SHOCKWAVE_REACH = 26;
 var SHOCKWAVE_FORCE = 1.5;
 function hashId(id) {
@@ -2891,6 +2921,10 @@ var PondView = class {
   ripples = [];
   /** Thrown pixels: droplets, mist, streamers. */
   particles = [];
+  /** Ducks currently falling in: only their shadows are on the water. */
+  arrivals = [];
+  /** Where the flock was called to. Fixed for the life of the whistle. */
+  gatherAt = null;
   frame = 0;
   lastWorldTick = 0;
   /** For the wander's dt. Clamped, so a backgrounded tab does not teleport. */
@@ -3023,6 +3057,7 @@ var PondView = class {
    *     them back, so the pond refills.
    */
   gather(match) {
+    if (match) this.gatherAt = { x: this.camera.cam.x, y: this.camera.cam.y };
     this.whistling = match;
   }
   /** What the view actually believes, for debugging against a real browser. */
@@ -3104,7 +3139,7 @@ var PondView = class {
         this.lastDebug = now;
         this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
       }
-      if (camMoving || this.ripples.length || this.sparkles.length || this.particles.length) {
+      if (camMoving || this.ripples.length || this.sparkles.length || this.particles.length || this.arrivals.length) {
         this.raf = requestAnimationFrame(loop);
       } else {
         this.timer = window.setTimeout(() => {
@@ -3126,12 +3161,41 @@ var PondView = class {
    * 小吉 is the only one that leaves anything behind: petals, for about
    * three minutes, drifting and dithering out rather than blinking away.
    */
-  arrive(duck) {
+  /**
+   * Drop a duck in, and look at it once it has landed.
+   *
+   * The duck is hidden for the fall, so what you watch is the shadow
+   * arriving — and only then the splash, the fortune, and the camera going
+   * over to see. 大吉 gets a longer beat before the camera moves, because
+   * it is the loudest arrival and cutting it short throws the moment away.
+   */
+  dropIn(duck) {
+    duck.falling = true;
+    this.arrivals.push({ duck, at: performance.now() });
+  }
+  /** The moment it touches the water. */
+  land(duck) {
     const now = performance.now();
+    duck.falling = false;
     this.sparkles = arrival(duck.fortune, duck.wx, duck.wy);
     this.sparkleStart = now;
     if (duck.fortune === 1) this.petals.push(...petals(duck.wx, duck.wy, now));
+    if (duck.fortune === 0) fireworkStreamers(this.particles, duck.wx, duck.wy, GREAT_STREAMERS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
+    const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
+    window.setTimeout(() => {
+      if (this.find(duck.id)) this.lookAt(duck.id, true);
+    }, delay);
+  }
+  /** Turn the fall into a landing once its 340ms is up. */
+  advanceArrivals(now) {
+    if (!this.arrivals.length) return;
+    const landed = this.arrivals.filter((a) => now - a.at >= FALL_MS);
+    for (const a of landed) this.land(a.duck);
+    this.arrivals = this.arrivals.filter((a) => now - a.at < FALL_MS);
+  }
+  arrive(duck) {
+    this.dropIn(duck);
   }
   /**
    * A ripple where something happened. Discrete rings, not a wave sim.
@@ -3324,6 +3388,7 @@ var PondView = class {
   advanceDarts(now, dt) {
     const { side } = this.camera;
     for (const d of this.ducks) {
+      if (d.falling) continue;
       if (d.dartAt) {
         const p = d.dartAt === 1 ? 1 : Math.min(1, (now - d.dartAt) / DART_MS);
         const e = 1 - Math.pow(1 - p, 3);
@@ -3372,6 +3437,7 @@ var PondView = class {
     this.separate(this.whistling === null);
     this.advanceDarts(performance.now(), dt);
     advanceParticles(this.particles, dt);
+    this.advanceArrivals(performance.now());
   }
   /**
    * ══ THE WHISTLE IS A FORCE FIELD, NOT A DESTINATION ══
@@ -3395,8 +3461,8 @@ var PondView = class {
    */
   advanceWhistle() {
     const { side } = this.camera;
-    const gx = this.camera.cam.x;
-    const gy = this.camera.cam.y;
+    const gx = this.gatherAt?.x ?? this.camera.cam.x;
+    const gy = this.gatherAt?.y ?? this.camera.cam.y;
     const { w: frameW, h: frameH } = this.visibleFrame();
     if (this.whistling) {
       const called = [];
@@ -3434,19 +3500,22 @@ var PondView = class {
       this.separateSome(called, CALL_SEPARATE, false);
       return;
     }
-    const inner = Math.hypot(frameW, frameH) * 0.42;
+    const home = Math.min(frameW, frameH) * RETURN_INSIDE;
+    let anyOut = false;
     for (const d of this.ducks) {
       if (d.dartAt || !d.shoved) continue;
       const dx = wrapDelta(d.wx, gx, side);
       const dy = wrapDelta(d.wy, gy, side);
       const dist = Math.hypot(dx, dy) || 1;
-      if (dist > inner) {
+      if (dist > home) {
         d.vx = (d.vx ?? 0) + dx / dist * RETURN_PULL;
         d.vy = (d.vy ?? 0) + dy / dist * RETURN_PULL;
+        anyOut = true;
       } else {
         d.shoved = false;
       }
     }
+    if (!anyOut) this.gatherAt = null;
   }
   draw(now) {
     const { canvas } = this.opts;
@@ -3472,7 +3541,44 @@ var PondView = class {
       }
       blitWater(ctx, this.water, canvas.width, canvas.height);
     }
-    const sorted = [...this.ducks].sort((a, b) => a.wy - b.wy);
+    for (const a of this.arrivals) {
+      const p = Math.min(1, (now - a.at) / FALL_MS);
+      const r = SHADOW_MIN + p * SHADOW_GROWTH;
+      ctx.fillStyle = `rgba(11, 61, 82, ${(SHADOW_ALPHA_MIN + p * SHADOW_ALPHA_GROWTH).toFixed(3)})`;
+      for (let y = -r; y <= r; y++) {
+        for (let x = -r; x <= r; x++) {
+          if (x * x + y * y > r * r) continue;
+          const at = project(
+            a.duck.wx + x,
+            a.duck.wy + y,
+            this.camera.cam,
+            renderCell,
+            canvas.width,
+            canvas.height,
+            this.camera.side
+          );
+          ctx.fillRect(at.x, at.y, renderCell, renderCell);
+        }
+      }
+      if (a.duck.fortune === 3 && !prefersReducedMotion()) {
+        for (let i = 0; i < EMBER_COUNT; i++) {
+          if ((i + this.frame) % 3 === 0) continue;
+          const angle = i / EMBER_COUNT * Math.PI * 2 + this.frame * 0.5;
+          ctx.fillStyle = (i + this.frame) % 4 === 0 ? "#FF8953" : "#FF4B4B";
+          const at = project(
+            a.duck.wx + Math.cos(angle) * (r + 2),
+            a.duck.wy + Math.sin(angle) * (r + 2) - p * EMBER_LIFT,
+            this.camera.cam,
+            renderCell,
+            canvas.width,
+            canvas.height,
+            this.camera.side
+          );
+          ctx.fillRect(at.x, at.y, renderCell, renderCell);
+        }
+      }
+    }
+    const sorted = [...this.ducks].filter((d) => !d.falling).sort((a, b) => a.wy - b.wy);
     for (const d of sorted) {
       const p = project(
         d.wx,

@@ -43,7 +43,7 @@ import {
 } from "./render.js";
 import { GRID, decodePaint } from "./codec.js";
 import {
-  advanceParticles, douseMist, splashDroplets, type Particle,
+  advanceParticles, douseMist, fireworkStreamers, splashDroplets, type Particle,
 } from "./particles.js";
 import { DWELL } from "./render.js";
 import {
@@ -73,6 +73,8 @@ export interface Placed extends PondDuck {
   r?: number;
   /** True while the whistle has pushed it out of the frame. */
   shoved?: boolean;
+  /** True while it is still in the air — a shadow, not yet a duck. */
+  falling?: boolean;
   /** A bump in flight: where it left, where it stops, and when it set off. */
   dartFromX?: number;
   dartFromY?: number;
@@ -166,8 +168,18 @@ const CALL_SEPARATE = 0.13;
 const EVICT_PUSH = 1.35;
 /** Around the rim, so they part rather than piling on one side. */
 const EVICT_FAN = 0.5;
-/** Back in, once the whistle clears. Gentler than being pushed out. */
-const RETURN_PULL = 0.30;
+/*
+ * Back in, once the whistle clears.
+ *
+ * Gentler than the 1.35 that pushed them out — being asked to leave should
+ * look brisker than being allowed back — but not the prototype's 0.30.
+ * They are pushed further here than the prototype pushes them, and at 0.30
+ * the swim home took the better part of half a minute, which reads as them
+ * having been abandoned rather than released.
+ */
+const RETURN_PULL = 0.6;
+/** How far in "back in the pond" is, as a fraction of the frame's SHORT side. */
+const RETURN_INSIDE = 0.35;
 
 /*
  * ══ HOW HARD THE WATER WAS HIT ══
@@ -189,6 +201,33 @@ export const SPLASH_DOUSE = 1.1;
 
 /** Rings live 480ms; more than this on screen at once cannot be told apart. */
 const MAX_RIPPLES = 12;
+
+/*
+ * ══ A DUCK ARRIVES BY FALLING ══
+ * And you never see it fall. Only its SHADOW, growing on the water from
+ * two cells to eight and darkening as the thing casting it gets closer —
+ * then a splash, and the duck is there.
+ *
+ * Drawing the duck descending would have to answer "descending through
+ * what?", and the pond has no sky. A shadow answers it by implication and
+ * costs one disc of pixels.
+ */
+const FALL_MS = 340;
+const SHADOW_MIN = 2;
+const SHADOW_GROWTH = 6;
+const SHADOW_ALPHA_MIN = 0.1;
+const SHADOW_ALPHA_GROWTH = 0.16;
+
+/** 凶 arrives already burning: nine embers orbiting the shadow, rising. */
+const EMBER_COUNT = 9;
+const EMBER_LIFT = 4;
+
+/** 大吉's streamers, the pond's brightest pair. */
+const GREAT_STREAMERS = ["#FFCA00", "#FFE9A8", "#3AC1F2"] as const;
+
+/** How long after landing the camera goes to look. 大吉 gets the long beat. */
+const LOOK_DELAY_MS = 700;
+const LOOK_DELAY_GREAT_MS = 950;
 
 /** How far a splash shoves the ducks floating near it, in sprite cells. */
 const SHOCKWAVE_REACH = 26;
@@ -288,6 +327,10 @@ export class PondView {
   private ripples: Ripple[] = [];
   /** Thrown pixels: droplets, mist, streamers. */
   private particles: Particle[] = [];
+  /** Ducks currently falling in: only their shadows are on the water. */
+  private arrivals: { duck: Placed; at: number }[] = [];
+  /** Where the flock was called to. Fixed for the life of the whistle. */
+  private gatherAt: { x: number; y: number } | null = null;
   private frame = 0;
   private lastWorldTick = 0;
   /** For the wander's dt. Clamped, so a backgrounded tab does not teleport. */
@@ -457,6 +500,31 @@ export class PondView {
    */
   gather(match: ((d: Placed) => boolean) | null): void {
     /*
+     * ══ THE FLOCK MUST NOT CHASE THE CAMERA ══
+     * The forces ring the called ducks around a point, and that point used
+     * to be the camera itself — which meant every camera move dragged the
+     * whole flock along. Tapping a gathered duck moves the camera to keep
+     * it clear of the card, so the flock slid downward under the tap: you
+     * touched one duck and the other five swam after you.
+     *
+     * The point is fixed when the whistle STARTS instead. You are looking
+     * at it when it is captured, so they still gather where you asked —
+     * and then they stay there, which is what makes it a place rather than
+     * something following you around.
+     *
+     * The prototype pins this to the middle of the world for the same
+     * reason and says so in a comment. Where you were looking is better:
+     * the middle of the world is somewhere you might not be.
+     */
+    /*
+     * Kept on CLEAR as well, not nulled — the ducks that were pushed out
+     * have to swim back to somewhere, and the only stable somewhere is the
+     * point they were pushed away from. Falling back to the camera made
+     * them chase it while it was gliding home. `advanceWhistle` drops it
+     * once the last of them is back.
+     */
+    if (match) this.gatherAt = { x: this.camera.cam.x, y: this.camera.cam.y };
+    /*
      * Recording the whistle is the whole of this method now.
      *
      * It used to compute a destination for every duck and tween them there
@@ -600,7 +668,10 @@ export class PondView {
       // Display rate while moving or rippling; stop-motion otherwise.
       // Display rate whenever the view is under anyone's control — a
       // finger, a fling, a glide, a settle — and stop-motion otherwise.
-      if (camMoving || this.ripples.length || this.sparkles.length || this.particles.length) {
+      if (
+        camMoving || this.ripples.length || this.sparkles.length ||
+        this.particles.length || this.arrivals.length
+      ) {
         this.raf = requestAnimationFrame(loop);
       } else {
         this.timer = window.setTimeout(() => {
@@ -624,12 +695,48 @@ export class PondView {
    * 小吉 is the only one that leaves anything behind: petals, for about
    * three minutes, drifting and dithering out rather than blinking away.
    */
-  arrive(duck: Placed): void {
+  /**
+   * Drop a duck in, and look at it once it has landed.
+   *
+   * The duck is hidden for the fall, so what you watch is the shadow
+   * arriving — and only then the splash, the fortune, and the camera going
+   * over to see. 大吉 gets a longer beat before the camera moves, because
+   * it is the loudest arrival and cutting it short throws the moment away.
+   */
+  dropIn(duck: Placed): void {
+    duck.falling = true;
+    this.arrivals.push({ duck, at: performance.now() });
+  }
+
+  /** The moment it touches the water. */
+  private land(duck: Placed): void {
     const now = performance.now();
+    duck.falling = false;
     this.sparkles = arrival(duck.fortune, duck.wx, duck.wy);
     this.sparkleStart = now;
     if (duck.fortune === 1) this.petals.push(...petals(duck.wx, duck.wy, now));
+    // 大吉 is the one fortune nobody else got today, so it is the one
+    // arrival allowed to throw pixels as well as light them.
+    if (duck.fortune === 0) fireworkStreamers(this.particles, duck.wx, duck.wy, GREAT_STREAMERS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
+
+    const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
+    window.setTimeout(() => {
+      // It may have been taken out while the sparkles were still going.
+      if (this.find(duck.id)) this.lookAt(duck.id, true);
+    }, delay);
+  }
+
+  /** Turn the fall into a landing once its 340ms is up. */
+  private advanceArrivals(now: number): void {
+    if (!this.arrivals.length) return;
+    const landed = this.arrivals.filter((a) => now - a.at >= FALL_MS);
+    for (const a of landed) this.land(a.duck);
+    this.arrivals = this.arrivals.filter((a) => now - a.at < FALL_MS);
+  }
+
+  arrive(duck: Placed): void {
+    this.dropIn(duck);
   }
 
   /**
@@ -889,6 +996,7 @@ export class PondView {
     const { side } = this.camera;
 
     for (const d of this.ducks) {
+      if (d.falling) continue;
       if (d.dartAt) {
         const p = d.dartAt === 1 ? 1 : Math.min(1, (now - d.dartAt) / DART_MS);
         // Ease out: quick off the mark, arriving gently, which is what
@@ -950,6 +1058,7 @@ export class PondView {
     this.separate(this.whistling === null);
     this.advanceDarts(performance.now(), dt);
     advanceParticles(this.particles, dt);
+    this.advanceArrivals(performance.now());
   }
 
   /**
@@ -974,8 +1083,9 @@ export class PondView {
    */
   private advanceWhistle(): void {
     const { side } = this.camera;
-    const gx = this.camera.cam.x;
-    const gy = this.camera.cam.y;
+    // Where the whistle was blown, not where the camera has wandered since.
+    const gx = this.gatherAt?.x ?? this.camera.cam.x;
+    const gy = this.gatherAt?.y ?? this.camera.cam.y;
     // What is on screen NOW: eviction has to put a duck outside the frame
     // you are actually looking at, not the one you had when you resized.
     const { w: frameW, h: frameH } = this.visibleFrame();
@@ -1035,19 +1145,36 @@ export class PondView {
      * ordinary wander, which takes minutes and leaves a ring of them
      * parked outside the frame in the meantime.
      */
-    const inner = Math.hypot(frameW, frameH) * 0.42;
+    /*
+     * They come back to the WATER, not to the rim of it. Against the
+     * frame's half-diagonal they stopped the moment they crossed into
+     * view and parked there, which left the pond looking like a doughnut:
+     * everything you had whistled away sitting in a ring at the edges,
+     * stationary, long after the whistle was gone.
+     *
+     * The short side is the honest measure of "back in the pond" — on a
+     * phone the frame is twice as tall as it is wide, so a diagonal
+     * lets a duck stop while still off the side of the screen.
+     */
+    const home = Math.min(frameW, frameH) * RETURN_INSIDE;
+    let anyOut = false;
     for (const d of this.ducks) {
       if (d.dartAt || !d.shoved) continue;
       const dx = wrapDelta(d.wx, gx, side);
       const dy = wrapDelta(d.wy, gy, side);
       const dist = Math.hypot(dx, dy) || 1;
-      if (dist > inner) {
+      if (dist > home) {
         d.vx = (d.vx ?? 0) + (dx / dist) * RETURN_PULL;
         d.vy = (d.vy ?? 0) + (dy / dist) * RETURN_PULL;
+        anyOut = true;
       } else {
+        // Home. Ordinary wander and separation spread them out from here,
+        // so they arrive as a pond rather than as another ring.
         d.shoved = false;
       }
     }
+    // Once the last one is back the point has done its job.
+    if (!anyOut) this.gatherAt = null;
   }
 
   private draw(now: number): void {
@@ -1079,8 +1206,48 @@ export class PondView {
       blitWater(ctx, this.water, canvas.width, canvas.height);
     }
 
+    /*
+     * The shadow of whatever is still in the air. Drawn under the ducks,
+     * because it is ON the water and they are floating on it.
+     */
+    for (const a of this.arrivals) {
+      const p = Math.min(1, (now - a.at) / FALL_MS);
+      const r = SHADOW_MIN + p * SHADOW_GROWTH;
+      ctx.fillStyle = `rgba(11, 61, 82, ${(SHADOW_ALPHA_MIN + p * SHADOW_ALPHA_GROWTH).toFixed(3)})`;
+      for (let y = -r; y <= r; y++) {
+        for (let x = -r; x <= r; x++) {
+          if (x * x + y * y > r * r) continue;
+          const at = project(
+            a.duck.wx + x, a.duck.wy + y, this.camera.cam, renderCell,
+            canvas.width, canvas.height, this.camera.side,
+          );
+          ctx.fillRect(at.x, at.y, renderCell, renderCell);
+        }
+      }
+
+      /*
+       * 凶 comes down already alight — the card set it on fire and the
+       * pond is about to put it out. Embers orbit the shadow and rise, so
+       * the fire is visibly ABOVE the water it is falling toward.
+       */
+      if (a.duck.fortune === 3 && !prefersReducedMotion()) {
+        for (let i = 0; i < EMBER_COUNT; i++) {
+          if ((i + this.frame) % 3 === 0) continue;
+          const angle = (i / EMBER_COUNT) * Math.PI * 2 + this.frame * 0.5;
+          ctx.fillStyle = (i + this.frame) % 4 === 0 ? "#FF8953" : "#FF4B4B";
+          const at = project(
+            a.duck.wx + Math.cos(angle) * (r + 2),
+            a.duck.wy + Math.sin(angle) * (r + 2) - p * EMBER_LIFT,
+            this.camera.cam, renderCell, canvas.width, canvas.height, this.camera.side,
+          );
+          ctx.fillRect(at.x, at.y, renderCell, renderCell);
+        }
+      }
+    }
+
     // Back to front, so a duck lower in the water overlaps one above it.
-    const sorted = [...this.ducks].sort((a, b) => a.wy - b.wy);
+    // A duck still in the air is a shadow, not yet a duck.
+    const sorted = [...this.ducks].filter((d) => !d.falling).sort((a, b) => a.wy - b.wy);
     for (const d of sorted) {
       const p = project(
         d.wx, d.wy, this.camera.cam, renderCell,
