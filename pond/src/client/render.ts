@@ -25,6 +25,7 @@ import {
   flameMask,
 } from "./sprites.js";
 import type { Sticker } from "./types.js";
+import { prefersReducedMotion } from "./viewport.js";
 import { STICKERS, STICKER_PALETTE } from "./stickers.js";
 
 /** The card's own uneven dwell pattern, normalised. */
@@ -162,14 +163,9 @@ function drawFlames(
   }
 }
 
-let reducedMotion: boolean | null = null;
-export function prefersReducedMotion(): boolean {
-  if (reducedMotion === null) {
-    reducedMotion =
-      typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }
-  return reducedMotion;
-}
+// `prefersReducedMotion` used to live here. It is a fact about the viewing
+// conditions, not about drawing, and it now sits beside `watchSize` in
+// viewport.ts — where the other thing the OS can change under us lives.
 
 /* ── water ─────────────────────────────────────────────────────────────
    Flat depth bands dithered with a 4×4 ordered (Bayer) matrix. The

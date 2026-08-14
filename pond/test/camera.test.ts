@@ -10,7 +10,7 @@
  * something a person could see happening on a phone.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   CAM_MOMENT,
   CAM_UI,
@@ -378,5 +378,55 @@ describe("the anchor is in device pixels, and the units are the bug", () => {
     const drift = Math.abs(correct.cam.x - wrong.cam.x);
     expect(drift).toBeCloseTo(cssAnchor * (dpr - 1) * (1 / to), 4);
     expect(drift).toBeCloseTo(25, 1);
+  });
+});
+
+/**
+ * Reduced motion, at the camera.
+ *
+ * The camera is the largest movement in the pond — the whole world slides
+ * while the viewer sits still, which is precisely the vestibular trigger the
+ * preference exists for. Shortening the glide would not answer it; only
+ * already being there does.
+ *
+ * The module reads the preference through viewport.ts, which caches, so each
+ * case imports a fresh copy of the camera.
+ *
+ * @see viewport.test.ts for the switch itself.
+ */
+describe("a camera that has been asked not to move", () => {
+  /** A camera built against a pinned Reduce Motion setting. */
+  async function cameraWith(reduce: boolean) {
+    vi.resetModules();
+    vi.stubGlobal("matchMedia", () => ({
+      matches: reduce, addEventListener: () => {}, removeEventListener: () => {},
+    }));
+    const { PondCamera: Fresh } = await import("../src/client/camera.js");
+    return new Fresh({ x: 1000, y: 1000, cell: 4 }, 8000);
+  }
+
+  it("arrives immediately instead of gliding", async () => {
+    const cam = await cameraWith(true);
+    cam.glide({ x: 1400, y: 1200, cell: 8 }, 600, 0);
+    // Nothing left to ease: it is at the destination on the same tick.
+    expect(cam.cam).toEqual({ x: 1400, y: 1200, cell: 8 });
+  });
+
+  it("loses no information by arriving — the destination is the point", async () => {
+    const glided = await cameraWith(false);
+    const snapped = await cameraWith(true);
+    glided.glide({ x: 1400, y: 1200, cell: 8 }, 600, 0);
+    glided.tick(600);
+    snapped.glide({ x: 1400, y: 1200, cell: 8 }, 600, 0);
+    expect(snapped.cam).toEqual(glided.cam);
+  });
+
+  it("still glides when motion is welcome, or the moment is lost", async () => {
+    const cam = await cameraWith(false);
+    cam.glide({ x: 1400, y: 1200, cell: 8 }, 600, 0);
+    expect(cam.cam.x).toBe(1000); // has not left yet
+    cam.tick(300);
+    expect(cam.cam.x).toBeGreaterThan(1000);
+    expect(cam.cam.x).toBeLessThan(1400);
   });
 });

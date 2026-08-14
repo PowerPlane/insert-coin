@@ -54,6 +54,8 @@
  */
 
 /** Device pixels per sprite pixel. Integers only — see rule 1. */
+import { prefersReducedMotion } from "./viewport.js";
+
 export const CELLS = [2, 3, 4, 6, 8] as const;
 export type Cell = (typeof CELLS)[number];
 export const HOME_CELL: Cell = 4;
@@ -223,6 +225,21 @@ export class PondCamera {
    * the seam goes the short way round rather than scrolling the whole world.
    */
   glide(to: Partial<Camera>, ms = CAM_UI, now = performance.now()): void {
+    /*
+     * Reduced motion arrives, it does not travel.
+     *
+     * A camera glide is the largest movement in the pond — the whole world
+     * slides under a still viewer, which is exactly the vestibular trigger
+     * the preference exists for. Cutting the DURATION would not help; the
+     * only kind answer is to already be there.
+     *
+     * Nothing is lost by it: where the camera ends up is the information,
+     * and the journey was only ever the manners.
+     */
+    if (prefersReducedMotion()) {
+      this.snap(to);
+      return;
+    }
     const from = { ...this.cam };
     const target: Camera = {
       x: to.x === undefined ? from.x : from.x + wrapDelta(from.x, to.x, this.side),

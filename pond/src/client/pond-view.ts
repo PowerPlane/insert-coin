@@ -38,9 +38,9 @@ import {
   drawDuck,
   drawRipples,
   drawWater,
-  prefersReducedMotion,
   type WaterBuffer,
 } from "./render.js";
+import { prefersReducedMotion } from "./viewport.js";
 import { GRID, decodePaint } from "./codec.js";
 import {
   advanceParticles, douseMist, fireworkStreamers,

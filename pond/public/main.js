@@ -476,6 +476,50 @@ function slotOnDuck(origin, fortuneKey) {
   ];
 }
 
+// src/client/viewport.ts
+var REDUCE = "(prefers-reduced-motion: reduce)";
+var reducedMotion = null;
+function prefersReducedMotion() {
+  if (reducedMotion === null) {
+    if (typeof matchMedia !== "function") return false;
+    const query = matchMedia(REDUCE);
+    reducedMotion = query.matches;
+    query.addEventListener("change", (e) => {
+      reducedMotion = e.matches;
+    });
+  }
+  return reducedMotion;
+}
+function watchSize(el3, onChange) {
+  const stops = [];
+  const ro = new ResizeObserver(() => onChange());
+  ro.observe(el3);
+  stops.push(() => ro.disconnect());
+  const vv = window.visualViewport;
+  if (vv) {
+    const on = () => onChange();
+    vv.addEventListener("resize", on);
+    vv.addEventListener("scroll", on);
+    stops.push(() => {
+      vv.removeEventListener("resize", on);
+      vv.removeEventListener("scroll", on);
+    });
+  }
+  let dprQuery = null;
+  const watchDpr = () => {
+    dprQuery?.removeEventListener("change", onDpr);
+    dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    dprQuery.addEventListener("change", onDpr);
+  };
+  const onDpr = () => {
+    onChange();
+    watchDpr();
+  };
+  watchDpr();
+  stops.push(() => dprQuery?.removeEventListener("change", onDpr));
+  return () => stops.forEach((stop) => stop());
+}
+
 // src/client/stickers.ts
 var STICKER_PALETTE = {
   k: "#2B2B24",
@@ -802,13 +846,6 @@ function drawFlames(ctx, key, px, py, s, flip, frame) {
       ctx.fillRect(px + (ox - FLAME.OFFSET) * s, py + (y - FLAME.OFFSET) * s, s, s);
     }
   }
-}
-var reducedMotion = null;
-function prefersReducedMotion() {
-  if (reducedMotion === null) {
-    reducedMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }
-  return reducedMotion;
 }
 var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 var WATER = [
@@ -1880,6 +1917,10 @@ var PondCamera = class {
    * the seam goes the short way round rather than scrolling the whole world.
    */
   glide(to, ms = CAM_UI, now = performance.now()) {
+    if (prefersReducedMotion()) {
+      this.snap(to);
+      return;
+    }
     const from = { ...this.cam };
     const target = {
       x: to.x === void 0 ? from.x : from.x + wrapDelta(from.x, to.x, this.side),
@@ -3730,37 +3771,6 @@ var PondView = class {
     return best;
   }
 };
-
-// src/client/viewport.ts
-function watchSize(el3, onChange) {
-  const stops = [];
-  const ro = new ResizeObserver(() => onChange());
-  ro.observe(el3);
-  stops.push(() => ro.disconnect());
-  const vv = window.visualViewport;
-  if (vv) {
-    const on = () => onChange();
-    vv.addEventListener("resize", on);
-    vv.addEventListener("scroll", on);
-    stops.push(() => {
-      vv.removeEventListener("resize", on);
-      vv.removeEventListener("scroll", on);
-    });
-  }
-  let dprQuery = null;
-  const watchDpr = () => {
-    dprQuery?.removeEventListener("change", onDpr);
-    dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-    dprQuery.addEventListener("change", onDpr);
-  };
-  const onDpr = () => {
-    onChange();
-    watchDpr();
-  };
-  watchDpr();
-  stops.push(() => dprQuery?.removeEventListener("change", onDpr));
-  return () => stops.forEach((stop) => stop());
-}
 
 // src/client/main.ts
 function boot() {

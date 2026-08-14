@@ -29,7 +29,7 @@
  */
 
 import { HOME_CELL, type PondCamera } from "./camera.js";
-import { prefersReducedMotion } from "./render.js";
+import { prefersReducedMotion } from "./viewport.js";
 
 /** How far back velocity is measured. Long enough to smooth, short enough to feel like now. */
 const VELOCITY_WINDOW_MS = 120;

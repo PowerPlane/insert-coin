@@ -101,3 +101,66 @@ describe("the canvas backing store", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Reduce Motion is read every frame, so it is remembered rather than asked
+ * for each time — and the first version remembered it FOREVER. Somebody who
+ * turns the switch on because the pond is making them ill would have had to
+ * reload the pond to be heard.
+ *
+ * The module caches, so each test re-imports it fresh.
+ */
+describe("reduce motion", () => {
+  /** A media query whose value can be changed from the outside. */
+  function stubQuery(initial: boolean) {
+    const listeners: ((e: { matches: boolean }) => void)[] = [];
+    let matches = initial;
+    vi.stubGlobal("matchMedia", (q: string) => {
+      expect(q).toContain("prefers-reduced-motion");
+      return {
+        get matches() { return matches; },
+        addEventListener: (_: string, fn: (e: { matches: boolean }) => void) => listeners.push(fn),
+        removeEventListener: () => {},
+      };
+    });
+    return {
+      flip(to: boolean) {
+        matches = to;
+        listeners.forEach((fn) => fn({ matches: to }));
+      },
+    };
+  }
+
+  const fresh = async () => {
+    vi.resetModules();
+    return (await import("../src/client/viewport.js")).prefersReducedMotion;
+  };
+
+  it("reports what the query says", async () => {
+    stubQuery(true);
+    expect((await fresh())()).toBe(true);
+  });
+
+  it("notices the switch being turned on while the page is open", async () => {
+    const q = stubQuery(false);
+    const prefers = await fresh();
+    expect(prefers()).toBe(false);
+    q.flip(true);
+    expect(prefers()).toBe(true);
+  });
+
+  it("notices it being turned off again", async () => {
+    const q = stubQuery(true);
+    const prefers = await fresh();
+    expect(prefers()).toBe(true);
+    q.flip(false);
+    expect(prefers()).toBe(false);
+  });
+
+  it("says no where there is no matchMedia at all", async () => {
+    // Server-side rendering and the test runner both land here. Refusing to
+    // animate is the wrong default: it would strip motion from everyone.
+    vi.stubGlobal("matchMedia", undefined);
+    expect((await fresh())()).toBe(false);
+  });
+});
