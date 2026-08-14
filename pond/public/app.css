@@ -339,6 +339,17 @@ html[lang="zh-Hant"] body {
 /* The count IS the whistle — tapping it opens the gather list. */
 .p-count {
   all: unset;
+  /*
+   * ══ AND pointer-events, WHICH IS INHERITED ══
+   * The HUD is `pointer-events: none` so taps fall through to the water,
+   * and `.p-hud > *` turns it back on for the chips. But `all: unset`
+   * makes INHERITED properties inherit — and pointer-events is one — so
+   * this chip inherited `none` straight back from the HUD and became
+   * untappable. The count is the whistle, so the pond's entire filter was
+   * unreachable by finger while `.click()` in a test still worked, because
+   * that bypasses hit-testing altogether.
+   */
+  pointer-events: auto;
   /* Below the reset, or it does not survive it. */
   clip-path: var(--px-corner);
   font-family: var(--mono);
@@ -480,7 +491,14 @@ html[lang="zh-Hant"] body {
 .p-zoom {
   position: absolute;
   right: 16px;
-  bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
+  /*
+   * Clear of the CTA and the wordmark below it, not just of the screen
+   * edge. The old 76px assumed nothing was down there; with a call to
+   * action present the minus button sat on top of it.
+   */
+  bottom: calc(
+    max(16px, env(safe-area-inset-bottom)) + var(--wordmark-room) + var(--tap) + 20px
+  );
   display: flex;
   flex-direction: column;
   gap: 8px;

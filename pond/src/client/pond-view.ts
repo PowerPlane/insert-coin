@@ -42,6 +42,7 @@ import {
   type WaterBuffer,
 } from "./render.js";
 import { GRID, decodePaint } from "./codec.js";
+import { DWELL } from "./render.js";
 import {
   PETAL_LIFE_MS,
   type Petal,
@@ -63,17 +64,12 @@ export interface Placed extends PondDuck {
   wx: number;
   wy: number;
   flip: boolean;
-  /** Where the duck is being pulled to, while a whistle is active. */
-  tx?: number;
-  ty?: number;
-  /** Where it lives when nobody is whistling. */
-  homeX?: number;
-  homeY?: number;
-  /** Where this leg of the journey started. Cleared when it arrives. */
-  gx?: number;
-  gy?: number;
   /** The heading it is currently wandering along, in radians. */
   head?: number;
+  /** Stable per-duck character: where on the ring it aims, and how hard it pulls. */
+  r?: number;
+  /** True while the whistle has pushed it out of the frame. */
+  shoved?: boolean;
   /** A bump in flight: where it left, where it stops, and when it set off. */
   dartFromX?: number;
   dartFromY?: number;
@@ -85,9 +81,6 @@ export interface Placed extends PondDuck {
   vx?: number;
   vy?: number;
 }
-
-/** How long a duck takes to arc in, or back out again. */
-const GATHER_MS = 900;
 
 /*
  * ══ A BUMP IS A DUCK CROSSING THE POND ══
@@ -108,10 +101,12 @@ const KNOCK_Y = 2.4;
 /** What you take back. Less: you were the one moving. */
 const REBOUND_X = 1.6;
 const REBOUND_Y = 1.1;
-/** Per-frame velocity decay, so a knock settles rather than drifting away. */
-const KNOCK_DECAY = 0.86;
-/** Below this, in sprite cells per frame, the duck has stopped. */
-const KNOCK_REST = 0.02;
+/*
+ * A knock decays through the same DRIFT_DECAY every other velocity uses.
+ * There were separate KNOCK_DECAY and KNOCK_REST constants here, declared
+ * and referenced by nothing — two numbers claiming to govern behaviour
+ * that was actually governed elsewhere, which is worse than no constant.
+ */
 
 /**
  * How far down the visible frame a duck sits when its card is open.
@@ -149,6 +144,27 @@ const SEP_ROOM = GRID * 1.75;
 const SEP_STRENGTH = 0.06;
 /** Elbow room pushes far more gently than contact does. */
 const SEP_ROOM_SCALE = 0.16;
+
+/*
+ * ══ THE WHISTLE'S FORCES ══
+ * Every one of these is an impulse applied once per world tick. They are
+ * small because they compound: a called duck is pulled every tick for as
+ * long as the whistle is up, so the flock keeps milling instead of parking.
+ */
+/** Toward its own spot on the ring. Scaled per duck by its own character. */
+const CALL_PULL = 0.0075;
+/** Tangential, so they arc in rather than beeline. */
+const CALL_SWIRL = 0.10;
+/** The ring is an ellipse — a circle reads as a diagram. */
+const RING_SQUASH = 0.8;
+/** Called ducks are packed tight, so they need their own stronger pass. */
+const CALL_SEPARATE = 0.13;
+/** Out, and briskly: being asked to leave should look like leaving. */
+const EVICT_PUSH = 1.35;
+/** Around the rim, so they part rather than piling on one side. */
+const EVICT_FAN = 0.5;
+/** Back in, once the whistle clears. Gentler than being pushed out. */
+const RETURN_PULL = 0.30;
 
 /*
  * The ripple where two ducks touch.
@@ -254,9 +270,9 @@ export class PondView {
   /** For the wander's dt. Clamped, so a backgrounded tab does not teleport. */
   private lastFrameAt = 0;
   private lastDebug = 0;
-  private gatherStart = 0;
-  /** True while a whistle is up. A called flock is meant to be close. */
-  private whistling = false;
+  /** The active whistle, or null. Held as the predicate so the force field
+   *  can ask it every tick rather than working from a stale snapshot. */
+  private whistling: ((d: Placed) => boolean) | null = null;
   private sparkles: SparklePixel[] = [];
   private sparkleStart = 0;
   private petals: Petal[] = [];
@@ -342,12 +358,20 @@ export class PondView {
       const old = previous.get(fresh.id);
       if (!old) return fresh;
       // Server-side facts are new; where it sits is ours.
+      /*
+       * Server facts are new; everything about how it is MOVING is ours.
+       * Dropping these on a poll restarted the flock every twenty seconds:
+       * a duck mid-swim toward a whistle would forget it was called, and a
+       * duck that had been pushed out would forget to come back.
+       */
       return {
         ...fresh,
         wx: old.wx, wy: old.wy, flip: old.flip,
-        tx: old.tx, ty: old.ty,
-        homeX: old.homeX, homeY: old.homeY,
-        gx: old.gx, gy: old.gy,
+        vx: old.vx, vy: old.vy,
+        head: old.head, r: old.r, shoved: old.shoved,
+        dartAt: old.dartAt, dartTarget: old.dartTarget,
+        dartFromX: old.dartFromX, dartFromY: old.dartFromY,
+        dartToX: old.dartToX, dartToY: old.dartToY,
       };
     });
 
@@ -377,57 +401,22 @@ export class PondView {
    *     them back, so the pond refills.
    */
   gather(match: ((d: Placed) => boolean) | null): void {
-    this.whistling = match !== null;
-    const { side } = this.camera;
-    const cx = this.camera.cam.x;
-    const cy = this.camera.cam.y;
-
-    for (const d of this.ducks) {
-      // Remember home once, so repeated whistles do not drift the pond.
-      d.homeX ??= d.wx;
-      d.homeY ??= d.wy;
-    }
-
-    if (!match) {
-      for (const d of this.ducks) {
-        d.tx = d.homeX;
-        d.ty = d.homeY;
-      }
-      this.gatherStart = performance.now();
-      return;
-    }
-
-    const called = this.ducks.filter(match);
-    const rest = this.ducks.filter((d) => !match(d));
-
-    // A ring sized to the crowd, so twenty ducks are not stacked and three
-    // are not scattered across the horizon.
-    const radius = Math.max(24, Math.min(this.frameSprite.w, this.frameSprite.h) * 0.28);
-    called.forEach((d, i) => {
-      const a = (i / Math.max(called.length, 1)) * Math.PI * 2;
-      // A little jitter per duck, so the ring is a gathering rather than a
-      // dial. Derived from the id, so it does not shimmer between frames.
-      const wobble = 0.82 + 0.36 * hashId(d.id + "r");
-      d.tx = wrap(cx + Math.cos(a) * radius * wobble, side);
-      d.ty = wrap(cy + Math.sin(a) * radius * wobble, side);
-    });
-
-    // Everyone else fans around the rim, outside the frame, keeping their
-    // own angle so they go the short way out and come back the same way.
-    const out = Math.max(this.frameSprite.w, this.frameSprite.h) * 0.78;
-    rest.forEach((d) => {
-      const a = hashId(d.id + "o") * Math.PI * 2;
-      d.tx = wrap(cx + Math.cos(a) * out, side);
-      d.ty = wrap(cy + Math.sin(a) * out, side);
-    });
-
-    this.gatherStart = performance.now();
+    /*
+     * Recording the whistle is the whole of this method now.
+     *
+     * It used to compute a destination for every duck and tween them there
+     * over 900ms: a ring position for the called, a rim position for the
+     * rest. They arrived in formation and stopped, which is what made it
+     * read as things being ARRANGED rather than as a flock answering —
+     * linear, eased once, and dead on arrival.
+     *
+     * `advanceWhistle` applies forces every tick instead, for as long as
+     * the whistle is up, so the ducks swim in past each other, jostle for
+     * room when they get there, and keep milling.
+     */
+    this.whistling = match;
   }
 
-  /** True while ducks are still travelling, so the loop stays at display rate. */
-  private get gathering(): boolean {
-    return this.gatherStart > 0 && performance.now() - this.gatherStart < GATHER_MS;
-  }
 
   /** What the view actually believes, for debugging against a real browser. */
   debug(): Record<string, unknown> {
@@ -510,19 +499,30 @@ export class PondView {
       if (!this.running) return;
       const camMoving = this.camera.tick(now);
 
-      // The world holds still while the camera moves — rule 5.
-      if (!camMoving && now - this.lastWorldTick >= WORLD_MS) {
+      /*
+       * ══ THE WORLD MOVES ON THE TICK, NOT ON THE FRAME ══
+       * Every force below is an IMPULSE — `vx += dx * pull` — tuned for one
+       * stop-motion tick. Running them on requestAnimationFrame applied
+       * them about five times as often, which made separation five times
+       * stiffer than intended and the wander churn five times faster.
+       *
+       * And the world genuinely holds still during a camera move (rule 5):
+       * ducks lurching underneath a gliding view reads as the zoom
+       * stuttering. Only the frame counter used to be gated; the physics
+       * kept running.
+       *
+       * DWELL is why it does not tick like a metronome. 80/116/68/100 ms is
+       * a hand doing this, not a clock — and it was dead code, exported and
+       * imported by nobody, so the pond had been running at a flat 83.33.
+       */
+      const wait = WORLD_MS * DWELL[this.frame % DWELL.length]!;
+      if (!camMoving && now - this.lastWorldTick >= wait) {
+        const dt = Math.min(0.25, (now - this.lastWorldTick) / 1000);
         this.lastWorldTick = now;
         this.frame++;
+        this.step(dt);
       }
 
-      this.advanceGather(now);
-      // Spacing first, so a push is felt in the same frame it is applied.
-      // Elbow room only when nobody has been whistled for: a flock that has
-      // been called is meant to be close.
-      this.separate(!this.whistling);
-      this.advanceDarts(now, Math.min(0.05, (now - this.lastFrameAt) / 1000));
-      this.lastFrameAt = now;
       this.draw(now);
 
       // Publish state into the DOM, throttled, behind `?debug`.
@@ -541,7 +541,7 @@ export class PondView {
       // Display rate while moving or rippling; stop-motion otherwise.
       // Display rate whenever the view is under anyone's control — a
       // finger, a fling, a glide, a settle — and stop-motion otherwise.
-      if (camMoving || this.ripples.length || this.gathering || this.sparkles.length) {
+      if (camMoving || this.ripples.length || this.sparkles.length) {
         this.raf = requestAnimationFrame(loop);
       } else {
         this.timer = window.setTimeout(() => {
@@ -618,16 +618,32 @@ export class PondView {
    * zoomed in to look at one corner should not be yanked back out because
    * they tapped something.
    */
-  lookAtAbove(id: string, yFrac = DUCK_ABOVE_SHEET): void {
+  lookAtAbove(id: string, clearBelowCss = 0): void {
     const d = this.find(id);
     if (!d) return;
     const cell = Math.max(this.camera.cam.cell, HOME_CELL);
-    // The visible frame in sprite cells at the zoom we are about to be at.
-    const frameH = (this.frameSprite.h * this.camera.frame().renderCell) / cell;
-    this.camera.glide(
-      { x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell },
-      CAM_UI,
-    );
+
+    /*
+     * The visible frame, computed from the canvas box and the zoom we are
+     * ABOUT to be at — not from `frameSprite`, which is only recalculated
+     * on resize and is therefore stale the moment anybody zooms. That
+     * staleness is why a duck tapped at 8x landed near the top of the
+     * screen instead of in the water.
+     */
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const dpr = this.dpr();
+    const frameH = ((rect.height / OVERSCAN) * dpr) / cell;
+
+    /*
+     * Centre it in the water that is actually LEFT, rather than at a fixed
+     * fraction of the whole frame. The card's height changes with the
+     * message and the bumper row, so a constant can only be right for one
+     * card; measuring is right for all of them.
+     */
+    const visibleCss = Math.max(0, rect.height / OVERSCAN - clearBelowCss);
+    const yFrac = clearBelowCss > 0 ? visibleCss / 2 / (rect.height / OVERSCAN) : DUCK_ABOVE_SHEET;
+
+    this.camera.glide({ x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell }, CAM_UI);
   }
 
   /**
@@ -675,20 +691,26 @@ export class PondView {
    * comparisons at a hundred ducks, every frame, on a phone.
    */
   private separate(roomy: boolean): void {
+    this.separateSome(this.ducks, SEP_STRENGTH, roomy);
+  }
+
+  /** The same rule over an arbitrary set, at an arbitrary strength. */
+  private separateSome(list: Placed[], strength: number, roomy: boolean): void {
     const { side } = this.camera;
     const g = roomy ? SEP_ROOM : SEP_CONTACT;
     const buckets = new Map<string, Placed[]>();
+    const ducks = list;
     const keyOf = (x: number, y: number) =>
       `${Math.floor(wrap(x, side) / g)},${Math.floor(wrap(y, side) / g)}`;
 
-    for (const d of this.ducks) {
+    for (const d of ducks) {
       const k = keyOf(d.wx, d.wy);
       const arr = buckets.get(k);
       if (arr) arr.push(d);
       else buckets.set(k, [d]);
     }
 
-    for (const d of this.ducks) {
+    for (const d of ducks) {
       const cx = Math.floor(wrap(d.wx, side) / g);
       const cy = Math.floor(wrap(d.wy, side) / g);
       for (let ox = -1; ox <= 1; ox++) {
@@ -703,9 +725,9 @@ export class PondView {
             if (dist <= 0.01 || dist >= g) continue;
             const f =
               dist < SEP_CONTACT
-                ? ((SEP_CONTACT - dist) / dist) * SEP_STRENGTH
+                ? ((SEP_CONTACT - dist) / dist) * strength
                 : roomy
-                  ? ((SEP_ROOM - dist) / dist) * SEP_STRENGTH * SEP_ROOM_SCALE
+                  ? ((SEP_ROOM - dist) / dist) * strength * SEP_ROOM_SCALE
                   : 0;
             if (!f) continue;
             d.vx = (d.vx ?? 0) - dx * f;
@@ -767,27 +789,115 @@ export class PondView {
     }
   }
 
-  private advanceGather(now: number): void {
-    if (this.gatherStart === 0) return;
-    const p = Math.min(1, (now - this.gatherStart) / GATHER_MS);
-    const e = easeInOutCubic(p);
-    const { side } = this.camera;
+  /**
+   * One tick of the world.
+   *
+   * Order matters: the whistle's forces are added first, separation is
+   * layered on top of them, and only then is velocity integrated — so a
+   * duck being called and a duck being pushed off it resolve together in
+   * the same tick rather than fighting across two.
+   */
+  private step(dt: number): void {
+    this.advanceWhistle();
+    // Contact always; elbow room only when nobody has been called, because
+    // a flock that has been whistled for is MEANT to be close.
+    this.separate(this.whistling === null);
+    this.advanceDarts(performance.now(), dt);
+  }
 
-    for (const d of this.ducks) {
-      if (d.tx === undefined || d.ty === undefined) continue;
-      const fromX = d.gx ?? d.wx;
-      const fromY = d.gy ?? d.wy;
-      d.gx ??= fromX;
-      d.gy ??= fromY;
-      d.wx = wrap(fromX + wrapDelta(fromX, d.tx, side) * e, side);
-      d.wy = wrap(fromY + wrapDelta(fromY, d.ty, side) * e, side);
+  /**
+   * ══ THE WHISTLE IS A FORCE FIELD, NOT A DESTINATION ══
+   *
+   * The first version tweened every called duck to a computed spot over
+   * 900ms and stopped. It arrived as a perfect ring and then froze, which
+   * reads as a diagram assembling itself — the opposite of a flock.
+   *
+   * The prototype never computes a destination. It applies forces every
+   * tick, for as long as the whistle is up, and the shape that emerges is
+   * a consequence rather than a target:
+   *
+   *   * Each duck has a stable character `r`, so it aims at ITS OWN spot on
+   *     a loose ellipse and pulls at ITS OWN rate. Everyone converging on
+   *     one pixel at one speed packs into a hexagonal lattice, which is
+   *     what made the first version read as a crystal.
+   *   * A tangential swirl means they arc in rather than beeline.
+   *   * Uncalled ducks are pushed out briskly and fanned around the rim, so
+   *     they leave rather than being deleted — and they are flagged, so
+   *     clearing the whistle brings back exactly the ones it moved.
+   */
+  private advanceWhistle(): void {
+    const { side } = this.camera;
+    const gx = this.camera.cam.x;
+    const gy = this.camera.cam.y;
+    const frameW = this.frameSprite.w;
+    const frameH = this.frameSprite.h;
+
+    if (this.whistling) {
+      const called: Placed[] = [];
+      // Just past the frame, and never further than the world can absorb —
+      // or "outside the frame" becomes "against the wall".
+      const clear = Math.min(Math.max(frameW, frameH) * 0.52 + GRID, side * 0.42);
+
+      for (const d of this.ducks) {
+        if (d.dartAt) continue;
+        d.r ??= hashId(d.id + "r");
+
+        if (this.whistling(d)) {
+          const angle = d.r * Math.PI * 2;
+          const ring = (0.3 + d.r * 0.8) * GRID * 1.9;
+          const tx = gx + Math.cos(angle) * ring;
+          const ty = gy + Math.sin(angle) * ring * RING_SQUASH;
+          const dx = wrapDelta(d.wx, tx, side);
+          const dy = wrapDelta(d.wy, ty, side);
+          const dist = Math.hypot(dx, dy) || 1;
+          const pull = CALL_PULL * (0.65 + d.r * 0.8);
+          d.vx = (d.vx ?? 0) + dx * pull;
+          d.vy = (d.vy ?? 0) + dy * pull;
+          // Tangential: they arc in rather than beelining.
+          d.vx += (-dy / dist) * CALL_SWIRL;
+          d.vy += (dx / dist) * CALL_SWIRL;
+          called.push(d);
+          continue;
+        }
+
+        const dx = wrapDelta(gx, d.wx, side);
+        const dy = wrapDelta(gy, d.wy, side);
+        const dist = Math.hypot(dx, dy) || 1;
+        if (dist < clear) {
+          d.vx = (d.vx ?? 0) + (dx / dist) * EVICT_PUSH;
+          d.vy = (d.vy ?? 0) + (dy / dist) * EVICT_PUSH;
+          // Around the rim rather than straight out, so they part instead
+          // of piling up on one side.
+          d.vx += (-dy / dist) * EVICT_FAN;
+          d.vy += (dx / dist) * EVICT_FAN;
+          d.shoved = true;
+        }
+      }
+
+      // A second, stronger pass over the flock only: called ducks are
+      // packed tightly by the pull and need more room from each other than
+      // the ambient rule gives.
+      this.separateSome(called, CALL_SEPARATE, false);
+      return;
     }
 
-    if (p >= 1) {
-      this.gatherStart = 0;
-      for (const d of this.ducks) {
-        d.gx = undefined;
-        d.gy = undefined;
+    /*
+     * Whistle cleared. Only the ducks it actually MOVED come back — the
+     * rest were never anywhere else. Without this they drift home on
+     * ordinary wander, which takes minutes and leaves a ring of them
+     * parked outside the frame in the meantime.
+     */
+    const inner = Math.hypot(frameW, frameH) * 0.42;
+    for (const d of this.ducks) {
+      if (d.dartAt || !d.shoved) continue;
+      const dx = wrapDelta(d.wx, gx, side);
+      const dy = wrapDelta(d.wy, gy, side);
+      const dist = Math.hypot(dx, dy) || 1;
+      if (dist > inner) {
+        d.vx = (d.vx ?? 0) + (dx / dist) * RETURN_PULL;
+        d.vy = (d.vy ?? 0) + (dy / dist) * RETURN_PULL;
+      } else {
+        d.shoved = false;
       }
     }
   }

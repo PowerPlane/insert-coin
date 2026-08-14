@@ -726,6 +726,7 @@ var SLOT_ORIGIN = {
 var MAX_STICKERS = 6;
 
 // src/client/render.ts
+var DWELL = [1, 1.45, 0.85, 1.25];
 function tintOf(d) {
   if (d.burning) return BURNING_TINT;
   return TINTS[d.tint] ?? TINTS[0];
@@ -2731,7 +2732,6 @@ function petals(wx, wy, now) {
 var WORLD_FPS = 12;
 var WORLD_MS = 1e3 / WORLD_FPS;
 var SEPARATION = 30;
-var GATHER_MS = 900;
 var DART_MS = 420;
 var DART_STOP_SHORT = GRID * 0.7;
 var KNOCK_X = 3.6;
@@ -2748,6 +2748,13 @@ var SEP_CONTACT = GRID * 0.86;
 var SEP_ROOM = GRID * 1.75;
 var SEP_STRENGTH = 0.06;
 var SEP_ROOM_SCALE = 0.16;
+var CALL_PULL = 75e-4;
+var CALL_SWIRL = 0.1;
+var RING_SQUASH = 0.8;
+var CALL_SEPARATE = 0.13;
+var EVICT_PUSH = 1.35;
+var EVICT_FAN = 0.5;
+var RETURN_PULL = 0.3;
 var BUMP_SPLASH_CELLS = 9;
 function hashId(id) {
   let h = 2166136261;
@@ -2823,9 +2830,9 @@ var PondView = class {
   /** For the wander's dt. Clamped, so a backgrounded tab does not teleport. */
   lastFrameAt = 0;
   lastDebug = 0;
-  gatherStart = 0;
-  /** True while a whistle is up. A called flock is meant to be close. */
-  whistling = false;
+  /** The active whistle, or null. Held as the predicate so the force field
+   *  can ask it every tick rather than working from a stale snapshot. */
+  whistling = null;
   sparkles = [];
   sparkleStart = 0;
   petals = [];
@@ -2893,12 +2900,17 @@ var PondView = class {
         wx: old.wx,
         wy: old.wy,
         flip: old.flip,
-        tx: old.tx,
-        ty: old.ty,
-        homeX: old.homeX,
-        homeY: old.homeY,
-        gx: old.gx,
-        gy: old.gy
+        vx: old.vx,
+        vy: old.vy,
+        head: old.head,
+        r: old.r,
+        shoved: old.shoved,
+        dartAt: old.dartAt,
+        dartTarget: old.dartTarget,
+        dartFromX: old.dartFromX,
+        dartFromY: old.dartFromY,
+        dartToX: old.dartToX,
+        dartToY: old.dartToY
       };
     });
     if (wasEmpty) this.camera.snap({ x: this.camera.side / 2, y: this.camera.side / 2 });
@@ -2923,42 +2935,7 @@ var PondView = class {
    *     them back, so the pond refills.
    */
   gather(match) {
-    this.whistling = match !== null;
-    const { side } = this.camera;
-    const cx = this.camera.cam.x;
-    const cy = this.camera.cam.y;
-    for (const d of this.ducks) {
-      d.homeX ??= d.wx;
-      d.homeY ??= d.wy;
-    }
-    if (!match) {
-      for (const d of this.ducks) {
-        d.tx = d.homeX;
-        d.ty = d.homeY;
-      }
-      this.gatherStart = performance.now();
-      return;
-    }
-    const called = this.ducks.filter(match);
-    const rest = this.ducks.filter((d) => !match(d));
-    const radius = Math.max(24, Math.min(this.frameSprite.w, this.frameSprite.h) * 0.28);
-    called.forEach((d, i) => {
-      const a = i / Math.max(called.length, 1) * Math.PI * 2;
-      const wobble = 0.82 + 0.36 * hashId(d.id + "r");
-      d.tx = wrap(cx + Math.cos(a) * radius * wobble, side);
-      d.ty = wrap(cy + Math.sin(a) * radius * wobble, side);
-    });
-    const out = Math.max(this.frameSprite.w, this.frameSprite.h) * 0.78;
-    rest.forEach((d) => {
-      const a = hashId(d.id + "o") * Math.PI * 2;
-      d.tx = wrap(cx + Math.cos(a) * out, side);
-      d.ty = wrap(cy + Math.sin(a) * out, side);
-    });
-    this.gatherStart = performance.now();
-  }
-  /** True while ducks are still travelling, so the loop stays at display rate. */
-  get gathering() {
-    return this.gatherStart > 0 && performance.now() - this.gatherStart < GATHER_MS;
+    this.whistling = match;
   }
   /** What the view actually believes, for debugging against a real browser. */
   debug() {
@@ -3027,20 +3004,19 @@ var PondView = class {
     const loop = (now) => {
       if (!this.running) return;
       const camMoving = this.camera.tick(now);
-      if (!camMoving && now - this.lastWorldTick >= WORLD_MS) {
+      const wait = WORLD_MS * DWELL[this.frame % DWELL.length];
+      if (!camMoving && now - this.lastWorldTick >= wait) {
+        const dt = Math.min(0.25, (now - this.lastWorldTick) / 1e3);
         this.lastWorldTick = now;
         this.frame++;
+        this.step(dt);
       }
-      this.advanceGather(now);
-      this.separate(!this.whistling);
-      this.advanceDarts(now, Math.min(0.05, (now - this.lastFrameAt) / 1e3));
-      this.lastFrameAt = now;
       this.draw(now);
       if (this.debugging && now - this.lastDebug > 50) {
         this.lastDebug = now;
         this.opts.canvas.dataset.pond = JSON.stringify(this.debug());
       }
-      if (camMoving || this.ripples.length || this.gathering || this.sparkles.length) {
+      if (camMoving || this.ripples.length || this.sparkles.length) {
         this.raf = requestAnimationFrame(loop);
       } else {
         this.timer = window.setTimeout(() => {
@@ -3111,15 +3087,16 @@ var PondView = class {
    * zoomed in to look at one corner should not be yanked back out because
    * they tapped something.
    */
-  lookAtAbove(id, yFrac = DUCK_ABOVE_SHEET) {
+  lookAtAbove(id, clearBelowCss = 0) {
     const d = this.find(id);
     if (!d) return;
     const cell = Math.max(this.camera.cam.cell, HOME_CELL);
-    const frameH = this.frameSprite.h * this.camera.frame().renderCell / cell;
-    this.camera.glide(
-      { x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell },
-      CAM_UI
-    );
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const dpr = this.dpr();
+    const frameH = rect.height / OVERSCAN * dpr / cell;
+    const visibleCss = Math.max(0, rect.height / OVERSCAN - clearBelowCss);
+    const yFrac = clearBelowCss > 0 ? visibleCss / 2 / (rect.height / OVERSCAN) : DUCK_ABOVE_SHEET;
+    this.camera.glide({ x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell }, CAM_UI);
   }
   /**
    * Move each duck toward wherever the whistle put it.
@@ -3160,17 +3137,22 @@ var PondView = class {
    * comparisons at a hundred ducks, every frame, on a phone.
    */
   separate(roomy) {
+    this.separateSome(this.ducks, SEP_STRENGTH, roomy);
+  }
+  /** The same rule over an arbitrary set, at an arbitrary strength. */
+  separateSome(list, strength, roomy) {
     const { side } = this.camera;
     const g = roomy ? SEP_ROOM : SEP_CONTACT;
     const buckets = /* @__PURE__ */ new Map();
+    const ducks = list;
     const keyOf = (x, y) => `${Math.floor(wrap(x, side) / g)},${Math.floor(wrap(y, side) / g)}`;
-    for (const d of this.ducks) {
+    for (const d of ducks) {
       const k = keyOf(d.wx, d.wy);
       const arr = buckets.get(k);
       if (arr) arr.push(d);
       else buckets.set(k, [d]);
     }
-    for (const d of this.ducks) {
+    for (const d of ducks) {
       const cx = Math.floor(wrap(d.wx, side) / g);
       const cy = Math.floor(wrap(d.wy, side) / g);
       for (let ox = -1; ox <= 1; ox++) {
@@ -3183,7 +3165,7 @@ var PondView = class {
             const dy = wrapDelta(d.wy, o.wy, side);
             const dist = Math.hypot(dx, dy);
             if (dist <= 0.01 || dist >= g) continue;
-            const f = dist < SEP_CONTACT ? (SEP_CONTACT - dist) / dist * SEP_STRENGTH : roomy ? (SEP_ROOM - dist) / dist * SEP_STRENGTH * SEP_ROOM_SCALE : 0;
+            const f = dist < SEP_CONTACT ? (SEP_CONTACT - dist) / dist * strength : roomy ? (SEP_ROOM - dist) / dist * strength * SEP_ROOM_SCALE : 0;
             if (!f) continue;
             d.vx = (d.vx ?? 0) - dx * f;
             d.vy = (d.vy ?? 0) - dy * f;
@@ -3231,25 +3213,92 @@ var PondView = class {
       if (Math.abs(d.vx + dx) > 0.12) d.flip = d.vx + dx < 0;
     }
   }
-  advanceGather(now) {
-    if (this.gatherStart === 0) return;
-    const p = Math.min(1, (now - this.gatherStart) / GATHER_MS);
-    const e = easeInOutCubic(p);
+  /**
+   * One tick of the world.
+   *
+   * Order matters: the whistle's forces are added first, separation is
+   * layered on top of them, and only then is velocity integrated — so a
+   * duck being called and a duck being pushed off it resolve together in
+   * the same tick rather than fighting across two.
+   */
+  step(dt) {
+    this.advanceWhistle();
+    this.separate(this.whistling === null);
+    this.advanceDarts(performance.now(), dt);
+  }
+  /**
+   * ══ THE WHISTLE IS A FORCE FIELD, NOT A DESTINATION ══
+   *
+   * The first version tweened every called duck to a computed spot over
+   * 900ms and stopped. It arrived as a perfect ring and then froze, which
+   * reads as a diagram assembling itself — the opposite of a flock.
+   *
+   * The prototype never computes a destination. It applies forces every
+   * tick, for as long as the whistle is up, and the shape that emerges is
+   * a consequence rather than a target:
+   *
+   *   * Each duck has a stable character `r`, so it aims at ITS OWN spot on
+   *     a loose ellipse and pulls at ITS OWN rate. Everyone converging on
+   *     one pixel at one speed packs into a hexagonal lattice, which is
+   *     what made the first version read as a crystal.
+   *   * A tangential swirl means they arc in rather than beeline.
+   *   * Uncalled ducks are pushed out briskly and fanned around the rim, so
+   *     they leave rather than being deleted — and they are flagged, so
+   *     clearing the whistle brings back exactly the ones it moved.
+   */
+  advanceWhistle() {
     const { side } = this.camera;
-    for (const d of this.ducks) {
-      if (d.tx === void 0 || d.ty === void 0) continue;
-      const fromX = d.gx ?? d.wx;
-      const fromY = d.gy ?? d.wy;
-      d.gx ??= fromX;
-      d.gy ??= fromY;
-      d.wx = wrap(fromX + wrapDelta(fromX, d.tx, side) * e, side);
-      d.wy = wrap(fromY + wrapDelta(fromY, d.ty, side) * e, side);
-    }
-    if (p >= 1) {
-      this.gatherStart = 0;
+    const gx = this.camera.cam.x;
+    const gy = this.camera.cam.y;
+    const frameW = this.frameSprite.w;
+    const frameH = this.frameSprite.h;
+    if (this.whistling) {
+      const called = [];
+      const clear = Math.min(Math.max(frameW, frameH) * 0.52 + GRID, side * 0.42);
       for (const d of this.ducks) {
-        d.gx = void 0;
-        d.gy = void 0;
+        if (d.dartAt) continue;
+        d.r ??= hashId(d.id + "r");
+        if (this.whistling(d)) {
+          const angle = d.r * Math.PI * 2;
+          const ring2 = (0.3 + d.r * 0.8) * GRID * 1.9;
+          const tx = gx + Math.cos(angle) * ring2;
+          const ty = gy + Math.sin(angle) * ring2 * RING_SQUASH;
+          const dx2 = wrapDelta(d.wx, tx, side);
+          const dy2 = wrapDelta(d.wy, ty, side);
+          const dist2 = Math.hypot(dx2, dy2) || 1;
+          const pull = CALL_PULL * (0.65 + d.r * 0.8);
+          d.vx = (d.vx ?? 0) + dx2 * pull;
+          d.vy = (d.vy ?? 0) + dy2 * pull;
+          d.vx += -dy2 / dist2 * CALL_SWIRL;
+          d.vy += dx2 / dist2 * CALL_SWIRL;
+          called.push(d);
+          continue;
+        }
+        const dx = wrapDelta(gx, d.wx, side);
+        const dy = wrapDelta(gy, d.wy, side);
+        const dist = Math.hypot(dx, dy) || 1;
+        if (dist < clear) {
+          d.vx = (d.vx ?? 0) + dx / dist * EVICT_PUSH;
+          d.vy = (d.vy ?? 0) + dy / dist * EVICT_PUSH;
+          d.vx += -dy / dist * EVICT_FAN;
+          d.vy += dx / dist * EVICT_FAN;
+          d.shoved = true;
+        }
+      }
+      this.separateSome(called, CALL_SEPARATE, false);
+      return;
+    }
+    const inner = Math.hypot(frameW, frameH) * 0.42;
+    for (const d of this.ducks) {
+      if (d.dartAt || !d.shoved) continue;
+      const dx = wrapDelta(d.wx, gx, side);
+      const dy = wrapDelta(d.wy, gy, side);
+      const dist = Math.hypot(dx, dy) || 1;
+      if (dist > inner) {
+        d.vx = (d.vx ?? 0) + dx / dist * RETURN_PULL;
+        d.vy = (d.vy ?? 0) + dy / dist * RETURN_PULL;
+      } else {
+        d.shoved = false;
       }
     }
   }
@@ -3547,7 +3596,12 @@ async function pondScreen(bootstrap) {
   }
   function buildCta(session) {
     if (session.active && !session.spent) {
-      const go = el2("button", "p-btn p-btn-quiet", t("arrival.04"));
+      const resuming = loadDraft() !== null;
+      const go = el2(
+        "button",
+        "p-btn p-btn-quiet",
+        resuming ? t("code.02") : t("arrival.04")
+      );
       go.type = "button";
       go.addEventListener("click", () => {
         pausePolling();
@@ -3578,6 +3632,13 @@ async function pondScreen(bootstrap) {
         });
       });
       cta.append(go);
+      return;
+    }
+    if (!mine) {
+      const hint = el2("button", "p-btn p-btn-quiet", t("code.06"));
+      hint.type = "button";
+      hint.disabled = true;
+      cta.append(hint);
       return;
     }
     if (mine) {
@@ -3617,7 +3678,6 @@ function shortDate(created) {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 function openDuckCard(view, duck) {
-  view.lookAtAbove(duck.id);
   view.splash(duck.wx, duck.wy);
   document.querySelector(".p-card")?.remove();
   const scrim = el2("div", "p-scrim");
@@ -3720,6 +3780,7 @@ function openDuckCard(view, duck) {
   card.append(close);
   panel.append(ditherEdge(), card);
   root.append(scrim, panel);
+  view.lookAtAbove(duck.id, window.innerHeight - panel.getBoundingClientRect().top);
 }
 function reportSheet(card, duck) {
   card.replaceChildren();

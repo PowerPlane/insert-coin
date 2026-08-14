@@ -11,7 +11,10 @@
  * from a duck card back to the water rather than navigating.
  */
 
-import { ApiError, api, recallEditKey, type ReportReason, type SessionState } from "./api.js";
+import {
+  ApiError, api, loadDraft, recallEditKey,
+  type ReportReason, type SessionState,
+} from "./api.js";
 import { button, ditherEdge, field } from "./dom.js";
 import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
@@ -338,12 +341,23 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     // is the whole reason the pond can be the default screen: someone with
     // nothing to make sees a pond, not a form.
     /*
-     * Quiet, not the duck-yellow primary. The prototype reserves yellow for
-     * the one real action on a MAKING screen; over the water this is a way
-     * back into a flow you have already started, and a yellow slab there
-     * competes with the pond it is sitting on. `.btn.g` in the prototype.
+     * ══ THE BAR SAYS WHERE YOU ARE IN THE FLOW ══
+     * The prototype's pond CTA has three states and this had one. It said
+     * "Decorate it" whether you had never started or were three screens
+     * deep with a half-decorated duck saved — so the button that resumed
+     * your work was worded as though it would begin it.
+     *
+     * COPY.md code.02 / code.06. The one adaptation: the prototype reaches
+     * the pond AFTER the arrival, so its CTA is always a resume. Here the
+     * pond is the default screen, so a session with no draft is genuinely
+     * a start and says so.
      */
-    const go = el("button", "p-btn p-btn-quiet", t("arrival.04"));
+    const resuming = loadDraft() !== null;
+    const go = el(
+      "button",
+      "p-btn p-btn-quiet",
+      resuming ? t("code.02") : t("arrival.04"),
+    );
     go.type = "button";
     go.addEventListener("click", () => {
       // The pollers stop; the WATER DOES NOT. A pond that freezes the
@@ -384,6 +398,20 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       cta.append(go);
       return;
     }
+
+    /*
+     * No fortune waiting, and no duck of your own: the card is the only way
+     * to get one, and saying so is kinder than an empty bar that leaves
+     * somebody wondering what the pond wants from them.
+     */
+    if (!mine) {
+      const hint = el("button", "p-btn p-btn-quiet", t("code.06"));
+      hint.type = "button";
+      hint.disabled = true;
+      cta.append(hint);
+      return;
+    }
+
     if (mine) {
     // "Find my duck" was removed on purpose — once your duck is in the
     // pond there is no action you still owe it, so the CTA hides entirely.
@@ -452,8 +480,6 @@ function shortDate(created: number): string {
 }
 
 function openDuckCard(view: PondView, duck: Placed): void {
-  // Above the card, not behind it.
-  view.lookAtAbove(duck.id);
   view.splash(duck.wx, duck.wy);
   document.querySelector(".p-card")?.remove();
 
@@ -624,6 +650,13 @@ function openDuckCard(view: PondView, duck: Placed): void {
 
   panel.append(ditherEdge(), card);
   root.append(scrim, panel);
+
+  /*
+   * Move the camera only once the card is in the DOM and has a height —
+   * the duck is centred in the water the card LEAVES, and that space
+   * cannot be known before the card exists.
+   */
+  view.lookAtAbove(duck.id, window.innerHeight - panel.getBoundingClientRect().top);
 }
 
 /**
