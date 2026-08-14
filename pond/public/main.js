@@ -2655,6 +2655,8 @@ var RISE = 9;
 var DROPLET_COLOURS = ["#FFFFFF", "#CFEDF8"];
 var DROPLET_WHITE_CHANCE = 0.45;
 var MIST_COLOURS = ["#FFFFFF", "#E4F4FA"];
+var MIST_COUNT = 24;
+var MIST_LIFT = 4;
 function emit(list, x, y, vx, vy, colour, life, rise = false, delay = 0) {
   list.push({ x, y, vx, vy, colour, life, rise, delay });
 }
@@ -2695,14 +2697,15 @@ function splashDroplets(list, x, y, amplitude, random = Math.random) {
     );
   }
 }
-function douseMist(list, x, y, count = 20, random = Math.random) {
+function douseMist(list, x, y, count = MIST_COUNT, random = Math.random) {
   for (let i = 0; i < count; i++) {
     const angle = random() * Math.PI * 2;
     const speed = 2 + random() * 7;
     emit(
       list,
       x,
-      y,
+      // Off the duck's back, not out of its middle.
+      y - MIST_LIFT,
       Math.cos(angle) * speed * 0.7,
       Math.sin(angle) * speed * 0.5 - 2,
       random() < 0.5 ? MIST_COLOURS[0] : MIST_COLOURS[1],
@@ -2784,6 +2787,7 @@ function spawnShape(list, x, y, shape, petal, core, cell, delay = 0, random = Ma
   }
   if (!cells.length) return;
   const onMax = Math.max(...cells.map((c) => c.d)) * ON_PER_PX + 28;
+  const isFlower = shape === SHAPES.flower;
   for (const c of cells) {
     list.push({
       // Placed from the shape's own centre, in sprite units.
@@ -2793,7 +2797,8 @@ function spawnShape(list, x, y, shape, petal, core, cell, delay = 0, random = Ma
       on: delay + Math.round(c.d * ON_PER_PX + random() * 28),
       // Everything waits for the slowest pixel, holds, then leaves outward.
       off: delay + Math.round(onMax + HOLD + c.d * OFF_PER_PX + random() * 36),
-      size
+      size,
+      sheds: isFlower && !c.core
     });
   }
 }
@@ -2833,18 +2838,25 @@ function arrival(fortune, wx, wy, random = Math.random) {
 var BAD_LUCK_BURN_MS = 620;
 var BAD_LUCK_MIST_AT_MS = 480;
 var PETAL_LIFE_MS = 3 * 60 * 1e3;
-var PETAL_COLOURS = ["#f2a9b4", "#ffc2da", "#f6e7a9"];
-function petals(wx, wy, now) {
-  return Array.from({ length: 9 }, (_, i) => ({
-    wx: wx + Math.cos(i / 9 * Math.PI * 2) * (8 + i % 3 * 4),
-    wy: wy + Math.sin(i / 9 * Math.PI * 2) * (6 + i % 2 * 3),
-    // A gentle sideways drift, different per petal so they do not move as
-    // one sheet.
-    drift: (i % 5 - 2) * 22e-4,
-    born: now,
-    colour: PETAL_COLOURS[i % PETAL_COLOURS.length]
-  }));
+var SHED_CHANCE = 0.4;
+function petalsFrom(pixels, start, random = Math.random) {
+  const out = [];
+  for (const p of pixels) {
+    if (!p.sheds || random() >= SHED_CHANCE) continue;
+    out.push({
+      wx: p.x,
+      wy: p.y,
+      // Two axes, and small: a petal drifts, it does not travel.
+      vx: (random() - 0.5) * 0.5,
+      vy: (random() - 0.5) * 0.4,
+      // The instant its own pixel stops being part of the flower.
+      born: start + p.off,
+      colour: p.colour
+    });
+  }
+  return out;
 }
+var PETAL_SPEED = 2;
 
 // src/client/pond-view.ts
 var WORLD_FPS = 12;
@@ -3223,7 +3235,7 @@ var PondView = class {
     duck.falling = false;
     this.sparkles = arrival(duck.fortune, duck.wx, duck.wy);
     this.sparkleStart = now;
-    if (duck.fortune === 1) this.petals.push(...petals(duck.wx, duck.wy, now));
+    if (duck.fortune === 1) this.petals.push(...petalsFrom(this.sparkles, now));
     if (duck.fortune === 0) fireworkStreamers(this.particles, duck.wx, duck.wy, GREAT_STREAMERS);
     if (duck.fortune === 3) this.ignite(duck, BAD_LUCK_BURN_MS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
@@ -3524,6 +3536,34 @@ var PondView = class {
     advanceParticles(this.particles, dt);
     this.advanceArrivals(now);
     this.advanceFires(now);
+    this.advancePetals(now, dt);
+  }
+  /**
+   * Petals drift on the water for about three minutes.
+   *
+   * Integrated rather than derived from a formula, because they wrap with
+   * the world: a petal that crosses the seam has to come back the other
+   * side, and `wx + elapsed * drift` cannot do that without unwrapping the
+   * elapsed distance first.
+   *
+   * A petal that has not come loose yet is kept and skipped — its flower is
+   * still on screen wearing it.
+   */
+  advancePetals(now, dt) {
+    if (!this.petals.length) return;
+    const { side } = this.camera;
+    let live = 0;
+    for (const p of this.petals) {
+      if (now < p.born) {
+        this.petals[live++] = p;
+        continue;
+      }
+      if (now - p.born >= PETAL_LIFE_MS) continue;
+      p.wx = wrap(p.wx + p.vx * dt * PETAL_SPEED, side);
+      p.wy = wrap(p.wy + p.vy * dt * PETAL_SPEED, side);
+      this.petals[live++] = p;
+    }
+    this.petals.length = live;
   }
   /**
    * ══ THE WHISTLE IS A FORCE FIELD, NOT A DESTINATION ══
@@ -3718,25 +3758,23 @@ var PondView = class {
       }
       if (t2 > duration(this.sparkles)) this.sparkles = [];
     }
-    if (this.petals.length) {
-      this.petals = this.petals.filter((p) => now - p.born < PETAL_LIFE_MS);
-      for (const p of this.petals) {
-        const age = (now - p.born) / PETAL_LIFE_MS;
-        if (age > 0.6 && (this.frame + Math.round(p.wx)) % 3 < Math.round((age - 0.6) * 7)) {
-          continue;
-        }
-        const at = project(
-          p.wx + (now - p.born) * p.drift,
-          p.wy,
-          this.camera.cam,
-          renderCell,
-          canvas.width,
-          canvas.height,
-          this.camera.side
-        );
-        ctx.fillStyle = p.colour;
-        ctx.fillRect(at.x, at.y, renderCell, renderCell);
+    for (const p of this.petals) {
+      if (now < p.born) continue;
+      const age = (now - p.born) / PETAL_LIFE_MS;
+      if (age > 0.6 && (this.frame + Math.round(p.wx)) % 3 < Math.round((age - 0.6) * 7)) {
+        continue;
       }
+      const at = project(
+        p.wx,
+        p.wy,
+        this.camera.cam,
+        renderCell,
+        canvas.width,
+        canvas.height,
+        this.camera.side
+      );
+      ctx.fillStyle = p.colour;
+      ctx.fillRect(at.x, at.y, renderCell, renderCell);
     }
     for (const p of this.particles) {
       if (pending(p)) continue;

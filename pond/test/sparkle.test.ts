@@ -15,8 +15,8 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  BAD_LUCK_BURN_MS, BAD_LUCK_MIST_AT_MS, PETAL_LIFE_MS, SHAPES, SHOP_PAIR,
-  arrival, duration, petals, spawnShape, visibleAt, type SparklePixel,
+  BAD_LUCK_BURN_MS, BAD_LUCK_MIST_AT_MS, PETAL_LIFE_MS, PETAL_SPEED, SHAPES, SHOP_PAIR,
+  arrival, duration, petalsFrom, spawnShape, visibleAt, type SparklePixel,
 } from "../src/client/sparkle.js";
 
 /** No jitter, so a schedule can be asserted to the millisecond. */
@@ -198,17 +198,64 @@ describe("reduced motion", () => {
 });
 
 describe("petals, which only 小吉 leaves", () => {
+  /** Sheds every eligible petal, so placement can be asserted exactly. */
+  const always = () => 0;
+
   it("last about three minutes", () => {
     expect(PETAL_LIFE_MS).toBe(180_000);
   });
 
-  it("drift at different rates, so they do not move as one sheet", () => {
-    const p = petals(0, 0, 0);
-    expect(new Set(p.map((x) => x.drift)).size).toBeGreaterThan(1);
+  it("comes out of the flowers, at exactly the pixels the flowers were", () => {
+    /*
+     * The failure this replaced: nine petals scattered on a ring around the
+     * duck the moment it landed. Right number, wrong place — what makes it
+     * read as flowers SHEDDING is that a petal appears where a petal was.
+     * On a ring they are confetti, and confetti is not 小吉.
+     */
+    const px = arrival(1, 500, 500, still);
+    const shed = petalsFrom(px, 0, always);
+    const petalPixels = new Set(px.filter((p) => p.sheds).map((p) => `${p.x},${p.y}`));
+    expect(shed.length).toBe(petalPixels.size);
+    for (const p of shed) expect(petalPixels).toContain(`${p.wx},${p.wy}`);
   });
 
-  it("are scattered around the duck rather than stacked on it", () => {
-    const p = petals(100, 100, 0);
-    expect(new Set(p.map((x) => `${Math.round(x.wx)},${Math.round(x.wy)}`)).size).toBe(p.length);
+  it("comes loose when its own pixel goes, not when the duck lands", () => {
+    const px = arrival(1, 0, 0, still);
+    const shed = petalsFrom(px, 1000, always);
+    // Every petal is born after the landing, and they do not all go at once
+    // — three flowers bloom 180ms apart and each sheds on its own schedule.
+    expect(Math.min(...shed.map((p) => p.born))).toBeGreaterThan(1000);
+    expect(new Set(shed.map((p) => p.born)).size).toBeGreaterThan(1);
+  });
+
+  it("never sheds a flower's core, only its petals", () => {
+    // The core is the seed of the flower. A flower that sheds its middle is
+    // not shedding, it is disintegrating.
+    const px = arrival(1, 0, 0, still);
+    const cores = px.filter((p) => !p.sheds);
+    expect(cores.length).toBeGreaterThan(0);
+    expect(cores.every((p) => p.colour !== px.find((q) => q.sheds)!.colour)).toBe(true);
+  });
+
+  it("sheds nothing at all for the other three fortunes", () => {
+    for (const fortune of [0, 2, 3]) {
+      expect(petalsFrom(arrival(fortune, 0, 0, still), 0, always), `fortune ${fortune}`)
+        .toHaveLength(0);
+    }
+  });
+
+  it("drifts on two axes, so they do not move as one sheet", () => {
+    const shed = petalsFrom(arrival(1, 0, 0, still), 0);
+    expect(new Set(shed.map((p) => p.vx)).size).toBeGreaterThan(1);
+    expect(shed.some((p) => p.vy !== 0)).toBe(true);
+  });
+
+  it("drifts rather than travels — three minutes must not cross the pond", () => {
+    // At PETAL_SPEED the fastest petal covers |v|*speed*180s. A petal that
+    // leaves the neighbourhood it was shed in reads as debris, not as a
+    // flower coming apart.
+    const shed = petalsFrom(arrival(1, 0, 0, still), 0);
+    const fastest = Math.max(...shed.map((p) => Math.hypot(p.vx, p.vy)));
+    expect(fastest * PETAL_SPEED * (PETAL_LIFE_MS / 1000)).toBeLessThan(300);
   });
 });

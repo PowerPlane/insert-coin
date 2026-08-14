@@ -28,6 +28,10 @@ const DROPLET_WHITE_CHANCE = 0.45;
 
 /** Steam off a fire that has just gone out. */
 const MIST_COLOURS = ["#FFFFFF", "#E4F4FA"] as const;
+/** Enough to read as a cloud rather than as a handful of dots. */
+const MIST_COUNT = 24;
+/** Steam comes off the duck's back, not out of its middle. */
+const MIST_LIFT = 4;
 
 export interface Particle {
   x: number;
@@ -139,7 +143,7 @@ export function douseMist(
   list: Particle[],
   x: number,
   y: number,
-  count = 20,
+  count = MIST_COUNT,
   random: () => number = Math.random,
 ): void {
   for (let i = 0; i < count; i++) {
@@ -148,7 +152,8 @@ export function douseMist(
     emit(
       list,
       x,
-      y,
+      // Off the duck's back, not out of its middle.
+      y - MIST_LIFT,
       Math.cos(angle) * speed * 0.7,
       Math.sin(angle) * speed * 0.5 - 2,
       random() < 0.5 ? MIST_COLOURS[0] : MIST_COLOURS[1],

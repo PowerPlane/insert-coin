@@ -70,6 +70,8 @@ export interface SparklePixel {
   off: number;
   /** Sprite pixels per side. The shop draws some shapes at 1.5. */
   size: number;
+  /** A flower petal, which may fall off when the flower goes. See `shed`. */
+  sheds: boolean;
 }
 
 /**
@@ -111,6 +113,10 @@ export function spawnShape(
   if (!cells.length) return;
 
   const onMax = Math.max(...cells.map((c) => c.d)) * ON_PER_PX + 28;
+  // Only a flower sheds, and only its petals. The shop identifies a flower
+  // by its width, which is fine there and too clever to copy: the caller
+  // knows what it asked for, so the shape itself is compared.
+  const isFlower = shape === SHAPES.flower;
   for (const c of cells) {
     list.push({
       // Placed from the shape's own centre, in sprite units.
@@ -121,6 +127,7 @@ export function spawnShape(
       // Everything waits for the slowest pixel, holds, then leaves outward.
       off: delay + Math.round(onMax + HOLD + c.d * OFF_PER_PX + random() * 36),
       size,
+      sheds: isFlower && !c.core,
     });
   }
 }
@@ -215,24 +222,55 @@ export const BAD_LUCK_MIST_AT_MS = 480;
  */
 export const PETAL_LIFE_MS = 3 * 60 * 1000;
 
+/** How many of a flower's petals come loose when it goes. */
+const SHED_CHANCE = 0.4;
+
 export interface Petal {
   wx: number;
   wy: number;
-  drift: number;
+  /** Sprite units per second, both axes. Petals do not fall in formation. */
+  vx: number;
+  vy: number;
+  /** A clock reading: when this petal comes loose. */
   born: number;
   colour: string;
 }
 
-const PETAL_COLOURS = ["#f2a9b4", "#ffc2da", "#f6e7a9"] as const;
-
-export function petals(wx: number, wy: number, now: number): Petal[] {
-  return Array.from({ length: 9 }, (_, i) => ({
-    wx: wx + Math.cos((i / 9) * Math.PI * 2) * (8 + (i % 3) * 4),
-    wy: wy + Math.sin((i / 9) * Math.PI * 2) * (6 + (i % 2) * 3),
-    // A gentle sideways drift, different per petal so they do not move as
-    // one sheet.
-    drift: ((i % 5) - 2) * 0.0022,
-    born: now,
-    colour: PETAL_COLOURS[i % PETAL_COLOURS.length]!,
-  }));
+/**
+ * The petals a set of arrival pixels will leave behind.
+ *
+ * ══ PETALS COME OUT OF THE FLOWERS, NOT OUT OF THIN AIR ══
+ * The first version scattered nine petals on a ring around the duck the
+ * moment it landed. That is the right number in the wrong place: what makes
+ * this read as flowers SHEDDING is that each petal appears exactly where a
+ * petal of the flower was, at the moment that flower stops being there. On
+ * a ring they read as confetti, and confetti has nothing to do with 小吉.
+ *
+ * Deriving them here, up front, means the whole thing stays a schedule —
+ * no per-frame bookkeeping about which flower has expired, and a petal
+ * cannot be shed twice.
+ */
+export function petalsFrom(
+  pixels: SparklePixel[],
+  start: number,
+  random: () => number = Math.random,
+): Petal[] {
+  const out: Petal[] = [];
+  for (const p of pixels) {
+    if (!p.sheds || random() >= SHED_CHANCE) continue;
+    out.push({
+      wx: p.x,
+      wy: p.y,
+      // Two axes, and small: a petal drifts, it does not travel.
+      vx: (random() - 0.5) * 0.5,
+      vy: (random() - 0.5) * 0.4,
+      // The instant its own pixel stops being part of the flower.
+      born: start + p.off,
+      colour: p.colour,
+    });
+  }
+  return out;
 }
+
+/** Sprite units per second per unit of a petal's velocity. */
+export const PETAL_SPEED = 2;

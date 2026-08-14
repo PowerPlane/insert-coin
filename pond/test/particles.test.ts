@@ -116,6 +116,19 @@ describe("douse mist", () => {
     expect(list.every((p) => p.vy < 0)).toBe(true);
   });
 
+  it("makes 24 by default, and comes off the duck's back", () => {
+    /*
+     * The prototype's own numbers. This is asserted on the DEFAULT rather
+     * than on a count passed in, because every caller uses the default —
+     * a test that supplies its own would have gone on passing while the
+     * pond quietly made a fifth less steam than it was supposed to.
+     */
+    const list: Particle[] = [];
+    douseMist(list, 0, 0, undefined, cycle([0.5]));
+    expect(list).toHaveLength(24);
+    expect(list.every((p) => p.y < 0)).toBe(true);
+  });
+
   it("lingers longer than a splash — steam hangs, water falls", () => {
     const mist: Particle[] = [];
     const drops: Particle[] = [];

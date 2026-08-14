@@ -51,12 +51,13 @@ import {
   BAD_LUCK_BURN_MS,
   BAD_LUCK_MIST_AT_MS,
   PETAL_LIFE_MS,
+  PETAL_SPEED,
   SHOP_PAIR,
   type Petal,
   type SparklePixel,
   arrival,
   duration as sparkleDuration,
-  petals,
+  petalsFrom,
   visibleAt as sparkleVisible,
 } from "./sparkle.js";
 import type { PondDuck } from "./types.js";
@@ -733,7 +734,10 @@ export class PondView {
     duck.falling = false;
     this.sparkles = arrival(duck.fortune, duck.wx, duck.wy);
     this.sparkleStart = now;
-    if (duck.fortune === 1) this.petals.push(...petals(duck.wx, duck.wy, now));
+    // 小吉's petals fall out of its flowers as each flower goes, not out
+    // of thin air when the duck lands — so they are scheduled with the
+    // shapes that shed them.
+    if (duck.fortune === 1) this.petals.push(...petalsFrom(this.sparkles, now));
     // 大吉 is the one fortune nobody else got today, so it is the one
     // arrival allowed to throw pixels as well as light them.
     if (duck.fortune === 0) fireworkStreamers(this.particles, duck.wx, duck.wy, GREAT_STREAMERS);
@@ -1130,6 +1134,35 @@ export class PondView {
     advanceParticles(this.particles, dt);
     this.advanceArrivals(now);
     this.advanceFires(now);
+    this.advancePetals(now, dt);
+  }
+
+  /**
+   * Petals drift on the water for about three minutes.
+   *
+   * Integrated rather than derived from a formula, because they wrap with
+   * the world: a petal that crosses the seam has to come back the other
+   * side, and `wx + elapsed * drift` cannot do that without unwrapping the
+   * elapsed distance first.
+   *
+   * A petal that has not come loose yet is kept and skipped — its flower is
+   * still on screen wearing it.
+   */
+  private advancePetals(now: number, dt: number): void {
+    if (!this.petals.length) return;
+    const { side } = this.camera;
+    let live = 0;
+    for (const p of this.petals) {
+      if (now < p.born) {
+        this.petals[live++] = p;
+        continue;
+      }
+      if (now - p.born >= PETAL_LIFE_MS) continue;
+      p.wx = wrap(p.wx + p.vx * dt * PETAL_SPEED, side);
+      p.wy = wrap(p.wy + p.vy * dt * PETAL_SPEED, side);
+      this.petals[live++] = p;
+    }
+    this.petals.length = live;
   }
 
   /**
@@ -1378,21 +1411,20 @@ export class PondView {
     // Petals outlive their arrival: 小吉 leaves them for about three
     // minutes. They dither out — dropped pixels, never a fade — because
     // opacity is the one thing this pond never animates.
-    if (this.petals.length) {
-      this.petals = this.petals.filter((p) => now - p.born < PETAL_LIFE_MS);
-      for (const p of this.petals) {
-        const age = (now - p.born) / PETAL_LIFE_MS;
-        // Toward the end, drop pixels rather than fading them.
-        if (age > 0.6 && (this.frame + Math.round(p.wx)) % 3 < Math.round((age - 0.6) * 7)) {
-          continue;
-        }
-        const at = project(
-          p.wx + (now - p.born) * p.drift, p.wy, this.camera.cam, renderCell,
-          canvas.width, canvas.height, this.camera.side,
-        );
-        ctx.fillStyle = p.colour;
-        ctx.fillRect(at.x, at.y, renderCell, renderCell);
+    for (const p of this.petals) {
+      // Still part of its flower; the flower is drawing it.
+      if (now < p.born) continue;
+      const age = (now - p.born) / PETAL_LIFE_MS;
+      // Toward the end, drop pixels rather than fading them.
+      if (age > 0.6 && (this.frame + Math.round(p.wx)) % 3 < Math.round((age - 0.6) * 7)) {
+        continue;
       }
+      const at = project(
+        p.wx, p.wy, this.camera.cam, renderCell,
+        canvas.width, canvas.height, this.camera.side,
+      );
+      ctx.fillStyle = p.colour;
+      ctx.fillRect(at.x, at.y, renderCell, renderCell);
     }
 
     /*
