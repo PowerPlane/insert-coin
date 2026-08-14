@@ -2862,6 +2862,22 @@ var PETAL_SPEED = 2;
 var WORLD_FPS = 12;
 var WORLD_MS = 1e3 / WORLD_FPS;
 var SEPARATION = 30;
+function ignite(duck, ms, litAt, now = performance.now()) {
+  duck.burning = true;
+  duck.misted = false;
+  duck.burnUntil = now + ms;
+  duck.fireLitAt = litAt;
+}
+function mergeFire(duck, fire, now) {
+  if (fire) {
+    if (duck.fireLitAt !== fire.litAt) ignite(duck, fire.burnsFor * 1e3, fire.litAt, now);
+    return;
+  }
+  if (duck.burning && duck.burnUntil !== void 0 && now < duck.burnUntil) return;
+  duck.burning = false;
+  duck.burnUntil = void 0;
+  duck.fireLitAt = void 0;
+}
 var DART_MS = 420;
 var DART_STOP_SHORT = GRID * 0.7;
 var KNOCK_X = 3.6;
@@ -2922,6 +2938,11 @@ function placeDucks(ducks, side) {
     const b = hashId(d.id + "y");
     return {
       ...d,
+      // A duck arrives already alight if the server says so. `mergeFire`
+      // owns it from here; this is only the first reading.
+      burning: d.fire !== null,
+      burnUntil: d.fire ? performance.now() + d.fire.burnsFor * 1e3 : void 0,
+      fireLitAt: d.fire?.litAt,
       wx: origin + a * spread,
       wy: origin + b * spread,
       flip: hashId(d.id + "f") > 0.5
@@ -3067,13 +3088,14 @@ var PondView = class {
    */
   setDucks(ducks) {
     const wasEmpty = this.ducks.length === 0;
+    const now = performance.now();
     const previous = new Map(this.ducks.map((d) => [d.id, d]));
     this.camera.side = worldSide(Math.max(this.frameAtHome.w, this.frameAtHome.h), ducks.length);
     const placed = placeDucks(ducks, this.camera.side);
     this.ducks = placed.map((fresh) => {
       const old = previous.get(fresh.id);
       if (!old) return fresh;
-      return {
+      const merged = {
         ...fresh,
         wx: old.wx,
         wy: old.wy,
@@ -3088,8 +3110,14 @@ var PondView = class {
         dartFromX: old.dartFromX,
         dartFromY: old.dartFromY,
         dartToX: old.dartToX,
-        dartToY: old.dartToY
+        dartToY: old.dartToY,
+        burning: old.burning,
+        burnUntil: old.burnUntil,
+        misted: old.misted,
+        fireLitAt: old.fireLitAt
       };
+      mergeFire(merged, fresh.fire, now);
+      return merged;
     });
     if (wasEmpty) this.camera.snap({ x: this.camera.side / 2, y: this.camera.side / 2 });
   }
@@ -3237,7 +3265,7 @@ var PondView = class {
     this.sparkleStart = now;
     if (duck.fortune === 1) this.petals.push(...petalsFrom(this.sparkles, now));
     if (duck.fortune === 0) fireworkStreamers(this.particles, duck.wx, duck.wy, GREAT_STREAMERS);
-    if (duck.fortune === 3) this.ignite(duck, BAD_LUCK_BURN_MS);
+    if (duck.fortune === 3) ignite(duck, BAD_LUCK_BURN_MS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
     const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
     window.setTimeout(() => {
@@ -3301,18 +3329,6 @@ var PondView = class {
     const rows = Math.ceil(canvas.height / cell);
     if (this.water && this.water.cols === cols && this.water.rows === rows) return;
     this.water = createWaterBuffer(cols, rows);
-  }
-  /**
-   * Set a duck alight for a while.
-   *
-   * `ms` is how long the fire has LEFT, not when it started — so the same
-   * call serves a duck arriving on fire (620ms) and a duck the server says
-   * has been burning for 70 of its 90 seconds (20000ms).
-   */
-  ignite(duck, ms) {
-    duck.burning = true;
-    duck.misted = false;
-    duck.burnUntil = performance.now() + ms;
   }
   /**
    * Put a duck's fire out — because somebody tapped it, or because it

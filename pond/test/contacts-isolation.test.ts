@@ -94,9 +94,25 @@ describe("contacts are structurally isolated", () => {
 describe("the public duck shape carries no private fields", () => {
   it("PublicDuck has no contact-ish key", () => {
     const types = readFileSync(join(workerDir, "types.ts"), "utf8");
-    const iface = types.slice(types.indexOf("export interface PublicDuck"));
+    const whole = types.slice(types.indexOf("export interface PublicDuck"));
+    /*
+     * FIELDS, not prose. The first version scanned the interface source
+     * whole, and a doc comment that used the word "phone" while explaining
+     * clock skew failed it — a privacy test crying wolf over an English
+     * sentence, which is how a real one comes to be ignored.
+     *
+     * The rule it means to enforce is about what is SENT, so comments are
+     * stripped before the check.
+     */
+    const iface = whole
+      .slice(0, whole.indexOf("\n}") + 2)
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
     for (const banned of ["contact", "email", "phone", "handle", "editKey", "edit_key", "cardId", "card_id"]) {
-      expect(iface.toLowerCase()).not.toContain(banned.toLowerCase());
+      expect(iface.toLowerCase(), `PublicDuck names "${banned}"`).not.toContain(banned.toLowerCase());
     }
+    // And the strip did not eat the interface itself.
+    expect(iface).toMatch(/\bslug\b/);
+    expect(iface).toMatch(/\bfortune\b/);
   });
 });

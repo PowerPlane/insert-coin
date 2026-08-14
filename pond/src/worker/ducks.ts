@@ -151,6 +151,18 @@ export function validateScope(raw: unknown): ContactScope {
  * `?1` is now and `?2` is the say cutoff in EVERY query that uses this, so
  * `?3` is always free for whatever that query is actually looking up. A gap
  * in the numbering would bind silently to the wrong column.
+ *
+ * ══ A FIRE HAS AN IDENTITY AND A TIME LEFT, NOT A BOOLEAN ══
+ * `burning: true` cannot answer the question the client has to ask on every
+ * poll: is this the same fire I already watched go out, or a new one? With a
+ * bare boolean, a duck the user doused two seconds ago re-lit on the next
+ * refresh — because a snapshot taken up to twenty seconds earlier still said
+ * it was alight, and that reads as the tap not having worked.
+ *
+ * So `lit_at` names the fire, and the remaining seconds are computed HERE
+ * rather than sent as a deadline: a phone's clock is often minutes out, and
+ * a deadline compared against the wrong clock is either already past or
+ * never reached.
  */
 const PUBLIC_COLUMNS = `
   d.id, d.slug, d.fortune, d.tint, d.stickers, d.paint, d.name, d.message,
@@ -158,9 +170,13 @@ const PUBLIC_COLUMNS = `
   (SELECT COALESCE(SUM(b.total), 0) FROM bumps b WHERE b.to_duck = d.id) AS bumps,
   (SELECT COUNT(*) FROM fires f
     WHERE f.duck_id = d.id AND f.out_by IS NOT NULL) AS rescues,
-  (SELECT 1 FROM fires f
+  -- The live fire: which one it is, and how many seconds it has left.
+  (SELECT f.lit_at FROM fires f
      WHERE f.duck_id = d.id AND f.out_at IS NULL AND f.burns_until > ?1
-     LIMIT 1) AS burning,
+     ORDER BY f.lit_at DESC LIMIT 1) AS fire_lit,
+  (SELECT f.burns_until - ?1 FROM fires f
+     WHERE f.duck_id = d.id AND f.out_at IS NULL AND f.burns_until > ?1
+     ORDER BY f.lit_at DESC LIMIT 1) AS fire_left,
   (SELECT s.text FROM says s
      WHERE s.duck_id = d.id AND s.created > ?2
      ORDER BY s.created DESC LIMIT 1) AS say_text,
@@ -187,7 +203,11 @@ function toPublicDuck(r: Record<string, unknown>): PublicDuck {
     created: Number(r.created),
     bumps: Number(r.bumps ?? 0),
     rescues: Number(r.rescues ?? 0),
-    burning: Boolean(r.burning),
+    // One object, not two fields that can disagree: either there is a fire
+    // and both its facts are known, or there is no fire.
+    fire: r.fire_lit == null
+      ? null
+      : { litAt: Number(r.fire_lit), burnsFor: Math.max(0, Number(r.fire_left)) },
     say: r.say_text ? { text: String(r.say_text), at: Number(r.say_at) } : null,
     // An unclaimed card has no keeper, and a keeper who left the name blank
     // is the same thing to a reader: nothing to show.

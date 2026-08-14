@@ -49,7 +49,14 @@ export interface PublicDuck {
   /** Total bumps received. Derived from `bumps`, never a stored counter. */
   bumps: number;
   rescues: number;
-  burning: boolean;
+  /**
+   * The fire on this duck, if it is alight — identity and time remaining.
+   *
+   * `litAt` names this particular fire, so a client can tell "the one I just
+   * put out" from "a new one". `burnsFor` is SECONDS REMAINING, not an end
+   * time, so a phone with a wrong clock still counts down correctly.
+   */
+  fire: { litAt: number; burnsFor: number } | null;
   say: { text: string; at: number } | null;
   /** The card keeper's name — "via Sam" — or null. Never the serial. */
   keeper: string | null;

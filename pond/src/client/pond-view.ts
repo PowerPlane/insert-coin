@@ -102,6 +102,71 @@ export interface Placed extends PondDuck {
   burnUntil?: number;
   /** Whether the steam has already gone up for this fire. */
   misted?: boolean;
+  /**
+   * Which of the server's fires this is, so a poll can tell "the one I just
+   * put out" from "a new one". Undefined for the arrival burn, which the
+   * server never hears about.
+   */
+  fireLitAt?: number;
+  /** Derived from `fire` on arrival, then owned by the client. See mergeFire. */
+  burning: boolean;
+}
+
+/**
+ * Set a duck alight for a while.
+ *
+ * `ms` is how long the fire has LEFT, not when it started — so the same call
+ * serves a duck arriving on fire (620ms) and one the server says has been
+ * burning for 70 of its 90 seconds (20000ms).
+ *
+ * `litAt` names the fire where the server started it. The arrival burn has
+ * no name, because the server never hears about it: 凶 catching light as it
+ * lands is a beat in the animation, not a row in a table.
+ */
+export function ignite(duck: Placed, ms: number, litAt?: number, now = performance.now()): void {
+  duck.burning = true;
+  duck.misted = false;
+  duck.burnUntil = now + ms;
+  duck.fireLitAt = litAt;
+}
+
+/**
+ * ══ THE SERVER LIGHTS FIRES; THE CLIENT PUTS THEM OUT ══
+ *
+ * The pond is polled every twenty seconds, so a poll's answer can be twenty
+ * seconds stale — and the one thing a person definitely knows better than a
+ * stale snapshot is the fire they just tapped. Taking the server's word on
+ * every refresh re-lit a duck that had visibly been put out, for a whole
+ * poll cycle, which reads as the tap not having worked.
+ *
+ * So the two halves are split by who is better informed:
+ *
+ *   IGNITION is the server's. It decides which 凶 catches light and when,
+ *   and a fire it names with a `litAt` this browser has not seen is new.
+ *
+ *   EXTINCTION is the client's. Once this browser has watched a fire go out
+ *   — by hand or by burning down — no snapshot re-lights it. The server
+ *   agrees on the next poll and never argues in the meantime.
+ *
+ * The remaining case is a fire the server has never heard of: the 620ms burn
+ * a 凶 arrives with. `fire: null` must not stamp that out, so a local burn
+ * with time still on it survives a poll that says nothing is alight.
+ *
+ * A free function rather than a method because it is pure bookkeeping over
+ * one duck — no canvas, no camera — and that is the difference between a
+ * rule that can be tested in four lines and one that needs a whole view.
+ */
+export function mergeFire(duck: Placed, fire: PondDuck["fire"], now: number): void {
+  if (fire) {
+    // A fire this browser has not seen. Light it with the time the server
+    // says is left, not a fresh full burn.
+    if (duck.fireLitAt !== fire.litAt) ignite(duck, fire.burnsFor * 1000, fire.litAt, now);
+    return;
+  }
+  if (duck.burning && duck.burnUntil !== undefined && now < duck.burnUntil) return;
+  duck.burning = false;
+  duck.burnUntil = undefined;
+  duck.fireLitAt = undefined;
 }
 
 /*
@@ -291,6 +356,11 @@ export function placeDucks(ducks: PondDuck[], side: number): Placed[] {
     const b = hashId(d.id + "y");
     return {
       ...d,
+      // A duck arrives already alight if the server says so. `mergeFire`
+      // owns it from here; this is only the first reading.
+      burning: d.fire !== null,
+      burnUntil: d.fire ? performance.now() + d.fire.burnsFor * 1000 : undefined,
+      fireLitAt: d.fire?.litAt,
       wx: origin + a * spread,
       wy: origin + b * spread,
       flip: hashId(d.id + "f") > 0.5,
@@ -467,6 +537,7 @@ export class PondView {
    */
   setDucks(ducks: PondDuck[]): void {
     const wasEmpty = this.ducks.length === 0;
+    const now = performance.now();
     const previous = new Map(this.ducks.map((d) => [d.id, d]));
 
     this.camera.side = worldSide(Math.max(this.frameAtHome.w, this.frameAtHome.h), ducks.length);
@@ -482,7 +553,7 @@ export class PondView {
        * a duck mid-swim toward a whistle would forget it was called, and a
        * duck that had been pushed out would forget to come back.
        */
-      return {
+      const merged: Placed = {
         ...fresh,
         wx: old.wx, wy: old.wy, flip: old.flip,
         vx: old.vx, vy: old.vy,
@@ -490,7 +561,11 @@ export class PondView {
         dartAt: old.dartAt, dartTarget: old.dartTarget,
         dartFromX: old.dartFromX, dartFromY: old.dartFromY,
         dartToX: old.dartToX, dartToY: old.dartToY,
+        burning: old.burning, burnUntil: old.burnUntil,
+        misted: old.misted, fireLitAt: old.fireLitAt,
       };
+      mergeFire(merged, fresh.fire, now);
+      return merged;
     });
 
     // Open looking at the ducks. The camera starts at the world origin,
@@ -749,7 +824,7 @@ export class PondView {
      * has to explain it, which is why it must not also be explained with
      * sparkles.
      */
-    if (duck.fortune === 3) this.ignite(duck, BAD_LUCK_BURN_MS);
+    if (duck.fortune === 3) ignite(duck, BAD_LUCK_BURN_MS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
 
     const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
@@ -819,19 +894,6 @@ export class PondView {
     const rows = Math.ceil(canvas.height / cell);
     if (this.water && this.water.cols === cols && this.water.rows === rows) return;
     this.water = createWaterBuffer(cols, rows);
-  }
-
-  /**
-   * Set a duck alight for a while.
-   *
-   * `ms` is how long the fire has LEFT, not when it started — so the same
-   * call serves a duck arriving on fire (620ms) and a duck the server says
-   * has been burning for 70 of its 90 seconds (20000ms).
-   */
-  ignite(duck: Placed, ms: number): void {
-    duck.burning = true;
-    duck.misted = false;
-    duck.burnUntil = performance.now() + ms;
   }
 
   /**
