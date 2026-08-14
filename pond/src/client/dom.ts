@@ -103,10 +103,24 @@ export function field(opts: {
  * the panel dissolves into the water on the same 4px grid everything else
  * is drawn on instead of meeting it on a hard line.
  */
-export function sheet(centred = false): { root: HTMLElement; body: HTMLElement } {
-  const root = el("div", `p-screen${centred ? " p-centre" : ""}`);
+/**
+ * The dithered edge: three 4px strips at 25%, 50% and 75% coverage.
+ *
+ * Anything that rises out of the water wears one, so a panel does not meet
+ * the pond on a hard line — it dissolves into it on the same 4px grid the
+ * ducks are drawn on. Its own function because the duck's card needs it
+ * too, and a card that meets the water on a straight edge is the one shape
+ * on screen that could not have been drawn on the grid.
+ */
+export function ditherEdge(): HTMLElement {
   const edge = el("div", "p-edge");
   edge.append(el("i", "p-d25"), el("i", "p-d50"), el("i", "p-d75"));
+  return edge;
+}
+
+export function sheet(centred = false): { root: HTMLElement; body: HTMLElement } {
+  const root = el("div", `p-screen${centred ? " p-centre" : ""}`);
+  const edge = ditherEdge();
   const body = el("div", `p-sheet-body${centred ? " p-centre" : ""}`);
   root.append(edge, body);
   return { root, body };

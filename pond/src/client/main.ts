@@ -12,14 +12,15 @@
  */
 
 import { ApiError, api, recallEditKey, type ReportReason, type SessionState } from "./api.js";
-import { button, field } from "./dom.js";
+import { button, ditherEdge, field } from "./dom.js";
 import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
 import { CAM_UI } from "./camera.js";
 import { cardSetup, claimFromUrl } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, type Placed } from "./pond-view.js";
-import { setLang, t, type Lang } from "./strings.js";
+import { drawDuck } from "./render.js";
+import { fortuneTitle, setLang, t, type Lang } from "./strings.js";
 import { watchSize } from "./viewport.js";
 import type { PondDuck } from "./types.js";
 
@@ -370,14 +371,81 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
  * Deliberately not a route: the camera glides to the duck and the card
  * opens over the water, so closing it puts you back where you were.
  */
+/**
+ * "12 JUL" — the day it went in, not how long ago.
+ *
+ * The prototype dates the duck rather than ageing it, and it is the better
+ * answer: "in the pond for six days" is a number that changes every time
+ * you look, and nobody is counting. A date is a fact about the duck.
+ *
+ * Built from the parts rather than toLocaleDateString, which would put a
+ * comma and a year in some locales and none in others.
+ */
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function shortDate(created: number): string {
+  const d = new Date(created * 1000);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
 function openDuckCard(view: PondView, duck: Placed): void {
   view.lookAt(duck.id);
   view.splash(duck.wx, duck.wy);
   document.querySelector(".p-card")?.remove();
 
+  /*
+   * A scrim behind the card. The pond keeps moving — it is not paused —
+   * but it stops competing with the thing you just asked to read, and a
+   * tap on the water is a way out that needs no aim.
+   */
+  const scrim = el("div", "p-scrim");
   const card = el("div", "p-card");
-  card.append(el("p", "p-card-name", duck.name || FORTUNES[duck.fortune]?.jp || ""));
-  if (duck.keeper) card.append(el("p", "p-card-via", t("live.via", { keeper: duck.keeper })));
+  const dismiss = () => {
+    card.remove();
+    scrim.remove();
+  };
+  scrim.addEventListener("click", dismiss);
+
+  /*
+   * ══ THE HEAD IS THE DUCK, THEN WHO IT IS ══
+   * Two columns, exactly as the prototype: the animal at 72px in a tinted
+   * box on the left, and on the right its fortune as a pill, its name in
+   * the serif, and its provenance in mono. The card opened with a bare
+   * name and no picture, so a panel about one specific duck showed nothing
+   * you had just tapped.
+   */
+  const THUMB_CSS = 72;
+  const thumb = el("canvas", "p-card-duck");
+  thumb.width = THUMB_CSS * 2;
+  thumb.height = THUMB_CSS * 2;
+  const tctx = thumb.getContext("2d");
+  if (tctx) {
+    tctx.imageSmoothingEnabled = false;
+    // 24-cell sprite into 144 device px: 6 px a cell, which stays integral.
+    drawDuck(tctx, duck, 0, 0, (THUMB_CSS * 2) / 24);
+  }
+
+  const fortune = FORTUNES[duck.fortune] ?? FORTUNES[1]!;
+  const pill = el("p", "p-card-fortune");
+  pill.append(
+    el("b", "", fortune.jp),
+    el("i", "", "·"),
+    el("span", "", fortune.en),
+  );
+
+  const provenance = [
+    duck.keeper ? t("live.via", { keeper: duck.keeper }) : "",
+    shortDate(duck.created),
+  ].filter(Boolean);
+
+  const headText = el("div", "p-card-headtext");
+  headText.append(pill, el("h2", "p-card-name", duck.name || fortune.jp));
+  if (provenance.length) headText.append(el("p", "p-card-via", provenance.join(" · ")));
+
+  const head = el("div", "p-card-head");
+  head.append(thumb, headText);
+  card.append(head);
+
   if (duck.message) card.append(el("p", "p-card-msg", duck.message));
 
   const stats = el("p", "p-card-stats");
@@ -420,13 +488,25 @@ function openDuckCard(view: PondView, duck: Placed): void {
     });
     actions.append(bump);
   } else if (!mine) {
-    actions.append(el("span", "p-card-stats", t("code.03")));
+    // Not a nag: a bump is a thing one duck does to another, so it needs a
+    // duck. Shown as a spent button rather than a sentence, which is what
+    // the prototype does and what makes the shape of it obvious.
+    const needsDuck = button("p-card-btn", t("code.03"), () => {});
+    needsDuck.disabled = true;
+    actions.append(needsDuck);
   }
 
-  actions.append(button("p-btn p-btn-quiet", t("pond.39"), () => reportSheet(card, duck)));
-  actions.append(button("p-btn p-btn-quiet", t("pond.23"), () => card.remove()));
+  actions.append(button("p-card-btn p-card-btn-danger", t("pond.39"), () => reportSheet(card, duck)));
   card.append(actions);
-  root.append(card);
+
+  // A corner ✕ as well as the foot button. Closing a card you opened by
+  // accident should not need a journey to the bottom of it.
+  const close = button("p-card-x", "✕", dismiss, t("pond.23"));
+  card.append(close);
+
+  // The edge goes on first so it sits above the body, where the water is.
+  card.prepend(ditherEdge());
+  root.append(scrim, card);
 }
 
 /**

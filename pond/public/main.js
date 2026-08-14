@@ -167,10 +167,14 @@ function field(opts) {
   wrap2.append(input, count);
   return { wrap: wrap2, input };
 }
-function sheet(centred = false) {
-  const root2 = el("div", `p-screen${centred ? " p-centre" : ""}`);
+function ditherEdge() {
   const edge = el("div", "p-edge");
   edge.append(el("i", "p-d25"), el("i", "p-d50"), el("i", "p-d75"));
+  return edge;
+}
+function sheet(centred = false) {
+  const root2 = el("div", `p-screen${centred ? " p-centre" : ""}`);
+  const edge = ditherEdge();
   const body = el("div", `p-sheet-body${centred ? " p-centre" : ""}`);
   root2.append(edge, body);
   return { root: root2, body };
@@ -3384,13 +3388,48 @@ async function pondScreen(bootstrap) {
     teardown = null;
   };
 }
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function shortDate(created) {
+  const d = new Date(created * 1e3);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
 function openDuckCard(view, duck) {
   view.lookAt(duck.id);
   view.splash(duck.wx, duck.wy);
   document.querySelector(".p-card")?.remove();
+  const scrim = el2("div", "p-scrim");
   const card = el2("div", "p-card");
-  card.append(el2("p", "p-card-name", duck.name || FORTUNES[duck.fortune]?.jp || ""));
-  if (duck.keeper) card.append(el2("p", "p-card-via", t("live.via", { keeper: duck.keeper })));
+  const dismiss = () => {
+    card.remove();
+    scrim.remove();
+  };
+  scrim.addEventListener("click", dismiss);
+  const THUMB_CSS = 72;
+  const thumb = el2("canvas", "p-card-duck");
+  thumb.width = THUMB_CSS * 2;
+  thumb.height = THUMB_CSS * 2;
+  const tctx = thumb.getContext("2d");
+  if (tctx) {
+    tctx.imageSmoothingEnabled = false;
+    drawDuck(tctx, duck, 0, 0, THUMB_CSS * 2 / 24);
+  }
+  const fortune = FORTUNES[duck.fortune] ?? FORTUNES[1];
+  const pill = el2("p", "p-card-fortune");
+  pill.append(
+    el2("b", "", fortune.jp),
+    el2("i", "", "·"),
+    el2("span", "", fortune.en)
+  );
+  const provenance = [
+    duck.keeper ? t("live.via", { keeper: duck.keeper }) : "",
+    shortDate(duck.created)
+  ].filter(Boolean);
+  const headText = el2("div", "p-card-headtext");
+  headText.append(pill, el2("h2", "p-card-name", duck.name || fortune.jp));
+  if (provenance.length) headText.append(el2("p", "p-card-via", provenance.join(" · ")));
+  const head = el2("div", "p-card-head");
+  head.append(thumb, headText);
+  card.append(head);
   if (duck.message) card.append(el2("p", "p-card-msg", duck.message));
   const stats = el2("p", "p-card-stats");
   const showStats = (bumps) => {
@@ -3416,12 +3455,17 @@ function openDuckCard(view, duck) {
     });
     actions.append(bump);
   } else if (!mine) {
-    actions.append(el2("span", "p-card-stats", t("code.03")));
+    const needsDuck = button("p-card-btn", t("code.03"), () => {
+    });
+    needsDuck.disabled = true;
+    actions.append(needsDuck);
   }
-  actions.append(button("p-btn p-btn-quiet", t("pond.39"), () => reportSheet(card, duck)));
-  actions.append(button("p-btn p-btn-quiet", t("pond.23"), () => card.remove()));
+  actions.append(button("p-card-btn p-card-btn-danger", t("pond.39"), () => reportSheet(card, duck)));
   card.append(actions);
-  root.append(card);
+  const close = button("p-card-x", "✕", dismiss, t("pond.23"));
+  card.append(close);
+  card.prepend(ditherEdge());
+  root.append(scrim, card);
 }
 function reportSheet(card, duck) {
   card.replaceChildren();

@@ -40,10 +40,14 @@ function field(opts) {
   wrap.append(input, count);
   return { wrap, input };
 }
-function sheet(centred = false) {
-  const root2 = el("div", `p-screen${centred ? " p-centre" : ""}`);
+function ditherEdge() {
   const edge = el("div", "p-edge");
   edge.append(el("i", "p-d25"), el("i", "p-d50"), el("i", "p-d75"));
+  return edge;
+}
+function sheet(centred = false) {
+  const root2 = el("div", `p-screen${centred ? " p-centre" : ""}`);
+  const edge = ditherEdge();
   const body = el("div", `p-sheet-body${centred ? " p-centre" : ""}`);
   root2.append(edge, body);
   return { root: root2, body };

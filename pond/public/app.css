@@ -147,7 +147,6 @@ html[lang="zh-Hant"] body {
 .p-sticker,
 .p-input,
 .p-linkbox,
-.p-card,
 .p-sheet {
   clip-path: var(--px-corner);
 }
@@ -668,9 +667,20 @@ a.p-btn {
   user-select: all;
 }
 
+/*
+ * The scrim behind a duck's card. The pond keeps moving underneath — it is
+ * not paused, because a pond that freezes when you read a card stops being
+ * a place — it just stops competing with what you asked to read.
+ */
+.p-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 34;
+  background: #0b3d5233;
+}
+
 /* ── a duck's card, and the gather sheet ─────────────────────────────── */
 
-.p-card,
 .p-sheet {
   position: absolute;
   left: 16px;
@@ -683,8 +693,70 @@ a.p-btn {
   background: var(--p-surface);
 }
 
+/*
+ * ══ THE CARD IS A PANEL, NOT A FLOATING BOX ══
+ * Full bleed to both edges and sitting on the bottom, so its dithered edge
+ * reads as the waterline rather than as trim on a card hovering over the
+ * pond. Inset 16px with rounded corners it looked like a notification;
+ * the prototype has it rise out of the water and own the bottom of the
+ * screen.
+ */
 .p-card {
-  bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 35;
+  display: flex;
+  flex-direction: column;
+  background: var(--p-surface);
+}
+
+/* The body's padding, not the panel's — the edge has to reach the sides. */
+.p-card > :not(.p-edge) {
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+
+.p-card > .p-card-head {
+  margin-top: 0.9rem;
+}
+
+/*
+ * The prototype's rhythm. Everything was sitting on top of everything
+ * else because the shared card/sheet rule had a flat 0.5rem gap and this
+ * panel wants the message to breathe away from the head.
+ */
+.p-card .p-card-msg {
+  font-size: 1.02rem;
+  line-height: 1.5;
+  color: var(--p-soft);
+  margin-top: 0.7rem;
+}
+
+.p-card .p-card-via {
+  margin-top: 0.2rem;
+}
+
+.p-card .p-card-name {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.3rem;
+  line-height: 1.1;
+  margin: 0 0 0.12rem;
+  text-transform: none;
+}
+
+.p-card .p-card-stats {
+  margin-top: 0.55rem;
+}
+
+.p-card > .p-actions {
+  margin-bottom: calc(1.1rem + env(safe-area-inset-bottom));
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
 }
 
 .p-sheet {
@@ -695,6 +767,131 @@ a.p-btn {
 
 .p-card p {
   margin: 0;
+}
+
+/*
+ * ══ THE DUCK'S CARD, TO THE PROTOTYPE ══
+ * Full bleed, not a floating box. It rises out of the water on its
+ * dithered edge and fills the width, which is why the edge reads as the
+ * waterline rather than as a decoration on a panel.
+ *
+ * Two columns in the head: the animal at 72px in a tinted box, and beside
+ * it the fortune as a pill, the name in the serif, and the provenance in
+ * mono. Actions are chips side by side, not stacked slabs — a card is a
+ * glance, and a full-width button makes it look like a form.
+ */
+.p-card-head {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.p-card-duck {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  image-rendering: pixelated;
+  background: var(--quiet);
+  border-radius: 6px;
+}
+
+.p-card-headtext {
+  min-width: 0;
+}
+
+/*
+ * The one rounded thing in the pond, and deliberately so: it is a label
+ * ABOUT the duck rather than a surface the duck sits on, and the pill
+ * shape is what separates the two.
+ */
+.p-card-fortune {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.25rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+  background: var(--quiet);
+  padding: 0.22rem 0.5rem;
+  border-radius: 99px;
+}
+
+.p-card-fortune b {
+  font-family: var(--body);
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  color: var(--p-ink);
+}
+
+.p-card-fortune i {
+  font-style: normal;
+  opacity: 0.5;
+  margin: 0 0.18rem;
+}
+
+.p-card-fortune span {
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  font-size: 0.72rem;
+}
+
+/* Chips, side by side. `.p-btn`'s pressable slab is for a screen's one
+   real action, not for a glance. */
+.p-card-btn {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  box-sizing: border-box;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 0 0.85rem;
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* "Bumped ✓ · 11" was breaking before the count. */
+  white-space: nowrap;
+  background: var(--quiet);
+  color: var(--p-ink);
+}
+
+.p-card-btn[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.p-card-btn-hot {
+  background: var(--duck);
+  color: var(--duck-text);
+}
+
+.p-card-btn-danger {
+  background: var(--danger);
+  color: var(--danger-text);
+}
+
+.p-card-x {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  background: var(--quiet);
+  position: absolute;
+  top: 18px;
+  right: 16px;
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--p-soft);
 }
 
 .p-card-name {
