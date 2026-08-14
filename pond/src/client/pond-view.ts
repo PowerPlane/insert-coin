@@ -585,6 +585,19 @@ export class PondView {
     this.ripples.push({ x: wx, y: wy, t: performance.now(), max });
   }
 
+  /**
+   * Back to the pond's own framing: the middle of the world, at the zoom it
+   * opens on.
+   *
+   * "Everyone" is the show-me-everything action, so it is also the way
+   * home. Without it there is no way to undo a zoom and a pan except by
+   * hand, and somebody who has wandered off to a corner has no route back.
+   */
+  home(): void {
+    const centre = this.camera.side / 2;
+    this.camera.glide({ x: centre, y: centre, cell: HOME_CELL }, CAM_UI);
+  }
+
   /** Centre on a duck. `moment` is the one thing watched, not operated. */
   lookAt(id: string, moment = false): void {
     const d = this.find(id);

@@ -229,43 +229,79 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     view.gather(keeper === null ? null : (d) => d.keeper === keeper);
     whistle.hidden = keeper === null;
     whistleWho.textContent = keeper === null ? "" : t("live.whistling", { keeper });
+
+    /*
+     * ══ THE FLOCK COMES TO YOU ══
+     * `gather` rings the called ducks around the CAMERA, not around the
+     * middle of the world — so whistling never needs to move the view, and
+     * you are always already looking at what answered. The prototype
+     * gathers at world centre and then flies the camera there, which is
+     * the same intent by a longer route; this way nothing moves under you.
+     *
+     * Clearing IS the way home though: back to the middle at the pond's
+     * own zoom. It is the only undo for a zoom and a pan, so somebody who
+     * has wandered into a corner is never stranded there.
+     */
+    if (keeper === null) view.home();
+
     syncCount();
     sheet.hidden = true;
+    scrim.remove();
   };
 
-  count.addEventListener("click", () => {
-    // Everyone with a name to be gathered by. A duck from an unclaimed card
-    // has no keeper, so there is nobody to whistle for — it is simply part
-    // of the pond.
-    const keepers = [...new Set(ducks.map((d) => d.keeper).filter(Boolean))] as string[];
+  /*
+   * ══ WHISTLE FOR ══
+   * One row per thing you can call, each with how many ducks answer to it,
+   * ordered by how many — the biggest circle first, because that is the one
+   * most likely to be wanted and the one that best explains what the list
+   * is for.
+   *
+   * "Everyone" is always first and is never absent: a filter list whose
+   * only rows are filters gives you no way back to the whole pond.
+   */
+  const openGather = () => {
     sheet.replaceChildren();
+    sheet.append(el("p", "p-field-label", t("pond.04")));
 
-    if (keepers.length === 0) {
-      sheet.append(el("p", "p-note", t("live.nokeepers")));
-    } else {
-      sheet.append(el("p", "p-field-label", t("pond.04")));
-      const list = el("div", "p-actions");
-      for (const k of keepers) {
-        const n = ducks.filter((d) => d.keeper === k).length;
-        list.append(button("p-chip", `${k} · ${n}`, () => call(k)));
-      }
-      sheet.append(list);
+    const byKeeper = new Map<string, number>();
+    for (const d of ducks) {
+      if (d.keeper) byKeeper.set(d.keeper, (byKeeper.get(d.keeper) ?? 0) + 1);
     }
 
-    if (calling !== null) {
-      sheet.append(
-        el("div", "p-actions").appendChild(
-          button("p-btn p-btn-quiet", t("pond.03"), () => call(null)),
-        ).parentElement!,
-      );
+    const rows: { key: string | null; label: string; count: number }[] = [
+      { key: null, label: t("live.everyone"), count: ducks.length },
+      ...[...byKeeper.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, n]) => ({ key: k, label: t("live.whistling", { keeper: k }), count: n })),
+    ];
+
+    const list = el("div", "p-glist");
+    for (const row of rows) {
+      const b = button("p-grow", "", () => call(row.key));
+      b.append(row.label, el("i", "p-grow-n", String(row.count)));
+      // Pressed, not just coloured: this is the one control that reports
+      // which of several states the pond is in.
+      b.setAttribute("aria-pressed", String(calling === row.key));
+      b.classList.toggle("on", calling === row.key);
+      list.append(b);
     }
-    sheet.append(
-      el("div", "p-actions").appendChild(
-        button("p-chip", t("pond.23"), () => { sheet.hidden = true; }),
-      ).parentElement!,
-    );
-    sheet.hidden = !sheet.hidden;
+    sheet.append(list);
+
+    // Only a keeper's own ducks can be whistled for. An unclaimed card has
+    // no name to call, so it is simply part of the pond.
+    if (byKeeper.size === 0) sheet.append(el("p", "p-note", t("live.nokeepers")));
+
+    sheet.hidden = false;
+    root.append(scrim);
+  };
+
+  const scrim = el("div", "p-scrim");
+  scrim.addEventListener("click", () => {
+    sheet.hidden = true;
+    scrim.remove();
   });
+
+  count.addEventListener("click", openGather);
 
   root.append(whistle, sheet);
 

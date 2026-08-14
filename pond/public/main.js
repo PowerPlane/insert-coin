@@ -922,7 +922,20 @@ var LIVE_STRINGS = {
   // their typing, and that the pond is not accusing them of anything.
   "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
   // Whose circle you are in. Names the person, never "filter: keeper".
-  "live.whistling": "{keeper}'s cards"
+  "live.whistling": "{keeper}'s cards",
+  // The row, not the screen-reader label. "Show everyone again" describes
+  // an action to somebody who cannot see the list; "Everyone" names a state
+  // to somebody reading it.
+  "live.everyone": "Everyone",
+  /*
+   * A failed release used to be four words on their own — true, and no
+   * help. Somebody who has just spent two minutes decorating a duck needs
+   * three things: what happened, that their work is still here, and what
+   * to do. The draft IS kept, so saying so is not reassurance, it is a
+   * fact they cannot otherwise see.
+   */
+  "live.error.body": "Your duck is still here — nothing you made has been lost. Try again in a moment.",
+  "live.offline.body": "Your duck is still here — nothing you made has been lost. Try again once you are back online."
 };
 var KEEPER_STRINGS = {
   "keeper.01": "Card setup",
@@ -1207,6 +1220,9 @@ var ZH_HANT = {
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
   "live.whistling": "{keeper} 的卡片",
+  "live.everyone": "全部",
+  "live.error.body": "你的鴨子還在，做的東西都沒有不見。等一下再試一次。",
+  "live.offline.body": "你的鴨子還在，做的東西都沒有不見。等你連上網路再試一次。",
   // ── card setup ────────────────────────────────────────────────────────
   "keeper.01": "卡片設定",
   "keeper.02": "設定這張卡片",
@@ -2219,7 +2235,7 @@ function releaseFlow(opts) {
     wrap2.append(
       el("p", "p-eyebrow", t("arrival.01")),
       preview(6),
-      el("h1", "p-title", fortuneTitle(opts.fortune)),
+      el("h1", "p-title p-fortune-title", fortuneTitle(opts.fortune)),
       el("p", "p-body", t("arrival.03"))
     );
     const actions = el("div", "p-actions");
@@ -2349,8 +2365,10 @@ function releaseFlow(opts) {
       clearDraft();
       keep(made);
     } catch (err) {
-      status.textContent = err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
+      const offline = err instanceof ApiError && err.status === 0;
+      status.textContent = offline ? t("live.offline") : t("live.error");
       wrap2.append(
+        el("p", "p-body", offline ? t("live.offline.body") : t("live.error.body")),
         el("div", "p-actions").appendChild(
           button("p-btn", t("contact.07"), () => void release())
         ).parentElement
@@ -3037,6 +3055,18 @@ var PondView = class {
   splash(wx, wy, max = 14) {
     this.ripples.push({ x: wx, y: wy, t: performance.now(), max });
   }
+  /**
+   * Back to the pond's own framing: the middle of the world, at the zoom it
+   * opens on.
+   *
+   * "Everyone" is the show-me-everything action, so it is also the way
+   * home. Without it there is no way to undo a zoom and a pan except by
+   * hand, and somebody who has wandered off to a corner has no route back.
+   */
+  home() {
+    const centre = this.camera.side / 2;
+    this.camera.glide({ x: centre, y: centre, cell: HOME_CELL }, CAM_UI);
+  }
   /** Centre on a duck. `moment` is the one thing watched, not operated. */
   lookAt(id, moment = false) {
     const d = this.find(id);
@@ -3437,39 +3467,41 @@ async function pondScreen(bootstrap) {
     view.gather(keeper === null ? null : (d) => d.keeper === keeper);
     whistle.hidden = keeper === null;
     whistleWho.textContent = keeper === null ? "" : t("live.whistling", { keeper });
+    if (keeper === null) view.home();
     syncCount();
     sheet2.hidden = true;
+    scrim.remove();
   };
-  count.addEventListener("click", () => {
-    const keepers = [...new Set(ducks.map((d) => d.keeper).filter(Boolean))];
+  const openGather = () => {
     sheet2.replaceChildren();
-    if (keepers.length === 0) {
-      sheet2.append(el2("p", "p-note", t("live.nokeepers")));
-    } else {
-      sheet2.append(el2("p", "p-field-label", t("pond.04")));
-      const list = el2("div", "p-actions");
-      for (const k of keepers) {
-        const n = ducks.filter((d) => d.keeper === k).length;
-        list.append(button("p-chip", `${k} · ${n}`, () => call(k)));
-      }
-      sheet2.append(list);
+    sheet2.append(el2("p", "p-field-label", t("pond.04")));
+    const byKeeper = /* @__PURE__ */ new Map();
+    for (const d of ducks) {
+      if (d.keeper) byKeeper.set(d.keeper, (byKeeper.get(d.keeper) ?? 0) + 1);
     }
-    if (calling !== null) {
-      sheet2.append(
-        el2("div", "p-actions").appendChild(
-          button("p-btn p-btn-quiet", t("pond.03"), () => call(null))
-        ).parentElement
-      );
+    const rows = [
+      { key: null, label: t("live.everyone"), count: ducks.length },
+      ...[...byKeeper.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => ({ key: k, label: t("live.whistling", { keeper: k }), count: n }))
+    ];
+    const list = el2("div", "p-glist");
+    for (const row of rows) {
+      const b = button("p-grow", "", () => call(row.key));
+      b.append(row.label, el2("i", "p-grow-n", String(row.count)));
+      b.setAttribute("aria-pressed", String(calling === row.key));
+      b.classList.toggle("on", calling === row.key);
+      list.append(b);
     }
-    sheet2.append(
-      el2("div", "p-actions").appendChild(
-        button("p-chip", t("pond.23"), () => {
-          sheet2.hidden = true;
-        })
-      ).parentElement
-    );
-    sheet2.hidden = !sheet2.hidden;
+    sheet2.append(list);
+    if (byKeeper.size === 0) sheet2.append(el2("p", "p-note", t("live.nokeepers")));
+    sheet2.hidden = false;
+    root.append(scrim);
+  };
+  const scrim = el2("div", "p-scrim");
+  scrim.addEventListener("click", () => {
+    sheet2.hidden = true;
+    scrim.remove();
   });
+  count.addEventListener("click", openGather);
   root.append(whistle, sheet2);
   const refresh = async () => {
     try {

@@ -97,6 +97,19 @@ export const LIVE_STRINGS = {
   "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
   // Whose circle you are in. Names the person, never "filter: keeper".
   "live.whistling": "{keeper}'s cards",
+  // The row, not the screen-reader label. "Show everyone again" describes
+  // an action to somebody who cannot see the list; "Everyone" names a state
+  // to somebody reading it.
+  "live.everyone": "Everyone",
+  /*
+   * A failed release used to be four words on their own — true, and no
+   * help. Somebody who has just spent two minutes decorating a duck needs
+   * three things: what happened, that their work is still here, and what
+   * to do. The draft IS kept, so saying so is not reassurance, it is a
+   * fact they cannot otherwise see.
+   */
+  "live.error.body": "Your duck is still here — nothing you made has been lost. Try again in a moment.",
+  "live.offline.body": "Your duck is still here — nothing you made has been lost. Try again once you are back online.",
 } as const;
 
 /**
@@ -299,6 +312,9 @@ export const ZH_HANT: Record<StringKey, string> = {
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
   "live.whistling": "{keeper} 的卡片",
+  "live.everyone": "全部",
+  "live.error.body": "你的鴨子還在，做的東西都沒有不見。等一下再試一次。",
+  "live.offline.body": "你的鴨子還在，做的東西都沒有不見。等你連上網路再試一次。",
 
   // ── card setup ────────────────────────────────────────────────────────
   "keeper.01": "卡片設定",

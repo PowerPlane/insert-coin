@@ -182,6 +182,54 @@ html[lang="zh-Hant"] body {
 }
 
 /*
+ * ══ WHISTLE FOR ══
+ * Full-width rows, not chips. Each is a whole state the pond can be in
+ * rather than a small action, and a row you can hit anywhere on is the
+ * right target for a list you read down.
+ *
+ * The count sits at the far end, so the list also answers "how big is
+ * each circle" without being asked.
+ */
+.p-glist {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.p-grow {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 46px;
+  padding: 0 0.9rem;
+  background: var(--quiet);
+  color: var(--p-ink);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* The one you are in, inverted — the same treatment as the pill, so the
+   sheet and the pond agree about which state is current. */
+.p-grow.on {
+  background: var(--p-ink);
+  color: var(--p-surface);
+}
+
+.p-grow-n {
+  font-style: normal;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
  * The whistle pill: whose circle you are currently in.
  *
  * Ink on light, the inverse of every other chip on the water, because it
@@ -837,7 +885,12 @@ a.p-btn {
   font-weight: 400;
   font-size: 1.3rem;
   line-height: 1.1;
-  margin: 0 0 0.12rem;
+  /*
+   * The serif's ascenders reach high, so at 1.1 line-height the name sat
+   * directly against the pill above it with no air at all. The pill owns
+   * the gap below itself; this owns the gap below the name.
+   */
+  margin: 0.28rem 0 0.12rem;
   text-transform: none;
 }
 
@@ -893,6 +946,30 @@ a.p-btn {
 }
 
 /*
+ * ══ DELA GOTHIC ONE, AT DISPLAY SIZES ONLY ══
+ * The fortune is a stamp on a ticket and is set like one. Dela is heavy and
+ * blocky and suits an arcade fortune far better than a serif — but it is a
+ * DISPLAY face: at 10px its kanji strokes fill in and 大吉 becomes a blob.
+ * So the big arrival heading gets it and the card's small pill does not,
+ * which is the split the prototype makes too.
+ *
+ * It also has to be USED somewhere to exist at all. The face was declared,
+ * subsetted and shipped, and no rule ever asked for it — so the browser
+ * never fetched it and every 大吉 in the product was rendering in the body
+ * face. A webfont nothing references is a file nobody downloads.
+ *
+ * The unicode-range does the rest: it covers only 大吉小末凶 and おみくじ,
+ * so the Latin half of "大吉 · Great luck" keeps the serif with no span
+ * around it.
+ */
+.p-fortune-title {
+  font-family: "Dela Gothic One", var(--serif);
+  /* Japanese has no case, so this only reaches the gloss. */
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+/*
  * The one rounded thing in the pond, and deliberately so: it is a label
  * ABOUT the duck rather than a surface the duck sits on, and the pill
  * shape is what separates the two.
@@ -908,8 +985,10 @@ a.p-btn {
   text-transform: uppercase;
   color: var(--p-soft);
   background: var(--quiet);
-  padding: 0.22rem 0.5rem;
+  padding: 0.22rem 0.55rem;
   border-radius: 99px;
+  /* Air under the pill, before the name. */
+  margin: 0 0 0.1rem;
 }
 
 .p-card-fortune b {

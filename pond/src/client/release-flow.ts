@@ -120,7 +120,7 @@ export function releaseFlow(opts: FlowOptions): void {
     wrap.append(
       el("p", "p-eyebrow", t("arrival.01")),
       preview(6),
-      el("h1", "p-title", fortuneTitle(opts.fortune)),
+      el("h1", "p-title p-fortune-title", fortuneTitle(opts.fortune)),
       el("p", "p-body", t("arrival.03")),
     );
     const actions = el("div", "p-actions");
@@ -265,9 +265,13 @@ export function releaseFlow(opts: FlowOptions): void {
     } catch (err) {
       // Nothing is cleared — the draft is still there, and the button
       // simply comes back. Offline is a different sentence from broken.
-      status.textContent =
-        err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
+      // Offline is a different sentence from broken, and both need to say
+      // that the duck survived — which it did: `clearDraft()` is above the
+      // catch, so nothing has been thrown away.
+      const offline = err instanceof ApiError && err.status === 0;
+      status.textContent = offline ? t("live.offline") : t("live.error");
       wrap.append(
+        el("p", "p-body", offline ? t("live.offline.body") : t("live.error.body")),
         el("div", "p-actions").appendChild(
           button("p-btn", t("contact.07"), () => void release()),
         ).parentElement!,
