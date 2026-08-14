@@ -1471,7 +1471,110 @@ a.p-chip {
 .p-swatch:focus-visible,
 .p-sticker:focus-visible,
 .p-count:focus-visible,
+.p-glyph:focus-visible,
+.p-input:focus-visible,
 .p-mark:focus-visible {
   outline: none;
+  /*
+   * INSET, and not by preference: every one of these wears `clip-path` for
+   * its pixel corners, and clip-path cuts an outset shadow away entirely.
+   * A ring drawn outside these boxes is a ring nobody ever sees.
+   *
+   * A field's padding is wider than the ring, so the text still clears it.
+   */
   box-shadow: inset 0 0 0 3px var(--focus);
+}
+
+/* ── saying something ─────────────────────────────────────────────────── */
+
+/*
+ * The bubble layer sits over the water and takes no touches: a duck under a
+ * bubble must still be tappable, and a bubble is something to read rather
+ * than something to press.
+ */
+.p-says {
+  position: absolute;
+  inset: 0;
+  z-index: 33;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/*
+ * One bubble. Positioned by transform only — it moves on every frame the
+ * pond draws, and top/left would make the browser reflow the page to do it.
+ *
+ * `max-width` in characters rather than pixels: sixty characters is the
+ * limit, and the bubble should be as wide as its words rather than as wide
+ * as the phone.
+ */
+.p-say {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 22ch;
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  background: var(--p-surface);
+  color: var(--p-ink);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  line-height: 1.5;
+  text-align: center;
+  clip-path: var(--px-corner);
+  /* Steps, like everything else that appears in this pond. */
+  animation: p-say-in 0.18s steps(3, end);
+}
+
+.p-say[hidden] {
+  display: none;
+}
+
+@keyframes p-say-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-say { animation: none; }
+}
+
+/*
+ * A glyph button: the two quiet controls that replace the CTA once your
+ * duck is in the pond. Square, so the icon sits in the middle of a target
+ * a thumb can find without aiming.
+ */
+/*
+ * With only glyphs in it the bar is a centred row, not a stack: two square
+ * controls side by side read as "here are two small things you may do",
+ * where one above the other reads as a list of steps.
+ */
+.p-cta.p-cta-glyphs {
+  flex-direction: row;
+  justify-content: center;
+  gap: 12px;
+}
+
+.p-glyph {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  cursor: pointer;
+  box-sizing: border-box;
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  background: var(--quiet);
+  color: var(--p-ink);
+}
+
+.p-glyph:active {
+  transform: translateY(1px);
+}
+
+/* Authored small and scaled by the box — never resampled. */
+.p-icon {
+  image-rendering: pixelated;
+  display: block;
 }

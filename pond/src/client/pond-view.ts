@@ -412,6 +412,16 @@ export interface PondViewOptions {
   /** A burning duck was tapped. The fire is already out on screen. */
   onDouseDuck?: (duck: Placed) => void;
   onTapWater?: (wx: number, wy: number) => void;
+  /**
+   * Called at the end of every draw, for anything that has to sit ON the
+   * pond in the DOM and stay glued to a duck — a speech bubble, today.
+   *
+   * The pond is a canvas, so anything drawn into it is invisible to a
+   * screen reader and has to be rendered from a bitmap font. Real text in
+   * a real element is readable, wraps, and speaks; it just has to be told
+   * where its duck went, on the same frame the duck moved.
+   */
+  onDraw?: () => void;
 }
 
 export class PondView {
@@ -663,6 +673,42 @@ export class PondView {
           this.opts.canvas.width, this.opts.canvas.height, this.camera.side,
         ),
       })),
+    };
+  }
+
+  /**
+   * Where a duck is right now in VIEWPORT CSS pixels, or null if it is not
+   * in the pond.
+   *
+   * ══ THE CANVAS IS NOT THE SCREEN ══
+   * `project` answers in the canvas's BACKING pixels, and the canvas is
+   * both dpr times denser AND 150% overscanned and offset, so its box
+   * hangs off both sides of what anyone can see. Returning canvas-relative
+   * coordinates put speech bubbles a third of a screen away from the ducks
+   * saying them.
+   *
+   * Viewport coordinates are the only frame every DOM caller shares, so the
+   * conversion is done once, here, rather than in each caller that would
+   * have to remember the overscan exists.
+   */
+  screenOf(id: string): { x: number; y: number; r: number } | null {
+    const duck = this.find(id);
+    if (!duck) return null;
+    const { canvas } = this.opts;
+    const rect = canvas.getBoundingClientRect();
+    if (!canvas.width || !canvas.height) return null;
+    const { renderCell } = this.camera.frame();
+    const at = project(
+      duck.wx, duck.wy, this.camera.cam, renderCell,
+      canvas.width, canvas.height, this.camera.side,
+    );
+    // Half a duck, in the same units — so anything hanging off one can
+    // clear it at ANY zoom instead of at the one it was eyeballed against.
+    const scale = rect.height / canvas.height;
+    return {
+      x: rect.left + (at.x / canvas.width) * rect.width,
+      y: rect.top + (at.y / canvas.height) * rect.height,
+      r: (GRID / 2) * renderCell * scale,
     };
   }
 
@@ -1528,6 +1574,9 @@ export class PondView {
     // the element's 150% width already places it, and scaling it back down
     // shrank every duck by a further third on top of the backing-store bug.
     canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
+
+    // Anything glued to a duck moves on the same frame the duck did.
+    this.opts.onDraw?.();
   }
 
   /** Nearest duck within a forgiving radius. Front-most wins. */

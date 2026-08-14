@@ -204,6 +204,15 @@ export const EN = {
   "pond.21": "Email", // Button
   "pond.22": "Done", // Button
   "pond.40": "Copied", // Button, once the link is on the clipboard
+  "say.01": "Say something", // Button, screen reader
+  "say.02": "Say something", // Heading
+  "say.03": "Your duck says this for 45 seconds.", // Body
+  "say.04": "What's on your mind?", // Placeholder
+  "say.05": "Say it", // Button
+  "say.06": "Not now", // Button
+  "say.07": "One at a time — try again in {minutes} min.", // Error, cooldown
+  "say.08": "The pond isn't answering. Try again.", // Error
+  "say.09": "Your duck settings", // Button, screen reader
   "pond.23": "Close", // Screen reader
   "pond.24": "小吉·Little luck", // Body
   "pond.25": "Mika", // Body
@@ -402,6 +411,15 @@ export const ZH_HANT: Record<StringKey, string> = {
   "pond.14": "你的鴨子下水了",
   "pond.15": "留著這個連結",
   "pond.40": "已複製",
+  "say.01": "說點什麼",
+  "say.02": "說點什麼",
+  "say.03": "你的鴨子會說 45 秒。",
+  "say.04": "想說什麼？",
+  "say.05": "說出來",
+  "say.06": "先不要",
+  "say.07": "一次一句 — {minutes} 分鐘後再試。",
+  "say.08": "池塘沒有回應，請再試一次。",
+  "say.09": "你的鴨子設定",
   "pond.16": "沒有帳號。用這個連結修改、重新裝飾，或把鴨子帶走。",
   "pond.17": "你的私人連結",
   "pond.18": "ducky.davidyang.work/e/9fQ2xK7pLm",

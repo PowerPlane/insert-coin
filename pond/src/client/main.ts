@@ -15,7 +15,8 @@ import {
   ApiError, api, loadDraft, recallEditKey,
   type ReportReason, type SessionState,
 } from "./api.js";
-import { button, ditherEdge, field } from "./dom.js";
+import { button, ditherEdge, field, sheet as makeSheet } from "./dom.js";
+import { icon } from "./icons.js";
 import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
 import { CAM_UI } from "./camera.js";
@@ -119,6 +120,40 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    */
   const overlay = el("div", "p-overlay");
 
+  /*
+   * ══ SPEECH BUBBLES ARE DOM, NOT CANVAS ══
+   * Everything else in the pond is drawn, and a bubble drawn into the
+   * canvas would match perfectly — and be invisible to a screen reader,
+   * unreadable in Chinese without a bitmap font covering it, and unable to
+   * wrap. Sixty characters of somebody's own words is exactly the content
+   * that has to be REAL text.
+   *
+   * So it is an element, dressed to belong: the pond's ink, its mono face,
+   * its pixel corners. It is glued to its duck on the same frame the duck
+   * moves (see `onDraw`), which is what keeps it from swimming behind.
+   */
+  /**
+   * Sixty characters, matching `SAY_MAX_CHARS` on the server.
+   *
+   * Stated here rather than imported: the client bundle must not reach into
+   * the worker, and the server is the authority anyway — this is a courtesy
+   * that must never be STRICTER than what will be accepted.
+   */
+  const SAY_MAX_CHARS = 60;
+
+  /**
+   * The gap between a duck's head and the bubble over it, in CSS pixels.
+   *
+   * The LIFT itself is half a duck, which the view measures, because a duck
+   * is twice as tall at cell 8 as at cell 4 — a fixed lift tuned at one
+   * rung sits on the duck's head at the next one. Only the breathing room
+   * is a constant.
+   */
+  const SAY_GAP = 6;
+
+  const says = el("div", "p-says");
+  says.setAttribute("aria-live", "polite");
+
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
@@ -129,7 +164,67 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
      */
     onDouseDuck: (d) => void api.extinguish(d.id).catch(() => {}),
     onTapWater: (wx, wy) => view.splash(wx, wy, SPLASH_TAP),
+    onDraw: () => positionSays(),
   });
+
+  /** The bubbles currently on screen, by duck id. */
+  const bubbles = new Map<string, HTMLElement>();
+
+  /**
+   * Put every bubble over its duck.
+   *
+   * Runs on every drawn frame, so it does the least it can: no layout
+   * reads, no allocation, and a transform rather than top/left so the
+   * browser never reflows the page to move one.
+   */
+  function positionSays(): void {
+    if (!bubbles.size) return;
+    const box = says.getBoundingClientRect();
+    for (const [id, node] of bubbles) {
+      const at = view.screenOf(id);
+      /*
+       * A duck outside the window has no bubble. The world WRAPS, so a duck
+       * two screens away still projects to a real position — it is simply
+       * one nobody can see, and a bubble hanging there is a sentence with
+       * nothing saying it.
+       */
+      const x = at ? at.x - box.left : 0;
+      const y = at ? at.y - box.top : 0;
+      const off = !at || x < 0 || y < 0 || x > box.width || y > box.height;
+      node.hidden = off;
+      if (off) continue;
+      node.style.transform =
+        `translate(-50%, -100%) translate(${x}px, ${y - at!.r - SAY_GAP}px)`;
+    }
+  }
+
+  /**
+   * Bring the bubbles into step with what the pond just said.
+   *
+   * The server only sends a `say` while it is live, so a duck whose bubble
+   * has expired simply stops mentioning it — there is no separate expiry
+   * to run here, and nothing to get out of step with.
+   */
+  function syncSays(list: PondDuck[]): void {
+    const live = new Set<string>();
+    for (const d of list) {
+      if (!d.say?.text) continue;
+      live.add(d.id);
+      let node = bubbles.get(d.id);
+      if (!node) {
+        node = el("p", "p-say");
+        bubbles.set(d.id, node);
+        says.append(node);
+      }
+      if (node.textContent !== d.say.text) node.textContent = d.say.text;
+    }
+    for (const [id, node] of bubbles) {
+      if (live.has(id)) continue;
+      node.remove();
+      bubbles.delete(id);
+    }
+    positionSays();
+  }
 
   /**
    * Zoom controls — pond.06 to pond.09 in the deck.
@@ -160,7 +255,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   };
   zoom.append(zoomIn, zoomOut);
 
-  root.append(stage, hud, zoom, cta, wordmark, overlay);
+  root.append(stage, says, hud, zoom, cta, wordmark, overlay);
 
 
   // A handle for looking at the real thing in a real browser. The pond is
@@ -319,6 +414,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       const res = await api.pond();
       ducks = res.ducks;
       view.setDucks(ducks);
+      syncSays(ducks);
       syncCount();
     } catch (err) {
       count.textContent =
@@ -342,6 +438,8 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   }
 
   function buildCta(session: SessionState): void {
+    // Only the two-glyph state is a row; every other state is a wide button.
+    cta.classList.remove("p-cta-glyphs");
     if (session.active && !session.spent) {
     // A fortune is waiting. This is the only CTA that ever appears, and it
     // is the whole reason the pond can be the default screen: someone with
@@ -418,17 +516,106 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       return;
     }
 
-    if (mine) {
-    // "Find my duck" was removed on purpose — once your duck is in the
-    // pond there is no action you still owe it, so the CTA hides entirely.
-    const back = el("button", "p-btn p-btn-quiet", t("mine.05"));
-    back.type = "button";
-      back.addEventListener("click", () => {
-        const d = ducks.find((x) => x.id === bootstrap.duck?.id);
-        if (d) view.lookAt(d.id);
+    /*
+     * ══ ONCE YOUR DUCK IS IN, THE BAR GETS OUT OF THE WAY ══
+     * There is nothing you still owe it — the pond IS the destination —
+     * so the wide button goes and leaves two quiet glyphs: say something,
+     * and your duck's settings. A CTA here would be asking for an action
+     * that does not exist.
+     *
+     * This used to append a "Back to the pond" button while the comment
+     * beside it said the CTA hides entirely. The comment was right.
+     */
+    cta.classList.add("p-cta-glyphs");
+    cta.append(sayButton(), settingsButton());
+  }
+
+  /** Say something. Sixty characters, forty-five seconds, once per ten minutes. */
+  function sayButton(): HTMLElement {
+    const b = button("p-glyph", "", () => openSay(), t("say.01"));
+    b.append(icon("chat", 22));
+    return b;
+  }
+
+  function settingsButton(): HTMLElement {
+    const b = button("p-glyph", "", () => {
+      pausePolling();
+      mineScreen({
+        root: overlay,
+        editKey: mine!,
+        onPond: () => {
+          overlay.replaceChildren();
+          resumePolling();
+          void syncCta();
+        },
       });
-      cta.append(back);
-    }
+    }, t("say.09"));
+    b.append(icon("gear", 22));
+    return b;
+  }
+
+  /**
+   * The say sheet.
+   *
+   * The cooldown is stated by the server, not guessed at here: a client
+   * that counts down its own ten minutes disagrees with the server the
+   * moment a tab sleeps, and then refuses something that would have been
+   * allowed. So the field is always open, and a refusal comes back with
+   * the real number of minutes left.
+   */
+  function openSay(): void {
+    const { root: sheetRoot, body: wrap } = makeSheet();
+    const close = () => overlay.replaceChildren();
+    // Heading then body, like every other sheet. It was an eyebrow, which
+    // is a kicker ABOVE a heading — so this sheet had a kicker and no
+    // heading at all.
+    wrap.append(
+      el("h2", "p-title", t("say.02")),
+      el("p", "p-body", t("say.03")),
+    );
+
+    const note = el("p", "p-note", "");
+    note.hidden = true;
+    const input = field({
+      label: "", placeholder: t("say.04"), max: SAY_MAX_CHARS,
+    });
+    // The heading already names the field; a label under it would be the
+    // same words twice.
+    input.wrap.querySelector(".p-field-label")?.remove();
+
+    const send = button("p-btn", t("say.05"), () => {
+      const text = input.input.value.trim();
+      if (!text) return;
+      send.disabled = true;
+      void api.say(mine!, text).then(
+        () => {
+          close();
+          void refresh();
+        },
+        (err: unknown) => {
+          send.disabled = false;
+          note.hidden = false;
+          /*
+           * A refusal is not a failure. The cooldown is the DESIGN — it is
+           * what keeps the pond ambient rather than a chat room — so it
+           * says when, not just no. `retryAfter` comes off the error
+           * because `request` throws on any non-2xx and carries it there.
+           */
+          const cooling = err instanceof ApiError && err.status === 429;
+          note.textContent = cooling
+            ? t("say.07", {
+                minutes: String(Math.max(1, Math.ceil(err.retryAfter / 60))),
+              })
+            : t("say.08");
+        },
+      );
+    });
+
+    const actions = el("div", "p-actions");
+    actions.append(send, button("p-btn p-btn-quiet", t("say.06"), close));
+    wrap.append(input.wrap, note, actions);
+    overlay.replaceChildren(sheetRoot);
+    input.input.focus();
   }
 
   await syncCta();

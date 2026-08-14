@@ -203,6 +203,150 @@ function screen(root2, render) {
   }
 }
 
+// src/client/icons.ts
+var ICONS = {
+  chat: [
+    "...........................",
+    "...........................",
+    "...kkkkkkkkkkkkkkkkkkkkk...",
+    "...kkkkkkkkkkkkkkkkkkkkk...",
+    "...kkkkkkkkkkkkkkkkkkkkk...",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "kkk.....................kkk",
+    "...kkkkkkkkkkkkkkkkkk...kkk",
+    "...kkkkkkkkkkkkkkkkkk...kkk",
+    "...kkkkkkkkkkkkkkkkkk...kkk",
+    ".....................kkkkkk",
+    ".....................kkkkkk",
+    ".....................kkkkkk",
+    "........................kkk",
+    "........................kkk",
+    "........................kkk",
+    "..........................."
+  ],
+  gear: [
+    "............kk............",
+    "............kk............",
+    "..........kk..kk..........",
+    ".....kkk..kk..kk..kkk.....",
+    ".....kkk..kk..kk..kkk.....",
+    "...kk...kk......kk...kk...",
+    "...kk...kk......kk...kk...",
+    "...kk................kk...",
+    ".....kk............kk.....",
+    ".....kk....kkkk....kk.....",
+    "..kkk......kkkk......kkk..",
+    "..kkk....kk....kk....kkk..",
+    "kk.......kk....kk.......kk",
+    "kk.......kk....kk.......kk",
+    "..kkk....kk....kk....kkk..",
+    "..kkk......kkkk......kkk..",
+    ".....kk....kkkk....kk.....",
+    ".....kk............kk.....",
+    "...kk................kk...",
+    "...kk...kk......kk...kk...",
+    "...kk...kk......kk...kk...",
+    ".....kkk..kk..kk..kkk.....",
+    ".....kkk..kk..kk..kkk.....",
+    "..........kk..kk..........",
+    "............kk............",
+    "............kk............"
+  ],
+  home: [
+    "...........................",
+    "...........................",
+    ".............k.............",
+    "............kkk............",
+    "...........kkkkk...........",
+    "..........kkkkkkk..........",
+    ".........kkkkkkkkk.........",
+    "........kkkkkkkkkkk........",
+    ".......kkkkkkkkkkkkk.......",
+    "......kkkkkkkkkkkkkkk......",
+    ".....kkkkkkkkkkkkkkkkk.....",
+    "....kkkkkkkkkkkkkkkkkkk....",
+    "...kkkkkkkkkkkkkkkkkkkkk...",
+    "...........................",
+    "....kkkkkkkkkkkkkkkkkkk....",
+    "....kk...............kk....",
+    "....kk.....kkkkkkk...kk....",
+    "....kk.....kk...kk...kk....",
+    "....kk.....kk...kk...kk....",
+    "....kk.....kk...kk...kk....",
+    "....kk.....kk...kk...kk....",
+    "....kkkkkkkkkkkkkkkkkkk....",
+    "...........................",
+    "...........................",
+    "...........................",
+    "...........................",
+    "..........................."
+  ],
+  undo: [
+    "....k....",
+    "...kk....",
+    "..kkkkk..",
+    ".kk...kk.",
+    "kk.....kk",
+    "........k",
+    "........k",
+    "......kkk",
+    "........."
+  ],
+  clear: [
+    "..kkkkk..",
+    ".........",
+    "kkkkkkkkk",
+    ".k.....k.",
+    ".k.k.k.k.",
+    ".k.k.k.k.",
+    ".k.k.k.k.",
+    ".kkkkkkk.",
+    "........."
+  ],
+  dice: [
+    "kkkkkkkkk",
+    "k.......k",
+    "k.k...k.k",
+    "k.......k",
+    "k...k...k",
+    "k.......k",
+    "k.k...k.k",
+    "k.......k",
+    "kkkkkkkkk"
+  ]
+};
+function icon(name, css = 24, colour = "currentColor") {
+  const rows = ICONS[name];
+  const n = rows.length;
+  const c = document.createElement("canvas");
+  c.className = "p-icon";
+  c.width = n;
+  c.height = n;
+  c.style.width = `${css}px`;
+  c.style.height = `${css}px`;
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = colour === "currentColor" ? "#0b3d52" : colour;
+  for (let y = 0; y < n; y++) {
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] === ".") continue;
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+  return c;
+}
+
 // src/client/codec.ts
 var GRID = 24;
 var CELLS = GRID * GRID;
@@ -1158,6 +1302,24 @@ var EN = {
   // Button
   "pond.40": "Copied",
   // Button, once the link is on the clipboard
+  "say.01": "Say something",
+  // Button, screen reader
+  "say.02": "Say something",
+  // Heading
+  "say.03": "Your duck says this for 45 seconds.",
+  // Body
+  "say.04": "What's on your mind?",
+  // Placeholder
+  "say.05": "Say it",
+  // Button
+  "say.06": "Not now",
+  // Button
+  "say.07": "One at a time — try again in {minutes} min.",
+  // Error, cooldown
+  "say.08": "The pond isn't answering. Try again.",
+  // Error
+  "say.09": "Your duck settings",
+  // Button, screen reader
   "pond.23": "Close",
   // Screen reader
   "pond.24": "小吉·Little luck",
@@ -1361,6 +1523,15 @@ var ZH_HANT = {
   "pond.14": "你的鴨子下水了",
   "pond.15": "留著這個連結",
   "pond.40": "已複製",
+  "say.01": "說點什麼",
+  "say.02": "說點什麼",
+  "say.03": "你的鴨子會說 45 秒。",
+  "say.04": "想說什麼？",
+  "say.05": "說出來",
+  "say.06": "先不要",
+  "say.07": "一次一句 — {minutes} 分鐘後再試。",
+  "say.08": "池塘沒有回應，請再試一次。",
+  "say.09": "你的鴨子設定",
   "pond.16": "沒有帳號。用這個連結修改、重新裝飾，或把鴨子帶走。",
   "pond.17": "你的私人連結",
   "pond.18": "ducky.davidyang.work/e/9fQ2xK7pLm",
@@ -3264,6 +3435,44 @@ var PondView = class {
       }))
     };
   }
+  /**
+   * Where a duck is right now in VIEWPORT CSS pixels, or null if it is not
+   * in the pond.
+   *
+   * ══ THE CANVAS IS NOT THE SCREEN ══
+   * `project` answers in the canvas's BACKING pixels, and the canvas is
+   * both dpr times denser AND 150% overscanned and offset, so its box
+   * hangs off both sides of what anyone can see. Returning canvas-relative
+   * coordinates put speech bubbles a third of a screen away from the ducks
+   * saying them.
+   *
+   * Viewport coordinates are the only frame every DOM caller shares, so the
+   * conversion is done once, here, rather than in each caller that would
+   * have to remember the overscan exists.
+   */
+  screenOf(id) {
+    const duck = this.find(id);
+    if (!duck) return null;
+    const { canvas } = this.opts;
+    const rect = canvas.getBoundingClientRect();
+    if (!canvas.width || !canvas.height) return null;
+    const { renderCell } = this.camera.frame();
+    const at = project(
+      duck.wx,
+      duck.wy,
+      this.camera.cam,
+      renderCell,
+      canvas.width,
+      canvas.height,
+      this.camera.side
+    );
+    const scale = rect.height / canvas.height;
+    return {
+      x: rect.left + at.x / canvas.width * rect.width,
+      y: rect.top + at.y / canvas.height * rect.height,
+      r: GRID / 2 * renderCell * scale
+    };
+  }
   /** Find a duck by id, for the arrival zoom and the whistle. */
   find(id) {
     return this.ducks.find((d) => d.id === id);
@@ -3900,6 +4109,7 @@ var PondView = class {
       ctx.fillRect(at.x, at.y, renderCell, renderCell);
     }
     canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    this.opts.onDraw?.();
   }
   /** Nearest duck within a forgiving radius. Front-most wins. */
   hitTest(wx, wy) {
@@ -3956,6 +4166,10 @@ async function pondScreen(bootstrap) {
   const cta = el2("div", "p-cta");
   const wordmark = el2("p", "p-wordmark", "ducky.davidyang.work");
   const overlay = el2("div", "p-overlay");
+  const SAY_MAX_CHARS = 60;
+  const SAY_GAP = 6;
+  const says = el2("div", "p-says");
+  says.setAttribute("aria-live", "polite");
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
@@ -3966,8 +4180,43 @@ async function pondScreen(bootstrap) {
      */
     onDouseDuck: (d) => void api.extinguish(d.id).catch(() => {
     }),
-    onTapWater: (wx, wy) => view.splash(wx, wy, SPLASH_TAP)
+    onTapWater: (wx, wy) => view.splash(wx, wy, SPLASH_TAP),
+    onDraw: () => positionSays()
   });
+  const bubbles = /* @__PURE__ */ new Map();
+  function positionSays() {
+    if (!bubbles.size) return;
+    const box = says.getBoundingClientRect();
+    for (const [id, node] of bubbles) {
+      const at = view.screenOf(id);
+      const x = at ? at.x - box.left : 0;
+      const y = at ? at.y - box.top : 0;
+      const off = !at || x < 0 || y < 0 || x > box.width || y > box.height;
+      node.hidden = off;
+      if (off) continue;
+      node.style.transform = `translate(-50%, -100%) translate(${x}px, ${y - at.r - SAY_GAP}px)`;
+    }
+  }
+  function syncSays(list) {
+    const live = /* @__PURE__ */ new Set();
+    for (const d of list) {
+      if (!d.say?.text) continue;
+      live.add(d.id);
+      let node = bubbles.get(d.id);
+      if (!node) {
+        node = el2("p", "p-say");
+        bubbles.set(d.id, node);
+        says.append(node);
+      }
+      if (node.textContent !== d.say.text) node.textContent = d.say.text;
+    }
+    for (const [id, node] of bubbles) {
+      if (live.has(id)) continue;
+      node.remove();
+      bubbles.delete(id);
+    }
+    positionSays();
+  }
   const zoom = el2("div", "p-zoom");
   const zoomBtn = (label, aria, dir) => {
     const b = el2("button", "p-icon-btn", label);
@@ -3987,7 +4236,7 @@ async function pondScreen(bootstrap) {
     zoomOut.disabled = view.camera.step(-1) === null;
   };
   zoom.append(zoomIn, zoomOut);
-  root.append(stage, hud, zoom, cta, wordmark, overlay);
+  root.append(stage, says, hud, zoom, cta, wordmark, overlay);
   window.__pond = view;
   const fit = () => view.resize();
   fit();
@@ -4060,6 +4309,7 @@ async function pondScreen(bootstrap) {
       const res = await api.pond();
       ducks = res.ducks;
       view.setDucks(ducks);
+      syncSays(ducks);
       syncCount();
     } catch (err) {
       count.textContent = err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
@@ -4073,6 +4323,7 @@ async function pondScreen(bootstrap) {
     buildCta(session);
   }
   function buildCta(session) {
+    cta.classList.remove("p-cta-glyphs");
     if (session.active && !session.spent) {
       const resuming = loadDraft() !== null;
       const go = el2(
@@ -4119,15 +4370,69 @@ async function pondScreen(bootstrap) {
       cta.append(hint);
       return;
     }
-    if (mine) {
-      const back = el2("button", "p-btn p-btn-quiet", t("mine.05"));
-      back.type = "button";
-      back.addEventListener("click", () => {
-        const d = ducks.find((x) => x.id === bootstrap.duck?.id);
-        if (d) view.lookAt(d.id);
+    cta.classList.add("p-cta-glyphs");
+    cta.append(sayButton(), settingsButton());
+  }
+  function sayButton() {
+    const b = button("p-glyph", "", () => openSay(), t("say.01"));
+    b.append(icon("chat", 22));
+    return b;
+  }
+  function settingsButton() {
+    const b = button("p-glyph", "", () => {
+      pausePolling();
+      mineScreen({
+        root: overlay,
+        editKey: mine,
+        onPond: () => {
+          overlay.replaceChildren();
+          resumePolling();
+          void syncCta();
+        }
       });
-      cta.append(back);
-    }
+    }, t("say.09"));
+    b.append(icon("gear", 22));
+    return b;
+  }
+  function openSay() {
+    const { root: sheetRoot, body: wrap2 } = sheet();
+    const close = () => overlay.replaceChildren();
+    wrap2.append(
+      el2("h2", "p-title", t("say.02")),
+      el2("p", "p-body", t("say.03"))
+    );
+    const note = el2("p", "p-note", "");
+    note.hidden = true;
+    const input = field({
+      label: "",
+      placeholder: t("say.04"),
+      max: SAY_MAX_CHARS
+    });
+    input.wrap.querySelector(".p-field-label")?.remove();
+    const send = button("p-btn", t("say.05"), () => {
+      const text = input.input.value.trim();
+      if (!text) return;
+      send.disabled = true;
+      void api.say(mine, text).then(
+        () => {
+          close();
+          void refresh();
+        },
+        (err) => {
+          send.disabled = false;
+          note.hidden = false;
+          const cooling = err instanceof ApiError && err.status === 429;
+          note.textContent = cooling ? t("say.07", {
+            minutes: String(Math.max(1, Math.ceil(err.retryAfter / 60)))
+          }) : t("say.08");
+        }
+      );
+    });
+    const actions = el2("div", "p-actions");
+    actions.append(send, button("p-btn p-btn-quiet", t("say.06"), close));
+    wrap2.append(input.wrap, note, actions);
+    overlay.replaceChildren(sheetRoot);
+    input.input.focus();
   }
   await syncCta();
   if (bootstrap.duck) view.lookAt(bootstrap.duck.id, true);
