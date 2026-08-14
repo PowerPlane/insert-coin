@@ -556,9 +556,24 @@ html[lang="zh-Hant"] body {
   padding: 1.15rem 20px calc(20px + env(safe-area-inset-bottom, 0px));
 }
 
+/*
+ * ══ CENTRING IS ABOUT THE CONTENT, NOT THE SHEET ══
+ * `align-items: center` on a flex COLUMN does not centre it — it stops its
+ * children stretching. `sheet(true)` puts this class on the sheet's root as
+ * well as its body, so the sheet shrank to whatever text was longest and
+ * sat as a narrow column with the water either side of it.
+ *
+ * It hit the six centred screens, which include the first one anybody sees
+ * and the one that says something went wrong. The rule now says what it
+ * means: text is centred everywhere, and only the BODY centres its
+ * children, so the sheet itself keeps the full width it is given.
+ */
 .p-centre {
-  align-items: center;
   text-align: center;
+}
+
+.p-sheet-body.p-centre {
+  align-items: center;
 }
 
 .p-eyebrow {
@@ -742,6 +757,13 @@ textarea.p-input {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  /*
+   * An action group is ALWAYS the full width it is given, whatever the
+   * sheet around it is doing. Inside a centred sheet it was being
+   * shrink-wrapped to the longest label, so "Back to the pond" set the
+   * width of every button under it and they sat as a narrow stack.
+   */
+  align-self: stretch;
 }
 
 /*
@@ -755,6 +777,7 @@ textarea.p-input {
   grid-template-columns: repeat(3, 1fr);
   gap: 0.4rem;
   margin-bottom: 0.7rem;
+  align-self: stretch;
 }
 
 .p-scopes,
