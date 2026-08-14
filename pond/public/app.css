@@ -1578,3 +1578,15 @@ a.p-chip {
   image-rendering: pixelated;
   display: block;
 }
+
+/*
+ * An empty tab. Quiet, but present — the whole point is that the page
+ * looks answered rather than broken.
+ */
+.a-empty {
+  margin: 0;
+  padding: 1.4rem 0.2rem;
+  color: var(--p-soft);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}

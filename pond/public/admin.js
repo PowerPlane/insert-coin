@@ -78,6 +78,11 @@ function screen(root2, render) {
 var root = document.getElementById("pond");
 var FORTUNES = ["大吉", "小吉", "末吉", "凶"];
 var day = (t) => t ? new Date(t * 1e3).toLocaleDateString(void 0, { day: "numeric", month: "short" }) : "";
+var EMPTY = {
+  ducks: "No ducks yet. They appear here as people release them.",
+  contacts: "Nobody has left a contact. They only appear when somebody chooses to share one.",
+  cards: "No cards claimed yet. A card appears here once somebody blows on it four times."
+};
 function scopeLabel(scope, keeper) {
   if (!scope) return "";
   if (scope === "david") return "shared with you";
@@ -157,8 +162,11 @@ function view(ducks, cards, tab) {
     if (tab === "ducks") ducks.forEach((d) => list.append(duckRow(d, ducks, cards)));
     if (tab === "contacts") withContacts.forEach((d) => list.append(contactRow(d, ducks, cards)));
     if (tab === "cards") cards.forEach((c) => list.append(cardRow(c)));
+    if (!list.childElementCount) {
+      list.append(el("p", "a-empty", EMPTY[tab]));
+    }
     wrap.append(list);
-    if (tab === "contacts") {
+    if (tab === "contacts" && withContacts.length) {
       const csv = el("a", "p-btn p-btn-quiet", "Download CSV");
       csv.href = "/api/admin/csv";
       wrap.append(csv);

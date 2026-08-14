@@ -264,6 +264,26 @@ export function stickerAt(
   cy: number,
   slack = 0,
 ): number {
+  /*
+   * ══ WHAT YOU HIT BEATS WHAT YOU NEARLY HIT ══
+   * Two passes, not one. A single pass with the slack applied lets a
+   * LATER sticker's invisible halo win over an EARLIER sticker's actual
+   * pixels — so a tap landing squarely on a scarf could pick up a sparkle
+   * sitting two cells away, because the sparkle happened to be added
+   * second. Nothing on screen explains that, and it is the kind of thing
+   * that gets described as "it grabs the wrong one sometimes".
+   *
+   * So: everything that was actually touched, topmost first. Only if
+   * nothing was touched does the slack get a say — and then topmost first
+   * again, because among near-misses the visible one is still the one
+   * that was meant.
+   */
+  const exact = hit(stickers, cx, cy, 0);
+  return exact >= 0 || slack <= 0 ? exact : hit(stickers, cx, cy, slack);
+}
+
+/** One pass, topmost first, at a given tolerance. */
+function hit(stickers: readonly Sticker[], cx: number, cy: number, slack: number): number {
   for (let i = stickers.length - 1; i >= 0; i--) {
     const s = stickers[i]!;
     const def = STICKERS[s.id];

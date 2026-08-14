@@ -88,10 +88,10 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
      * everything else, so it reads as a mark on the art rather than a
      * browser widget that has wandered in.
      */
-    if (dragging >= 0) {
-      const st = state.stickers[dragging];
-      const def = st ? STICKERS[st.id] : undefined;
-      if (st && def) {
+    if (dragging) {
+      const st = dragging;
+      const def = STICKERS[st.id];
+      if (def) {
         ctx.strokeStyle = SELECT_INK;
         ctx.lineWidth = 2;
         ctx.strokeRect(
@@ -132,8 +132,17 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   };
 
   let painting = false;
-  /** Index of the sticker being moved, or -1. Also drives the outline. */
-  let dragging = -1;
+  /**
+   * The sticker being moved — the OBJECT, not its index.
+   *
+   * An index goes stale the moment the list changes underneath it, and the
+   * tray changes it freely: toggling one off filters the array, and adding
+   * a seventh shifts the oldest out. A drag holding index 2 through either
+   * of those then moves a different sticker, or writes `{x, y}` with no
+   * `id` onto nothing at all. A reference cannot be wrong about which
+   * sticker it means; it can only stop being in the list, which is checked.
+   */
+  let dragging: Sticker | null = null;
 
   const paintAt = (c: { x: number; y: number }) => {
     for (let dy = 0; dy < brush; dy++) {
@@ -160,8 +169,9 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
        * its own slot — a hat on the head — so the duck only has to answer
        * for moving what is already there.
        */
-      dragging = stickerAt(state.stickers, c.x, c.y, STICKER_GRAB_SLACK);
-      if (dragging >= 0) redraw();
+      const hit = stickerAt(state.stickers, c.x, c.y, STICKER_GRAB_SLACK);
+      dragging = hit >= 0 ? state.stickers[hit]! : null;
+      if (dragging) redraw();
       return;
     }
 
@@ -175,11 +185,19 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   canvas.onpointermove = (e) => {
     const c = cellOf(e);
     if (!c) return;
-    if (dragging >= 0) {
+    if (dragging) {
+      // Gone from the list — taken off in the tray while a finger was still
+      // down on it. Nothing to move.
+      if (!state.stickers.includes(dragging)) {
+        dragging = null;
+        redraw();
+        return;
+      }
       // Straight to the cell under the finger, snapped to the grid — the
       // sticker follows the pointer rather than trailing behind wherever it
       // was grabbed, which is what makes it feel picked up.
-      state.stickers[dragging] = { ...state.stickers[dragging]!, x: c.x, y: c.y };
+      dragging.x = c.x;
+      dragging.y = c.y;
       redraw();
       return;
     }
@@ -188,8 +206,8 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
 
   const release = () => {
     painting = false;
-    if (dragging >= 0) {
-      dragging = -1;
+    if (dragging) {
+      dragging = null;
       redraw();
     }
   };
@@ -204,6 +222,13 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   const tabs = el("div", "p-tabs");
 
   const setTab = (next: Tab) => {
+    /*
+     * Changing tab puts down whatever was in hand. A second finger can
+     * reach a tab while the first is still dragging a sticker, and the
+     * gesture would otherwise carry on into a tab where it means nothing —
+     * moving a sticker while somebody thinks they are choosing a colour.
+     */
+    release();
     tab = next;
     [...tabs.children].forEach((c) =>
       c.classList.toggle("on", (c as HTMLElement).dataset.tab === next),

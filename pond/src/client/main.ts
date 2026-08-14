@@ -177,9 +177,22 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    * reads, no allocation, and a transform rather than top/left so the
    * browser never reflows the page to move one.
    */
+  /** Reused between frames so a bubble sync allocates nothing. */
+  const placements: { node: HTMLElement; x: number; y: number; off: boolean }[] = [];
+
   function positionSays(): void {
     if (!bubbles.size) return;
+    /*
+     * ══ READ EVERYTHING, THEN WRITE EVERYTHING ══
+     * This runs on every drawn frame. Interleaved, each write invalidates
+     * layout and the next read forces the browser to recompute it — a
+     * thrash that costs more the more people are talking, which is exactly
+     * backwards. Both the layer's box and each duck's position are read
+     * first, into a list reused between frames, and only then is anything
+     * touched.
+     */
     const box = says.getBoundingClientRect();
+    placements.length = 0;
     for (const [id, node] of bubbles) {
       const at = view.screenOf(id);
       /*
@@ -189,12 +202,15 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
        * nothing saying it.
        */
       const x = at ? at.x - box.left : 0;
-      const y = at ? at.y - box.top : 0;
-      const off = !at || x < 0 || y < 0 || x > box.width || y > box.height;
-      node.hidden = off;
-      if (off) continue;
-      node.style.transform =
-        `translate(-50%, -100%) translate(${x}px, ${y - at!.r - SAY_GAP}px)`;
+      const y = at ? at.y - box.top - at.r - SAY_GAP : 0;
+      const off = !at || x < 0 || x > box.width ||
+        at.y - box.top < 0 || at.y - box.top > box.height;
+      placements.push({ node, x, y, off });
+    }
+    for (const p of placements) {
+      p.node.hidden = p.off;
+      if (p.off) continue;
+      p.node.style.transform = `translate(-50%, -100%) translate(${p.x}px, ${p.y}px)`;
     }
   }
 
@@ -429,7 +445,14 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   // duck is released the session is spent — so leaving it on screen offers
   // a second fortune that the server will refuse. `syncCta` runs again when
   // the flow hands back.
-  const mine = recallEditKey();
+  /*
+   * ══ READ THE KEY, DO NOT REMEMBER IT ══
+   * This was captured once when the pond screen was built. But the private
+   * link is written DURING this screen's lifetime — the release flow saves
+   * it and then asks the bar to rebuild — so the one person guaranteed to
+   * have just got a duck was the one shown the bar for having none.
+   */
+  const hasDuck = (): string | null => recallEditKey();
 
   async function syncCta(): Promise<void> {
     cta.replaceChildren();
@@ -440,6 +463,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   function buildCta(session: SessionState): void {
     // Only the two-glyph state is a row; every other state is a wide button.
     cta.classList.remove("p-cta-glyphs");
+    const mine = hasDuck();
     if (session.active && !session.spent) {
     // A fortune is waiting. This is the only CTA that ever appears, and it
     // is the whole reason the pond can be the default screen: someone with
@@ -542,7 +566,9 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       pausePolling();
       mineScreen({
         root: overlay,
-        editKey: mine!,
+        // Read again rather than closed over: this button can outlive the
+        // bar that made it by a whole screen.
+        editKey: hasDuck()!,
         onPond: () => {
           overlay.replaceChildren();
           resumePolling();
@@ -587,7 +613,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       const text = input.input.value.trim();
       if (!text) return;
       send.disabled = true;
-      void api.say(mine!, text).then(
+      void api.say(hasDuck()!, text).then(
         () => {
           close();
           void refresh();

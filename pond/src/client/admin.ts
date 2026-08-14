@@ -51,6 +51,19 @@ const day = (t: number | null): string =>
   t ? new Date(t * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "";
 
 /** The scope, said as people. Never as a value. */
+/**
+ * What an empty tab says.
+ *
+ * Each names the event that would fill it, because the only useful thing an
+ * empty screen can do is tell you what you are waiting for. English only,
+ * like the rest of this page: one reader, and it is David.
+ */
+const EMPTY: Record<Tab, string> = {
+  ducks: "No ducks yet. They appear here as people release them.",
+  contacts: "Nobody has left a contact. They only appear when somebody chooses to share one.",
+  cards: "No cards claimed yet. A card appears here once somebody blows on it four times.",
+};
+
 function scopeLabel(scope: string | null, keeper: string | null): string {
   if (!scope) return "";
   if (scope === "david") return "shared with you";
@@ -142,9 +155,25 @@ function view(ducks: AdminDuck[], cards: AdminCard[], tab: Tab): void {
     if (tab === "ducks") ducks.forEach((d) => list.append(duckRow(d, ducks, cards)));
     if (tab === "contacts") withContacts.forEach((d) => list.append(contactRow(d, ducks, cards)));
     if (tab === "cards") cards.forEach((c) => list.append(cardRow(c)));
+
+    /*
+     * ══ AN EMPTY LIST STILL HAS TO SAY SOMETHING ══
+     * All three tabs rendered nothing at all when they were empty: a
+     * heading, three counts reading zero, and a blank page. That is
+     * indistinguishable from the page having failed to load, which on the
+     * one screen that reports on a live product is the worst thing it could
+     * be mistaken for.
+     *
+     * Each says what would put something here, so an empty tab reports a
+     * fact about the pond rather than a fact about the request.
+     */
+    if (!list.childElementCount) {
+      list.append(el("p", "a-empty", EMPTY[tab]));
+    }
     wrap.append(list);
 
-    if (tab === "contacts") {
+    // Nothing to download when there is nothing to download.
+    if (tab === "contacts" && withContacts.length) {
       const csv = el("a", "p-btn p-btn-quiet", "Download CSV");
       csv.href = "/api/admin/csv";
       // Generated on demand, never synced: a spreadsheet drifts out of step

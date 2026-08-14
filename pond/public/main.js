@@ -875,6 +875,10 @@ function slotOnDuck(origin, fortuneKey) {
   ];
 }
 function stickerAt(stickers, cx, cy, slack = 0) {
+  const exact = hit(stickers, cx, cy, 0);
+  return exact >= 0 || slack <= 0 ? exact : hit(stickers, cx, cy, slack);
+}
+function hit(stickers, cx, cy, slack) {
   for (let i = stickers.length - 1; i >= 0; i--) {
     const s = stickers[i];
     const def = STICKERS[s.id];
@@ -1635,10 +1639,10 @@ function studioScreen(root2, opts) {
       0,
       EDIT_CELL
     );
-    if (dragging >= 0) {
-      const st = state.stickers[dragging];
-      const def = st ? STICKERS[st.id] : void 0;
-      if (st && def) {
+    if (dragging) {
+      const st = dragging;
+      const def = STICKERS[st.id];
+      if (def) {
         ctx.strokeStyle = SELECT_INK;
         ctx.lineWidth = 2;
         ctx.strokeRect(
@@ -1661,7 +1665,7 @@ function studioScreen(root2, opts) {
     return x < 0 || y < 0 || x >= GRID || y >= GRID ? null : { x, y };
   };
   let painting = false;
-  let dragging = -1;
+  let dragging = null;
   const paintAt = (c) => {
     for (let dy = 0; dy < brush; dy++) {
       for (let dx = 0; dx < brush; dx++) {
@@ -1679,8 +1683,9 @@ function studioScreen(root2, opts) {
     e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
     if (tab === "stickers") {
-      dragging = stickerAt(state.stickers, c.x, c.y, STICKER_GRAB_SLACK);
-      if (dragging >= 0) redraw();
+      const hit2 = stickerAt(state.stickers, c.x, c.y, STICKER_GRAB_SLACK);
+      dragging = hit2 >= 0 ? state.stickers[hit2] : null;
+      if (dragging) redraw();
       return;
     }
     if (tab !== "draw") return;
@@ -1692,8 +1697,14 @@ function studioScreen(root2, opts) {
   canvas.onpointermove = (e) => {
     const c = cellOf(e);
     if (!c) return;
-    if (dragging >= 0) {
-      state.stickers[dragging] = { ...state.stickers[dragging], x: c.x, y: c.y };
+    if (dragging) {
+      if (!state.stickers.includes(dragging)) {
+        dragging = null;
+        redraw();
+        return;
+      }
+      dragging.x = c.x;
+      dragging.y = c.y;
       redraw();
       return;
     }
@@ -1701,8 +1712,8 @@ function studioScreen(root2, opts) {
   };
   const release = () => {
     painting = false;
-    if (dragging >= 0) {
-      dragging = -1;
+    if (dragging) {
+      dragging = null;
       redraw();
     }
   };
@@ -1712,6 +1723,7 @@ function studioScreen(root2, opts) {
   const panel = el("div", "p-panel");
   const tabs = el("div", "p-tabs");
   const setTab = (next) => {
+    release();
     tab = next;
     [...tabs.children].forEach(
       (c) => c.classList.toggle("on", c.dataset.tab === next)
@@ -3324,14 +3336,14 @@ var PondView = class {
    */
   tap(clientX, clientY) {
     const { wx, wy } = this.toWorld(clientX, clientY);
-    const hit = this.hitTest(wx, wy);
-    if (hit) {
-      if (hit.burning) {
-        this.douse(hit);
-        this.opts.onDouseDuck?.(hit);
+    const hit2 = this.hitTest(wx, wy);
+    if (hit2) {
+      if (hit2.burning) {
+        this.douse(hit2);
+        this.opts.onDouseDuck?.(hit2);
         return true;
       }
-      this.opts.onTapDuck?.(hit);
+      this.opts.onTapDuck?.(hit2);
       return true;
     }
     this.opts.onTapWater?.(wx, wy);
@@ -4184,17 +4196,22 @@ async function pondScreen(bootstrap) {
     onDraw: () => positionSays()
   });
   const bubbles = /* @__PURE__ */ new Map();
+  const placements = [];
   function positionSays() {
     if (!bubbles.size) return;
     const box = says.getBoundingClientRect();
+    placements.length = 0;
     for (const [id, node] of bubbles) {
       const at = view.screenOf(id);
       const x = at ? at.x - box.left : 0;
-      const y = at ? at.y - box.top : 0;
-      const off = !at || x < 0 || y < 0 || x > box.width || y > box.height;
-      node.hidden = off;
-      if (off) continue;
-      node.style.transform = `translate(-50%, -100%) translate(${x}px, ${y - at.r - SAY_GAP}px)`;
+      const y = at ? at.y - box.top - at.r - SAY_GAP : 0;
+      const off = !at || x < 0 || x > box.width || at.y - box.top < 0 || at.y - box.top > box.height;
+      placements.push({ node, x, y, off });
+    }
+    for (const p of placements) {
+      p.node.hidden = p.off;
+      if (p.off) continue;
+      p.node.style.transform = `translate(-50%, -100%) translate(${p.x}px, ${p.y}px)`;
     }
   }
   function syncSays(list) {
@@ -4316,7 +4333,7 @@ async function pondScreen(bootstrap) {
     }
   };
   await refresh();
-  const mine = recallEditKey();
+  const hasDuck = () => recallEditKey();
   async function syncCta() {
     cta.replaceChildren();
     const session = await api.session().catch(() => ({ active: false }));
@@ -4324,6 +4341,7 @@ async function pondScreen(bootstrap) {
   }
   function buildCta(session) {
     cta.classList.remove("p-cta-glyphs");
+    const mine = hasDuck();
     if (session.active && !session.spent) {
       const resuming = loadDraft() !== null;
       const go = el2(
@@ -4383,7 +4401,9 @@ async function pondScreen(bootstrap) {
       pausePolling();
       mineScreen({
         root: overlay,
-        editKey: mine,
+        // Read again rather than closed over: this button can outlive the
+        // bar that made it by a whole screen.
+        editKey: hasDuck(),
         onPond: () => {
           overlay.replaceChildren();
           resumePolling();
@@ -4413,7 +4433,7 @@ async function pondScreen(bootstrap) {
       const text = input.input.value.trim();
       if (!text) return;
       send.disabled = true;
-      void api.say(mine, text).then(
+      void api.say(hasDuck(), text).then(
         () => {
           close();
           void refresh();

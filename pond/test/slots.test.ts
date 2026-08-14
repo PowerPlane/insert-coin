@@ -176,6 +176,42 @@ describe("what is under a finger", () => {
       .toBe(-1);
   });
 
+  it("prefers what was actually hit over what was nearly hit", () => {
+    /*
+     * The slack is invisible, so it must never outrank visible art. With a
+     * single pass, a LATER sticker's halo beat an EARLIER sticker's own
+     * pixels: a tap landing squarely on the scarf picked up a sparkle
+     * sitting beside it, because the sparkle happened to be added second.
+     * Nothing on screen explains that.
+     *
+     * The point below is chosen to make the conflict real — inside the
+     * scarf's box, outside the sparkle's box, inside the sparkle's slack.
+     * An earlier version of this test used a point outside the slack too,
+     * and passed whichever way the function was written.
+     */
+    const scarf = { id: "scarf", x: 12, y: 10 };
+    const spark = { id: "spark", x: 13, y: 10 };
+    const sd = STICKERS.scarf!;
+    const sp = STICKERS.spark!;
+    const x = scarf.x - sd.ax + 1;
+    const y = scarf.y - sd.ay + 1;
+
+    // The conflict, stated rather than assumed.
+    expect(x, "inside the scarf").toBeGreaterThanOrEqual(scarf.x - sd.ax);
+    expect(x, "outside the sparkle").toBeLessThan(spark.x - sp.ax);
+    expect(x, "but inside its slack").toBeGreaterThanOrEqual(spark.x - sp.ax - STICKER_GRAB_SLACK);
+
+    expect(stickerAt([scarf, spark], x, y, STICKER_GRAB_SLACK), "the scarf was hit").toBe(0);
+  });
+
+  it("still lets slack decide when nothing was hit at all", () => {
+    const spark = { id: "spark", x: 6, y: 6 };
+    const s = STICKERS.spark!;
+    const near = spark.x - s.ax - 1;
+    expect(stickerAt([spark], near, spark.y, 0)).toBe(-1);
+    expect(stickerAt([spark], near, spark.y, STICKER_GRAB_SLACK)).toBe(0);
+  });
+
   it("ignores a sticker id it does not know", () => {
     // A duck saved before a sticker was renamed must not crash the studio.
     expect(stickerAt([{ id: "not-a-sticker", x: 5, y: 5 }], 5, 5)).toBe(-1);
