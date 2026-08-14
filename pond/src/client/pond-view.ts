@@ -43,16 +43,21 @@ import {
 } from "./render.js";
 import { GRID, decodePaint } from "./codec.js";
 import {
-  advanceParticles, douseMist, fireworkStreamers, splashDroplets, type Particle,
+  advanceParticles, douseMist, fireworkStreamers,
+  pending as pendingParticle, splashDroplets, type Particle,
 } from "./particles.js";
 import { DWELL } from "./render.js";
 import {
+  BAD_LUCK_BURN_MS,
+  BAD_LUCK_MIST_AT_MS,
   PETAL_LIFE_MS,
+  SHOP_PAIR,
   type Petal,
   type SparklePixel,
   arrival,
   duration as sparkleDuration,
   petals,
+  visibleAt as sparkleVisible,
 } from "./sparkle.js";
 import type { PondDuck } from "./types.js";
 
@@ -85,6 +90,17 @@ export interface Placed extends PondDuck {
   /** Left over from being bumped, or from bumping. Decays to nothing. */
   vx?: number;
   vy?: number;
+  /**
+   * When this duck's fire goes out on its own, as a LOCAL clock reading.
+   *
+   * Local, not the server's, on purpose: the server sends how long a fire
+   * has LEFT, and the client turns that into a deadline of its own. A device
+   * whose clock is a few minutes off would otherwise show every fire as
+   * either already over or never-ending, and phone clocks are off all the time.
+   */
+  burnUntil?: number;
+  /** Whether the steam has already gone up for this fire. */
+  misted?: boolean;
 }
 
 /*
@@ -222,8 +238,11 @@ const SHADOW_ALPHA_GROWTH = 0.16;
 const EMBER_COUNT = 9;
 const EMBER_LIFT = 4;
 
-/** 大吉's streamers, the pond's brightest pair. */
-const GREAT_STREAMERS = ["#FFCA00", "#FFE9A8", "#3AC1F2"] as const;
+/** How long before a fire dies the steam starts coming off it. */
+const MIST_LEAD_MS = BAD_LUCK_BURN_MS - BAD_LUCK_MIST_AT_MS;
+
+/** 大吉's streamers wear the same pair as its shapes. See sparkle.ts. */
+const GREAT_STREAMERS = SHOP_PAIR;
 
 /** How long after landing the camera goes to look. 大吉 gets the long beat. */
 const LOOK_DELAY_MS = 700;
@@ -718,6 +737,15 @@ export class PondView {
     // 大吉 is the one fortune nobody else got today, so it is the one
     // arrival allowed to throw pixels as well as light them.
     if (duck.fortune === 0) fireworkStreamers(this.particles, duck.wx, duck.wy, GREAT_STREAMERS);
+    /*
+     * 凶 gets no shapes at all — it arrives ALIGHT, and the water puts it
+     * out. That is the whole arrival, and it is the one that closes the
+     * loop with the object in your hand: on the card you watched a duck
+     * catch fire, and the first thing the pond does is put it out. Nobody
+     * has to explain it, which is why it must not also be explained with
+     * sparkles.
+     */
+    if (duck.fortune === 3) this.ignite(duck, BAD_LUCK_BURN_MS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
 
     const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
@@ -789,10 +817,51 @@ export class PondView {
     this.water = createWaterBuffer(cols, rows);
   }
 
-  douse(duck: Placed): void {
+  /**
+   * Set a duck alight for a while.
+   *
+   * `ms` is how long the fire has LEFT, not when it started — so the same
+   * call serves a duck arriving on fire (620ms) and a duck the server says
+   * has been burning for 70 of its 90 seconds (20000ms).
+   */
+  ignite(duck: Placed, ms: number): void {
+    duck.burning = true;
+    duck.misted = false;
+    duck.burnUntil = performance.now() + ms;
+  }
+
+  /**
+   * Put a duck's fire out — because somebody tapped it, or because it
+   * simply burned down.
+   *
+   * `by` is only about the sound of it: a fire somebody put out throws
+   * water, a fire that went out on its own just stops. The steam is the
+   * same either way, and may already have gone up (see `advanceFires`).
+   */
+  douse(duck: Placed, by: "hand" | "time" = "hand"): void {
     duck.burning = false;
-    douseMist(this.particles, duck.wx, duck.wy);
-    this.splash(duck.wx, duck.wy, SPLASH_DOUSE);
+    duck.burnUntil = undefined;
+    if (!duck.misted) douseMist(this.particles, duck.wx, duck.wy);
+    duck.misted = true;
+    if (by === "hand") this.splash(duck.wx, duck.wy, SPLASH_DOUSE);
+  }
+
+  /**
+   * Fires burn down on their own.
+   *
+   * The steam comes off BEFORE the flame stops, not after — water hitting
+   * something hot hisses first and goes out second, and doing it in the
+   * other order reads as the duck exhaling.
+   */
+  private advanceFires(now: number): void {
+    for (const d of this.ducks) {
+      if (!d.burning || d.burnUntil === undefined) continue;
+      if (!d.misted && now >= d.burnUntil - MIST_LEAD_MS) {
+        douseMist(this.particles, d.wx, d.wy);
+        d.misted = true;
+      }
+      if (now >= d.burnUntil) this.douse(d, "time");
+    }
   }
 
   splash(wx: number, wy: number, amplitude = 1): void {
@@ -1052,13 +1121,15 @@ export class PondView {
    * the same tick rather than fighting across two.
    */
   private step(dt: number): void {
+    const now = performance.now();
     this.advanceWhistle();
     // Contact always; elbow room only when nobody has been called, because
     // a flock that has been whistled for is MEANT to be close.
     this.separate(this.whistling === null);
-    this.advanceDarts(performance.now(), dt);
+    this.advanceDarts(now, dt);
     advanceParticles(this.particles, dt);
-    this.advanceArrivals(performance.now());
+    this.advanceArrivals(now);
+    this.advanceFires(now);
   }
 
   /**
@@ -1286,14 +1357,20 @@ export class PondView {
     // would be the one thing on screen that is not stop-motion.
     if (this.sparkles.length) {
       const t = now - this.sparkleStart;
+      // Under reduced motion the shape does not build outward — it is simply
+      // there, then gone. The arrival still happens; it just does not move.
+      const reduced = prefersReducedMotion();
       for (const p of this.sparkles) {
-        if (t < p.on || t > p.off) continue;
+        if (!sparkleVisible(p, t, reduced)) continue;
         const at = project(
           p.x, p.y, this.camera.cam, renderCell,
           canvas.width, canvas.height, this.camera.side,
         );
         ctx.fillStyle = p.colour;
-        ctx.fillRect(at.x, at.y, renderCell, renderCell);
+        // Some shapes are drawn at 1.5 sprite pixels a side; rounding keeps
+        // them on the pixel grid instead of straddling it.
+        const side = Math.round(p.size * renderCell);
+        ctx.fillRect(at.x, at.y, side, side);
       }
       if (t > sparkleDuration(this.sparkles)) this.sparkles = [];
     }
@@ -1324,6 +1401,8 @@ export class PondView {
      * water and the ducks follow.
      */
     for (const p of this.particles) {
+      // A staggered wave is in the list before it is in the air.
+      if (pendingParticle(p)) continue;
       const at = project(
         p.x, p.y, this.camera.cam, renderCell,
         canvas.width, canvas.height, this.camera.side,

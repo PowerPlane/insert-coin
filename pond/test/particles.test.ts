@@ -133,12 +133,35 @@ describe("大吉 streamers", () => {
     expect(list).toHaveLength(40);
     expect(list.every((p) => p.rise)).toBe(true);
 
-    // The second wave is slower and lives longer, so both are in the air
-    // at once rather than one following the other.
+    // The waves differ by WHEN, not by how hard — the prototype stages the
+    // second 380ms behind the first. A slower second wave was my own
+    // invention and read as one burst petering out.
     const first = list.slice(0, 20);
     const second = list.slice(20);
-    const speed = (l: Particle[]) => Math.hypot(l[0]!.vx, l[0]!.vy);
-    expect(speed(second)).toBeLessThan(speed(first));
-    expect(second[0]!.life).toBeGreaterThan(first[0]!.life);
+    expect(first.every((p) => p.delay === 0)).toBe(true);
+    expect(second.every((p) => p.delay > 0.3)).toBe(true);
+  });
+
+  it("throws upward, so it reads as launched rather than dropped", () => {
+    // An even ring of angles sends as much down as up. The bias is what
+    // makes it a firework.
+    const list: Particle[] = [];
+    fireworkStreamers(list, 0, 0, ["#FFCA00"], cycle([0.5]));
+    expect(list.every((p) => p.vy < 0)).toBe(true);
+  });
+
+  it("does not spend a delayed particle's life while it waits", () => {
+    /*
+     * The bug this guards: decrementing `life` during the delay kills the
+     * second wave before it is ever drawn, and the firework silently
+     * becomes a single bang — which still looks fine, so nobody notices.
+     */
+    const list: Particle[] = [];
+    fireworkStreamers(list, 0, 0, ["#FFCA00"], cycle([0.5]));
+    const born = list[20]!.life;
+    for (let i = 0; i < 4; i++) advanceParticles(list, TICK); // 0.33s < 0.38s
+    expect(list).toHaveLength(40);
+    expect(list[20]!.life).toBe(born);
+    expect(list[20]!.x).toBe(0); // and it has not moved either
   });
 });

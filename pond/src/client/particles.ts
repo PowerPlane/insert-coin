@@ -39,6 +39,15 @@ export interface Particle {
   life: number;
   /** True for steam, which climbs. */
   rise: boolean;
+  /**
+   * Seconds before this particle exists at all.
+   *
+   * A delay is not a schedule: the particle still obeys drag from the moment
+   * it starts, it just starts late. It is here so a staggered burst needs no
+   * timer — a `setTimeout` would keep firing after the view is torn down,
+   * and would drift against a tick this whole pond is otherwise locked to.
+   */
+  delay: number;
 }
 
 export function emit(
@@ -50,8 +59,14 @@ export function emit(
   colour: string,
   life: number,
   rise = false,
+  delay = 0,
 ): void {
-  list.push({ x, y, vx, vy, colour, life, rise });
+  list.push({ x, y, vx, vy, colour, life, rise, delay });
+}
+
+/** Not yet born: the caller skips drawing these. */
+export function pending(p: Particle): boolean {
+  return p.delay > 0;
 }
 
 /**
@@ -64,6 +79,13 @@ export function emit(
 export function advanceParticles(list: Particle[], dt: number): Particle[] {
   let live = 0;
   for (const p of list) {
+    // Waiting to be born. Its life is not spent yet either — otherwise a
+    // long delay would kill the particle before it ever appeared.
+    if (p.delay > 0) {
+      p.delay -= dt;
+      list[live++] = p;
+      continue;
+    }
     p.x += p.vx * dt * SPEED;
     // Steam climbs against its own velocity; water just falls away.
     p.y += (p.vy - (p.rise ? RISE : 0)) * dt * SPEED;
@@ -136,12 +158,23 @@ export function douseMist(
   }
 }
 
+/** The second wave goes up this long after the first. */
+const WAVE_GAP = 0.38;
+/** Streamers are thrown from above the duck, not out of it. */
+const WAVE_LIFT = 6;
+/** Every streamer carries this much upward bias on top of its own angle. */
+const WAVE_RISE = 5;
+
 /**
- * 大吉's streamers: two waves, the second slower and later.
+ * 大吉's streamers: two waves, the second 380ms behind the first.
  *
  * One burst reads as an explosion. Two, staggered, read as a firework —
  * and 大吉 is the fortune nobody else got today, so it is the one moment
  * in the pond allowed to be loud.
+ *
+ * The upward bias is why this reads as a firework rather than a bang: an
+ * even ring of angles sends as much down as up, and things that go down do
+ * not look like they were launched.
  */
 export function fireworkStreamers(
   list: Particle[],
@@ -153,17 +186,17 @@ export function fireworkStreamers(
   for (let wave = 0; wave < 2; wave++) {
     for (let i = 0; i < 20; i++) {
       const angle = random() * Math.PI * 2;
-      const speed = (11 + random() * 22) * (wave ? 0.7 : 1);
+      const speed = 11 + random() * 22;
       emit(
         list,
         x,
-        y,
+        y - WAVE_LIFT,
         Math.cos(angle) * speed,
-        Math.sin(angle) * speed,
+        Math.sin(angle) * speed - WAVE_RISE,
         colours[i % colours.length]!,
-        // The later wave lives longer, so both are still in the air together.
-        0.5 + random() * 0.3 + wave * 0.2,
+        0.5 + random() * 0.3,
         true,
+        wave * WAVE_GAP,
       );
     }
   }

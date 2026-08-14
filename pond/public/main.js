@@ -2614,12 +2614,20 @@ var RISE = 9;
 var DROPLET_COLOURS = ["#FFFFFF", "#CFEDF8"];
 var DROPLET_WHITE_CHANCE = 0.45;
 var MIST_COLOURS = ["#FFFFFF", "#E4F4FA"];
-function emit(list, x, y, vx, vy, colour, life, rise = false) {
-  list.push({ x, y, vx, vy, colour, life, rise });
+function emit(list, x, y, vx, vy, colour, life, rise = false, delay = 0) {
+  list.push({ x, y, vx, vy, colour, life, rise, delay });
+}
+function pending(p) {
+  return p.delay > 0;
 }
 function advanceParticles(list, dt) {
   let live = 0;
   for (const p of list) {
+    if (p.delay > 0) {
+      p.delay -= dt;
+      list[live++] = p;
+      continue;
+    }
     p.x += p.vx * dt * SPEED;
     p.y += (p.vy - (p.rise ? RISE : 0)) * dt * SPEED;
     p.vx *= DRAG;
@@ -2662,21 +2670,24 @@ function douseMist(list, x, y, count = 20, random = Math.random) {
     );
   }
 }
+var WAVE_GAP = 0.38;
+var WAVE_LIFT = 6;
+var WAVE_RISE = 5;
 function fireworkStreamers(list, x, y, colours, random = Math.random) {
   for (let wave = 0; wave < 2; wave++) {
     for (let i = 0; i < 20; i++) {
       const angle = random() * Math.PI * 2;
-      const speed = (11 + random() * 22) * (wave ? 0.7 : 1);
+      const speed = 11 + random() * 22;
       emit(
         list,
         x,
-        y,
+        y - WAVE_LIFT,
         Math.cos(angle) * speed,
-        Math.sin(angle) * speed,
+        Math.sin(angle) * speed - WAVE_RISE,
         colours[i % colours.length],
-        // The later wave lives longer, so both are still in the air together.
-        0.5 + random() * 0.3 + wave * 0.2,
-        true
+        0.5 + random() * 0.3,
+        true,
+        wave * WAVE_GAP
       );
     }
   }
@@ -2686,111 +2697,102 @@ function fireworkStreamers(list, x, y, colours, random = Math.random) {
 var ON_PER_PX = 36;
 var OFF_PER_PX = 42;
 var HOLD = 170;
-function schedule(shape) {
-  let maxOn = 0;
-  const withDistance = shape.cells.map((c) => {
-    const d = Math.hypot(c.x, c.y);
-    const jitter = (Math.abs(c.x * 31 + c.y * 17) % 7 - 3) * 6;
-    const on = Math.max(0, d * ON_PER_PX + jitter);
-    maxOn = Math.max(maxOn, on);
-    return { ...c, d, on };
-  });
-  return withDistance.map((c) => ({
-    x: c.x,
-    y: c.y,
-    colour: c.colour,
-    on: shape.at + c.on,
-    // Everything waits for the slowest pixel, holds, then leaves outward.
-    off: shape.at + maxOn + HOLD + c.d * OFF_PER_PX
-  }));
-}
-function duration(pixels) {
-  return pixels.reduce((m, p) => Math.max(m, p.off), 0);
-}
-var GOLD = ["#FFCA00", "#FFE9A8", "#FF8953"];
-var PETAL = ["#FF6FA5", "#FF8FB8", "#FFFFFF"];
-var SUN = ["#FFCA00", "#FFE9A8"];
-var CLOUD = ["#FFFFFF", "#C9D6DC"];
-function ring(radius, count, colours, phase = 0) {
-  return Array.from({ length: count }, (_, i) => {
-    const a = phase + i / count * Math.PI * 2;
-    return {
-      x: Math.round(Math.cos(a) * radius),
-      y: Math.round(Math.sin(a) * radius),
-      colour: colours[i % colours.length]
-    };
-  });
-}
-function greatLuck(wx, wy) {
-  const shapes = [];
-  for (let i = 0; i < 7; i++) {
-    const a = i / 7 * Math.PI * 2;
-    const spread = 14 + i % 3 * 5;
-    shapes.push({
-      wx: wx + Math.cos(a) * spread,
-      wy: wy + Math.sin(a) * spread * 0.7,
-      at: i / 7 * 700,
-      // Two waves: an inner burst and an outer one behind it.
-      cells: [...ring(3, 8, GOLD), ...ring(6, 12, GOLD, 0.26)]
+var TAIL = 80;
+var STATIC_MS = 420;
+var SHAPES = {
+  bloom: [
+    "....p....",
+    "...ppp...",
+    "..ppppp..",
+    ".ppcccpp.",
+    "ppccpccpp",
+    ".ppcccpp.",
+    "..ppppp..",
+    "...ppp...",
+    "....p...."
+  ],
+  flower: [".ppp.", "ppppp", "ppcpp", "ppppp", ".ppp."],
+  sparkle: ["...p...", "...p...", "...p...", "pppcppp", "...p...", "...p...", "...p..."],
+  ring: ["...p...", "..p.p..", ".p...p.", "p..c..p", ".p...p.", "..p.p..", "...p..."],
+  sun: [
+    "....r....",
+    ".r..r..r.",
+    "...ccc...",
+    "..ccccc..",
+    "r.ccccc.r",
+    "..ccccc..",
+    "...ccc...",
+    ".r..r..r.",
+    "....r...."
+  ],
+  cloud: ["...ppp.....", "..ppppppp..", ".ppppppppp.", "ppppppppppp", ".pp.ppp.pp."]
+};
+function spawnShape(list, x, y, shape, petal, core, cell, delay = 0, random = Math.random) {
+  const rows = shape.length;
+  const cols = shape[0].length;
+  const cx = (cols - 1) / 2;
+  const cy = (rows - 1) / 2;
+  const size = cell / 2;
+  const cells = [];
+  for (let ry = 0; ry < rows; ry++) {
+    for (let rx = 0; rx < cols; rx++) {
+      const ch = shape[ry][rx];
+      if (ch === "." || ch === void 0) continue;
+      cells.push({ x: rx, y: ry, d: Math.abs(rx - cx) + Math.abs(ry - cy), core: ch === "c" });
+    }
+  }
+  if (!cells.length) return;
+  const onMax = Math.max(...cells.map((c) => c.d)) * ON_PER_PX + 28;
+  for (const c of cells) {
+    list.push({
+      // Placed from the shape's own centre, in sprite units.
+      x: x + (c.x - cols / 2) * size,
+      y: y + (c.y - rows / 2) * size,
+      colour: c.core ? core : petal,
+      on: delay + Math.round(c.d * ON_PER_PX + random() * 28),
+      // Everything waits for the slowest pixel, holds, then leaves outward.
+      off: delay + Math.round(onMax + HOLD + c.d * OFF_PER_PX + random() * 36),
+      size
     });
   }
-  return shapes;
 }
-function littleLuck(wx, wy) {
-  return [0, 1, 2, 3].map((i) => {
-    const a = i / 4 * Math.PI * 2 + 0.4;
-    return {
-      wx: wx + Math.cos(a) * 13,
-      wy: wy + Math.sin(a) * 9,
-      at: i * 160,
-      cells: [{ x: 0, y: 0, colour: "#FFCA00" }, ...ring(2, 6, PETAL)]
-    };
-  });
+function duration(pixels) {
+  return pixels.reduce((m, p) => Math.max(m, p.off), 0) + TAIL;
 }
-function uncertain(wx, wy) {
-  return [
-    {
-      wx,
-      wy: wy - 14,
-      at: 0,
-      cells: [...ring(4, 10, SUN), ...ring(6, 14, SUN, 0.3)]
-    },
-    {
-      wx: wx + 8,
-      wy: wy - 12,
-      at: 520,
-      cells: [
-        ...ring(3, 8, CLOUD),
-        { x: -4, y: 1, colour: CLOUD[0] },
-        { x: 4, y: 1, colour: CLOUD[1] },
-        { x: 0, y: 2, colour: CLOUD[0] }
-      ]
-    }
-  ];
+function visibleAt(p, elapsed, reduced) {
+  return reduced ? elapsed < STATIC_MS : elapsed >= p.on && elapsed < p.off;
 }
-function badLuck(wx, wy) {
-  return [
-    {
-      wx,
-      wy: wy - 10,
-      at: 0,
-      cells: [...ring(2, 6, ["#FF4B4B", "#FF8953"]), ...ring(4, 9, ["#FF8953"], 0.4)]
-    },
-    {
-      wx,
-      wy: wy - 4,
-      at: 420,
-      cells: [...ring(5, 12, ["#FFFFFF", "#EDFAFE"]), ...ring(8, 16, ["#EDFAFE"], 0.2)]
-    }
-  ];
+var SHOP_PAIR = ["#3ac1f2", "#ffc831"];
+var WHITE = "#ffffff";
+function arrival(fortune, wx, wy, random = Math.random) {
+  const out = [];
+  const at = (x, y, shape, petal, core, cell, delay) => spawnShape(out, wx + x, wy + y, shape, petal, core, cell, delay, random);
+  if (fortune === 0) {
+    at(0, -16, SHAPES.sparkle, SHOP_PAIR[0], SHOP_PAIR[1], 3, 0);
+    at(-18, -4, SHAPES.bloom, SHOP_PAIR[1], WHITE, 2, 110);
+    at(16, -10, SHAPES.ring, WHITE, SHOP_PAIR[0], 3, 220);
+    at(-6, -28, SHAPES.sparkle, SHOP_PAIR[1], WHITE, 2, 330);
+    at(22, 8, SHAPES.bloom, SHOP_PAIR[0], SHOP_PAIR[1], 2, 440);
+    at(-24, -20, SHAPES.ring, SHOP_PAIR[1], WHITE, 2, 560);
+    return out;
+  }
+  if (fortune === 1) {
+    at(-10, -12, SHAPES.flower, "#f2a9b4", "#f6e7a9", 2, 0);
+    at(8, -6, SHAPES.flower, "#ffc2da", WHITE, 2, 180);
+    at(-2, 6, SHAPES.flower, "#f2a9b4", "#f6e7a9", 2, 340);
+    return out;
+  }
+  if (fortune === 2) {
+    at(-4, -26, SHAPES.sun, "#ffe07a", "#ffca00", 2, 0);
+    at(-2, -24, SHAPES.cloud, WHITE, "#e6f4fa", 2, 620);
+    return out;
+  }
+  return out;
 }
-function arrival(fortune, wx, wy) {
-  const shapes = fortune === 0 ? greatLuck(wx, wy) : fortune === 1 ? littleLuck(wx, wy) : fortune === 2 ? uncertain(wx, wy) : badLuck(wx, wy);
-  return shapes.flatMap(
-    (s) => schedule(s).map((p) => ({ ...p, x: s.wx + p.x, y: s.wy + p.y }))
-  );
-}
+var BAD_LUCK_BURN_MS = 620;
+var BAD_LUCK_MIST_AT_MS = 480;
 var PETAL_LIFE_MS = 3 * 60 * 1e3;
+var PETAL_COLOURS = ["#f2a9b4", "#ffc2da", "#f6e7a9"];
 function petals(wx, wy, now) {
   return Array.from({ length: 9 }, (_, i) => ({
     wx: wx + Math.cos(i / 9 * Math.PI * 2) * (8 + i % 3 * 4),
@@ -2799,7 +2801,7 @@ function petals(wx, wy, now) {
     // one sheet.
     drift: (i % 5 - 2) * 22e-4,
     born: now,
-    colour: PETAL[i % PETAL.length]
+    colour: PETAL_COLOURS[i % PETAL_COLOURS.length]
   }));
 }
 
@@ -2845,7 +2847,8 @@ var SHADOW_ALPHA_MIN = 0.1;
 var SHADOW_ALPHA_GROWTH = 0.16;
 var EMBER_COUNT = 9;
 var EMBER_LIFT = 4;
-var GREAT_STREAMERS = ["#FFCA00", "#FFE9A8", "#3AC1F2"];
+var MIST_LEAD_MS = BAD_LUCK_BURN_MS - BAD_LUCK_MIST_AT_MS;
+var GREAT_STREAMERS = SHOP_PAIR;
 var LOOK_DELAY_MS = 700;
 var LOOK_DELAY_GREAT_MS = 950;
 var SHOCKWAVE_REACH = 26;
@@ -3181,6 +3184,7 @@ var PondView = class {
     this.sparkleStart = now;
     if (duck.fortune === 1) this.petals.push(...petals(duck.wx, duck.wy, now));
     if (duck.fortune === 0) fireworkStreamers(this.particles, duck.wx, duck.wy, GREAT_STREAMERS);
+    if (duck.fortune === 3) this.ignite(duck, BAD_LUCK_BURN_MS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
     const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
     window.setTimeout(() => {
@@ -3245,10 +3249,49 @@ var PondView = class {
     if (this.water && this.water.cols === cols && this.water.rows === rows) return;
     this.water = createWaterBuffer(cols, rows);
   }
-  douse(duck) {
+  /**
+   * Set a duck alight for a while.
+   *
+   * `ms` is how long the fire has LEFT, not when it started — so the same
+   * call serves a duck arriving on fire (620ms) and a duck the server says
+   * has been burning for 70 of its 90 seconds (20000ms).
+   */
+  ignite(duck, ms) {
+    duck.burning = true;
+    duck.misted = false;
+    duck.burnUntil = performance.now() + ms;
+  }
+  /**
+   * Put a duck's fire out — because somebody tapped it, or because it
+   * simply burned down.
+   *
+   * `by` is only about the sound of it: a fire somebody put out throws
+   * water, a fire that went out on its own just stops. The steam is the
+   * same either way, and may already have gone up (see `advanceFires`).
+   */
+  douse(duck, by = "hand") {
     duck.burning = false;
-    douseMist(this.particles, duck.wx, duck.wy);
-    this.splash(duck.wx, duck.wy, SPLASH_DOUSE);
+    duck.burnUntil = void 0;
+    if (!duck.misted) douseMist(this.particles, duck.wx, duck.wy);
+    duck.misted = true;
+    if (by === "hand") this.splash(duck.wx, duck.wy, SPLASH_DOUSE);
+  }
+  /**
+   * Fires burn down on their own.
+   *
+   * The steam comes off BEFORE the flame stops, not after — water hitting
+   * something hot hisses first and goes out second, and doing it in the
+   * other order reads as the duck exhaling.
+   */
+  advanceFires(now) {
+    for (const d of this.ducks) {
+      if (!d.burning || d.burnUntil === void 0) continue;
+      if (!d.misted && now >= d.burnUntil - MIST_LEAD_MS) {
+        douseMist(this.particles, d.wx, d.wy);
+        d.misted = true;
+      }
+      if (now >= d.burnUntil) this.douse(d, "time");
+    }
   }
   splash(wx, wy, amplitude = 1) {
     const max = SPLASH_BASE + amplitude * SPLASH_PER_AMPLITUDE;
@@ -3433,11 +3476,13 @@ var PondView = class {
    * the same tick rather than fighting across two.
    */
   step(dt) {
+    const now = performance.now();
     this.advanceWhistle();
     this.separate(this.whistling === null);
-    this.advanceDarts(performance.now(), dt);
+    this.advanceDarts(now, dt);
     advanceParticles(this.particles, dt);
-    this.advanceArrivals(performance.now());
+    this.advanceArrivals(now);
+    this.advanceFires(now);
   }
   /**
    * ══ THE WHISTLE IS A FORCE FIELD, NOT A DESTINATION ══
@@ -3472,9 +3517,9 @@ var PondView = class {
         d.r ??= hashId(d.id + "r");
         if (this.whistling(d)) {
           const angle = d.r * Math.PI * 2;
-          const ring2 = (0.3 + d.r * 0.8) * GRID * 1.9;
-          const tx = gx + Math.cos(angle) * ring2;
-          const ty = gy + Math.sin(angle) * ring2 * RING_SQUASH;
+          const ring = (0.3 + d.r * 0.8) * GRID * 1.9;
+          const tx = gx + Math.cos(angle) * ring;
+          const ty = gy + Math.sin(angle) * ring * RING_SQUASH;
           const dx2 = wrapDelta(d.wx, tx, side);
           const dy2 = wrapDelta(d.wy, ty, side);
           const dist2 = Math.hypot(dx2, dy2) || 1;
@@ -3614,8 +3659,9 @@ var PondView = class {
     this.ripples = this.ripples.filter((r) => now - r.t < RIPPLE_MS);
     if (this.sparkles.length) {
       const t2 = now - this.sparkleStart;
+      const reduced = prefersReducedMotion();
       for (const p of this.sparkles) {
-        if (t2 < p.on || t2 > p.off) continue;
+        if (!visibleAt(p, t2, reduced)) continue;
         const at = project(
           p.x,
           p.y,
@@ -3626,7 +3672,8 @@ var PondView = class {
           this.camera.side
         );
         ctx.fillStyle = p.colour;
-        ctx.fillRect(at.x, at.y, renderCell, renderCell);
+        const side = Math.round(p.size * renderCell);
+        ctx.fillRect(at.x, at.y, side, side);
       }
       if (t2 > duration(this.sparkles)) this.sparkles = [];
     }
@@ -3651,6 +3698,7 @@ var PondView = class {
       }
     }
     for (const p of this.particles) {
+      if (pending(p)) continue;
       const at = project(
         p.x,
         p.y,
