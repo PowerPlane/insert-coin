@@ -1590,3 +1590,189 @@ a.p-chip {
   font-size: 0.9rem;
   line-height: 1.6;
 }
+
+/* ── full screens ────────────────────────────────────────────────────── */
+
+/*
+ * A screen, not a sheet. Covers the pond entirely, scrolls when it has to,
+ * and gives a text field the whole viewport to share with the keyboard.
+ */
+.p-view {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--p-surface);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/*
+ * The prototype's own padding, and its own reason: 20px at the sides rather
+ * than 16, because at 16 the text runs to the bezel and every screen reads
+ * as crowded. The top clears the notch; the bottom clears the home
+ * indicator, and adds nothing where there is none.
+ */
+.p-view-pad {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: max(46px, calc(env(safe-area-inset-top) + 22px)) 20px
+    calc(22px + env(safe-area-inset-bottom, 0px));
+  gap: 0.75rem;
+}
+
+/* Puts the actions at the foot of the screen rather than under the text. */
+.p-spacer {
+  flex: 1;
+  min-height: 0.4rem;
+}
+
+.p-nav-btn {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  cursor: pointer;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.72rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--p-ink);
+  background: var(--quiet);
+}
+
+.p-nav-btn:active {
+  background: var(--quiet-shadow);
+}
+
+/* ── the studio ───────────────────────────────────────────────────────── */
+
+/*
+ * A workbench, top to bottom: the duck, the things that act on it, the tabs,
+ * the panel, and one way forward. The panel is the only part that scrolls,
+ * so the duck you are decorating never leaves the screen.
+ */
+.p-view > .p-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  justify-content: space-between;
+}
+
+/*
+ * Utilities, right-aligned under the duck. Right rather than left because
+ * they are the LESS common thing on the screen: the eye starts at the duck
+ * and reads down, and the destructive one should not be the first thing
+ * under a thumb resting at the edge.
+ */
+.p-utils {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/*
+ * On a surface, an icon button needs the QUIET background rather than the
+ * surface one — otherwise the chip is the same colour as the screen and
+ * only the glyph shows, which reads as three loose marks rather than three
+ * controls. The zoom buttons keep the surface colour because they sit on
+ * water, where surface-on-blue is the contrast that works.
+ */
+.p-utils .p-icon-btn {
+  background: var(--quiet);
+}
+
+.p-utils .p-icon-btn:active {
+  background: var(--quiet-shadow);
+}
+
+.p-tabs {
+  display: flex;
+  gap: 5px;
+}
+
+/* The panel is what gives; everything else keeps its height. */
+.p-panel {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+
+.p-foot {
+  flex: 0 0 auto;
+}
+
+/* A label for a group of controls. Quiet, close to what it names. */
+.p-mini {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+  margin: 0.85rem 0 0.45rem;
+}
+
+.p-panel > .p-mini:first-child {
+  margin-top: 0;
+}
+
+.p-hint {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  color: var(--p-soft);
+  text-align: center;
+  margin: 0.4rem 0 0;
+}
+
+/*
+ * The slot row: pick a part of the duck, see what goes there.
+ *
+ * Scrolls sideways rather than wrapping — six labels of uneven width wrap
+ * into a ragged two-line block that reads as a paragraph of buttons, and
+ * the row is short enough that a thumb reaching the end is no hardship.
+ */
+.p-slotrow {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+  margin-bottom: 7px;
+}
+
+.p-slot {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  cursor: pointer;
+  box-sizing: border-box;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  min-height: var(--tap);
+  display: inline-grid;
+  place-items: center;
+  padding: 0 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--quiet);
+  color: var(--p-ink);
+}
+
+.p-slot.on {
+  background: var(--p-ink);
+  color: var(--p-surface);
+}

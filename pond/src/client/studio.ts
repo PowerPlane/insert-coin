@@ -10,12 +10,15 @@
  */
 
 import { GRID, clampPaintValue, encodePaint } from "./codec.js";
-import { el, button, sheet } from "./dom.js";
+import { el, button, nav as navStrip, view } from "./dom.js";
+import { icon, type IconName } from "./icons.js";
 import { drawDuck } from "./render.js";
 import {
   FORTUNES, PAINT_COLOURS, STICKER_GRAB_SLACK, TINTS, slotOnDuck, stickerAt,
 } from "./sprites.js";
-import { MAX_STICKERS, SLOT_ORIGIN, STICKERS, type SlotName } from "./stickers.js";
+import {
+  MAX_STICKERS, SLOT_LABELS, SLOT_ORIGIN, STICKERS, type SlotName,
+} from "./stickers.js";
 import { t } from "./strings.js";
 import type { Sticker } from "./types.js";
 
@@ -51,13 +54,26 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   const { state } = opts;
 
   root.replaceChildren();
-  const { root: sheetRoot, body: wrap } = sheet();
+  /*
+   * A full screen. This one is a workbench — a canvas, three utilities, a
+   * tab strip and a panel — and a bottom sheet gave all of that about half
+   * a phone to live in.
+   */
+  const { root: viewRoot, body: wrap } = view();
 
-  const nav = el("div", "p-nav");
-  nav.append(
-    button("p-chip", t("studio.01"), opts.onBack),
-    el("span", "p-nav-title", t("studio.02")),
-    button("p-chip", t("studio.17"), opts.onNext),
+  /*
+   * ══ SKIP AT THE TOP, NEXT AT THE BOTTOM ══
+   * They are not the same offer. Skip is "I do not want to do this at
+   * all", which belongs beside Back at the top with the other ways out.
+   * Next is "I have finished", which belongs under the work, as the one
+   * primary on the screen. Putting Next in the nav made the top bar the
+   * place you both abandon and complete, and left the foot of the screen
+   * with nothing to press.
+   */
+  const nav = navStrip(
+    { label: t("studio.01"), onClick: opts.onBack },
+    t("studio.02"),
+    { label: t("studio.03"), onClick: opts.onNext },
   );
 
   // ── the duck being made ───────────────────────────────────────────────
@@ -115,6 +131,13 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   let colour = 1;
   let brush = 1;
   let erasing = false;
+  /*
+   * Which part of the duck the sticker tray is showing. Studio state, not
+   * panel state: the panel is rebuilt on every tap, so a filter living
+   * there would reset itself the moment you used it — the same trap the
+   * paint colour fell into.
+   */
+  let slotFilter: SlotName = "hat";
 
   // ── what a touch on the duck means ────────────────────────────────────
   //
@@ -216,6 +239,41 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   // sticker has to be put down either way, or it follows the next touch.
   canvas.onpointercancel = release;
 
+  /*
+   * ══ UTILITIES SIT WITH THE THING THEY ACT ON ══
+   * Undo, clear and surprise all act on the DUCK, so they live directly
+   * under it — icon-only, so they stay quiet, and 44px so they stay
+   * tappable. They used to be crammed into the Draw panel's tool row,
+   * which put them in a line of equal-weight buttons competing with the
+   * brush, and meant that on the Colour and Stickers tabs there was no way
+   * to undo anything at all.
+   */
+  const utils = el("div", "p-utils");
+  const util = (name: IconName, label: string, onClick: () => void): HTMLElement => {
+    const b = button("p-icon-btn", "", onClick, label);
+    b.append(icon(name, 22));
+    return b;
+  };
+  utils.append(
+    util("undo", t("studio.05"), () => {
+      const last = history.pop();
+      if (!last) return;
+      state.paint = last;
+      redraw();
+    }),
+    util("clear", t("studio.06"), () => {
+      history.push(state.paint.slice());
+      state.paint = new Uint8Array(GRID * GRID);
+      redraw();
+    }),
+    util("dice", t("studio.07"), () => {
+      state.tint = Math.floor(Math.random() * TINTS.length);
+      state.stickers = surpriseStickers(opts.fortune);
+      redraw();
+      drawPanel();
+    }),
+  );
+
   // ── tabs ──────────────────────────────────────────────────────────────
   let tab: Tab = "colour";
   const panel = el("div", "p-panel");
@@ -233,6 +291,13 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
     [...tabs.children].forEach((c) =>
       c.classList.toggle("on", (c as HTMLElement).dataset.tab === next),
     );
+    /*
+     * The hint names what THIS tab can do. The prototype keeps one static
+     * line, which reads as a hint about the wrong thing while you are
+     * painting — a sentence about dragging stickers, under a brush. The
+     * reassurance half is the part that is true everywhere, so it stays.
+     */
+    hint.textContent = next === "stickers" ? t("studio.18") : t("studio.19");
     drawPanel();
   };
 
@@ -266,14 +331,35 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
       b.classList.toggle("on", state.tint === i);
       swatches.append(b);
     });
-    panel.append(swatches);
+    panel.append(el("p", "p-mini", t("studio.11")), swatches);
   }
 
   function stickerPanel(): void {
-    const hint = el("p", "p-hint", t("studio.18"));
+    /*
+     * ══ THIRTY-TWO STICKERS IS A CATALOGUE, NOT A CHOICE ══
+     * They were all in one grid, six rows deep, so finding a hat meant
+     * scrolling past every scarf and balloon — and the grid pushed the
+     * duck you are decorating off the top of the screen.
+     *
+     * Every sticker already carries the slot it belongs to; that is what
+     * puts hats on heads. The same fact makes the row: pick a part of the
+     * duck, see what goes there. `SLOT_LABELS` has been sitting in
+     * stickers.ts unused since the day it was written.
+     */
+    const slots = el("div", "p-slotrow");
     const grid = el("div", "p-stickers");
 
+    for (const slot of Object.keys(SLOT_LABELS) as SlotName[]) {
+      const b = button("p-slot", SLOT_LABELS[slot], () => {
+        slotFilter = slot;
+        drawPanel();
+      });
+      b.classList.toggle("on", slotFilter === slot);
+      slots.append(b);
+    }
+
     for (const [id, def] of Object.entries(STICKERS)) {
+      if (def.slot !== slotFilter) continue;
       const already = state.stickers.find((s) => s.id === id);
       const b = button("p-sticker", "", () => {
         if (already) {
@@ -310,7 +396,7 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
       b.append(c);
       grid.append(b);
     }
-    panel.append(hint, grid);
+    panel.append(slots, grid);
   }
 
   function paintPanel(): void {
@@ -337,28 +423,9 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
     };
     syncTools();
 
-    const undo = button("p-chip", "↶", () => {
-      const last = history.pop();
-      if (last) {
-        state.paint = last;
-        redraw();
-      }
-    }, t("studio.05"));
-    const clear = button("p-chip", "×", () => {
-      history.push(state.paint.slice());
-      state.paint = new Uint8Array(GRID * GRID);
-      redraw();
-    }, t("studio.06"));
+    tools.append(brush1, brush2, erase);
 
-    // "?" rather than a die: this is a question the duck answers.
-    const surprise = button("p-chip", "?", () => {
-      state.tint = Math.floor(Math.random() * TINTS.length);
-      state.stickers = surpriseStickers(opts.fortune);
-      redraw();
-      drawPanel();
-    }, t("studio.07"));
-
-    tools.append(brush1, brush2, erase, undo, clear, surprise);
+    panel.append(el("p", "p-mini", t("studio.12")), tools, el("p", "p-mini", t("studio.16")));
 
     const swatches = el("div", "p-swatches");
     PAINT_COLOURS.forEach((c, i) => {
@@ -373,13 +440,26 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
       swatches.append(b);
     });
 
-    panel.append(tools, swatches);
+    panel.append(swatches);
   }
 
   const history: Uint8Array[] = [];
 
-  wrap.append(nav, canvas, tabs, panel);
-  root.append(sheetRoot);
+  /*
+   * The foot. One primary, and the sentence that says nothing here is
+   * compulsory — which belongs under everything rather than inside the
+   * stickers panel, where it only appeared if you happened to open that
+   * tab.
+   */
+  const foot = el("div", "p-foot");
+  const hint = el("p", "p-hint", "");
+  foot.append(
+    el("div", "p-actions").appendChild(button("p-btn", t("studio.17"), opts.onNext)).parentElement!,
+    hint,
+  );
+
+  wrap.append(nav, canvas, utils, tabs, panel, foot);
+  root.append(viewRoot);
   setTab("colour");
   redraw();
 }

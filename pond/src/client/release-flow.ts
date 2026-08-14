@@ -17,7 +17,7 @@
 import { ApiError, api, clearDraft, loadDraft, rememberEditKey, saveDraft } from "./api.js";
 import type { ContactScope } from "./api.js";
 import { GRID, decodePaint } from "./codec.js";
-import { button, el, field, screen, sheet } from "./dom.js";
+import { button, el, field, screen, sheet, spacer, view } from "./dom.js";
 import { drawDuck } from "./render.js";
 import { type StudioState, studioScreen, toPayload } from "./studio.js";
 import { SCOPE_STRINGS, fortuneTitle, t } from "./strings.js";
@@ -148,7 +148,9 @@ export function releaseFlow(opts: FlowOptions): void {
   // ── 03 · sign it ──────────────────────────────────────────────────────
   function signBody(): void {
     root.replaceChildren();
-    const { root: sheetRoot, body: wrap } = sheet();
+    // A full screen, not a sheet: this one is mostly typing, and a sheet
+    // with the keyboard up has almost nothing left to show.
+    const { root: viewRoot, body: wrap } = view();
     wrap.append(el("p", "p-eyebrow", t("sign.01")), preview(6), el("h2", "p-title", t("sign.02")));
 
     const name = field({
@@ -164,16 +166,17 @@ export function releaseFlow(opts: FlowOptions): void {
     wrap.append(name.wrap, message.wrap);
     // Stated inline at the point of asking, not in a footer nobody reads.
     wrap.append(el("p", "p-note", t("sign.08")));
+    wrap.append(spacer());
     wrap.append(
       el("div", "p-actions").appendChild(button("p-btn", t("sign.09"), contact)).parentElement!,
     );
-    root.append(sheetRoot);
+    root.append(viewRoot);
   }
 
   // ── 04 · contact ──────────────────────────────────────────────────────
   function contactBody(): void {
     root.replaceChildren();
-    const { root: sheetRoot, body: wrap } = sheet();
+    const { root: viewRoot, body: wrap } = view();
     wrap.append(
       el("p", "p-eyebrow", t("contact.01")),
       el("h2", "p-title", t("contact.02")),
@@ -231,8 +234,8 @@ export function releaseFlow(opts: FlowOptions): void {
         void release();
       }),
     );
-    wrap.append(actions);
-    root.append(sheetRoot);
+    wrap.append(spacer(), actions);
+    root.append(viewRoot);
     syncScope();
   }
 

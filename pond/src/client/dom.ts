@@ -145,6 +145,56 @@ export function sheet(centred = false): { root: HTMLElement; body: HTMLElement }
 }
 
 /**
+ * A full screen — the container almost everything in this flow belongs in.
+ *
+ * ══ A SHEET IS NOT A SCREEN ══
+ * These were bottom sheets over the live pond, which looked right and was
+ * the wrong container. The prototype has NINE full views and exactly one
+ * modal, and the reason shows up the moment somebody types: a sheet with a
+ * text field in it, on a phone with the keyboard open, has almost no room
+ * left. Reading and filling in are what these screens are FOR.
+ *
+ * The padding is the prototype's, including its own note about it — 20px
+ * at the sides rather than 16, because at 16 the text runs to the bezel and
+ * every screen reads as crowded.
+ *
+ * `spacer()` between the content and the actions is what puts the buttons
+ * at the bottom of the screen instead of under the last paragraph.
+ */
+export function view(): { root: HTMLElement; body: HTMLElement } {
+  const root = el("div", "p-view");
+  const body = el("div", "p-view-pad");
+  root.append(body);
+  return { root, body };
+}
+
+/** Eats the space between what you read and what you press. */
+export function spacer(): HTMLElement {
+  return el("div", "p-spacer");
+}
+
+/**
+ * The back / title / forward strip at the top of a working screen.
+ *
+ * Its own element rather than three buttons in a row: the title has to be
+ * centred against two controls of different widths, which only works if
+ * something owns the whole line.
+ */
+export function nav(
+  back: { label: string; onClick: () => void },
+  title: string,
+  forward?: { label: string; onClick: () => void },
+): HTMLElement {
+  const strip = el("div", "p-nav");
+  strip.append(
+    button("p-nav-btn", back.label, back.onClick),
+    el("span", "p-nav-title", title),
+  );
+  if (forward) strip.append(button("p-nav-btn", forward.label, forward.onClick));
+  return strip;
+}
+
+/**
  * Render a screen, and never leave a blank page behind.
  *
  * Every screen starts with `replaceChildren()`, so a throw ANYWHERE after

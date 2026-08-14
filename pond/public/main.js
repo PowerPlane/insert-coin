@@ -187,6 +187,24 @@ function sheet(centred = false) {
   root2.append(edge, body);
   return { root: root2, body };
 }
+function view() {
+  const root2 = el("div", "p-view");
+  const body = el("div", "p-view-pad");
+  root2.append(body);
+  return { root: root2, body };
+}
+function spacer() {
+  return el("div", "p-spacer");
+}
+function nav(back, title, forward) {
+  const strip = el("div", "p-nav");
+  strip.append(
+    button("p-nav-btn", back.label, back.onClick),
+    el("span", "p-nav-title", title)
+  );
+  if (forward) strip.append(button("p-nav-btn", forward.label, forward.onClick));
+  return strip;
+}
 function screen(root2, render) {
   try {
     render();
@@ -641,6 +659,14 @@ var SLOT_ORIGIN = {
   body: [10, 15],
   held: [7, 13],
   float: [5, 7]
+};
+var SLOT_LABELS = {
+  hat: "Hats",
+  face: "Face",
+  neck: "Neck",
+  body: "Body",
+  held: "Bags",
+  float: "Extras"
 };
 var MAX_STICKERS = 6;
 
@@ -1226,6 +1252,8 @@ var EN = {
   // Button
   "studio.18": "Drag stickers to move them. Nothing is required.",
   // Body
+  "studio.19": "Nothing here is required.",
+  // Body, on the other tabs
   "sign.01": "Sign it",
   // Body
   "sign.02": "Name your duck",
@@ -1491,6 +1519,7 @@ var ZH_HANT = {
   "studio.16": "顏色",
   "studio.17": "下一步",
   "studio.18": "拖曳貼紙可以移動。什麼都不填也可以。",
+  "studio.19": "這裡什麼都不填也可以。",
   // ── signing it ────────────────────────────────────────────────────────
   "sign.01": "簽名",
   "sign.02": "幫鴨子取個名字",
@@ -1616,12 +1645,11 @@ var SELECT_INK = "#0b3d52";
 function studioScreen(root2, opts) {
   const { state } = opts;
   root2.replaceChildren();
-  const { root: sheetRoot, body: wrap2 } = sheet();
-  const nav = el("div", "p-nav");
-  nav.append(
-    button("p-chip", t("studio.01"), opts.onBack),
-    el("span", "p-nav-title", t("studio.02")),
-    button("p-chip", t("studio.17"), opts.onNext)
+  const { root: viewRoot, body: wrap2 } = view();
+  const nav2 = nav(
+    { label: t("studio.01"), onClick: opts.onBack },
+    t("studio.02"),
+    { label: t("studio.03"), onClick: opts.onNext }
   );
   const canvas = el("canvas", "p-edit");
   canvas.width = GRID * EDIT_CELL;
@@ -1658,6 +1686,7 @@ function studioScreen(root2, opts) {
   let colour = 1;
   let brush = 1;
   let erasing = false;
+  let slotFilter = "hat";
   const cellOf = (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = Math.floor((e.clientX - rect.left) / rect.width * GRID);
@@ -1719,6 +1748,31 @@ function studioScreen(root2, opts) {
   };
   canvas.onpointerup = release;
   canvas.onpointercancel = release;
+  const utils = el("div", "p-utils");
+  const util = (name, label, onClick) => {
+    const b = button("p-icon-btn", "", onClick, label);
+    b.append(icon(name, 22));
+    return b;
+  };
+  utils.append(
+    util("undo", t("studio.05"), () => {
+      const last = history2.pop();
+      if (!last) return;
+      state.paint = last;
+      redraw();
+    }),
+    util("clear", t("studio.06"), () => {
+      history2.push(state.paint.slice());
+      state.paint = new Uint8Array(GRID * GRID);
+      redraw();
+    }),
+    util("dice", t("studio.07"), () => {
+      state.tint = Math.floor(Math.random() * TINTS.length);
+      state.stickers = surpriseStickers(opts.fortune);
+      redraw();
+      drawPanel();
+    })
+  );
   let tab = "colour";
   const panel = el("div", "p-panel");
   const tabs = el("div", "p-tabs");
@@ -1728,6 +1782,7 @@ function studioScreen(root2, opts) {
     [...tabs.children].forEach(
       (c) => c.classList.toggle("on", c.dataset.tab === next)
     );
+    hint.textContent = next === "stickers" ? t("studio.18") : t("studio.19");
     drawPanel();
   };
   for (const [key, label] of [
@@ -1757,12 +1812,21 @@ function studioScreen(root2, opts) {
       b.classList.toggle("on", state.tint === i);
       swatches.append(b);
     });
-    panel.append(swatches);
+    panel.append(el("p", "p-mini", t("studio.11")), swatches);
   }
   function stickerPanel() {
-    const hint = el("p", "p-hint", t("studio.18"));
+    const slots = el("div", "p-slotrow");
     const grid = el("div", "p-stickers");
+    for (const slot of Object.keys(SLOT_LABELS)) {
+      const b = button("p-slot", SLOT_LABELS[slot], () => {
+        slotFilter = slot;
+        drawPanel();
+      });
+      b.classList.toggle("on", slotFilter === slot);
+      slots.append(b);
+    }
     for (const [id, def] of Object.entries(STICKERS)) {
+      if (def.slot !== slotFilter) continue;
       const already = state.stickers.find((s) => s.id === id);
       const b = button("p-sticker", "", () => {
         if (already) {
@@ -1792,7 +1856,7 @@ function studioScreen(root2, opts) {
       b.append(c);
       grid.append(b);
     }
-    panel.append(hint, grid);
+    panel.append(slots, grid);
   }
   function paintPanel() {
     const tools = el("div", "p-tools");
@@ -1816,25 +1880,8 @@ function studioScreen(root2, opts) {
       erase.classList.toggle("on", erasing);
     };
     syncTools();
-    const undo = button("p-chip", "↶", () => {
-      const last = history2.pop();
-      if (last) {
-        state.paint = last;
-        redraw();
-      }
-    }, t("studio.05"));
-    const clear = button("p-chip", "×", () => {
-      history2.push(state.paint.slice());
-      state.paint = new Uint8Array(GRID * GRID);
-      redraw();
-    }, t("studio.06"));
-    const surprise = button("p-chip", "?", () => {
-      state.tint = Math.floor(Math.random() * TINTS.length);
-      state.stickers = surpriseStickers(opts.fortune);
-      redraw();
-      drawPanel();
-    }, t("studio.07"));
-    tools.append(brush1, brush2, erase, undo, clear, surprise);
+    tools.append(brush1, brush2, erase);
+    panel.append(el("p", "p-mini", t("studio.12")), tools, el("p", "p-mini", t("studio.16")));
     const swatches = el("div", "p-swatches");
     PAINT_COLOURS.forEach((c, i) => {
       const b = button("p-swatch", "", () => {
@@ -1847,11 +1894,17 @@ function studioScreen(root2, opts) {
       b.classList.toggle("on", colour === i + 1);
       swatches.append(b);
     });
-    panel.append(tools, swatches);
+    panel.append(swatches);
   }
   const history2 = [];
-  wrap2.append(nav, canvas, tabs, panel);
-  root2.append(sheetRoot);
+  const foot = el("div", "p-foot");
+  const hint = el("p", "p-hint", "");
+  foot.append(
+    el("div", "p-actions").appendChild(button("p-btn", t("studio.17"), opts.onNext)).parentElement,
+    hint
+  );
+  wrap2.append(nav2, canvas, utils, tabs, panel, foot);
+  root2.append(viewRoot);
   setTab("colour");
   redraw();
 }
@@ -1926,7 +1979,7 @@ function mineScreen(opts) {
         void err;
       });
     }
-    view(duck);
+    view2(duck);
   })();
   function preview(duck, size = 5) {
     const c = el("canvas", "p-preview");
@@ -1948,7 +2001,7 @@ function mineScreen(opts) {
     );
     return c;
   }
-  function view(duck) {
+  function view2(duck) {
     screen(root2, () => {
       root2.replaceChildren();
       const { root: sheetRoot, body: wrap2 } = sheet(true);
@@ -1980,7 +2033,7 @@ function mineScreen(opts) {
       state,
       onChange: () => {
       },
-      onBack: () => view(duck),
+      onBack: () => view2(duck),
       onNext: () => {
         const { tint, stickers, paint } = toPayload(state);
         void api.update(editKey, { tint, stickers, paint, name: duck.name, message: duck.message }).then(
@@ -1988,7 +2041,7 @@ function mineScreen(opts) {
             duck.tint = tint;
             duck.stickers = stickers;
             duck.paint = paint;
-            view(duck);
+            view2(duck);
           },
           () => {
             const note = el("p", "p-note", t("live.error"));
@@ -2049,7 +2102,7 @@ function mineScreen(opts) {
         );
       });
       const actions = el("div", "p-actions");
-      actions.append(save, button("p-btn p-btn-quiet", t("mine.05"), () => view(duck)));
+      actions.append(save, button("p-btn p-btn-quiet", t("mine.05"), () => view2(duck)));
       wrap2.append(actions, status);
       const danger = el("div", "p-danger");
       const remove = button("p-btn p-btn-danger", t("manage.09"), () => {
@@ -2593,7 +2646,7 @@ function releaseFlow(opts) {
   }
   function signBody() {
     root2.replaceChildren();
-    const { root: sheetRoot, body: wrap2 } = sheet();
+    const { root: viewRoot, body: wrap2 } = view();
     wrap2.append(el("p", "p-eyebrow", t("sign.01")), preview(6), el("h2", "p-title", t("sign.02")));
     const name = field({
       label: t("sign.03"),
@@ -2618,14 +2671,15 @@ function releaseFlow(opts) {
     });
     wrap2.append(name.wrap, message.wrap);
     wrap2.append(el("p", "p-note", t("sign.08")));
+    wrap2.append(spacer());
     wrap2.append(
       el("div", "p-actions").appendChild(button("p-btn", t("sign.09"), contact)).parentElement
     );
-    root2.append(sheetRoot);
+    root2.append(viewRoot);
   }
   function contactBody() {
     root2.replaceChildren();
-    const { root: sheetRoot, body: wrap2 } = sheet();
+    const { root: viewRoot, body: wrap2 } = view();
     wrap2.append(
       el("p", "p-eyebrow", t("contact.01")),
       el("h2", "p-title", t("contact.02")),
@@ -2674,8 +2728,8 @@ function releaseFlow(opts) {
         void release();
       })
     );
-    wrap2.append(actions);
-    root2.append(sheetRoot);
+    wrap2.append(spacer(), actions);
+    root2.append(viewRoot);
     syncScope();
   }
   async function release() {
@@ -4182,9 +4236,9 @@ async function pondScreen(bootstrap) {
   const SAY_GAP = 6;
   const says = el2("div", "p-says");
   says.setAttribute("aria-live", "polite");
-  const view = new PondView({
+  const view2 = new PondView({
     canvas,
-    onTapDuck: (d) => openDuckCard(view, d),
+    onTapDuck: (d) => openDuckCard(view2, d),
     /*
      * The pond has already shown the steam; this tells the server, which
      * credits whoever got there first. A failure changes nothing on
@@ -4192,7 +4246,7 @@ async function pondScreen(bootstrap) {
      */
     onDouseDuck: (d) => void api.extinguish(d.id).catch(() => {
     }),
-    onTapWater: (wx, wy) => view.splash(wx, wy, SPLASH_TAP),
+    onTapWater: (wx, wy) => view2.splash(wx, wy, SPLASH_TAP),
     onDraw: () => positionSays()
   });
   const bubbles = /* @__PURE__ */ new Map();
@@ -4202,7 +4256,7 @@ async function pondScreen(bootstrap) {
     const box = says.getBoundingClientRect();
     placements.length = 0;
     for (const [id, node] of bubbles) {
-      const at = view.screenOf(id);
+      const at = view2.screenOf(id);
       const x = at ? at.x - box.left : 0;
       const y = at ? at.y - box.top - at.r - SAY_GAP : 0;
       const off = !at || x < 0 || x > box.width || at.y - box.top < 0 || at.y - box.top > box.height;
@@ -4240,8 +4294,8 @@ async function pondScreen(bootstrap) {
     b.type = "button";
     b.setAttribute("aria-label", aria);
     b.addEventListener("click", () => {
-      const next = view.camera.step(dir);
-      if (next !== null) view.camera.glide({ cell: next }, CAM_UI);
+      const next = view2.camera.step(dir);
+      if (next !== null) view2.camera.glide({ cell: next }, CAM_UI);
       syncZoom();
     });
     return b;
@@ -4249,16 +4303,16 @@ async function pondScreen(bootstrap) {
   const zoomIn = zoomBtn(t("pond.07"), t("pond.06"), 1);
   const zoomOut = zoomBtn(t("pond.09"), t("pond.08"), -1);
   const syncZoom = () => {
-    zoomIn.disabled = view.camera.step(1) === null;
-    zoomOut.disabled = view.camera.step(-1) === null;
+    zoomIn.disabled = view2.camera.step(1) === null;
+    zoomOut.disabled = view2.camera.step(-1) === null;
   };
   zoom.append(zoomIn, zoomOut);
   root.append(stage, says, hud, zoom, cta, wordmark, overlay);
-  window.__pond = view;
-  const fit = () => view.resize();
+  window.__pond = view2;
+  const fit = () => view2.resize();
   fit();
   watchSize(canvas, fit);
-  view.start();
+  view2.start();
   syncZoom();
   const zoomPoll = window.setInterval(syncZoom, 500);
   let ducks = [];
@@ -4282,10 +4336,10 @@ async function pondScreen(bootstrap) {
   );
   const call = (keeper) => {
     calling = keeper;
-    view.gather(keeper === null ? null : (d) => d.keeper === keeper);
+    view2.gather(keeper === null ? null : (d) => d.keeper === keeper);
     whistle.hidden = keeper === null;
     whistleWho.textContent = keeper === null ? "" : t("live.whistling", { keeper });
-    if (keeper === null) view.home();
+    if (keeper === null) view2.home();
     syncCount();
     sheet2.hidden = true;
     scrim.remove();
@@ -4325,7 +4379,7 @@ async function pondScreen(bootstrap) {
     try {
       const res = await api.pond();
       ducks = res.ducks;
-      view.setDucks(ducks);
+      view2.setDucks(ducks);
       syncSays(ducks);
       syncCount();
     } catch (err) {
@@ -4371,9 +4425,9 @@ async function pondScreen(bootstrap) {
             resumePolling();
             void syncCta();
             void refresh().then(() => {
-              view.lookAt(made.id, true);
-              const duck = view.find(made.id);
-              if (duck) view.arrive(duck);
+              view2.lookAt(made.id, true);
+              const duck = view2.find(made.id);
+              if (duck) view2.arrive(duck);
             });
           }
         });
@@ -4455,7 +4509,7 @@ async function pondScreen(bootstrap) {
     input.input.focus();
   }
   await syncCta();
-  if (bootstrap.duck) view.lookAt(bootstrap.duck.id, true);
+  if (bootstrap.duck) view2.lookAt(bootstrap.duck.id, true);
   let polling = true;
   function pausePolling() {
     polling = false;
@@ -4471,7 +4525,7 @@ async function pondScreen(bootstrap) {
     clearInterval(zoomPoll);
     clearInterval(poll);
     window.removeEventListener("resize", fit);
-    view.stop();
+    view2.stop();
     teardown = null;
   };
 }
@@ -4480,8 +4534,8 @@ function shortDate(created) {
   const d = new Date(created * 1e3);
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
-function openDuckCard(view, duck) {
-  view.splash(duck.wx, duck.wy);
+function openDuckCard(view2, duck) {
+  view2.splash(duck.wx, duck.wy);
   document.querySelector(".p-card")?.remove();
   const scrim = el2("div", "p-scrim");
   const panel = el2("div", "p-card");
@@ -4561,8 +4615,8 @@ function openDuckCard(view, duck) {
       void api.bump(mine, duck.id).then(
         (res) => {
           showStats(res.bumps);
-          if (view.bumpDuck(res.from, duck.id)) dismiss();
-          else view.splash(duck.wx, duck.wy);
+          if (view2.bumpDuck(res.from, duck.id)) dismiss();
+          else view2.splash(duck.wx, duck.wy);
           bump.textContent = "✓";
         },
         (err) => {
@@ -4583,7 +4637,7 @@ function openDuckCard(view, duck) {
   card.append(close);
   panel.append(ditherEdge(), card);
   root.append(scrim, panel);
-  view.lookAtAbove(duck.id, window.innerHeight - panel.getBoundingClientRect().top);
+  view2.lookAtAbove(duck.id, window.innerHeight - panel.getBoundingClientRect().top);
 }
 function reportSheet(card, duck) {
   card.replaceChildren();

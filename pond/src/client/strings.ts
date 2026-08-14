@@ -164,6 +164,7 @@ export const EN = {
   "studio.16": "Colour", // Body
   "studio.17": "Next", // Button
   "studio.18": "Drag stickers to move them. Nothing is required.", // Body
+  "studio.19": "Nothing here is required.", // Body, on the other tabs
   "sign.01": "Sign it", // Body
   "sign.02": "Name your duck", // Heading
   "sign.03": "Name", // Field label
@@ -372,6 +373,7 @@ export const ZH_HANT: Record<StringKey, string> = {
   "studio.16": "顏色",
   "studio.17": "下一步",
   "studio.18": "拖曳貼紙可以移動。什麼都不填也可以。",
+  "studio.19": "這裡什麼都不填也可以。",
 
   // ── signing it ────────────────────────────────────────────────────────
   "sign.01": "簽名",
