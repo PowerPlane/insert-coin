@@ -356,9 +356,16 @@ export function placeDucks(ducks: PondDuck[], side: number): Placed[] {
     const b = hashId(d.id + "y");
     return {
       ...d,
-      // A duck arrives already alight if the server says so. `mergeFire`
-      // owns it from here; this is only the first reading.
-      burning: d.fire !== null,
+      /*
+       * A duck arrives already alight if the server says so. `mergeFire`
+       * owns it from here; this is only the first reading.
+       *
+       * `Boolean(d.fire)`, never `d.fire !== null` — a MISSING field is not
+       * a fire. Written the other way, one stale cached response set every
+       * duck in the pond alight at once, because `undefined !== null`. The
+       * default for "I do not know" has to be the calm one.
+       */
+      burning: Boolean(d.fire),
       burnUntil: d.fire ? performance.now() + d.fire.burnsFor * 1000 : undefined,
       fireLitAt: d.fire?.litAt,
       wx: origin + a * spread,

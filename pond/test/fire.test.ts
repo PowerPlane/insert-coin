@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { ignite, mergeFire, type Placed } from "../src/client/pond-view.js";
+import { ignite, mergeFire, placeDucks, type Placed } from "../src/client/pond-view.js";
 import { BAD_LUCK_BURN_MS } from "../src/client/sparkle.js";
 
 /** A 凶 in the water. Only the fields the fire rules touch. */
@@ -136,6 +136,40 @@ describe("the arrival burn, which the server never hears about", () => {
     mergeFire(d, serverFire(1000), 300);
     expect(d.fireLitAt).toBe(1000);
     expect(d.burnUntil).toBe(300 + 90_000);
+  });
+});
+
+describe("a duck whose fire the response never mentioned", () => {
+  /*
+   * ══ A MISSING FIELD IS NOT A FIRE ══
+   * The first version read `d.fire !== null`, which is true for `undefined`
+   * — so one stale cached /api/pond, served without the field, set THE
+   * WHOLE POND alight at once. Thirteen ducks, all burning, on a reload.
+   *
+   * Version skew is not exotic here: the bundle is committed and a browser
+   * can hold an old copy of it, or an old response, for a long time. The
+   * default for "I do not know" has to be the calm one.
+   */
+  const withoutFire = () => {
+    const d = duck() as unknown as Record<string, unknown>;
+    delete d.fire;
+    return d as unknown as Placed;
+  };
+
+  it("is not on fire", () => {
+    expect(placeDucks([withoutFire()], 1000)[0]!.burning).toBe(false);
+  });
+
+  it("is not set alight by a poll either", () => {
+    const d = duck();
+    mergeFire(d, undefined as unknown as Placed["fire"], 0);
+    expect(d.burning).toBe(false);
+  });
+
+  it("still lights the ducks the response DOES name", () => {
+    // The guard must not be so cautious that it puts real fires out.
+    const lit = duck({ fire: serverFire(1000) });
+    expect(placeDucks([withoutFire(), lit], 1000).map((x) => x.burning)).toEqual([false, true]);
   });
 });
 
