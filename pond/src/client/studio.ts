@@ -12,8 +12,8 @@
 import { GRID, clampPaintValue, encodePaint } from "./codec.js";
 import { el, button, sheet } from "./dom.js";
 import { drawDuck } from "./render.js";
-import { PAINT_COLOURS, TINTS } from "./sprites.js";
-import { MAX_STICKERS, SLOT_ORIGIN, STICKERS } from "./stickers.js";
+import { FORTUNES, PAINT_COLOURS, TINTS, slotOnDuck } from "./sprites.js";
+import { MAX_STICKERS, SLOT_ORIGIN, STICKERS, type SlotName } from "./stickers.js";
 import { t } from "./strings.js";
 import type { Sticker } from "./types.js";
 
@@ -135,7 +135,9 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
           // Six is the cap the schema enforces; dropping the oldest is
           // kinder than refusing, because the tap already happened.
           if (state.stickers.length >= MAX_STICKERS) state.stickers.shift();
-          const [ox, oy] = SLOT_ORIGIN[def.slot];
+          // Resolved against THIS duck: the four sprites are different
+          // sizes, so one table of coordinates does not fit them all.
+          const [ox, oy] = slotOnDuck(SLOT_ORIGIN[def.slot], FORTUNES[opts.fortune]?.key ?? "little");
           state.stickers.push({ id, x: ox, y: oy });
         }
         redraw();
@@ -204,7 +206,15 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
       redraw();
     }, t("studio.06"));
 
-    tools.append(brush1, brush2, erase, undo, clear);
+    // "?" rather than a die: this is a question the duck answers.
+    const surprise = button("p-chip", "?", () => {
+      state.tint = Math.floor(Math.random() * TINTS.length);
+      state.stickers = surpriseStickers(opts.fortune);
+      redraw();
+      drawPanel();
+    }, t("studio.07"));
+
+    tools.append(brush1, brush2, erase, undo, clear, surprise);
 
     const swatches = el("div", "p-swatches");
     PAINT_COLOURS.forEach((c, i) => {
@@ -269,6 +279,37 @@ const STICKER_COLOURS: Record<string, string> = {
 };
 
 /** What the API wants: paint as base64, stickers as plain objects. */
+/**
+ * ══ SURPRISE ME ══
+ * A duck nobody chose, which is a different pleasure from one you built —
+ * and the fastest way to find out that hats exist at all.
+ *
+ * It fills roughly half the slots rather than all six, because a duck
+ * wearing every accessory at once is not a surprise, it is a pile. Each
+ * chosen slot takes one of its own stickers, so hats land on the head and
+ * bags at the side: the placement goes through `slotOnDuck`, so this is
+ * correct on all four ducks and not only on 小吉.
+ */
+const SLOT_CHANCE = 0.55;
+
+export function surpriseStickers(fortune: number): Sticker[] {
+  const key = FORTUNES[fortune]?.key ?? "little";
+  const bySlot = new Map<SlotName, string[]>();
+  for (const [id, def] of Object.entries(STICKERS)) {
+    bySlot.set(def.slot, [...(bySlot.get(def.slot) ?? []), id]);
+  }
+
+  const picked: Sticker[] = [];
+  for (const [slot, ids] of bySlot) {
+    if (Math.random() >= SLOT_CHANCE) continue;
+    if (picked.length >= MAX_STICKERS) break;
+    const id = ids[Math.floor(Math.random() * ids.length)]!;
+    const [x, y] = slotOnDuck(SLOT_ORIGIN[slot], key);
+    picked.push({ id, x, y });
+  }
+  return picked;
+}
+
 export function toPayload(state: StudioState): {
   tint: number;
   stickers: Sticker[];

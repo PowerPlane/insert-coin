@@ -443,6 +443,32 @@ function flameMask(key) {
 }
 var FLAME = { FIELD: FLAME_FIELD, OFFSET: FLAME_OFFSET };
 var FLAME_COLOURS = ["#FF4B4B", "#FF8953"];
+var SLOT_REFERENCE = "little";
+function inkedBox(key) {
+  const rows = DUCKS[key] ?? DUCKS[SLOT_REFERENCE];
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -1;
+  let y1 = -1;
+  rows.forEach((row, y) => {
+    [...row].forEach((cell, x) => {
+      if (cell === ".") return;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    });
+  });
+  return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+}
+function slotOnDuck(origin, fortuneKey) {
+  const ref = inkedBox(SLOT_REFERENCE);
+  const box = inkedBox(fortuneKey);
+  return [
+    Math.round(box.x + (origin[0] - ref.x) / ref.w * box.w),
+    Math.round(box.y + (origin[1] - ref.y) / ref.h * box.h)
+  ];
+}
 
 // src/client/stickers.ts
 var STICKER_PALETTE = {
@@ -1404,7 +1430,7 @@ function studioScreen(root2, opts) {
           state.stickers = state.stickers.filter((s) => s.id !== id);
         } else {
           if (state.stickers.length >= MAX_STICKERS) state.stickers.shift();
-          const [ox, oy] = SLOT_ORIGIN[def.slot];
+          const [ox, oy] = slotOnDuck(SLOT_ORIGIN[def.slot], FORTUNES[opts.fortune]?.key ?? "little");
           state.stickers.push({ id, x: ox, y: oy });
         }
         redraw();
@@ -1466,7 +1492,13 @@ function studioScreen(root2, opts) {
       state.paint = new Uint8Array(GRID * GRID);
       redraw();
     }, t("studio.06"));
-    tools.append(brush1, brush2, erase, undo, clear);
+    const surprise = button("p-chip", "?", () => {
+      state.tint = Math.floor(Math.random() * TINTS.length);
+      state.stickers = surpriseStickers(opts.fortune);
+      redraw();
+      drawPanel();
+    }, t("studio.07"));
+    tools.append(brush1, brush2, erase, undo, clear, surprise);
     const swatches = el("div", "p-swatches");
     PAINT_COLOURS.forEach((c, i) => {
       const b = button("p-swatch", "", () => {
@@ -1527,6 +1559,23 @@ var STICKER_COLOURS = {
   n: "#8B5E34",
   s: "#C9D6DC"
 };
+var SLOT_CHANCE = 0.55;
+function surpriseStickers(fortune) {
+  const key = FORTUNES[fortune]?.key ?? "little";
+  const bySlot = /* @__PURE__ */ new Map();
+  for (const [id, def] of Object.entries(STICKERS)) {
+    bySlot.set(def.slot, [...bySlot.get(def.slot) ?? [], id]);
+  }
+  const picked = [];
+  for (const [slot, ids] of bySlot) {
+    if (Math.random() >= SLOT_CHANCE) continue;
+    if (picked.length >= MAX_STICKERS) break;
+    const id = ids[Math.floor(Math.random() * ids.length)];
+    const [x, y] = slotOnDuck(SLOT_ORIGIN[slot], key);
+    picked.push({ id, x, y });
+  }
+  return picked;
+}
 function toPayload(state) {
   const painted = state.paint.some((v) => v !== 0);
   return {
