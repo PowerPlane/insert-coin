@@ -23,6 +23,7 @@ import { CAM_UI } from "./camera.js";
 import { cardSetup, claimFromUrl } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, SPLASH_TAP, type Placed } from "./pond-view.js";
+import { GRID } from "./codec.js";
 import { drawDuck } from "./render.js";
 import { fortuneTitle, setLang, t, type Lang } from "./strings.js";
 import { watchSize } from "./viewport.js";
@@ -723,6 +724,15 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
  * Built from the parts rather than toLocaleDateString, which would put a
  * comma and a year in some locales and none in others.
  */
+/**
+ * How long the card stays up after a bump lands, so the new number can be
+ * read before the pond takes the screen back.
+ *
+ * Long enough to notice a digit change and a tick; short enough that it
+ * never feels like waiting. The crossing starts when this ends.
+ */
+const BUMP_READ_MS = 520;
+
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function shortDate(created: number): string {
@@ -826,12 +836,15 @@ function openDuckCard(view: PondView, duck: Placed): void {
         const box = el("div", "p-bumper");
         box.title = b.name || b.slug;
         const cv = el("canvas", "");
-        cv.width = 64;
-        cv.height = 64;
+        // 32 CSS pixels inside a 44px control, at a whole 2x per sprite
+        // pixel with a little headroom — a fractional cell resamples the
+        // art, which is the one thing this pond never does.
+        cv.width = GRID * 2;
+        cv.height = GRID * 2;
         const c = cv.getContext("2d");
         if (c) {
           c.imageSmoothingEnabled = false;
-          drawDuck(c, b, 0, 0, 64 / 24);
+          drawDuck(c, b, 0, 0, 2);
         }
         box.append(cv, el("i", "p-bumper-n", String(b.count)));
         row.append(box);
@@ -859,19 +872,31 @@ function openDuckCard(view: PondView, duck: Placed): void {
       bump.disabled = true;
       void api.bump(mine, duck.id).then(
         (res) => {
-          showStats(res.bumps);
           /*
-           * Your duck swims over and knocks theirs. That is the whole
+           * ══ THE NUMBER FIRST, THEN THE CROSSING ══
+           * Your duck swims over and knocks theirs — that is the whole
            * reason this is called a bump: a counter going up is a like,
            * and two ducks touching is a bump.
            *
-           * Animated on success rather than on tap, so a bump the cap
-           * refused never shows a duck crossing the pond for nothing. The
-           * card closes to get out of the way of the thing it started.
+           * But the card used to close on the same tick the count changed,
+           * so the number went up and vanished in the same frame. Reported
+           * as the counter not working at all, which is exactly what it
+           * looked like.
+           *
+           * So: show the new count and the tick, hold long enough to read
+           * them, and only then get out of the way — and start the
+           * crossing AFTER the card has gone, so the whole journey is
+           * watched rather than half of it happening behind a panel.
            */
-          if (view.bumpDuck(res.from, duck.id)) dismiss();
-          else view.splash(duck.wx, duck.wy);
+          showStats(res.bumps);
           bump.textContent = "✓";
+          window.setTimeout(() => {
+            if (!panel.isConnected) return;
+            dismiss();
+            // A bumper that is not in the pond right now cannot swim: the
+            // splash says the bump landed anyway.
+            if (!view.bumpDuck(res.from, duck.id)) view.splash(duck.wx, duck.wy);
+          }, BUMP_READ_MS);
         },
         (err: unknown) => {
           // 409 is the ten-unreturned cap, which is a real answer rather

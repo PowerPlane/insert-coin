@@ -862,14 +862,24 @@ a.p-btn {
   flex-wrap: wrap;
 }
 
+/*
+ * One person who bumped you. A tappable 44px square, not 38: it is a
+ * control, and every other control here clears the same floor.
+ */
 .p-bumper {
   position: relative;
-  width: 38px;
-  height: 38px;
+  width: var(--tap);
+  height: var(--tap);
   background: var(--quiet);
   clip-path: var(--px-corner);
   display: grid;
   place-items: center;
+}
+
+.p-bumper canvas {
+  image-rendering: pixelated;
+  width: 32px;
+  height: 32px;
 }
 
 .p-bumper canvas {
@@ -878,14 +888,26 @@ a.p-btn {
   image-rendering: pixelated;
 }
 
+/*
+ * ══ A NUMBER OVER PIXEL ART NEEDS ITS OWN GROUND ══
+ * This was 8.8px of muted grey laid straight over the duck's own pixels,
+ * and was reported, fairly, as unreadable. A duck can be any of twelve
+ * tints, so there is no text colour that works over all of them.
+ *
+ * So it gets a near-white chip and full ink — the prototype's own
+ * treatment. Nearly opaque rather than solid, so it still reads as a mark
+ * ON the duck rather than a label beside it.
+ */
 .p-bumper-n {
   position: absolute;
   right: 1px;
   bottom: 0;
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: 0.52rem;
   font-style: normal;
-  color: var(--p-soft);
+  color: var(--p-ink);
+  background: #ffffffdd;
+  padding: 0 0.15rem;
 }
 
 /* ── a duck's card, and the gather sheet ─────────────────────────────── */

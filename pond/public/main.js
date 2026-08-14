@@ -4574,6 +4574,7 @@ async function pondScreen(bootstrap) {
     teardown = null;
   };
 }
+var BUMP_READ_MS = 520;
 var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function shortDate(created) {
   const d = new Date(created * 1e3);
@@ -4635,12 +4636,12 @@ function openDuckCard(view2, duck) {
         const box = el2("div", "p-bumper");
         box.title = b.name || b.slug;
         const cv = el2("canvas", "");
-        cv.width = 64;
-        cv.height = 64;
+        cv.width = GRID * 2;
+        cv.height = GRID * 2;
         const c = cv.getContext("2d");
         if (c) {
           c.imageSmoothingEnabled = false;
-          drawDuck(c, b, 0, 0, 64 / 24);
+          drawDuck(c, b, 0, 0, 2);
         }
         box.append(cv, el2("i", "p-bumper-n", String(b.count)));
         row.append(box);
@@ -4660,9 +4661,12 @@ function openDuckCard(view2, duck) {
       void api.bump(mine, duck.id).then(
         (res) => {
           showStats(res.bumps);
-          if (view2.bumpDuck(res.from, duck.id)) dismiss();
-          else view2.splash(duck.wx, duck.wy);
           bump.textContent = "✓";
+          window.setTimeout(() => {
+            if (!panel.isConnected) return;
+            dismiss();
+            if (!view2.bumpDuck(res.from, duck.id)) view2.splash(duck.wx, duck.wy);
+          }, BUMP_READ_MS);
         },
         (err) => {
           bump.textContent = err instanceof ApiError && err.status === 409 ? t("live.capped") : t("live.error");
