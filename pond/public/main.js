@@ -1925,6 +1925,31 @@ var PondCamera = class {
     this.cam.cell = to;
   }
   /**
+   * Zoom about a point, but TRAVEL there.
+   *
+   * `zoomAbout` lands instantly, which is right for a pinch: the fingers
+   * are already moving continuously, so the camera must track them frame
+   * for frame and any easing would lag behind the hand.
+   *
+   * A double tap is not continuous. It is a discrete request, like the zoom
+   * buttons — and those glide. Landing it instantly made the pond jump,
+   * which reads as a glitch rather than as a move, and loses the sense of
+   * the water being a place you travel over.
+   *
+   * The destination is the same arithmetic `zoomAbout` does; the only
+   * difference is that it is handed to `glide` instead of assigned.
+   */
+  glideAbout(nextCell, ax, ay, ms = CAM_UI) {
+    const from = this.cam.cell;
+    const to = clampCell(nextCell);
+    if (to === from) return;
+    const k = 1 / from - 1 / to;
+    this.glide(
+      { x: wrap(this.cam.x + ax * k, this.side), y: wrap(this.cam.y + ay * k, this.side), cell: to },
+      ms
+    );
+  }
+  /**
    * Release a flick. Velocity is in WORLD units per millisecond, already
    * measured across a buffer rather than from the last event — a single
    * delta is mostly sensor noise, and a finger that paused before lifting
@@ -2560,7 +2585,7 @@ var Gestures = class {
     const next = camera.step(1) ?? HOME_CELL;
     const rect = this.el.getBoundingClientRect();
     const d = this.target.dpr();
-    camera.zoomAbout(
+    camera.glideAbout(
       next,
       (e.clientX - (rect.left + rect.width / 2)) * d,
       (e.clientY - (rect.top + rect.height / 2)) * d
@@ -3522,7 +3547,7 @@ async function pondScreen(bootstrap) {
   }
   function buildCta(session) {
     if (session.active && !session.spent) {
-      const go = el2("button", "p-btn", t("arrival.04"));
+      const go = el2("button", "p-btn p-btn-quiet", t("arrival.04"));
       go.type = "button";
       go.addEventListener("click", () => {
         pausePolling();

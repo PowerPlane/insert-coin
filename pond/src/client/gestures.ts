@@ -247,7 +247,9 @@ export class Gestures {
     const next = camera.step(1) ?? HOME_CELL;
     const rect = this.el.getBoundingClientRect();
     const d = this.target.dpr();
-    camera.zoomAbout(
+    // Glides, like the zoom buttons. A double tap is a discrete request,
+    // not a continuous one, so it travels rather than jumping.
+    camera.glideAbout(
       next,
       (e.clientX - (rect.left + rect.width / 2)) * d,
       (e.clientY - (rect.top + rect.height / 2)) * d,

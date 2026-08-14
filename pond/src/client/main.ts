@@ -337,7 +337,13 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     // A fortune is waiting. This is the only CTA that ever appears, and it
     // is the whole reason the pond can be the default screen: someone with
     // nothing to make sees a pond, not a form.
-    const go = el("button", "p-btn", t("arrival.04"));
+    /*
+     * Quiet, not the duck-yellow primary. The prototype reserves yellow for
+     * the one real action on a MAKING screen; over the water this is a way
+     * back into a flow you have already started, and a yellow slab there
+     * competes with the pond it is sitting on. `.btn.g` in the prototype.
+     */
+    const go = el("button", "p-btn p-btn-quiet", t("arrival.04"));
     go.type = "button";
     go.addEventListener("click", () => {
       // The pollers stop; the WATER DOES NOT. A pond that freezes the

@@ -275,6 +275,34 @@ export class PondCamera {
   }
 
   /**
+   * Zoom about a point, but TRAVEL there.
+   *
+   * `zoomAbout` lands instantly, which is right for a pinch: the fingers
+   * are already moving continuously, so the camera must track them frame
+   * for frame and any easing would lag behind the hand.
+   *
+   * A double tap is not continuous. It is a discrete request, like the zoom
+   * buttons — and those glide. Landing it instantly made the pond jump,
+   * which reads as a glitch rather than as a move, and loses the sense of
+   * the water being a place you travel over.
+   *
+   * The destination is the same arithmetic `zoomAbout` does; the only
+   * difference is that it is handed to `glide` instead of assigned.
+   */
+  glideAbout(nextCell: number, ax: number, ay: number, ms = CAM_UI): void {
+    const from = this.cam.cell;
+    const to = clampCell(nextCell);
+    if (to === from) return;
+    // Keep the world point under the anchor still: its offset from the
+    // camera scales by exactly the zoom ratio.
+    const k = 1 / from - 1 / to;
+    this.glide(
+      { x: wrap(this.cam.x + ax * k, this.side), y: wrap(this.cam.y + ay * k, this.side), cell: to },
+      ms,
+    );
+  }
+
+  /**
    * Release a flick. Velocity is in WORLD units per millisecond, already
    * measured across a buffer rather than from the last event — a single
    * delta is mostly sensor noise, and a finger that paused before lifting
