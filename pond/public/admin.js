@@ -26,6 +26,12 @@ function field(opts) {
   input.placeholder = opts.placeholder;
   input.value = opts.value ?? "";
   input.maxLength = opts.max * 2;
+  if (opts.readonly) {
+    input.readOnly = true;
+    input.addEventListener("focus", () => input.select());
+    wrap.append(input);
+    return { wrap, input };
+  }
   const count = el("span", "p-field-count");
   const showCount = () => {
     const points = [...input.value].length;

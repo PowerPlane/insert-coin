@@ -290,35 +290,55 @@ export function releaseFlow(opts: FlowOptions): void {
       el("p", "p-body", t("pond.16")),
     );
 
-    const box = el("div", "p-linkbox");
-    // The link is a credential, so it is selectable and copyable but never
-    // a link you can accidentally follow and leave in a Referer header.
-    const text = el("code", "p-link", url);
-    box.append(text);
+    /*
+     * ══ THE LINK IS A FIELD, NOT A PARAGRAPH ══
+     * It was a `<code>` in a box. That looks right and behaves badly: on a
+     * phone the only way to get text out of a block element is a long-press
+     * and a careful drag, on a 40-character URL where one wrong character
+     * loses the duck for good. A readonly input selects itself on focus, so
+     * one tap arms the system Copy — and it scrolls rather than wrapping,
+     * which keeps the modal short.
+     *
+     * `readonly`, not `disabled`: disabled fields cannot be focused, copied,
+     * or read aloud, and this one has to be all three.
+     */
+    const link = field({
+      label: t("pond.17"), placeholder: "", max: 200, value: url, readonly: true,
+    });
+    const input = link.input as HTMLInputElement;
+    input.classList.add("p-link");
 
-    const actions = el("div", "p-actions");
-    const copy = button("p-btn", t("pond.19"), () => {
+    /*
+     * ══ ONE GOLD BUTTON, AND IT IS ALWAYS THE NEXT THING ══
+     * Copy, Text and Email are three routes to ONE outcome, so they are
+     * three equal quiet buttons in a row — the row is what says "pick one".
+     * Stacked full-width, and with Copy gold, the screen had two competing
+     * primaries and read as four unrelated commands.
+     *
+     * Done is the only gold, and it is honest: once the link is somewhere
+     * safe, leaving is the next thing to do. There are no accounts behind
+     * this, so a link lost here is a duck lost for good.
+     */
+    const actions = el("div", "p-actions-row");
+    const copy = button("p-btn p-btn-quiet", t("pond.19"), () => {
       void navigator.clipboard?.writeText(url).then(
-        () => { copy.textContent = "✓"; },
+        () => { copy.textContent = t("pond.40"); },
         () => {
-          // Clipboard can be refused. Selecting the text is the fallback
-          // that always works.
-          const range = document.createRange();
-          range.selectNodeContents(text);
-          getSelection()?.removeAllRanges();
-          getSelection()?.addRange(range);
+          // The clipboard can be refused — by permissions, or by any
+          // non-secure origin. Selecting the field always works, and leaves
+          // the person one system gesture from the same result.
+          input.focus();
+          input.select();
         },
       );
     });
-    const smsHref = `sms:?&body=${encodeURIComponent(url)}`;
-    const mailHref = `mailto:?subject=${encodeURIComponent(t("pond.15"))}&body=${encodeURIComponent(url)}`;
     const sms = el("a", "p-btn p-btn-quiet", t("pond.20"));
-    sms.href = smsHref;
+    sms.href = `sms:?&body=${encodeURIComponent(url)}`;
     const mail = el("a", "p-btn p-btn-quiet", t("pond.21"));
-    mail.href = mailHref;
+    mail.href = `mailto:?subject=${encodeURIComponent(t("pond.15"))}&body=${encodeURIComponent(url)}`;
 
     actions.append(copy, sms, mail);
-    wrap.append(box, actions);
+    wrap.append(link.wrap, actions);
     wrap.append(
       el("div", "p-actions").appendChild(
         button("p-btn", t("pond.22"), () => opts.onDone(made)),

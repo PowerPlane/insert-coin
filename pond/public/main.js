@@ -155,6 +155,12 @@ function field(opts) {
   input.placeholder = opts.placeholder;
   input.value = opts.value ?? "";
   input.maxLength = opts.max * 2;
+  if (opts.readonly) {
+    input.readOnly = true;
+    input.addEventListener("focus", () => input.select());
+    wrap2.append(input);
+    return { wrap: wrap2, input };
+  }
   const count = el("span", "p-field-count");
   const showCount = () => {
     const points = [...input.value].length;
@@ -1138,6 +1144,8 @@ var EN = {
   // Button
   "pond.22": "Done",
   // Button
+  "pond.40": "Copied",
+  // Button, once the link is on the clipboard
   "pond.23": "Close",
   // Screen reader
   "pond.24": "小吉·Little luck",
@@ -1340,6 +1348,7 @@ var ZH_HANT = {
   "pond.13": "池塘裡的鴨子",
   "pond.14": "你的鴨子下水了",
   "pond.15": "留著這個連結",
+  "pond.40": "已複製",
   "pond.16": "沒有帳號。用這個連結修改、重新裝飾，或把鴨子帶走。",
   "pond.17": "你的私人連結",
   "pond.18": "ducky.davidyang.work/e/9fQ2xK7pLm",
@@ -2451,31 +2460,33 @@ function releaseFlow(opts) {
       el("h2", "p-title", t("pond.15")),
       el("p", "p-body", t("pond.16"))
     );
-    const box = el("div", "p-linkbox");
-    const text = el("code", "p-link", url);
-    box.append(text);
-    const actions = el("div", "p-actions");
-    const copy = button("p-btn", t("pond.19"), () => {
+    const link = field({
+      label: t("pond.17"),
+      placeholder: "",
+      max: 200,
+      value: url,
+      readonly: true
+    });
+    const input = link.input;
+    input.classList.add("p-link");
+    const actions = el("div", "p-actions-row");
+    const copy = button("p-btn p-btn-quiet", t("pond.19"), () => {
       void navigator.clipboard?.writeText(url).then(
         () => {
-          copy.textContent = "✓";
+          copy.textContent = t("pond.40");
         },
         () => {
-          const range = document.createRange();
-          range.selectNodeContents(text);
-          getSelection()?.removeAllRanges();
-          getSelection()?.addRange(range);
+          input.focus();
+          input.select();
         }
       );
     });
-    const smsHref = `sms:?&body=${encodeURIComponent(url)}`;
-    const mailHref = `mailto:?subject=${encodeURIComponent(t("pond.15"))}&body=${encodeURIComponent(url)}`;
     const sms = el("a", "p-btn p-btn-quiet", t("pond.20"));
-    sms.href = smsHref;
+    sms.href = `sms:?&body=${encodeURIComponent(url)}`;
     const mail = el("a", "p-btn p-btn-quiet", t("pond.21"));
-    mail.href = mailHref;
+    mail.href = `mailto:?subject=${encodeURIComponent(t("pond.15"))}&body=${encodeURIComponent(url)}`;
     actions.append(copy, sms, mail);
-    wrap2.append(box, actions);
+    wrap2.append(link.wrap, actions);
     wrap2.append(
       el("div", "p-actions").appendChild(
         button("p-btn", t("pond.22"), () => opts.onDone(made))

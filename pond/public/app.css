@@ -146,7 +146,6 @@ html[lang="zh-Hant"] body {
 .p-swatch,
 .p-sticker,
 .p-input,
-.p-linkbox,
 .p-sheet {
   clip-path: var(--px-corner);
 }
@@ -745,6 +744,19 @@ textarea.p-input {
   gap: 0.6rem;
 }
 
+/*
+ * Siblings, not a stack: three routes to ONE outcome (copy / text / email
+ * the same link). Equal columns are what say "pick whichever suits you" —
+ * stacked full-width they read as three separate commands, and the eye has
+ * to work out that they are alternatives.
+ */
+.p-actions-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
 .p-scopes,
 .p-tools {
   display: flex;
@@ -764,17 +776,14 @@ a.p-btn {
 
 /* ── the private link ─────────────────────────────────────────────────── */
 
-.p-linkbox {
-  padding: 0.8rem;
-  background: #fff;
-  overflow-wrap: anywhere;
-}
-
+/*
+ * A readonly field, not a block of text: one tap selects the whole thing.
+ * The 16px floor is inherited from .p-input and matters here too — iOS
+ * zooms the page when a smaller field takes focus, and never zooms back.
+ */
 .p-link {
   font-family: var(--mono);
-  font-size: 0.85rem;
-  color: var(--p-ink);
-  user-select: all;
+  letter-spacing: 0;
 }
 
 /*

@@ -42,6 +42,15 @@ export function field(opts: {
   max: number;
   value?: string;
   multiline?: boolean;
+  /**
+   * A field you read rather than fill in.
+   *
+   * Readonly, not disabled: a disabled field cannot be focused, copied or
+   * read aloud, and the one place this is used — the private link — has to
+   * be all three. It also drops the character counter, because a count is
+   * a warning about running out of room and there is no room to run out of.
+   */
+  readonly?: boolean;
   onInput?: (value: string) => void;
 }): { wrap: HTMLElement; input: HTMLInputElement | HTMLTextAreaElement } {
   const wrap = el("label", "p-field");
@@ -75,6 +84,15 @@ export function field(opts: {
    * and already knows it. So the count seeds itself and `onInput` means
    * what it says.
    */
+  if (opts.readonly) {
+    input.readOnly = true;
+    // One tap arms the system Copy, instead of a long-press and a careful
+    // drag across forty characters that must all be right.
+    input.addEventListener("focus", () => input.select());
+    wrap.append(input);
+    return { wrap, input };
+  }
+
   const count = el("span", "p-field-count");
   const showCount = () => {
     const points = [...input.value].length;

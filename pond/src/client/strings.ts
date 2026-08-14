@@ -203,6 +203,7 @@ export const EN = {
   "pond.20": "Text", // Button
   "pond.21": "Email", // Button
   "pond.22": "Done", // Button
+  "pond.40": "Copied", // Button, once the link is on the clipboard
   "pond.23": "Close", // Screen reader
   "pond.24": "小吉·Little luck", // Body
   "pond.25": "Mika", // Body
@@ -400,6 +401,7 @@ export const ZH_HANT: Record<StringKey, string> = {
   "pond.13": "池塘裡的鴨子",
   "pond.14": "你的鴨子下水了",
   "pond.15": "留著這個連結",
+  "pond.40": "已複製",
   "pond.16": "沒有帳號。用這個連結修改、重新裝飾，或把鴨子帶走。",
   "pond.17": "你的私人連結",
   "pond.18": "ducky.davidyang.work/e/9fQ2xK7pLm",
