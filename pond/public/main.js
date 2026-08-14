@@ -1906,14 +1906,36 @@ var PondCamera = class {
   /**
    * Is anything moving the view right now?
    *
-   * This is what drives BOTH the display-rate redraw and the world freeze,
-   * and it deliberately includes a finger on the glass. Before it did, a
-   * drag fell through to the 83 ms stop-motion path and tracked a thumb at
-   * twelve frames a second — the exact thing POND-CAMERA's two-clocks rule
-   * exists to prevent, and invisible in a screenshot.
+   * This drives the display-rate REDRAW, and it deliberately includes a
+   * finger on the glass. Before it did, a drag fell through to the 83 ms
+   * stop-motion path and tracked a thumb at twelve frames a second — the
+   * exact thing POND-CAMERA's two-clocks rule exists to prevent, and
+   * invisible in a screenshot.
+   *
+   * It used to drive the world FREEZE as well. That was one idea too many
+   * for one predicate: see `gliding`.
    */
   get moving() {
     return this.move !== null || this.flung !== null || this.held || this.settling;
+  }
+  /**
+   * True while the camera is carrying ITSELF somewhere — a glide, a fling,
+   * a settle back onto the zoom ladder. Never a finger.
+   *
+   * ══ A DOLLY FREEZES THE WORLD; A DRAG MUST NOT ══
+   * The world holds still during a camera move because a dolly is a
+   * deliberate moment a few hundred milliseconds long, and ducks lurching
+   * two or three times underneath it reads as the camera stuttering even
+   * though the camera is perfectly smooth.
+   *
+   * A drag is the opposite. The finger is down for as long as the person
+   * wants, they are setting the pace, and there is no smooth motion to
+   * protect. Freezing there stopped the ducks mid-paddle and stopped the
+   * water drifting for the whole gesture, which reads as the page having
+   * hung — reported as exactly that.
+   */
+  get gliding() {
+    return this.move !== null || this.flung !== null || this.settling;
   }
   /** Mid-pinch, cell is off the ladder and easing back onto it. */
   get settling() {
@@ -3230,11 +3252,11 @@ var PondView = class {
       if (!this.running) return;
       const camMoving = this.camera.tick(now);
       const wait = WORLD_MS * DWELL[this.frame % DWELL.length];
-      if (!camMoving && now - this.lastWorldTick >= wait) {
+      if (now - this.lastWorldTick >= wait) {
         const dt = Math.min(0.25, (now - this.lastWorldTick) / 1e3);
         this.lastWorldTick = now;
         this.frame++;
-        this.step(dt);
+        if (!this.camera.gliding) this.step(dt);
       }
       this.draw(now);
       if (this.debugging && now - this.lastDebug > 50) {

@@ -203,14 +203,37 @@ export class PondCamera {
   /**
    * Is anything moving the view right now?
    *
-   * This is what drives BOTH the display-rate redraw and the world freeze,
-   * and it deliberately includes a finger on the glass. Before it did, a
-   * drag fell through to the 83 ms stop-motion path and tracked a thumb at
-   * twelve frames a second — the exact thing POND-CAMERA's two-clocks rule
-   * exists to prevent, and invisible in a screenshot.
+   * This drives the display-rate REDRAW, and it deliberately includes a
+   * finger on the glass. Before it did, a drag fell through to the 83 ms
+   * stop-motion path and tracked a thumb at twelve frames a second — the
+   * exact thing POND-CAMERA's two-clocks rule exists to prevent, and
+   * invisible in a screenshot.
+   *
+   * It used to drive the world FREEZE as well. That was one idea too many
+   * for one predicate: see `gliding`.
    */
   get moving(): boolean {
     return this.move !== null || this.flung !== null || this.held || this.settling;
+  }
+
+  /**
+   * True while the camera is carrying ITSELF somewhere — a glide, a fling,
+   * a settle back onto the zoom ladder. Never a finger.
+   *
+   * ══ A DOLLY FREEZES THE WORLD; A DRAG MUST NOT ══
+   * The world holds still during a camera move because a dolly is a
+   * deliberate moment a few hundred milliseconds long, and ducks lurching
+   * two or three times underneath it reads as the camera stuttering even
+   * though the camera is perfectly smooth.
+   *
+   * A drag is the opposite. The finger is down for as long as the person
+   * wants, they are setting the pace, and there is no smooth motion to
+   * protect. Freezing there stopped the ducks mid-paddle and stopped the
+   * water drifting for the whole gesture, which reads as the page having
+   * hung — reported as exactly that.
+   */
+  get gliding(): boolean {
+    return this.move !== null || this.flung !== null || this.settling;
   }
 
   /** Mid-pinch, cell is off the ladder and easing back onto it. */
@@ -347,8 +370,9 @@ export class PondCamera {
 
   /** Advance whatever is moving. Returns true while still animating. */
   tick(now = performance.now()): boolean {
-    // A finger on the glass drives the camera directly; nothing to advance,
-    // but the view is still "moving" so the world stays frozen.
+    // A finger on the glass drives the camera directly: nothing to advance,
+    // but the view IS changing, so the caller must keep redrawing at
+    // display rate or the drag stutters.
     if (this.held) return true;
 
     if (this.flung) {

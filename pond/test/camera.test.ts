@@ -430,3 +430,52 @@ describe("a camera that has been asked not to move", () => {
     expect(cam.cam.x).toBeLessThan(1400);
   });
 });
+
+/**
+ * What the world holds still for.
+ *
+ * A dolly freezes the world: it lasts a few hundred milliseconds, and ducks
+ * lurching two or three times underneath a smooth camera move reads as the
+ * CAMERA stuttering. A drag must not freeze anything — the finger sets the
+ * pace, it can be down for as long as the person likes, and a pond that
+ * stops living while you look around it reads as the page having hung.
+ *
+ * That is not a hypothetical: it shipped that way and was reported as
+ * "the animation on the duck and the pond background stopped".
+ */
+describe("a drag is not a dolly", () => {
+  const cam = () => new PondCamera({ x: 1000, y: 1000, cell: 4 }, 8000);
+
+  it("keeps redrawing at display rate while a finger is down", () => {
+    // Both predicates matter, and they are not the same one.
+    const c = cam();
+    c.grab();
+    expect(c.moving, "a drag needs display-rate redraw").toBe(true);
+    expect(c.gliding, "a drag must not freeze the world").toBe(false);
+  });
+
+  it("freezes the world for a glide, which is what the freeze is for", () => {
+    const c = cam();
+    c.glide({ x: 1400, cell: 8 }, 600, 0);
+    expect(c.gliding).toBe(true);
+  });
+
+  it("freezes it for a fling too — the camera is still carrying itself", () => {
+    const c = cam();
+    c.fling(2, 0, 0);
+    expect(c.gliding).toBe(true);
+  });
+
+  it("stops freezing the moment the camera arrives", () => {
+    const c = cam();
+    c.glide({ x: 1400, y: 1000, cell: 4 }, 600, 0);
+    c.tick(600);
+    expect(c.gliding).toBe(false);
+  });
+
+  it("does not freeze an idle pond", () => {
+    const c = cam();
+    expect(c.gliding).toBe(false);
+    expect(c.moving).toBe(false);
+  });
+});

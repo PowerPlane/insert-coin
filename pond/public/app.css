@@ -704,10 +704,23 @@ html[lang="zh-Hant"] body {
 
 /* ── fields ───────────────────────────────────────────────────────────── */
 
+/*
+ * ══ PROXIMITY IS THE GROUPING ══
+ * A label belongs to the box under it, so it sits close. The count belongs
+ * to the box ABOVE it, so it sits closer still. And one field belongs to
+ * the next only loosely, so they sit far apart.
+ *
+ * A flat gap said all three were equally related, and the count ended up
+ * floating almost exactly halfway between the field it counts and the next
+ * field's label — legible, and attached to nothing. The numbers are the
+ * prototype's: 0.45 / 0.3 / 1.2rem, the last made up of this margin plus
+ * the sheet's own 0.75rem gap.
+ */
 .p-field {
   position: relative;
   display: grid;
   gap: 0.45rem;
+  margin-bottom: 0.45rem;
 }
 
 .p-field-label {
@@ -734,13 +747,22 @@ textarea.p-input {
   min-height: calc(var(--tap) * 2);
 }
 
+/*
+ * Under the field, right-aligned — the prototype's own placement.
+ *
+ * Absolutely positioned inside the box, it sat ON the text: at 18
+ * characters a name ran straight under the number, which is worst exactly
+ * when the count starts mattering. A counter is a note ABOUT the field, so
+ * it belongs beside it in the flow rather than floating over the content
+ * it is describing.
+ */
 .p-field-count {
-  position: absolute;
-  right: 10px;
-  bottom: 8px;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   color: var(--p-faint);
+  text-align: right;
+  /* Closes the field's 0.45rem gap down to the 0.3rem this one wants. */
+  margin-top: -0.15rem;
 }
 
 .p-field-count.over {
@@ -1416,9 +1438,17 @@ a.p-btn {
   margin-top: 0.2rem;
 }
 
+/*
+ * Admin's own controls stay small, but never below the tap floor.
+ *
+ * 38px was a density shortcut for a long moderation list. "Hide" acts on
+ * somebody else's duck and sits right beside "Open" — a thumb that lands
+ * one row off costs more than the four pixels of list it was saving. The
+ * type stays small; only the target grows.
+ */
 .a-actions .p-chip,
 a.p-chip {
-  min-height: 38px;
+  min-height: var(--tap);
   font-size: 0.6rem;
   text-decoration: none;
 }

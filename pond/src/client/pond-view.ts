@@ -745,11 +745,22 @@ export class PondView {
        * imported by nobody, so the pond had been running at a flat 83.33.
        */
       const wait = WORLD_MS * DWELL[this.frame % DWELL.length]!;
-      if (!camMoving && now - this.lastWorldTick >= wait) {
+      if (now - this.lastWorldTick >= wait) {
         const dt = Math.min(0.25, (now - this.lastWorldTick) / 1000);
         this.lastWorldTick = now;
+        /*
+         * ══ THE FRAME NEVER STOPS; THE PHYSICS PAUSES ══
+         * The frame counter is what makes a duck paddle and the water
+         * drift. It used to be inside the freeze, so dragging the pond
+         * stopped every animation on screen until the finger came up —
+         * reported as the page having hung, and fairly.
+         *
+         * Only POSITIONS hold still, and only under a glide: that is the
+         * whole point of the freeze (see `gliding`). A pond you are
+         * looking around is still a living pond.
+         */
         this.frame++;
-        this.step(dt);
+        if (!this.camera.gliding) this.step(dt);
       }
 
       this.draw(now);
