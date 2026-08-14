@@ -1526,8 +1526,16 @@ a.p-chip {
   animation: p-say-in 0.18s steps(3, end);
 }
 
+/*
+ * VISIBILITY, not display. A bubble is positioned by measuring its own
+ * height against the chrome it must not cover — and `display: none` reports
+ * a height of zero, so a hidden bubble looked small enough to fit, showed
+ * for one frame, measured itself properly and hid again. It is absolutely
+ * positioned, so staying in the layout costs nothing.
+ */
 .p-say[hidden] {
-  display: none;
+  display: block;
+  visibility: hidden;
 }
 
 @keyframes p-say-in {

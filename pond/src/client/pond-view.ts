@@ -806,6 +806,7 @@ export class PondView {
          * looking around is still a living pond.
          */
         this.frame++;
+        this.advanceWorld(now, dt);
         if (!this.camera.gliding) this.step(dt);
       }
 
@@ -1250,6 +1251,15 @@ export class PondView {
    * duck being called and a duck being pushed off it resolve together in
    * the same tick rather than fighting across two.
    */
+  /**
+   * The FLOCK. Where every duck is swimming, and what it is swimming
+   * toward.
+   *
+   * This is the half the camera freezes, and the only half it should: the
+   * freeze exists so ducks do not lurch two or three times underneath a
+   * gliding view, which reads as the camera stuttering. That argument is
+   * entirely about POSITION.
+   */
   private step(dt: number): void {
     const now = performance.now();
     this.advanceWhistle();
@@ -1257,6 +1267,28 @@ export class PondView {
     // a flock that has been whistled for is MEANT to be close.
     this.separate(this.whistling === null);
     this.advanceDarts(now, dt);
+  }
+
+  /**
+   * The WORLD. Things already in motion on their own clock.
+   *
+   * ══ A FALLING DUCK DOES NOT WAIT FOR THE CAMERA ══
+   * These used to sit in `step`, and so were frozen along with the flock.
+   * The release path glides the camera TO the new duck and then drops it —
+   * so the duck hung in the air for the entire camera move and landed the
+   * instant it ended, with the whole 340ms fall skipped and every sparkle
+   * appearing at once. Measured: 960ms of frozen shadow, then 134 pixels
+   * in a single frame.
+   *
+   * That is the answer to "I never see the arrival animation": the one
+   * moment it is guaranteed to play is the one moment it was suppressed.
+   *
+   * A particle in flight, a fire burning down, a petal drifting and a duck
+   * falling are all on their own schedule. None of them is the flock, and
+   * none of them lurches — they were already moving before the camera set
+   * off, and stopping them mid-air is the visible glitch, not the fix.
+   */
+  private advanceWorld(now: number, dt: number): void {
     advanceParticles(this.particles, dt);
     this.advanceArrivals(now);
     this.advanceFires(now);

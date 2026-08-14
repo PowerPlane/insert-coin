@@ -180,6 +180,33 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   /** Reused between frames so a bubble sync allocates nothing. */
   const placements: { node: HTMLElement; x: number; y: number; off: boolean }[] = [];
 
+  /**
+   * The band a bubble is allowed to float in.
+   *
+   * ══ A BUBBLE MUST NOT SIT ON A BUTTON ══
+   * Reported from a real screenshot: a bubble over the count chip, and
+   * another over the bar. Both are chrome — things you press — and text
+   * lying across them makes the pond look broken and the button look
+   * unpressable, even though it still works.
+   *
+   * Measured from the chrome itself rather than guessed, because all three
+   * move: the HUD sits under the notch, the bar sits above the home
+   * indicator, and both change with the safe-area insets on every phone.
+   * A bubble whose duck is inside the band is simply not drawn — better a
+   * missing bubble than one lying over the controls, and the duck is still
+   * there to be tapped.
+   */
+  function safeBand(box: DOMRect): { top: number; bottom: number } {
+    const clear = (sel: string, edge: "top" | "bottom"): number => {
+      const e = document.querySelector(sel);
+      if (!e) return edge === "top" ? 0 : box.height;
+      const r = e.getBoundingClientRect();
+      if (!r.height) return edge === "top" ? 0 : box.height;
+      return edge === "top" ? r.bottom - box.top : r.top - box.top;
+    };
+    return { top: Math.max(0, clear(".p-hud", "top")), bottom: clear(".p-cta", "bottom") };
+  }
+
   function positionSays(): void {
     if (!bubbles.size) return;
     /*
@@ -192,6 +219,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
      * touched.
      */
     const box = says.getBoundingClientRect();
+    const band = safeBand(box);
     placements.length = 0;
     for (const [id, node] of bubbles) {
       const at = view.screenOf(id);
@@ -202,9 +230,13 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
        * nothing saying it.
        */
       const x = at ? at.x - box.left : 0;
-      const y = at ? at.y - box.top - at.r - SAY_GAP : 0;
-      const off = !at || x < 0 || x > box.width ||
-        at.y - box.top < 0 || at.y - box.top > box.height;
+      const duckY = at ? at.y - box.top : 0;
+      const y = duckY - (at?.r ?? 0) - SAY_GAP;
+      const off = !at ||
+        // Off the sides, or off the top and bottom of the window entirely.
+        x < 0 || x > box.width || duckY < 0 || duckY > box.height ||
+        // Or the bubble would land on the chrome.
+        y - node.offsetHeight < band.top || duckY > band.bottom;
       placements.push({ node, x, y, off });
     }
     for (const p of placements) {

@@ -3584,6 +3584,7 @@ var PondView = class {
         const dt = Math.min(0.25, (now - this.lastWorldTick) / 1e3);
         this.lastWorldTick = now;
         this.frame++;
+        this.advanceWorld(now, dt);
         if (!this.camera.gliding) this.step(dt);
       }
       this.draw(now);
@@ -3912,11 +3913,41 @@ var PondView = class {
    * duck being called and a duck being pushed off it resolve together in
    * the same tick rather than fighting across two.
    */
+  /**
+   * The FLOCK. Where every duck is swimming, and what it is swimming
+   * toward.
+   *
+   * This is the half the camera freezes, and the only half it should: the
+   * freeze exists so ducks do not lurch two or three times underneath a
+   * gliding view, which reads as the camera stuttering. That argument is
+   * entirely about POSITION.
+   */
   step(dt) {
     const now = performance.now();
     this.advanceWhistle();
     this.separate(this.whistling === null);
     this.advanceDarts(now, dt);
+  }
+  /**
+   * The WORLD. Things already in motion on their own clock.
+   *
+   * ══ A FALLING DUCK DOES NOT WAIT FOR THE CAMERA ══
+   * These used to sit in `step`, and so were frozen along with the flock.
+   * The release path glides the camera TO the new duck and then drops it —
+   * so the duck hung in the air for the entire camera move and landed the
+   * instant it ended, with the whole 340ms fall skipped and every sparkle
+   * appearing at once. Measured: 960ms of frozen shadow, then 134 pixels
+   * in a single frame.
+   *
+   * That is the answer to "I never see the arrival animation": the one
+   * moment it is guaranteed to play is the one moment it was suppressed.
+   *
+   * A particle in flight, a fire burning down, a petal drifting and a duck
+   * falling are all on their own schedule. None of them is the flock, and
+   * none of them lurches — they were already moving before the camera set
+   * off, and stopping them mid-air is the visible glitch, not the fix.
+   */
+  advanceWorld(now, dt) {
     advanceParticles(this.particles, dt);
     this.advanceArrivals(now);
     this.advanceFires(now);
@@ -4251,15 +4282,29 @@ async function pondScreen(bootstrap) {
   });
   const bubbles = /* @__PURE__ */ new Map();
   const placements = [];
+  function safeBand(box) {
+    const clear = (sel, edge) => {
+      const e = document.querySelector(sel);
+      if (!e) return edge === "top" ? 0 : box.height;
+      const r = e.getBoundingClientRect();
+      if (!r.height) return edge === "top" ? 0 : box.height;
+      return edge === "top" ? r.bottom - box.top : r.top - box.top;
+    };
+    return { top: Math.max(0, clear(".p-hud", "top")), bottom: clear(".p-cta", "bottom") };
+  }
   function positionSays() {
     if (!bubbles.size) return;
     const box = says.getBoundingClientRect();
+    const band = safeBand(box);
     placements.length = 0;
     for (const [id, node] of bubbles) {
       const at = view2.screenOf(id);
       const x = at ? at.x - box.left : 0;
-      const y = at ? at.y - box.top - at.r - SAY_GAP : 0;
-      const off = !at || x < 0 || x > box.width || at.y - box.top < 0 || at.y - box.top > box.height;
+      const duckY = at ? at.y - box.top : 0;
+      const y = duckY - (at?.r ?? 0) - SAY_GAP;
+      const off = !at || // Off the sides, or off the top and bottom of the window entirely.
+      x < 0 || x > box.width || duckY < 0 || duckY > box.height || // Or the bubble would land on the chrome.
+      y - node.offsetHeight < band.top || duckY > band.bottom;
       placements.push({ node, x, y, off });
     }
     for (const p of placements) {
