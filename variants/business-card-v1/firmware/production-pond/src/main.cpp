@@ -41,6 +41,7 @@
 #include <Arduino.h>
 
 #include "anim.h"
+#include "claim.h"
 #include "config.h"
 #include "leds.h"
 #include "mic.h"
@@ -64,6 +65,14 @@ void setup() {
     rng_seed_from_mic(RNG_SEED_SAMPLES);
 
     anim_boot_capture();
+
+    /*
+     * The claim window, while the mic is already up and before the show
+     * spends the battery. It returns in about CLAIM_FIRST_BLOW_MS unless
+     * somebody is actually blowing, so the ordinary boot barely notices it.
+     */
+    const bool claimed = claim_listen();
+
     delay(POST_BOOT_PAUSE_MS);
     anim_ducky_walk();
     delay(POST_WALK_PAUSE_MS);
@@ -93,6 +102,20 @@ void setup() {
     // docs/pond/PROVISIONING.md.
     const bool identified = provision_ensure();
 
+    /*
+     * ══ THE CLAIM, BEFORE THE FORTUNE ══
+     * The gesture was listened for above, while the mic was still up. If it
+     * landed, the tag gets a fresh counter and a signature over it, and the
+     * next tap opens Card setup instead of a duck.
+     *
+     * Arming is not allowed to cost the fortune: a card whose claim write
+     * failed still deals luck, because a visitor should not be punished for
+     * a keeper's gesture. The reverse matters more — an arm that only half
+     * wrote leaves a signature that does not match its counter, and the
+     * server refuses it, which is the right answer for a half-written arm.
+     */
+    const bool armed = claimed && identified && claim_arm();
+
     const bool patched = identified && ndef_patch_fortune(fortune);
     ndef_deinit();
 
@@ -107,9 +130,13 @@ void setup() {
     // did not, the tag still holds whatever digit was there before --
     // possibly the previous visitor's -- so skip the wait and clear it now
     // rather than spending 300 s advertising someone else's luck.
-    if (patched) {
+    if (patched || armed) {
         // RTC-PIT wakes the CPU after NDEF_EXPIRY_SECONDS; the timed sleep
         // draws single-digit uA.
+        //
+        // An armed card waits too even if the digit did not take: the claim
+        // is the thing somebody is standing there waiting to tap, and five
+        // minutes is the window they get to find their phone.
         sleep_timed_seconds(NDEF_EXPIRY_SECONDS);
     }
 
@@ -125,8 +152,12 @@ void setup() {
     for (uint8_t round = 0; round < NDEF_CLEAR_ROUNDS; round++) {
         ndef_init();
         const bool cleared = ndef_patch_default();
+        // An armed URL left armed is a claim lying on the floor: anyone who
+        // picks the card up next taps into somebody else's setup screen.
+        // Cleared on the same schedule as the fortune, for the same reason.
+        const bool unarmed = !armed || claim_disarm();
         ndef_deinit();
-        if (cleared) break;
+        if (cleared && unarmed) break;
         // Almost certainly a phone parked on the antenna. Sleeping a second
         // costs nothing here and is the most likely way for it to move.
         sleep_timed_seconds(1);

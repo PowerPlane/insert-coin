@@ -66,6 +66,27 @@ extern "C" {
 /* THE patch target. Derived, not chosen. */
 #define NDEF_DIGIT_OFFSET_DERIVED (NDEF_URI_TEXT_OFFSET + NDEF_URL_PREFIX_LEN)
 
+/*
+ * ══ WHERE THE CLAIM LIVES, DERIVED LIKE EVERYTHING ELSE ══
+ * Arming a card rewrites two spans in place — the counter and the token —
+ * rather than the whole 68-byte record, because a re-arm happens with a
+ * person waiting rather than once on a bench. Fourteen bytes is ~84 ms
+ * against ~408 ms for the record.
+ *
+ * The digit's offset is the anchor and does not move, so these follow it
+ * by construction. Do not write these numbers down anywhere else.
+ */
+#define NDEF_LABEL_LEN 3 /* "&c=", "&g=", "&t=" are all three bytes */
+
+/* The four hex characters of "&g=", not the label. */
+#define NDEF_COUNTER_OFFSET                                          \
+    (NDEF_DIGIT_OFFSET_DERIVED + 1 + NDEF_LABEL_LEN + CARD_SERIAL_LEN \
+     + NDEF_LABEL_LEN)
+
+/* The ten hex characters of "&t=", not the label. */
+#define NDEF_TOKEN_OFFSET \
+    (NDEF_COUNTER_OFFSET + CARD_COUNTER_LEN + NDEF_LABEL_LEN)
+
 /* "&c=" + serial, "&g=" + counter, "&t=" + token. */
 #define NDEF_SUFFIX_LEN \
     (3 + CARD_SERIAL_LEN + 3 + CARD_COUNTER_LEN + 3 + CARD_TOKEN_LEN)

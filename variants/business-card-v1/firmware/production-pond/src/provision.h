@@ -46,3 +46,25 @@ bool provision_ok();
 // The card's serial, as eight characters plus a NUL. Empty until
 // provision_ensure() has run and succeeded.
 const char *provision_serial();
+
+// ── The claim counter ───────────────────────────────────────────────────
+//
+// The number in `&g=`. It only ever goes up, and it only goes up when the
+// four-blow gesture succeeds — which is the whole reason a claim proves
+// possession. The server accepts a claim strictly ABOVE the highest it has
+// seen for this card, so a URL read over somebody's shoulder is already
+// spent by the time they try it.
+//
+// Kept in the same sealed EEPROM record as the provisioning flag, so a
+// reflash does not reset it (`board_hardware.eesave = yes`) and a partial
+// write fails closed rather than rolling the card back to a counter the
+// server has already retired.
+
+// The counter as it currently stands. 0 on an unprovisioned card, which is
+// the value the server never accepts.
+uint16_t provision_counter();
+
+// Advance the counter and persist it. Returns the NEW value, or 0 if the
+// card is not provisioned or the record could not be written — 0 is not a
+// claimable counter, so a failure cannot arm anything.
+uint16_t provision_bump_counter();

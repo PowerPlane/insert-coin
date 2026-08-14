@@ -199,6 +199,73 @@ static void test_ndef(void) {
     check(only_digit_differs, "the fortune digit is the only byte that moves", "?", "one byte");
 }
 
+/*
+ * ══ ARMING IN PLACE MUST EQUAL A FULL REWRITE ══
+ * The card does not rewrite all 68 bytes when it is claimed — it patches
+ * the two spans that carry a claim, because that happens with a person
+ * waiting rather than once on a bench: fourteen bytes is ~84 ms against
+ * ~408 ms.
+ *
+ * Which means two numbers now have to agree with the record layout, and
+ * they are the kind of number that is silently wrong: an offset that is off
+ * by one still writes, still verifies as a well-formed URL, and produces a
+ * claim the server refuses for no visible reason. So the test is not "are
+ * the offsets 0x32 and 0x39" — it is "does patching produce exactly the
+ * bytes a full rewrite would", which stays true if the URL ever changes.
+ */
+static void arm_in_place(uint8_t *rec, const uint8_t key[16],
+                         const char *serial, uint16_t counter) {
+    char hex[CARD_COUNTER_LEN + 1];
+    char tok[CARD_TOKEN_LEN + 1];
+    card_counter_hex(counter, hex);
+    card_token(key, serial, counter, tok);
+    memcpy(rec + NDEF_COUNTER_OFFSET, hex, CARD_COUNTER_LEN);
+    memcpy(rec + NDEF_TOKEN_OFFSET, tok, CARD_TOKEN_LEN);
+}
+
+static void test_claim_arming(void) {
+    const uint8_t key[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    const uint8_t sernum[10] = {0x30, 0x54, 0x30, 0x4c, 0x49, 0x32, 0x68, 0x72, 0x16, 0x26};
+    char serial[CARD_SERIAL_LEN + 1];
+    card_serial(sernum, serial);
+
+    /* Ship state: counter 0, signed, no fortune. */
+    uint8_t shipped[NDEF_RECORD_MAX];
+    char tok0[CARD_TOKEN_LEN + 1];
+    card_token(key, serial, 0, tok0);
+    ndef_build(shipped, sizeof shipped, serial, 0, tok0, '0');
+
+    /* Every counter a card could plausibly reach, and both ends. */
+    static const uint16_t counters[] = {1, 2, 3, 17, 255, 256, 4096, 65534, 65535};
+    for (unsigned i = 0; i < sizeof counters / sizeof *counters; i++) {
+        const uint16_t c = counters[i];
+        uint8_t whole[NDEF_RECORD_MAX];
+        char tok[CARD_TOKEN_LEN + 1];
+        card_token(key, serial, c, tok);
+        ndef_build(whole, sizeof whole, serial, c, tok, '0');
+
+        uint8_t patched[NDEF_RECORD_MAX];
+        memcpy(patched, shipped, sizeof shipped);
+        arm_in_place(patched, key, serial, c);
+
+        char what[64];
+        snprintf(what, sizeof what, "arming to %u patches exactly what a rewrite writes", c);
+        check(memcmp(whole, patched, NDEF_RECORD_MAX) == 0, what, "different", "identical");
+    }
+
+    /* Disarming returns the card to the bytes it shipped with. */
+    uint8_t back[NDEF_RECORD_MAX];
+    memcpy(back, shipped, sizeof shipped);
+    arm_in_place(back, key, serial, 9);
+    arm_in_place(back, key, serial, 0);
+    check(memcmp(back, shipped, NDEF_RECORD_MAX) == 0,
+          "disarming restores the shipped record", "different", "identical");
+
+    /* The spans must not overlap the digit, or arming would clear a fortune. */
+    check(NDEF_COUNTER_OFFSET > NDEF_DIGIT_OFFSET_DERIVED,
+          "the claim spans sit after the digit", "before", "after");
+}
+
 int main(void) {
     printf("card_identity\n");
     test_siphash_reference();
@@ -206,6 +273,7 @@ int main(void) {
     test_provision();
     test_token_shape();
     test_ndef();
+    test_claim_arming();
     printf("%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;
 }

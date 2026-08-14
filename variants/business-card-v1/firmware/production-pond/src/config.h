@@ -95,6 +95,27 @@ constexpr uint8_t FLAME_GUST_CHANCE = 64; // 25 %
 constexpr int16_t BLOW_THRESHOLD_ADC = 100;
 constexpr uint16_t BLOW_DWELL_MS = 100;
 constexpr uint16_t BLOW_GAP_MS = 20;
+// ── The four-blow claim gesture ──────────────────────────────────────────
+//
+// Blowing four times, with the battery in, is proof somebody physically
+// holds the card. A tap is not: anyone can tap a card across a table, and
+// everything in the URL is typed text.
+//
+// The window is not a flat ten seconds. Only a person already blowing is
+// claiming, so it closes after CLAIM_FIRST_BLOW_MS if nothing arrives and
+// opens out to CLAIM_WINDOW_MS once the first blow lands. That gives the
+// keeper their window and hands the ordinary visitor their boot back.
+constexpr uint8_t CLAIM_BLOWS = 4;
+// How long an unclaimed boot waits before deciding nobody is blowing.
+constexpr uint16_t CLAIM_FIRST_BLOW_MS = 2500;
+// Having started, this long without another blow means they stopped.
+constexpr uint16_t CLAIM_BETWEEN_BLOWS_MS = 3000;
+// A ceiling regardless, so a noisy room cannot hold the card here.
+constexpr uint16_t CLAIM_WINDOW_MS = 10000;
+// The envelope must fall for this long before the next blow counts, or one
+// long breath reads as four and the gesture proves nothing.
+constexpr uint16_t CLAIM_GAP_MS = 120;
+
 // After this long without a blow, the fire times out and the card
 // goes to sleep anyway -- prevents face-down-in-a-drawer drain.
 constexpr uint32_t FIRE_TIMEOUT_MS = 60000;

@@ -72,6 +72,13 @@ bool ndef_write_record(const uint8_t *record, size_t len) {
     return true;
 }
 
+bool ndef_write_span(uint16_t addr, const uint8_t *data, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        if (!ndef_write_byte(static_cast<uint16_t>(addr + i), data[i])) return false;
+    }
+    return true;
+}
+
 bool ndef_read_record(uint8_t *out, size_t len) {
     // Read in chunks: Wire's buffer is smaller than the record, and asking
     // for more than it holds silently truncates.

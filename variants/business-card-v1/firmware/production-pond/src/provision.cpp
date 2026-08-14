@@ -59,6 +59,40 @@ static void store_provision(const card_provision_t *p) {
 }
 
 bool provision_ok() { return s_ok; }
+
+uint16_t provision_counter() {
+    if (!s_ok) return 0;
+    card_provision_t saved;
+    load_provision(&saved);
+    return card_provision_valid(&saved) ? saved.counter : 0;
+}
+
+uint16_t provision_bump_counter() {
+    if (!s_ok) return 0;
+
+    card_provision_t saved;
+    load_provision(&saved);
+    if (!card_provision_valid(&saved)) return 0;
+
+    // Wrapping would hand the server a counter below its high-water mark,
+    // and the card would silently stop being claimable. 65535 arms is not
+    // a number a card in a wallet reaches, so refusing is honest: the
+    // gesture fails visibly rather than appearing to work forever.
+    if (saved.counter == 0xFFFF) return 0;
+
+    saved.counter++;
+    card_provision_seal(&saved);
+    store_provision(&saved);
+
+    // Read back before anything is written to the tag. A counter that did
+    // not persist would re-issue the same number on the next power-up, and
+    // the server would refuse the second claim as a replay.
+    card_provision_t check;
+    load_provision(&check);
+    if (!card_provision_valid(&check) || check.counter != saved.counter) return 0;
+
+    return saved.counter;
+}
 const char *provision_serial() { return s_serial; }
 
 bool provision_ensure() {
