@@ -45,10 +45,25 @@ bool claim_listen() {
     for (;;) {
         const uint32_t now = millis();
 
+        /*
+         * ══ A DEADLINE MUST NOT LAND MID-BREATH ══
+         * `mic_blow_detected()` only goes true after BLOW_DWELL_MS of
+         * continuous air. Somebody who starts blowing just before a
+         * deadline has a blow in flight that the detector has not yet
+         * matured, and closing the window on the clock alone throws it
+         * away — the gesture fails for the one person who was doing it
+         * right, and does so more often the closer they are to the edge.
+         *
+         * So the deadlines only apply while the room is quiet. The hard
+         * ceiling below still applies always, so noise cannot hold the
+         * card here forever.
+         */
+        const bool hearing = mic_envelope() >= BLOW_THRESHOLD_ADC;
+
         // Nobody is claiming. Give the ordinary boot its two seconds back.
-        if (blows == 0 && now - opened >= CLAIM_FIRST_BLOW_MS) break;
+        if (!hearing && blows == 0 && now - opened >= CLAIM_FIRST_BLOW_MS) break;
         // Started and stopped — three blows is a failure, not a claim.
-        if (blows > 0 && now - last_blow >= CLAIM_BETWEEN_BLOWS_MS) break;
+        if (!hearing && blows > 0 && now - last_blow >= CLAIM_BETWEEN_BLOWS_MS) break;
         // A ceiling regardless, so a noisy room cannot hold the card here.
         if (now - opened >= CLAIM_WINDOW_MS) break;
 

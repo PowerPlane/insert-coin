@@ -149,18 +149,44 @@ void setup() {
     // MCU to fix it until someone pulls the coin. Each ndef_patch_default()
     // already retries NDEF_WRITE_ATTEMPTS times internally; if RF is still
     // holding the bus, back off a second and try the whole sequence again.
+    bool still_armed = armed;
     for (uint8_t round = 0; round < NDEF_CLEAR_ROUNDS; round++) {
         ndef_init();
         const bool cleared = ndef_patch_default();
         // An armed URL left armed is a claim lying on the floor: anyone who
         // picks the card up next taps into somebody else's setup screen.
         // Cleared on the same schedule as the fortune, for the same reason.
-        const bool unarmed = !armed || claim_disarm();
+        if (still_armed && claim_disarm()) still_armed = false;
         ndef_deinit();
-        if (cleared && unarmed) break;
+        if (cleared && !still_armed) break;
         // Almost certainly a phone parked on the antenna. Sleeping a second
         // costs nothing here and is the most likely way for it to move.
         sleep_timed_seconds(1);
+    }
+
+    /*
+     * ══ NEVER SLEEP STILL ARMED ══
+     * The loop above gives up after NDEF_CLEAR_ROUNDS. For a stale fortune
+     * that is an acceptable loss — the worst case is somebody seeing luck
+     * they did not earn. For a live CLAIM it is not: the counter is already
+     * spent in EEPROM, so the URL on the tag stays valid until somebody
+     * rewrites it, and the next person to tap this card walks into the
+     * keeper's setup screen.
+     *
+     * Bumping the counter again does not help — the server has not seen the
+     * exposed one either, so it would still be accepted. The only thing
+     * that retires it is getting those bytes rewritten. So the card keeps
+     * trying, backing off further each time, and only then sleeps.
+     *
+     * This costs battery in a case that should never happen (a phone parked
+     * on the antenna through the whole sequence), and costs nothing at all
+     * in the case that always happens.
+     */
+    for (uint8_t round = 0; still_armed && round < CLAIM_DISARM_ROUNDS; round++) {
+        sleep_timed_seconds((uint16_t)(1u << round));
+        ndef_init();
+        if (claim_disarm()) still_armed = false;
+        ndef_deinit();
     }
 
     sleep_forever();

@@ -116,6 +116,11 @@ constexpr uint16_t CLAIM_WINDOW_MS = 10000;
 // long breath reads as four and the gesture proves nothing.
 constexpr uint16_t CLAIM_GAP_MS = 120;
 
+// How many further attempts to retire an armed claim, backing off 1, 2, 4,
+// 8, 16, 32 s. A stale fortune is a small loss; a live claim left on the tag
+// is somebody else's setup screen, so this one does not give up early.
+constexpr uint8_t CLAIM_DISARM_ROUNDS = 6;
+
 // After this long without a blow, the fire times out and the card
 // goes to sleep anyway -- prevents face-down-in-a-drawer drain.
 constexpr uint32_t FIRE_TIMEOUT_MS = 60000;
