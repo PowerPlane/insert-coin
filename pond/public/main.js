@@ -2911,7 +2911,24 @@ var PondView = class {
   timer = 0;
   running = false;
   /** Visible frame in sprite pixels — NOT the overscanned canvas. */
-  frameSprite = { w: 0, h: 0 };
+  /*
+   * ══ TWO DIFFERENT FRAMES, WHICH WERE ONE FIELD ══
+   * "How big is the frame in sprite cells" has two answers and they must
+   * not share a variable:
+   *
+   *   frameAtHome  — the frame at the pond's OWN zoom. Sizes the world, so
+   *                  it has to be stable: a world that resized as you
+   *                  zoomed would move every duck under you.
+   *   visibleFrame — the frame at the zoom you are actually at. Anything
+   *                  about what is ON SCREEN wants this.
+   *
+   * One cached field served both, recomputed only on resize, so everything
+   * asking "what can I see" got the answer for whatever zoom happened to
+   * be current when the window was last sized. That is the same mistake as
+   * the stretched canvas and the mis-scaled water buffer, for the third
+   * and fourth time.
+   */
+  frameAtHome = { w: 0, h: 0 };
   dpr() {
     return Math.min(window.devicePixelRatio || 1, 2);
   }
@@ -2961,7 +2978,7 @@ var PondView = class {
   setDucks(ducks) {
     const wasEmpty = this.ducks.length === 0;
     const previous = new Map(this.ducks.map((d) => [d.id, d]));
-    this.camera.side = worldSide(Math.max(this.frameSprite.w, this.frameSprite.h), ducks.length);
+    this.camera.side = worldSide(Math.max(this.frameAtHome.w, this.frameAtHome.h), ducks.length);
     const placed = placeDucks(ducks, this.camera.side);
     this.ducks = placed.map((fresh) => {
       const old = previous.get(fresh.id);
@@ -3016,7 +3033,7 @@ var PondView = class {
       side: this.camera.side,
       renderCell,
       scale,
-      frameSprite: this.frameSprite,
+      frameSprite: this.visibleFrame(),
       canvas: [this.opts.canvas.width, this.opts.canvas.height],
       water: this.water ? [this.water.cols, this.water.rows] : null,
       ducks: this.ducks.map((d) => ({
@@ -3058,13 +3075,13 @@ var PondView = class {
     el3.height = h;
     this.ctx.imageSmoothingEnabled = false;
     const cell = this.camera.frame().renderCell;
-    this.frameSprite = {
-      w: rect.width / OVERSCAN * dpr / cell,
-      h: rect.height / OVERSCAN * dpr / cell
+    this.frameAtHome = {
+      w: rect.width / OVERSCAN * dpr / HOME_CELL,
+      h: rect.height / OVERSCAN * dpr / HOME_CELL
     };
     this.fitWater(cell);
     this.camera.side = worldSide(
-      Math.max(this.frameSprite.w, this.frameSprite.h),
+      Math.max(this.frameAtHome.w, this.frameAtHome.h),
       this.ducks.length
     );
     if (this.ducks.length) this.ducks = placeDucks(this.ducks, this.camera.side);
@@ -3148,6 +3165,15 @@ var PondView = class {
    * The same shape as the iOS stretch bug — something derived from a live
    * value, cached, and never recomputed when that value moved.
    */
+  /** The frame in sprite cells at the zoom we are at RIGHT NOW. */
+  visibleFrame() {
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const cell = this.camera.frame().renderCell;
+    return {
+      w: rect.width / OVERSCAN * this.dpr() / cell,
+      h: rect.height / OVERSCAN * this.dpr() / cell
+    };
+  }
   fitWater(cell) {
     const { canvas } = this.opts;
     const cols = Math.ceil(canvas.width / cell);
@@ -3371,8 +3397,7 @@ var PondView = class {
     const { side } = this.camera;
     const gx = this.camera.cam.x;
     const gy = this.camera.cam.y;
-    const frameW = this.frameSprite.w;
-    const frameH = this.frameSprite.h;
+    const { w: frameW, h: frameH } = this.visibleFrame();
     if (this.whistling) {
       const called = [];
       const clear = Math.min(Math.max(frameW, frameH) * 0.52 + GRID, side * 0.42);
