@@ -43,7 +43,7 @@ import {
 } from "./render.js";
 import { GRID, decodePaint } from "./codec.js";
 import {
-  advanceParticles, splashDroplets, type Particle,
+  advanceParticles, douseMist, splashDroplets, type Particle,
 } from "./particles.js";
 import { DWELL } from "./render.js";
 import {
@@ -273,6 +273,8 @@ export function placeDucks(ducks: PondDuck[], side: number): Placed[] {
 export interface PondViewOptions {
   canvas: HTMLCanvasElement;
   onTapDuck?: (duck: Placed) => void;
+  /** A burning duck was tapped. The fire is already out on screen. */
+  onDouseDuck?: (duck: Placed) => void;
   onTapWater?: (wx: number, wy: number) => void;
 }
 
@@ -348,6 +350,21 @@ export class PondView {
     const { wx, wy } = this.toWorld(clientX, clientY);
     const hit = this.hitTest(wx, wy);
     if (hit) {
+      /*
+       * ══ A FIRE IS PUT OUT, NOT READ ══
+       * Tapping a burning duck opens its card in the same gesture that
+       * would put the fire out, and the card wins — so the one thing the
+       * pond asks of a passer-by was unreachable. It is also the only
+       * thing somebody with no duck of their own can DO here: they cannot
+       * bump, they cannot release, but they can help.
+       *
+       * So fire is checked first, and reading the card takes a second tap.
+       */
+      if (hit.burning) {
+        this.douse(hit);
+        this.opts.onDouseDuck?.(hit);
+        return true;
+      }
       this.opts.onTapDuck?.(hit);
       return true;
     }
@@ -501,7 +518,7 @@ export class PondView {
       h: (rect.height / OVERSCAN) * dpr / cell,
     };
     // Water is drawn at one water-pixel per sprite-pixel and scaled up.
-    this.water = createWaterBuffer(Math.ceil(w / cell), Math.ceil(h / cell));
+    this.fitWater(cell);
     // Resizing changes the world, so the ducks have to be laid out in the
     // new one — otherwise they keep positions measured against the old
     // size and drift out of the population area. Placement is a pure
@@ -602,6 +619,44 @@ export class PondView {
    * it as smooth circles. That is why this converts through the projection
    * rather than storing world coordinates.
    */
+  /**
+   * Put a duck's fire out.
+   *
+   * Optimistic: the flame stops and the steam goes up before the server is
+   * asked, because the water is the ANSWER to the gesture and half a
+   * second of nothing would read as the tap having missed. Being late is
+   * not an error — the server credits the first rescuer and shrugs at the
+   * rest, so the worst case is somebody seeing steam for a fire that was
+   * already out, which is exactly what happens at a real pond.
+   */
+  /**
+   * Size the water buffer to the zoom.
+   *
+   * ══ A BUFFER SIZED FOR ONE ZOOM AND USED AT ANOTHER ══
+   * The buffer is one pixel per SPRITE cell, so its size depends on the
+   * cell — and it was only ever built during `resize`. Zoom from 4 to 8 and
+   * the buffer kept the width for 4 while ripples were projected through
+   * the current cell of 8: every coordinate came out at half its proper
+   * range, so a tap at the bottom right rippled at the top left. The
+   * water's own dither was stretched by the same factor.
+   *
+   * The same shape as the iOS stretch bug — something derived from a live
+   * value, cached, and never recomputed when that value moved.
+   */
+  private fitWater(cell: number): void {
+    const { canvas } = this.opts;
+    const cols = Math.ceil(canvas.width / cell);
+    const rows = Math.ceil(canvas.height / cell);
+    if (this.water && this.water.cols === cols && this.water.rows === rows) return;
+    this.water = createWaterBuffer(cols, rows);
+  }
+
+  douse(duck: Placed): void {
+    duck.burning = false;
+    douseMist(this.particles, duck.wx, duck.wy);
+    this.splash(duck.wx, duck.wy, SPLASH_DOUSE);
+  }
+
   splash(wx: number, wy: number, amplitude = 1): void {
     /*
      * ══ AMPLITUDE, NOT RADIUS ══
@@ -975,6 +1030,9 @@ export class PondView {
       // water rather than sit on top of it as a smooth circle. Buffer
       // pixels are sprite pixels, so world coordinates convert by the same
       // projection the ducks use, divided back down by the cell size.
+      // Follow the zoom. Cheap when nothing changed: it compares two ints.
+      this.fitWater(renderCell);
+
       if (this.ripples.length) {
         const inBuffer = this.ripples.map((r) => {
           const p = project(

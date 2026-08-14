@@ -122,6 +122,12 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
+    /*
+     * The pond has already shown the steam; this tells the server, which
+     * credits whoever got there first. A failure changes nothing on
+     * screen — the fire is out either way, and the next poll is the truth.
+     */
+    onDouseDuck: (d) => void api.extinguish(d.id).catch(() => {}),
     onTapWater: (wx, wy) => view.splash(wx, wy, SPLASH_TAP),
   });
 

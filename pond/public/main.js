@@ -2613,6 +2613,7 @@ var SPEED = 8;
 var RISE = 9;
 var DROPLET_COLOURS = ["#FFFFFF", "#CFEDF8"];
 var DROPLET_WHITE_CHANCE = 0.45;
+var MIST_COLOURS = ["#FFFFFF", "#E4F4FA"];
 function emit(list, x, y, vx, vy, colour, life, rise = false) {
   list.push({ x, y, vx, vy, colour, life, rise });
 }
@@ -2642,6 +2643,22 @@ function splashDroplets(list, x, y, amplitude, random = Math.random) {
       Math.sin(angle) * speed,
       random() < DROPLET_WHITE_CHANCE ? DROPLET_COLOURS[0] : DROPLET_COLOURS[1],
       0.24 + random() * 0.14
+    );
+  }
+}
+function douseMist(list, x, y, count = 20, random = Math.random) {
+  for (let i = 0; i < count; i++) {
+    const angle = random() * Math.PI * 2;
+    const speed = 2 + random() * 7;
+    emit(
+      list,
+      x,
+      y,
+      Math.cos(angle) * speed * 0.7,
+      Math.sin(angle) * speed * 0.5 - 2,
+      random() < 0.5 ? MIST_COLOURS[0] : MIST_COLOURS[1],
+      0.55 + random() * 0.45,
+      true
     );
   }
 }
@@ -2799,6 +2816,7 @@ var SPLASH_PER_AMPLITUDE = 7;
 var SPLASH_TAP = 2.4;
 var SPLASH_LAND = 2.6;
 var SPLASH_BUMP = 1.5;
+var SPLASH_DOUSE = 1.1;
 var MAX_RIPPLES = 12;
 var SHOCKWAVE_REACH = 26;
 var SHOCKWAVE_FORCE = 1.5;
@@ -2916,6 +2934,11 @@ var PondView = class {
     const { wx, wy } = this.toWorld(clientX, clientY);
     const hit = this.hitTest(wx, wy);
     if (hit) {
+      if (hit.burning) {
+        this.douse(hit);
+        this.opts.onDouseDuck?.(hit);
+        return true;
+      }
       this.opts.onTapDuck?.(hit);
       return true;
     }
@@ -3039,7 +3062,7 @@ var PondView = class {
       w: rect.width / OVERSCAN * dpr / cell,
       h: rect.height / OVERSCAN * dpr / cell
     };
-    this.water = createWaterBuffer(Math.ceil(w / cell), Math.ceil(h / cell));
+    this.fitWater(cell);
     this.camera.side = worldSide(
       Math.max(this.frameSprite.w, this.frameSprite.h),
       this.ducks.length
@@ -3101,6 +3124,42 @@ var PondView = class {
    * it as smooth circles. That is why this converts through the projection
    * rather than storing world coordinates.
    */
+  /**
+   * Put a duck's fire out.
+   *
+   * Optimistic: the flame stops and the steam goes up before the server is
+   * asked, because the water is the ANSWER to the gesture and half a
+   * second of nothing would read as the tap having missed. Being late is
+   * not an error — the server credits the first rescuer and shrugs at the
+   * rest, so the worst case is somebody seeing steam for a fire that was
+   * already out, which is exactly what happens at a real pond.
+   */
+  /**
+   * Size the water buffer to the zoom.
+   *
+   * ══ A BUFFER SIZED FOR ONE ZOOM AND USED AT ANOTHER ══
+   * The buffer is one pixel per SPRITE cell, so its size depends on the
+   * cell — and it was only ever built during `resize`. Zoom from 4 to 8 and
+   * the buffer kept the width for 4 while ripples were projected through
+   * the current cell of 8: every coordinate came out at half its proper
+   * range, so a tap at the bottom right rippled at the top left. The
+   * water's own dither was stretched by the same factor.
+   *
+   * The same shape as the iOS stretch bug — something derived from a live
+   * value, cached, and never recomputed when that value moved.
+   */
+  fitWater(cell) {
+    const { canvas } = this.opts;
+    const cols = Math.ceil(canvas.width / cell);
+    const rows = Math.ceil(canvas.height / cell);
+    if (this.water && this.water.cols === cols && this.water.rows === rows) return;
+    this.water = createWaterBuffer(cols, rows);
+  }
+  douse(duck) {
+    duck.burning = false;
+    douseMist(this.particles, duck.wx, duck.wy);
+    this.splash(duck.wx, duck.wy, SPLASH_DOUSE);
+  }
   splash(wx, wy, amplitude = 1) {
     const max = SPLASH_BASE + amplitude * SPLASH_PER_AMPLITUDE;
     this.ripples.push({ x: wx, y: wy, t: performance.now(), max });
@@ -3370,6 +3429,7 @@ var PondView = class {
     const { ctx } = this;
     if (this.water) {
       drawWater(this.water, this.frame);
+      this.fitWater(renderCell);
       if (this.ripples.length) {
         const inBuffer = this.ripples.map((r) => {
           const p = project(
@@ -3563,6 +3623,13 @@ async function pondScreen(bootstrap) {
   const view = new PondView({
     canvas,
     onTapDuck: (d) => openDuckCard(view, d),
+    /*
+     * The pond has already shown the steam; this tells the server, which
+     * credits whoever got there first. A failure changes nothing on
+     * screen — the fire is out either way, and the next poll is the truth.
+     */
+    onDouseDuck: (d) => void api.extinguish(d.id).catch(() => {
+    }),
     onTapWater: (wx, wy) => view.splash(wx, wy, SPLASH_TAP)
   });
   const zoom = el2("div", "p-zoom");
