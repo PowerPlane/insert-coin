@@ -205,9 +205,30 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     count.textContent = t("live.count.of", { n: String(n), total: String(ducks.length) });
   };
 
+  /*
+   * ══ A FILTER YOU CAN SEE, AND LEAVE ══
+   * Whistling gathers one keeper's ducks and leaves the rest of the pond
+   * where it is. That is a MODE, and the only sign of it was the count
+   * quietly changing from "13 ducks" to "5 of 13" — which reads as the
+   * pond having lost ducks rather than as you having narrowed it.
+   *
+   * So the pill says whose circle you are in, and carries its own way out.
+   * A mode with no visible exit is a trap, and this one is easy to enter
+   * by tapping the count to see what it does.
+   */
+  const whistle = el("div", "p-whistle");
+  whistle.hidden = true;
+  const whistleWho = el("span", "p-whistle-who", "");
+  whistle.append(
+    whistleWho,
+    button("p-whistle-x", "✕", () => call(null), t("pond.03")),
+  );
+
   const call = (keeper: string | null) => {
     calling = keeper;
     view.gather(keeper === null ? null : (d) => d.keeper === keeper);
+    whistle.hidden = keeper === null;
+    whistleWho.textContent = keeper === null ? "" : t("live.whistling", { keeper });
     syncCount();
     sheet.hidden = true;
   };
@@ -246,7 +267,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     sheet.hidden = !sheet.hidden;
   });
 
-  root.append(sheet);
+  root.append(whistle, sheet);
 
   const refresh = async (): Promise<void> => {
     try {

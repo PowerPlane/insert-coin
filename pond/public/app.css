@@ -181,6 +181,50 @@ html[lang="zh-Hant"] body {
   text-transform: uppercase;
 }
 
+/*
+ * The whistle pill: whose circle you are currently in.
+ *
+ * Ink on light, the inverse of every other chip on the water, because it
+ * is the one piece of chrome reporting a MODE rather than offering an
+ * action — and a mode has to be impossible to mistake for the default.
+ * Sits directly under the count it modifies.
+ */
+.p-whistle {
+  position: absolute;
+  top: calc(max(12px, env(safe-area-inset-top)) + var(--tap) + 8px);
+  left: 16px;
+  z-index: 31;
+  display: flex;
+  align-items: center;
+  clip-path: var(--px-corner);
+  background: var(--p-ink);
+  color: var(--p-surface);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.p-whistle[hidden] {
+  display: none;
+}
+
+.p-whistle-who {
+  padding: 0 0.2rem 0 0.7rem;
+}
+
+.p-whistle-x {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  cursor: pointer;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  color: inherit;
+  font-family: var(--mono);
+}
+
 /* ── the HUD ──────────────────────────────────────────────────────────── */
 
 .p-hud {

@@ -918,7 +918,9 @@ var LIVE_STRINGS = {
   "live.keeper.adopt": "Add the {n} earlier ducks",
   // Named, not "invalid": the keeper needs to know it is this word, not
   // their typing, and that the pond is not accusing them of anything.
-  "live.keeper.reserved": "That name is kept for the pond itself. Try another."
+  "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
+  // Whose circle you are in. Names the person, never "filter: keeper".
+  "live.whistling": "{keeper}'s cards"
 };
 var KEEPER_STRINGS = {
   "keeper.01": "Card setup",
@@ -1202,6 +1204,7 @@ var ZH_HANT = {
   "live.keeper.hint": "這張卡片放出的鴨子會寫「來自 {keeper}」。",
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
+  "live.whistling": "{keeper} 的卡片",
   // ── card setup ────────────────────────────────────────────────────────
   "keeper.01": "卡片設定",
   "keeper.02": "設定這張卡片",
@@ -3268,9 +3271,18 @@ async function pondScreen(bootstrap) {
     const n = ducks.filter((d) => d.keeper === calling).length;
     count.textContent = t("live.count.of", { n: String(n), total: String(ducks.length) });
   };
+  const whistle = el2("div", "p-whistle");
+  whistle.hidden = true;
+  const whistleWho = el2("span", "p-whistle-who", "");
+  whistle.append(
+    whistleWho,
+    button("p-whistle-x", "✕", () => call(null), t("pond.03"))
+  );
   const call = (keeper) => {
     calling = keeper;
     view.gather(keeper === null ? null : (d) => d.keeper === keeper);
+    whistle.hidden = keeper === null;
+    whistleWho.textContent = keeper === null ? "" : t("live.whistling", { keeper });
     syncCount();
     sheet2.hidden = true;
   };
@@ -3304,7 +3316,7 @@ async function pondScreen(bootstrap) {
     );
     sheet2.hidden = !sheet2.hidden;
   });
-  root.append(sheet2);
+  root.append(whistle, sheet2);
   const refresh = async () => {
     try {
       const res = await api.pond();
