@@ -279,7 +279,25 @@ export function releaseFlow(opts: FlowOptions): void {
       label: t("contact.04"), placeholder: t("contact.05"), max: 120, value: draft.contact,
       onInput: (v) => { draft.contact = v; persist(); syncScope(); },
     });
-    wrap.append(input.wrap, scopeLabel, scopes, el("p", "p-note", t("contact.06")));
+    /*
+     * ══ WHY AN ADDRESS IS ON THE LIST AT ALL ══
+     * The field offers "Email, phone, @handle, or address" and the last
+     * one made no sense on its own: nobody hands a stranger their street
+     * address to be replied to by post unless somebody says that is what
+     * will happen. The admin has had a "postcard" mark on a contact since
+     * the beginning; this is the sentence that mark was always for, and
+     * it was the one piece of the prototype's contact screen missing here.
+     *
+     * Set apart rather than added to the privacy note. It is an offer, not
+     * a condition, and the two read differently: one tells you what you
+     * get, the other what happens to what you give.
+     */
+    const postcard = el("p", "p-postcard");
+    const stamp = el("span", "p-postcard-stamp");
+    stamp.setAttribute("aria-hidden", "true");
+    postcard.append(stamp, document.createTextNode(t("contact.09")));
+
+    wrap.append(input.wrap, scopeLabel, scopes, postcard, el("p", "p-note", t("contact.06")));
     // Explicitly, on the way in. This used to happen as a side effect of
     // `field()` running its onInput during construction, which is exactly
     // the kind of invisible dependency that made three screens throw.

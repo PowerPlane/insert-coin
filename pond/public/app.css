@@ -1192,6 +1192,41 @@ a.p-btn {
 /* ── taking a duck out ───────────────────────────────────────────────── */
 
 /*
+ * The postcard offer, on the contact screen.
+ *
+ * A tinted card with a stamp rather than another grey line, because it is
+ * the one thing on that screen somebody GETS. Every other sentence there
+ * is about what happens to what they give — set the same way, this reads
+ * as a third clause of the privacy note and nobody notices they were
+ * offered anything.
+ *
+ * The stamp is drawn with insets rather than an image: two rings of colour
+ * making a little perforated square, at 18x14 like a real one.
+ */
+.p-postcard {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  margin: 0 0 0.6rem;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--p-ink);
+  background: #fff8e0;
+  border-left: 3px solid var(--duck);
+  clip-path: var(--px-corner);
+}
+
+.p-postcard-stamp {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 14px;
+  margin-top: 0.15rem;
+  background: var(--duck);
+  box-shadow: inset 0 0 0 2px #fff8e0, inset 0 0 0 3px var(--duck-shadow);
+}
+
+/*
  * A row that lets a chip be chip-sized.
  *
  * Chips in a flex column stretch to the full width and stop reading as
@@ -1455,6 +1490,23 @@ a.p-btn {
   padding: max(20px, env(safe-area-inset-top)) 16px
            calc(20px + env(safe-area-inset-bottom));
   background: var(--p-surface);
+}
+
+/*
+ * The admin is the one screen read on a laptop, and it was the one screen
+ * with no measure at all: at 1280px a duck's row ran the full width of the
+ * monitor, so reading one meant tracking a line four times longer than
+ * anything else in the product.
+ *
+ * Wider than the phone screens, because this one has columns worth having
+ * — but still a measure, and centred, so it reads as a page rather than a
+ * viewport that happened to be that size.
+ */
+.a-screen > * {
+  width: 100%;
+  max-width: 60rem;
+  margin-inline: auto;
+  box-sizing: border-box;
 }
 
 .a-centre {
@@ -1753,6 +1805,22 @@ a.p-chip {
   padding: max(46px, calc(env(safe-area-inset-top) + 22px)) 20px
     calc(22px + env(safe-area-inset-bottom, 0px));
   gap: 0.75rem;
+  /*
+   * ══ A PHONE SCREEN STAYS PHONE-SHAPED ══
+   * These are laid out for a thumb, and on a laptop they stretched to
+   * whatever the window was: a name field 760px wide, a nav title
+   * marooned in the middle of a monitor, and a "Save changes" button the
+   * width of a desk. Nothing about that is more usable — it is just
+   * unconstrained.
+   *
+   * The cap is above every phone this is built for, so no phone can
+   * reach it and nothing measured at 320 or 390 moves. It only ever
+   * takes effect on the screens this was never designed for, where
+   * looking deliberate beats filling the space.
+   */
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
 }
 
 /* Puts the actions at the foot of the screen rather than under the text. */

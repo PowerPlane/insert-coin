@@ -1439,6 +1439,8 @@ var EN = {
   // Button
   "contact.08": "Skip contact",
   // Button
+  "contact.09": "Leave an address if you want a postcard. David will not share it.",
+  // Body
   "pond.01": "14 ducks",
   // Button
   "pond.02": "BY-002 — about this card. Opens davidyang.work in a new tab.",
@@ -1706,6 +1708,7 @@ var ZH_HANT = {
   "contact.06": "只有 David 看得到。不會出現在池塘裡，你把鴨子帶走時也會一起刪掉。",
   "contact.07": "放我的鴨子下水",
   "contact.08": "略過聯絡方式",
+  "contact.09": "如果想收明信片，可以留下地址。David 不會把它分享出去。",
   // ── the pond ──────────────────────────────────────────────────────────
   "pond.01": "14 隻鴨子",
   "pond.02": "BY-002 — 關於這張卡片。會在新分頁打開 davidyang.work。",
@@ -3069,7 +3072,11 @@ function releaseFlow(opts) {
         syncScope();
       }
     });
-    wrap2.append(input.wrap, scopeLabel, scopes, el("p", "p-note", t("contact.06")));
+    const postcard = el("p", "p-postcard");
+    const stamp = el("span", "p-postcard-stamp");
+    stamp.setAttribute("aria-hidden", "true");
+    postcard.append(stamp, document.createTextNode(t("contact.09")));
+    wrap2.append(input.wrap, scopeLabel, scopes, postcard, el("p", "p-note", t("contact.06")));
     syncScope();
     const actions = el("div", "p-actions");
     actions.append(
