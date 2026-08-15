@@ -2119,6 +2119,7 @@ function toPayload(state) {
 }
 
 // src/client/mine.ts
+var MOUNT_GRACE_TICKS = 24;
 function since(created) {
   const days = Math.floor((Date.now() / 1e3 - created) / 86400);
   if (days <= 0) return t("live.today");
@@ -2324,11 +2325,14 @@ function mineScreen(opts) {
     if (!ctx) return;
     let wavers = [];
     let tick = 0;
+    let mounted = false;
+    let waited = 0;
     const paint = () => {
       if (!canvas.isConnected) {
-        window.clearInterval(timer);
+        if (mounted || ++waited > MOUNT_GRACE_TICKS) window.clearInterval(timer);
         return;
       }
+      mounted = true;
       drawOrbit(ctx, duck, wavers, tick++, ORBIT_SIZE, false);
     };
     const timer = window.setInterval(paint, STEP_MS);

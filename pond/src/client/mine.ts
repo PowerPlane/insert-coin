@@ -31,6 +31,16 @@ export interface MineOptions {
   onPond: () => void;
 }
 
+/**
+ * How many ticks the ring will wait to be put on screen before giving up.
+ *
+ * The screen is mounted on the very next line in practice, so this is not
+ * a timing guess — it is a leak stop, so a canvas that is built and then
+ * thrown away without ever being shown cannot leave an interval running
+ * for the life of the page.
+ */
+const MOUNT_GRACE_TICKS = 24;
+
 /** Days, in the words a person would use. */
 function since(created: number): string {
   const days = Math.floor((Date.now() / 1000 - created) / 86400);
@@ -293,18 +303,44 @@ export function mineScreen(opts: MineOptions): void {
    * here starts with `replaceChildren`, so a canvas that is no longer
    * connected IS the signal that this screen is over. Cheaper than a
    * teardown every caller has to remember, and impossible to forget.
+   *
+   * ══ EXCEPT IT HAD NOT ARRIVED YET ══
+   * "Gone" and "not here yet" are the same reading of `isConnected`, and
+   * this told them apart by assuming the first. `view()` builds its whole
+   * tree DETACHED and returns it for the caller to mount, so the paint on
+   * the line after `setInterval` ran against a canvas that was not in the
+   * document — and cancelled the interval it had just started, one tick
+   * into a screen that had not been shown yet.
+   *
+   * Nothing looked broken, which is the worst part. The bumpers request
+   * came back a moment later, by then the canvas WAS mounted, and its
+   * callback painted one frame: four ducks, correctly placed, at tick 0,
+   * for as long as the screen was open. A ring that is never drawn is
+   * obvious; a ring drawn exactly once is just a picture, and it took
+   * someone saying "the ducks are not moving" to see it.
+   *
+   * So the two states are now distinguished. Before the first mount there
+   * is nothing to do but wait; after it, a disconnected canvas means the
+   * screen is over.
    */
   function startOrbit(canvas: HTMLCanvasElement, stats: HTMLElement, duck: PondDuck): void {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     let wavers: OrbitDuck[] = [];
     let tick = 0;
+    /** Has this canvas ever been in the document? */
+    let mounted = false;
+    /** Ticks spent waiting for that, so a screen that never opens stops. */
+    let waited = 0;
 
     const paint = () => {
       if (!canvas.isConnected) {
-        window.clearInterval(timer);
+        // Gone after being shown, or never shown at all and out of
+        // patience. Either way there is nothing left to turn.
+        if (mounted || ++waited > MOUNT_GRACE_TICKS) window.clearInterval(timer);
         return;
       }
+      mounted = true;
       // Unnamed: the names are in the sentence under the ring.
       drawOrbit(ctx, duck, wavers, tick++, ORBIT_SIZE, false);
     };
