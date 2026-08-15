@@ -1192,6 +1192,94 @@ a.p-btn {
 /* ── taking a duck out ───────────────────────────────────────────────── */
 
 /*
+ * Off-screen, but not gone.
+ *
+ * The pond is one canvas, so its ducks exist for a screen reader only
+ * because this list does. It must therefore be hidden the way that keeps
+ * an element in the accessibility tree and focusable — `display: none`,
+ * `visibility: hidden` and `hidden` all remove it from BOTH, which would
+ * turn the fix into nothing at all.
+ *
+ * The 1px clipped box is the standard shape for this. `white-space: nowrap`
+ * matters: without it a long label wraps inside a 1px box and some readers
+ * announce it a word per line.
+ */
+.p-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  list-style: none;
+}
+
+/*
+ * Except when focused. Somebody tabbing through with sight — a keyboard
+ * user who is not using a reader — must be able to SEE where they are, so
+ * the focused button comes back on screen rather than moving the focus
+ * ring around an invisible list.
+ */
+.p-sr:focus-within {
+  position: absolute;
+  top: max(56px, calc(env(safe-area-inset-top) + 40px));
+  left: 12px;
+  right: 12px;
+  z-index: 60;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+}
+
+.p-sr:focus-within .p-sr-btn:focus-visible {
+  /*
+   * Undoing the hiding, ALL of it. Leaving `position: absolute` and
+   * `height: 1px` from the rule below gave an 18px row — a one-pixel box
+   * with padding round it — so the focused duck was legible only by
+   * accident and sat outside the flow of the list.
+   */
+  position: static;
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  overflow: visible;
+  clip-path: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--p-ink);
+  background: #dff2fb;
+  clip-path: var(--px-corner);
+  box-shadow: inset 0 0 0 3px var(--field-500);
+}
+
+/* Every other button in the list stays out of the way while one is up. */
+.p-sr .p-sr-btn {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+/*
  * The postcard offer, on the contact screen.
  *
  * A tinted card with a stamp rather than another grey line, because it is

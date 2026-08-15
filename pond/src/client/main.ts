@@ -89,6 +89,43 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const canvas = el("canvas", "p-canvas");
   stage.append(canvas);
 
+  /*
+   * ══ THE POND, FOR SOMEBODY WHO CANNOT SEE IT ══
+   * Everything in the pond is painted into one canvas. To a screen reader
+   * that is a single empty graphic, and to a keyboard it is nothing at
+   * all: the ducks, their names, their fortunes, the fires and every card
+   * behind them were unreachable without a pointer and working eyes. The
+   * count in the corner said "14 ducks" and there was no way to meet one.
+   *
+   * So the ducks also exist as a list — one button each, off-screen but
+   * focusable, saying whose duck it is and what fortune it drew. Pressing
+   * one does exactly what tapping the duck does: the camera goes to it and
+   * its card opens. Nothing is a special accessible copy of the product;
+   * it is the same two calls the tap makes.
+   *
+   * The prototype had this from the start and it was the piece most worth
+   * carrying over, because it is the only one nobody would notice missing.
+   */
+  const srList = el("ul", "p-sr");
+  srList.setAttribute("aria-label", t("pond.13"));
+  /*
+   * `role="list"` on a list, which looks redundant and is not: Safari
+   * drops list semantics from any `ul` whose `list-style` is `none`, and
+   * this one's is. Without it VoiceOver announces thirteen loose buttons
+   * instead of "list, 13 items" — losing the one piece of information
+   * that tells somebody how much pond there is.
+   */
+  srList.setAttribute("role", "list");
+  /*
+   * And the water itself says nothing. Every duck in it is now in the
+   * list above; leaving the canvas exposed as well would announce an
+   * unlabelled graphic in the middle of the page that cannot be entered
+   * or acted on — the accessibility equivalent of a locked door beside
+   * the open one.
+   */
+  canvas.setAttribute("aria-hidden", "true");
+  stage.append(srList);
+
   const hud = el("div", "p-hud");
   const count = el("button", "p-count");
   count.type = "button";
@@ -613,6 +650,54 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     console.warn("[pond] released duck has not appeared yet:", id);
   }
 
+  /**
+   * What the list currently says, so it is only rebuilt when it is wrong.
+   *
+   * A poll lands every twenty seconds. Rebuilding blindly would replace
+   * the button under somebody's finger four times a minute — and a
+   * focused element that is removed drops focus to the document body,
+   * which on this page means being thrown out of the pond and back to the
+   * start of the tab order, silently, while reading.
+   */
+  let srSignature = "";
+
+  const syncSr = (): void => {
+    const signature = ducks.map((d) => `${d.id}:${d.name}:${d.fire ? 1 : 0}`).join("|");
+    if (signature === srSignature) return;
+    srSignature = signature;
+
+    // Whose button had focus, so it can be handed back afterwards.
+    const focused = document.activeElement;
+    const keep = focused instanceof HTMLElement && srList.contains(focused)
+      ? focused.dataset.duck
+      : null;
+
+    srList.replaceChildren();
+    for (const duck of ducks) {
+      const who = duck.name || t("live.sr.anon");
+      // Boolean(), not a truthiness test on a field that is `undefined`
+      // as often as `null` — that exact slip once set thirteen ducks on
+      // fire at once.
+      const label = Boolean(duck.fire)
+        ? t("live.sr.burning", { name: who })
+        : t("live.sr.duck", { name: who, fortune: fortuneTitle(duck.fortune) });
+      const item = el("li", "");
+      const open = button("p-sr-btn", label, () => {
+        const placed = view.find(duck.id);
+        if (!placed) return;
+        view.lookAt(duck.id, true);
+        openDuckCard(view, placed);
+      });
+      open.dataset.duck = duck.id;
+      item.append(open);
+      srList.append(item);
+    }
+    if (keep) {
+      const again = srList.querySelector<HTMLElement>(`[data-duck="${CSS.escape(keep)}"]`);
+      again?.focus();
+    }
+  };
+
   const refresh = async (): Promise<void> => {
     try {
       const res = await api.pond();
@@ -620,6 +705,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       view.setDucks(ducks);
       syncSays(ducks);
       syncCount();
+      syncSr();
     } catch (err) {
       count.textContent =
         err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
@@ -1063,7 +1149,38 @@ function openDuckCard(view: PondView, duck: Placed): void {
       bumpers.append(el("p", "p-field-label", t("pond.28")));
       const row = el("div", "p-bumprow");
       for (const b of res.bumpers) {
-        const box = el("div", "p-bumper");
+        /*
+         * ══ A FACE HERE IS A ROUTE TO A DUCK ══
+         * These were `div`s with a `title`. A title is a tooltip on a
+         * desktop, nothing at all on a phone, and invisible to a screen
+         * reader — so the row said "here are the people who bumped this
+         * duck" and then refused to take you to any of them, silently, by
+         * not being a control.
+         *
+         * The prototype settled this and wrote down why: three routes
+         * reach a duck card — tapping the water, the list, and here — and
+         * all three should leave you looking at the same thing.
+         *
+         * Disabled rather than dead when that duck is not in the pond in
+         * front of you: it may have been taken out, or whistled away by a
+         * filter. A control that looks live and does nothing teaches
+         * people that taps do not work.
+         */
+        const who = view.findBySlug(b.slug);
+        const said = b.count === 1
+          ? t("live.bumps.one")
+          : t("live.bumps", { n: String(b.count) });
+        const box = button(
+          "p-bumper", "",
+          () => {
+            if (!who) return;
+            dismiss();
+            view.lookAt(who.id, true);
+            openDuckCard(view, who);
+          },
+          t("live.sr.bumper", { name: b.name || b.slug, bumps: said }),
+        );
+        box.disabled = !who;
         box.title = b.name || b.slug;
         const cv = el("canvas", "");
         // 32 CSS pixels inside a 44px control, at a whole 2x per sprite

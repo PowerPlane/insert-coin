@@ -771,6 +771,20 @@ export class PondView {
   }
 
   /**
+   * Find a duck by its public address.
+   *
+   * `/api/bumpers` names people by slug rather than by internal id —
+   * correctly, since a slug is the public name and an id is not something
+   * a stranger's duck should hand out. So the one caller that starts from
+   * a slug gets a lookup rather than the whole list: the card only needs
+   * to know whether that duck is here and where to point the camera, not
+   * to walk the pond.
+   */
+  findBySlug(slug: string): Placed | undefined {
+    return this.ducks.find((d) => d.slug === slug);
+  }
+
+  /**
    * Resize to the element, at 150% overscan.
    *
    * The camera addresses the canvas, but only the middle two-thirds is ever

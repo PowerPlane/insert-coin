@@ -1276,6 +1276,14 @@ var LIVE_STRINGS = {
   "live.bumps": "{n} bumps",
   "live.bumps.one": "1 bump",
   "live.bumps.none": "nobody has bumped it yet",
+  "live.sr.duck": "{name}'s duck, {fortune}",
+  // Screen reader, one duck in the list
+  "live.sr.bumper": "{name}, {bumps} — open their duck",
+  // Screen reader, a bumper chip
+  "live.sr.anon": "Someone",
+  // Screen reader, a duck with no name
+  "live.sr.burning": "{name}, on fire — open to put it out",
+  // Screen reader
   "live.today": "in the pond since today",
   "live.day": "in the pond for a day",
   "live.days": "in the pond for {n} days",
@@ -1623,6 +1631,10 @@ var ZH_HANT = {
   "live.bumps": "被戳 {n} 次",
   "live.bumps.one": "被戳 1 次",
   "live.bumps.none": "還沒有人戳過它",
+  "live.sr.duck": "{name} 的鴨子，{fortune}",
+  "live.sr.bumper": "{name}，{bumps} — 打開他們的鴨子",
+  "live.sr.anon": "某人",
+  "live.sr.burning": "{name}，著火了 — 打開可以幫忙滅火",
   "live.today": "今天來到池塘",
   "live.day": "在池塘裡一天了",
   "live.days": "在池塘裡 {n} 天了",
@@ -3941,6 +3953,19 @@ var PondView = class {
     return this.ducks.find((d) => d.id === id);
   }
   /**
+   * Find a duck by its public address.
+   *
+   * `/api/bumpers` names people by slug rather than by internal id —
+   * correctly, since a slug is the public name and an id is not something
+   * a stranger's duck should hand out. So the one caller that starts from
+   * a slug gets a lookup rather than the whole list: the card only needs
+   * to know whether that duck is here and where to point the camera, not
+   * to walk the pond.
+   */
+  findBySlug(slug) {
+    return this.ducks.find((d) => d.slug === slug);
+  }
+  /**
    * Resize to the element, at 150% overscan.
    *
    * The camera addresses the canvas, but only the middle two-thirds is ever
@@ -4778,6 +4803,11 @@ async function pondScreen(bootstrap) {
   const stage = el2("div", "p-stage");
   const canvas = el2("canvas", "p-canvas");
   stage.append(canvas);
+  const srList = el2("ul", "p-sr");
+  srList.setAttribute("aria-label", t("pond.13"));
+  srList.setAttribute("role", "list");
+  canvas.setAttribute("aria-hidden", "true");
+  stage.append(srList);
   const hud = el2("div", "p-hud");
   const count = el2("button", "p-count");
   count.type = "button";
@@ -5021,6 +5051,33 @@ async function pondScreen(bootstrap) {
     }
     console.warn("[pond] released duck has not appeared yet:", id);
   }
+  let srSignature = "";
+  const syncSr = () => {
+    const signature = ducks.map((d) => `${d.id}:${d.name}:${d.fire ? 1 : 0}`).join("|");
+    if (signature === srSignature) return;
+    srSignature = signature;
+    const focused = document.activeElement;
+    const keep = focused instanceof HTMLElement && srList.contains(focused) ? focused.dataset.duck : null;
+    srList.replaceChildren();
+    for (const duck of ducks) {
+      const who = duck.name || t("live.sr.anon");
+      const label = Boolean(duck.fire) ? t("live.sr.burning", { name: who }) : t("live.sr.duck", { name: who, fortune: fortuneTitle(duck.fortune) });
+      const item = el2("li", "");
+      const open = button("p-sr-btn", label, () => {
+        const placed = view2.find(duck.id);
+        if (!placed) return;
+        view2.lookAt(duck.id, true);
+        openDuckCard(view2, placed);
+      });
+      open.dataset.duck = duck.id;
+      item.append(open);
+      srList.append(item);
+    }
+    if (keep) {
+      const again = srList.querySelector(`[data-duck="${CSS.escape(keep)}"]`);
+      again?.focus();
+    }
+  };
   const refresh = async () => {
     try {
       const res = await api.pond();
@@ -5028,6 +5085,7 @@ async function pondScreen(bootstrap) {
       view2.setDucks(ducks);
       syncSays(ducks);
       syncCount();
+      syncSr();
     } catch (err) {
       count.textContent = err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
     }
@@ -5258,7 +5316,20 @@ function openDuckCard(view2, duck) {
       bumpers.append(el2("p", "p-field-label", t("pond.28")));
       const row = el2("div", "p-bumprow");
       for (const b of res.bumpers) {
-        const box = el2("div", "p-bumper");
+        const who = view2.findBySlug(b.slug);
+        const said = b.count === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(b.count) });
+        const box = button(
+          "p-bumper",
+          "",
+          () => {
+            if (!who) return;
+            dismiss();
+            view2.lookAt(who.id, true);
+            openDuckCard(view2, who);
+          },
+          t("live.sr.bumper", { name: b.name || b.slug, bumps: said })
+        );
+        box.disabled = !who;
         box.title = b.name || b.slug;
         const cv = el2("canvas", "");
         cv.width = GRID * 2;

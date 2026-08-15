@@ -69,6 +69,10 @@ export const LIVE_STRINGS = {
   "live.bumps": "{n} bumps",
   "live.bumps.one": "1 bump",
   "live.bumps.none": "nobody has bumped it yet",
+  "live.sr.duck": "{name}'s duck, {fortune}", // Screen reader, one duck in the list
+  "live.sr.bumper": "{name}, {bumps} — open their duck", // Screen reader, a bumper chip
+  "live.sr.anon": "Someone", // Screen reader, a duck with no name
+  "live.sr.burning": "{name}, on fire — open to put it out", // Screen reader
   "live.today": "in the pond since today",
   "live.day": "in the pond for a day",
   "live.days": "in the pond for {n} days",
@@ -314,6 +318,10 @@ export const ZH_HANT: Record<StringKey, string> = {
   "live.bumps": "被戳 {n} 次",
   "live.bumps.one": "被戳 1 次",
   "live.bumps.none": "還沒有人戳過它",
+  "live.sr.duck": "{name} 的鴨子，{fortune}",
+  "live.sr.bumper": "{name}，{bumps} — 打開他們的鴨子",
+  "live.sr.anon": "某人",
+  "live.sr.burning": "{name}，著火了 — 打開可以幫忙滅火",
   "live.today": "今天來到池塘",
   "live.day": "在池塘裡一天了",
   "live.days": "在池塘裡 {n} 天了",
