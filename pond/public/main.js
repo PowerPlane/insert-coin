@@ -5057,7 +5057,9 @@ async function pondScreen(bootstrap) {
     if (signature === srSignature) return;
     srSignature = signature;
     const focused = document.activeElement;
-    const keep = focused instanceof HTMLElement && srList.contains(focused) ? focused.dataset.duck : null;
+    const wasIn = focused instanceof HTMLElement && srList.contains(focused);
+    const keep = wasIn ? focused.dataset.duck : null;
+    const keepAt = wasIn ? [...srList.querySelectorAll(".p-sr-btn")].indexOf(focused) : -1;
     srList.replaceChildren();
     for (const duck of ducks) {
       const who = duck.name || t("live.sr.anon");
@@ -5075,7 +5077,13 @@ async function pondScreen(bootstrap) {
     }
     if (keep) {
       const again = srList.querySelector(`[data-duck="${CSS.escape(keep)}"]`);
-      again?.focus();
+      if (again) {
+        again.focus();
+      } else {
+        const left = [...srList.querySelectorAll(".p-sr-btn")];
+        const at = left[Math.min(Math.max(keepAt, 0), left.length - 1)];
+        (at ?? count).focus();
+      }
     }
   };
   const refresh = async () => {
@@ -5265,6 +5273,7 @@ function shortDate(created) {
 function openDuckCard(view2, duck) {
   view2.splash(duck.wx, duck.wy);
   document.querySelector(".p-card")?.remove();
+  document.querySelector(".p-scrim")?.remove();
   const scrim = el2("div", "p-scrim");
   const panel = el2("div", "p-card");
   const card = el2("div", "p-card-body");
@@ -5322,10 +5331,11 @@ function openDuckCard(view2, duck) {
           "p-bumper",
           "",
           () => {
-            if (!who) return;
+            const now = view2.findBySlug(b.slug);
+            if (!now) return;
             dismiss();
-            view2.lookAt(who.id, true);
-            openDuckCard(view2, who);
+            view2.lookAt(now.id, true);
+            openDuckCard(view2, now);
           },
           t("live.sr.bumper", { name: b.name || b.slug, bumps: said })
         );

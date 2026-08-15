@@ -666,11 +666,22 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     if (signature === srSignature) return;
     srSignature = signature;
 
-    // Whose button had focus, so it can be handed back afterwards.
+    /*
+     * Whose button had focus, and WHERE it was.
+     *
+     * The id alone is not enough. A duck can be taken out between polls,
+     * and then there is no button to hand focus back to — so focus drops
+     * to the document body, which means being thrown silently to the very
+     * start of the tab order while reading. The position is the fallback:
+     * if that particular duck is gone, focus lands where it was standing,
+     * which is the same thing a list does when you delete a row.
+     */
     const focused = document.activeElement;
-    const keep = focused instanceof HTMLElement && srList.contains(focused)
-      ? focused.dataset.duck
-      : null;
+    const wasIn = focused instanceof HTMLElement && srList.contains(focused);
+    const keep = wasIn ? (focused as HTMLElement).dataset.duck : null;
+    const keepAt = wasIn
+      ? [...srList.querySelectorAll(".p-sr-btn")].indexOf(focused as HTMLElement)
+      : -1;
 
     srList.replaceChildren();
     for (const duck of ducks) {
@@ -694,7 +705,16 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     }
     if (keep) {
       const again = srList.querySelector<HTMLElement>(`[data-duck="${CSS.escape(keep)}"]`);
-      again?.focus();
+      if (again) {
+        again.focus();
+      } else {
+        // That duck has gone. Stay where it stood — clamped, since the
+        // list is usually shorter now — and fall back to the pond's own
+        // landmark if it emptied entirely.
+        const left = [...srList.querySelectorAll<HTMLElement>(".p-sr-btn")];
+        const at = left[Math.min(Math.max(keepAt, 0), left.length - 1)];
+        (at ?? count).focus();
+      }
     }
   };
 
@@ -1043,7 +1063,22 @@ function shortDate(created: number): string {
 
 function openDuckCard(view: PondView, duck: Placed): void {
   view.splash(duck.wx, duck.wy);
+  /*
+   * ══ TAKE THE SCRIM WITH THE CARD ══
+   * This removed the panel and left its scrim. For a long time that was
+   * invisible, because every route in went through `dismiss()` first,
+   * which removes the pair. Then two routes appeared that do not — the
+   * screen-reader list, which can open a card while a card is open — and
+   * each one stacked another half-opaque sheet over the water that nothing
+   * would ever take away. Three of those and the pond is unreadable, with
+   * no way back but a reload.
+   *
+   * A function that leaves something behind is a function you have to
+   * remember to call in the right order, so it cleans up after itself
+   * instead.
+   */
   document.querySelector(".p-card")?.remove();
+  document.querySelector(".p-scrim")?.remove();
 
   /*
    * A scrim behind the card. The pond keeps moving — it is not paused —
@@ -1166,6 +1201,12 @@ function openDuckCard(view: PondView, duck: Placed): void {
          * filter. A control that looks live and does nothing teaches
          * people that taps do not work.
          */
+        /*
+         * Resolved when DRAWN only to decide whether the control is live.
+         * The press re-resolves, because a poll between the two replaces
+         * every duck object in the view: acting on the one captured here
+         * would point the card at a duck that is no longer the duck.
+         */
         const who = view.findBySlug(b.slug);
         const said = b.count === 1
           ? t("live.bumps.one")
@@ -1173,10 +1214,11 @@ function openDuckCard(view: PondView, duck: Placed): void {
         const box = button(
           "p-bumper", "",
           () => {
-            if (!who) return;
+            const now = view.findBySlug(b.slug);
+            if (!now) return;
             dismiss();
-            view.lookAt(who.id, true);
-            openDuckCard(view, who);
+            view.lookAt(now.id, true);
+            openDuckCard(view, now);
           },
           t("live.sr.bumper", { name: b.name || b.slug, bumps: said }),
         );
