@@ -161,6 +161,36 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const overlay = el("div", "p-overlay");
 
   /*
+   * ══ THE POND'S LIST BELONGS TO THE POND ══
+   * The screen-reader duck list lives in the stage, and the stage stays in
+   * the document when a flow screen opens over it. So on the studio, sign,
+   * contact, keep and settings screens, a keyboard user tabbed through
+   * every duck in the pond — invisible, underneath, thirteen of them, or a
+   * hundred once the cards are out — before reaching the Next button in
+   * front of them. Pressing one moved a camera they could not see.
+   *
+   * Measured on the studio: 13 of the first 18 tab stops.
+   *
+   * `hidden`, deliberately, and it is the same reasoning that ruled it out
+   * for the list itself: it removes an element from the accessibility tree
+   * AND the tab order. Wrong when the pond is the screen and the ducks
+   * must be reachable; exactly right when the pond is not the screen and
+   * they must not be.
+   *
+   * A MutationObserver rather than a line in each opener, for the reason
+   * the orbit's teardown gives: a rule enforced in one place cannot be
+   * forgotten by the next person to add a screen.
+   */
+  const gateSrList = (): void => {
+    srList.hidden = overlay.children.length > 0;
+  };
+  new MutationObserver(gateSrList).observe(overlay, { childList: true });
+  // And once now, so a page that arrives straight onto a flow screen —
+  // a card tapped with a claim in the URL opens card setup — starts in
+  // the right state rather than one mutation behind it.
+  gateSrList();
+
+  /*
    * ══ SPEECH BUBBLES ARE DOM, NOT CANVAS ══
    * Everything else in the pond is drawn, and a bubble drawn into the
    * canvas would match perfectly — and be invisible to a screen reader,

@@ -4821,6 +4821,11 @@ async function pondScreen(bootstrap) {
   const cta = el2("div", "p-cta");
   const wordmark = el2("p", "p-wordmark", "ducky.davidyang.work");
   const overlay = el2("div", "p-overlay");
+  const gateSrList = () => {
+    srList.hidden = overlay.children.length > 0;
+  };
+  new MutationObserver(gateSrList).observe(overlay, { childList: true });
+  gateSrList();
   const SAY_MAX_CHARS = 60;
   const SAY_GAP = 6;
   const says = el2("div", "p-says");

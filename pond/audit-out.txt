@@ -1,0 +1,18 @@
+node:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/Users/davidyang/Documents/GitHub/PCB-Projects/Personal/insert-coin/.claude/worktrees/pond-build/pond/audit.mjs'
+[90m    at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)[39m
+[90m    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)[39m
+[90m    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)[39m
+[90m    at Function._load (node:internal/modules/cjs/loader:1192:37)[39m
+[90m    at TracingChannel.traceSync (node:diagnostics_channel:322:14)[39m
+[90m    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)[39m
+[90m    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)[39m
+[90m    at node:internal/main/run_main_module:36:49[39m {
+  code: [32m'MODULE_NOT_FOUND'[39m,
+  requireStack: []
+}
+
+Node.js v22.19.0
