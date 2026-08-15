@@ -190,6 +190,17 @@ export const api = {
   ) => request<{ ok: true }>(`/duck/${editKey}`, { method: "PATCH", body: JSON.stringify(duck) }),
 
   remove: (editKey: string) => request<{ ok: true }>(`/duck/${editKey}`, { method: "DELETE" }),
+
+  /**
+   * Take back the contact left with a duck, keeping the duck.
+   *
+   * `removed` says whether there was one to take. There is deliberately no
+   * way to ASK that question — the answer only exists as a consequence of
+   * withdrawing, so a private link cannot be used to find out whether
+   * somebody left their number. See src/worker/contact.ts.
+   */
+  withdrawContact: (editKey: string) =>
+    request<{ ok: true; removed: boolean }>(`/duck/${editKey}/contact`, { method: "DELETE" }),
 };
 
 /**

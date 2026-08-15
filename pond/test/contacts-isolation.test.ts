@@ -55,6 +55,7 @@ describe("contacts are structurally isolated", () => {
       "index.ts",
       "ducks.ts",
       "release.ts",
+      "contact.ts",
       "social.ts",
       "session.ts",
       "pages.ts",
@@ -66,8 +67,23 @@ describe("contacts are structurally isolated", () => {
     // Writing one is a feature. Reading one is Phase 4, behind a password,
     // in a module that does not exist yet — so today the correct number of
     // SELECTs against this table anywhere in the worker is zero.
-    for (const f of ["index.ts", "ducks.ts", "release.ts", "social.ts", "session.ts", "pages.ts"]) {
-      expect(read(f)).not.toMatch(/\bFROM\s+contacts\b/i);
+    for (const f of [
+      "index.ts", "ducks.ts", "release.ts", "contact.ts",
+      "social.ts", "session.ts", "pages.ts",
+    ]) {
+      /*
+       * `FROM contacts` stands in for "a read", and it is a good proxy in
+       * every statement but one: withdrawal DELETEs FROM contacts and
+       * reads nothing at all. So that exact statement is removed before
+       * the check — by its whole form, so a SELECT cannot shelter behind
+       * it — and the rule then applies unchanged to everything else.
+       *
+       * This is narrower than the test it replaces, not looser: before,
+       * any appearance of those two words failed, including ones that
+       * read nothing; now a read is what fails.
+       */
+      const reads = read(f).replace(/DELETE\s+FROM\s+contacts\b/gi, "");
+      expect(reads, `${f} reads a contact back out`).not.toMatch(/\bFROM\s+contacts\b/i);
     }
   });
 
@@ -77,6 +93,48 @@ describe("contacts are structurally isolated", () => {
     // claim is keyed on. The public read resolves the epoch instead.
     expect(src).not.toMatch(/\bd\.card_id\b/i);
     expect(src).toMatch(/keeper_name/);
+  });
+
+  /*
+   * ══ WITHDRAWAL IS A DELETE AND NOTHING ELSE ══
+   * `contact.ts` exists so a person can take back a phone number without
+   * destroying the duck it came with. The temptation, the moment that
+   * screen exists, is to also show them what they left — which would put
+   * a SELECT against this table into the worker for the first time, and
+   * hand a contact value to whoever holds a private link.
+   *
+   * So the shape of that module is pinned here, not just its behaviour.
+   */
+  it("withdrawing a contact only ever deletes", () => {
+    const code = read("contact.ts")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+    expect(code).toMatch(/DELETE\s+FROM\s+contacts/i);
+    // Not one SELECT of a contact's own columns, and nothing that could
+    // grow into one. The delete itself is taken out first: it names the
+    // table without reading it, and it is the entire point of the file.
+    const rest = code.replace(/DELETE\s+FROM\s+contacts\b/gi, "");
+    expect(rest).not.toMatch(/\bFROM\s+contacts\b/i);
+    expect(rest).not.toMatch(/SELECT[\s\S]{0,200}?\bcontacts\b/i);
+    // `value` is the column holding the phone number. It has no business
+    // being named by the only module allowed near this table.
+    expect(code).not.toMatch(/\bvalue\b/i);
+    expect(code).not.toMatch(/\bINSERT\b/i);
+    expect(code).not.toMatch(/\bUPDATE\b/i);
+  });
+
+  it("the router offers no way to ASK whether a contact exists", () => {
+    /*
+     * The answer is only ever a consequence of withdrawing. A GET here
+     * would turn a leaked private link into a probe for "did this person
+     * leave their number", which is a smaller leak than the value itself
+     * and still one nobody agreed to.
+     */
+    const src = read("index.ts");
+    const block = src.slice(src.indexOf('/contact"'));
+    const upToNextRoute = block.slice(0, block.indexOf("── the owner's own duck"));
+    expect(upToNextRoute).toMatch(/req\.method\s*!==\s*"DELETE"/);
+    expect(upToNextRoute).not.toMatch(/"GET"/);
   });
 
   it("deleting a duck cascades to its contact", () => {

@@ -1191,6 +1191,21 @@ a.p-btn {
 
 /* ── taking a duck out ───────────────────────────────────────────────── */
 
+/*
+ * A quiet, undramatic action with its own explanation.
+ *
+ * Taking back a contact is not the same kind of act as taking a duck out,
+ * so it does not get the rule above it or the red on it. No top border on
+ * purpose: a second line here would read as a second danger zone, and
+ * would make the safe way out look as frightening as the drastic one.
+ */
+.p-quiet-act {
+  margin-top: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
 .p-danger {
   margin-top: 1.4rem;
   padding-top: 1rem;

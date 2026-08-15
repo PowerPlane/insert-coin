@@ -104,7 +104,16 @@ var api = {
     body: JSON.stringify({ editKey, slug })
   }),
   update: (editKey, duck) => request(`/duck/${editKey}`, { method: "PATCH", body: JSON.stringify(duck) }),
-  remove: (editKey) => request(`/duck/${editKey}`, { method: "DELETE" })
+  remove: (editKey) => request(`/duck/${editKey}`, { method: "DELETE" }),
+  /**
+   * Take back the contact left with a duck, keeping the duck.
+   *
+   * `removed` says whether there was one to take. There is deliberately no
+   * way to ASK that question — the answer only exists as a consequence of
+   * withdrawing, so a private link cannot be used to find out whether
+   * somebody left their number. See src/worker/contact.ts.
+   */
+  withdrawContact: (editKey) => request(`/duck/${editKey}/contact`, { method: "DELETE" })
 };
 var DRAFT_KEY = "pond.draft.v1";
 var DRAFT_TTL_MS = 60 * 60 * 1e3;
@@ -1562,6 +1571,14 @@ var EN = {
   // Button
   "manage.09": "Take my duck out",
   // Button
+  "manage.15": "Take back my contact",
+  // Button
+  "manage.16": "If you left a way to reply, this deletes it. Your duck stays in the pond.",
+  // Privacy note
+  "manage.17": "Gone. Nobody can reply to you now.",
+  // Result
+  "manage.18": "There was nothing to take back.",
+  // Result, no contact was left
   "shared.01": "Tap ducks in the pond. Drag stickers in the studio.",
   // Body
   "shared.02": "Add 100 ducks",
@@ -1756,6 +1773,10 @@ var ZH_HANT = {
   "manage.14": "至少三個字",
   "manage.08": "儲存變更",
   "manage.09": "把我的鴨子帶走",
+  "manage.15": "收回我的聯絡方式",
+  "manage.16": "如果你留了聯絡方式，這會把它刪掉。鴨子會留在池塘裡。",
+  "manage.17": "已刪除。現在沒有人能回覆你了。",
+  "manage.18": "沒有留下聯絡方式。",
   // ── the prototype's own scaffolding ───────────────────────────────────
   "shared.01": "點池塘裡的鴨子。在工作室裡拖曳貼紙。",
   "shared.02": "加入 100 隻鴨子",
@@ -2292,6 +2313,23 @@ function mineScreen(opts) {
       );
       actions.append(save, pair);
       wrap2.append(actions, status);
+      const privacy = el("div", "p-quiet-act");
+      const privacyNote = el("p", "p-note", t("manage.16"));
+      const takeBack = button("p-btn p-btn-quiet", t("manage.15"), () => {
+        takeBack.disabled = true;
+        void api.withdrawContact(editKey).then(
+          (res) => {
+            privacyNote.textContent = t(res.removed ? "manage.17" : "manage.18");
+            takeBack.remove();
+          },
+          () => {
+            privacyNote.textContent = t("live.error");
+            takeBack.disabled = false;
+          }
+        );
+      });
+      privacy.append(takeBack, privacyNote);
+      wrap2.append(privacy);
       const danger = el("div", "p-danger");
       const remove = button("p-btn p-btn-danger", t("manage.09"), () => {
         danger.replaceChildren(

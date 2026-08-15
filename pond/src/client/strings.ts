@@ -252,6 +252,10 @@ export const EN = {
   "manage.14": "Three letters or more", // Hint, not a usable address
   "manage.08": "Save changes", // Button
   "manage.09": "Take my duck out", // Button
+  "manage.15": "Take back my contact", // Button
+  "manage.16": "If you left a way to reply, this deletes it. Your duck stays in the pond.", // Privacy note
+  "manage.17": "Gone. Nobody can reply to you now.", // Result
+  "manage.18": "There was nothing to take back.", // Result, no contact was left
   "shared.01": "Tap ducks in the pond. Drag stickers in the studio.", // Body
   "shared.02": "Add 100 ducks", // Button
   "shared.03": "Reset", // Button
@@ -476,6 +480,10 @@ export const ZH_HANT: Record<StringKey, string> = {
   "manage.14": "至少三個字",
   "manage.08": "儲存變更",
   "manage.09": "把我的鴨子帶走",
+  "manage.15": "收回我的聯絡方式",
+  "manage.16": "如果你留了聯絡方式，這會把它刪掉。鴨子會留在池塘裡。",
+  "manage.17": "已刪除。現在沒有人能回覆你了。",
+  "manage.18": "沒有留下聯絡方式。",
 
   // ── the prototype's own scaffolding ───────────────────────────────────
   "shared.01": "點池塘裡的鴨子。在工作室裡拖曳貼紙。",

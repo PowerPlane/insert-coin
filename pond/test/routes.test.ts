@@ -265,6 +265,93 @@ describe("the deletion promise, over HTTP", () => {
     expect(await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1`, id)).toBe(0);
   });
 
+  /*
+   * ══ WITHDRAWING A CONTACT WITHOUT LOSING THE DUCK ══
+   * The promise above `deleteDuck` is that somebody who leaves a phone
+   * number on a stranger's website can withdraw it without emailing
+   * anyone. Until this route existed that was only half true: the only way
+   * to take back a number was to destroy the duck it came with.
+   */
+  it("DELETE /contact takes the contact and leaves the duck", async () => {
+    const e = await env();
+    const v = new Visitor(e);
+    const { editKey, id } = await release(v, { contact: "sam@example.com" });
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts WHERE duck_id = ?1`, id)).toBe(1);
+
+    const res = await v.api(`/api/duck/${editKey}/contact`, { method: "DELETE" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, removed: true });
+
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts WHERE duck_id = ?1`, id)).toBe(0);
+    // The duck is the whole point: it stays, decorated, named, in the pond.
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1`, id)).toBe(1);
+  });
+
+  it("says plainly when there was nothing to take back", async () => {
+    const e = await env();
+    const v = new Visitor(e);
+    const { editKey } = await release(v, {});
+
+    const res = await v.api(`/api/duck/${editKey}/contact`, { method: "DELETE" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, removed: false });
+  });
+
+  it("withdrawing twice is not an error", async () => {
+    // The second tap of a button somebody is anxious about must not look
+    // like a failure.
+    const e = await env();
+    const v = new Visitor(e);
+    const { editKey } = await release(v, { contact: "sam@example.com" });
+
+    expect(await (await v.api(`/api/duck/${editKey}/contact`, { method: "DELETE" })).json())
+      .toEqual({ ok: true, removed: true });
+    expect(await (await v.api(`/api/duck/${editKey}/contact`, { method: "DELETE" })).json())
+      .toEqual({ ok: true, removed: false });
+  });
+
+  it("refuses an edit key that names no duck", async () => {
+    /*
+     * Otherwise a guessed key would answer `removed: false` exactly as a
+     * real duck with no contact does — and a 200 to a guess is a probe
+     * that says "this key is not one of ours" for free.
+     */
+    const e = await env();
+    const v = new Visitor(e);
+    await release(v, { contact: "sam@example.com" });
+
+    const res = await v.api(`/api/duck/${"z".repeat(32)}/contact`, { method: "DELETE" });
+    expect(res.status).toBe(404);
+  });
+
+  it("will not tell you whether a contact exists", async () => {
+    /*
+     * There is no GET. Asking is the leak: a private link that has been
+     * pasted somewhere would otherwise answer "did this person leave their
+     * number", which is smaller than the number itself and still something
+     * nobody agreed to.
+     */
+    const e = await env();
+    const v = new Visitor(e);
+    const { editKey, id } = await release(v, { contact: "sam@example.com" });
+
+    expect((await v.api(`/api/duck/${editKey}/contact`)).status).toBe(404);
+    expect((await v.api(`/api/duck/${editKey}/contact`, { method: "PATCH" })).status).toBe(404);
+    // And nothing was disturbed by asking.
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts WHERE duck_id = ?1`, id)).toBe(1);
+  });
+
+  it("never returns the contact value on the owner's own read", async () => {
+    // The private link is ownership, but it is also a string that gets
+    // pasted into group chats. It buys editing, not a copy of the number.
+    const e = await env();
+    const v = new Visitor(e);
+    const { editKey } = await release(v, { contact: "sam@example.com" });
+
+    const body = await (await v.api(`/api/duck/${editKey}`)).text();
+    expect(body).not.toContain("sam@example.com");
+  });
+
   it("stores a contact only when one was given", async () => {
     const e = await env();
     const v = new Visitor(e);

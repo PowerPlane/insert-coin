@@ -24,6 +24,7 @@ import {
   deleteDuck, duckByEditKey, duckBySlug, listPond, renameDuck,
   topBumpers, updateDuck, validateDuck, validateScope,
 } from "./ducks.js";
+import { withdrawContact } from "./contact.js";
 import {
   adminDucks, adminState, authorised, contactsCsv, markContact,
   resolveReports, setHidden, signIn,
@@ -406,6 +407,27 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     }
 
     return notFound(headers);
+  }
+
+  /*
+   * ── taking back a contact ───────────────────────────────────────────────
+   * Before the block below, because that one reads the whole tail of the
+   * path as an edit key and would take "<key>/contact" for a key of its
+   * own — a 404 that looks like a wrong link rather than a missing route.
+   *
+   * DELETE and nothing else. There is no GET here on purpose: a contact is
+   * never read back out, not even to the person who left it. See
+   * `contact.ts`.
+   */
+  if (path.startsWith("/api/duck/") && path.endsWith("/contact")) {
+    if (req.method !== "DELETE") return notFound(headers);
+    const editKey = path.slice("/api/duck/".length, -"/contact".length);
+    // The key has to name a real duck, or withdrawing from a key somebody
+    // guessed would report the same "nothing to take back" as withdrawing
+    // from your own empty duck — and that answer is worth a probe.
+    if (!(await duckByEditKey(env, editKey))) return notFound(headers);
+    const removed = await withdrawContact(env, editKey);
+    return json({ ok: true, removed }, { headers });
   }
 
   // ── the owner's own duck ────────────────────────────────────────────────
