@@ -15,7 +15,7 @@
 
 import { ApiError, api, clearDraft } from "./api.js";
 import {
-  button, el, field, screen, sheet, spacer, view as fullView,
+  button, el, field, nav as navStrip, screen, sheet, spacer, view as fullView,
 } from "./dom.js";
 import { ORBIT_SIZE, STEP_MS, drawOrbit, type OrbitDuck } from "./orbit.js";
 import { drawDuck } from "./render.js";
@@ -88,93 +88,213 @@ export function mineScreen(opts: MineOptions): void {
   }
 
   // ── 09 · your duck, later ─────────────────────────────────────────────
+  /**
+   * ══ ONE SCREEN, NOT TWO ══
+   *
+   * There used to be a "welcome back" screen showing the ring, with
+   * Settings a tap further in — so tapping the gear landed you on a page
+   * about how your duck is DOING when you had come to change something.
+   *
+   * They are now one screen, and the split is by weight rather than by
+   * page: the settings are the work and take the middle, and the record of
+   * who bumped you is the header — in the slot where every other screen in
+   * this flow already puts a small duck. It costs the space a still picture
+   * would have cost, and it is the nicer thing to find there.
+   *
+   * The names go in a SENTENCE under the ring rather than on the ducks in
+   * it. Labels on a moving ring are hard to read; that was learned the
+   * first time this ring was built, and the ring is small here.
+   */
   function view(duck: PondDuck): void {
     screen(root, () => {
       root.replaceChildren();
       const { root: viewRoot, body: wrap } = fullView();
-      wrap.append(
-        el("p", "p-eyebrow", t("mine.01")),
-        el("h1", "p-title", t("mine.02")),
-      );
 
-      // The two facts worth coming back for: how long it has been in, and
-      // whether anybody bumped it.
-      const bumps = duck.bumps === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(duck.bumps) });
-      wrap.append(el("p", "p-body", `${since(duck.created)} · ${bumps}`));
+      // A SHORT label. "Back to the pond" in the corner is wide enough to
+      // shove the title off centre, and the full sentence is on the button
+      // at the foot where there is room for it.
+      wrap.append(navStrip({ label: t("studio.01"), onClick: opts.onPond }, t("mine.02")));
 
-      /*
-       * ══ THE PEOPLE WHO BUMPED YOU, CIRCLING ══
-       * There is no notification here — you find out somebody bumped your
-       * duck by COMING BACK, which is the whole point of a private link
-       * and no account. So this screen has to be worth arriving at, and a
-       * static picture of your own duck with a number under it is not.
-       *
-       * The ring loads after the screen: an empty stage is honest while it
-       * is on its way, and the duck in the middle is drawn from the first
-       * frame either way.
-       */
-      const stage = el("div", "p-orbit");
-      const canvas = el("canvas", "p-orbit-art");
-      canvas.width = ORBIT_SIZE;
-      canvas.height = ORBIT_SIZE;
-      canvas.setAttribute("role", "img");
-      stage.append(canvas);
+      // ── the record, as the header ─────────────────────────────────────
+      const stage = el("div", "p-orbit p-orbit-compact");
+      const ring = el("canvas", "p-orbit-art");
+      ring.width = ORBIT_SIZE;
+      ring.height = ORBIT_SIZE;
+      ring.setAttribute("role", "img");
+      ring.setAttribute("aria-label", t("mine.01"));
+      stage.append(ring);
       wrap.append(stage);
 
-      // Named underneath, in a sentence, because a ring of moving labels is
-      // something to enjoy and a sentence is something to READ.
-      const who = el("p", "p-orbit-who", "");
-      who.hidden = true;
-      wrap.append(who);
+      /*
+       * The two facts worth coming back for, in one line: how long it has
+       * been in, and who has been by. A sentence rather than a stat block,
+       * because "Mika, Jo and Lu bumped your duck" is a nicer thing to read
+       * than a number with a label under it.
+       */
+      const bumps = duck.bumps === 1
+        ? t("live.bumps.one")
+        : t("live.bumps", { n: String(duck.bumps) });
+      const stats = el("p", "p-orbit-who", `${since(duck.created)} · ${bumps}`);
+      wrap.append(stats);
+      startOrbit(ring, stats, duck);
 
-      startOrbit(canvas, who, duck);
+      // ── the settings, which are the work ──────────────────────────────
+      let name = duck.name;
+      let message = duck.message;
+
+      const nameField = field({
+        label: t("sign.03"), placeholder: t("sign.04"), max: 18, value: name,
+        onInput: (v) => { name = v; },
+      });
+      const messageField = field({
+        label: t("sign.06"), placeholder: t("sign.07"), max: 90, value: message,
+        multiline: true,
+        onInput: (v) => { message = v; },
+      });
+
+      /*
+       * ══ THE PUBLIC ADDRESS, AND ONLY THE PUBLIC ONE ══
+       * Two links belong to a duck and they are not the same kind of thing.
+       * The PRIVATE one is a credential — there is no account behind it, so
+       * a rotatable key just loses people their duck. It is shown, because
+       * this is where somebody comes looking for it, and it is readonly.
+       * The PUBLIC one is an address you might say out loud, and it can be
+       * changed.
+       */
+      let slug = duck.slug;
+      const slugHint = el("p", "p-hint p-hint-inline", "");
+      const slugField = field({
+        label: t("manage.10"), placeholder: t("manage.11"),
+        max: SLUG_MAX, value: duck.slug,
+        onInput: (v) => { slug = v; void checkSlug(v); },
+      });
+      slugField.wrap.append(slugHint);
+
+      let checking = 0;
+      async function checkSlug(value: string): Promise<void> {
+        const mine = ++checking;
+        const tidy = value.trim().toLowerCase();
+        if (tidy === duck.slug) { slugHint.textContent = ""; return; }
+        if (tidy.length < SLUG_MIN) {
+          slugHint.textContent = t("manage.14");
+          slugHint.classList.remove("p-hint-good");
+          return;
+        }
+        try {
+          const res = await api.slugFree(tidy);
+          // A slower answer to an older keystroke must not overwrite a
+          // newer one — people type faster than a round trip.
+          if (mine !== checking) return;
+          slugHint.textContent = res.ok ? t("manage.12") : t("manage.13");
+          slugHint.classList.toggle("p-hint-good", res.ok);
+        } catch {
+          if (mine === checking) slugHint.textContent = "";
+        }
+      }
+
+      const link = field({
+        label: t("manage.05"), placeholder: "", max: 200,
+        value: `${location.origin}/e/${editKey}`, readonly: true,
+      });
+      link.input.classList.add("p-link");
+
+      wrap.append(nameField.wrap, messageField.wrap, slugField.wrap, link.wrap);
+
+      // ── what you can do ───────────────────────────────────────────────
+      const status = el("p", "p-note", "");
+
+      const saveTheRest = (): void => {
+        void api
+          .update(editKey, {
+            tint: duck.tint, stickers: duck.stickers, paint: duck.paint, name, message,
+          })
+          .then(
+            () => {
+              duck.name = name;
+              duck.message = message;
+              status.textContent = t("live.saved");
+            },
+            (err: unknown) => {
+              status.textContent =
+                err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
+            },
+          );
+      };
+
+      const save = button("p-btn", t("manage.08"), () => {
+        status.textContent = "";
+        /*
+         * The address goes first and on its own, because it is the only
+         * field here that can be REFUSED for a reason a person can act on.
+         * If it is refused nothing else is written: a half-saved settings
+         * screen is worse than a rejected one.
+         */
+        const tidy = slug.trim().toLowerCase();
+        const renamed = tidy && tidy !== duck.slug
+          ? api.rename(editKey, tidy).then((res) => { duck.slug = res.slug; })
+          : Promise.resolve();
+
+        void renamed.then(saveTheRest, (err: unknown) => {
+          status.textContent =
+            err instanceof ApiError && err.status === 409 ? t("manage.13") : t("live.error");
+        });
+      });
 
       wrap.append(spacer());
       const actions = el("div", "p-actions");
       /*
-       * Back is the one primary. Redecorate and Settings are a pair of
-       * equal alternatives, so they sit side by side rather than stacking —
-       * three full-width buttons read as three steps.
+       * Save is the only gold. Redecorate and Back are a pair of equal
+       * alternatives — neither is the way forward from here — so they sit
+       * side by side rather than stacking, which would read as three steps.
        */
       const pair = el("div", "p-actions-pair");
       pair.append(
         button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)),
-        button("p-btn p-btn-quiet", t("mine.07"), () => settings(duck)),
+        button("p-btn p-btn-quiet", t("mine.05"), opts.onPond),
       );
-      actions.append(button("p-btn", t("mine.05"), opts.onPond), pair);
-      wrap.append(actions);
+      actions.append(save, pair);
+      wrap.append(actions, status);
+
+      /*
+       * ══ TAKING IT OUT LIVES BELOW EVERYTHING, BEHIND A RULE ══
+       * It cannot be undone — there is no account to restore from and the
+       * private link dies with it — so it is separated from the things that
+       * can, and the confirmation states what goes before the second tap.
+       */
+      const danger = el("div", "p-danger");
+      const remove = button("p-btn p-btn-danger", t("manage.09"), () => {
+        danger.replaceChildren(
+          el("p", "p-body", t("live.remove.sure")),
+          el("p", "p-note", t("manage.07")),
+        );
+        const confirm = el("div", "p-actions");
+        confirm.append(
+          button("p-btn p-btn-danger", t("live.remove.yes"), () => {
+            void api.remove(editKey).then(
+              () => { clearDraft(); gone(); },
+              () => { danger.replaceChildren(el("p", "p-note", t("live.error"))); },
+            );
+          }),
+          button("p-btn p-btn-quiet", t("pond.37"), () => view(duck)),
+        );
+        danger.append(confirm);
+      });
+      danger.append(remove);
+      wrap.append(danger);
+
       root.append(viewRoot);
     });
   }
 
   /**
-   * "Mika, Jo, Lu, and Sam" — in whatever language is on.
-   *
-   * `Intl.ListFormat` because the joining word is not translatable by
-   * substitution: English wants "and" with an Oxford comma, Chinese wants
-   * 、 between and 和 before the last, and neither is a matter of swapping
-   * one token. The browser already knows all of this.
-   */
-  function nameList(names: string[]): string {
-    try {
-      return new Intl.ListFormat(document.documentElement.lang || "en", {
-        style: "long", type: "conjunction",
-      }).format(names);
-    } catch {
-      // Very old Safari. A comma list still reads.
-      return names.join(", ");
-    }
-  }
-
-  /**
    * Turn the ring, and stop turning it when the screen goes.
    *
-   * The interval is cleared by the NEXT screen replacing the canvas: every
-   * screen here starts with `replaceChildren`, so a canvas that is no
-   * longer in the document is the signal that this screen is over. Cheaper
-   * and less forgettable than a teardown every caller has to remember.
+   * The interval stops when its canvas leaves the document: every screen
+   * here starts with `replaceChildren`, so a canvas that is no longer
+   * connected IS the signal that this screen is over. Cheaper than a
+   * teardown every caller has to remember, and impossible to forget.
    */
-  function startOrbit(canvas: HTMLCanvasElement, who: HTMLElement, duck: PondDuck): void {
+  function startOrbit(canvas: HTMLCanvasElement, stats: HTMLElement, duck: PondDuck): void {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     let wavers: OrbitDuck[] = [];
@@ -185,7 +305,8 @@ export function mineScreen(opts: MineOptions): void {
         window.clearInterval(timer);
         return;
       }
-      drawOrbit(ctx, duck, wavers, tick++, ORBIT_SIZE);
+      // Unnamed: the names are in the sentence under the ring.
+      drawOrbit(ctx, duck, wavers, tick++, ORBIT_SIZE, false);
     };
     const timer = window.setInterval(paint, STEP_MS);
     paint();
@@ -196,8 +317,10 @@ export function mineScreen(opts: MineOptions): void {
         wavers = res.bumpers;
         const names = res.bumpers.map((b) => b.name).filter(Boolean);
         if (names.length) {
-          who.textContent = t("mine.04", { names: nameList(names) });
-          who.hidden = false;
+          // The names replace the bump COUNT: "Mika, Jo and Lu bumped your
+          // duck" says the same thing and says who.
+          stats.textContent =
+            `${since(duck.created)} · ${t("mine.04", { names: nameList(names) })}`;
         }
         paint();
       },
@@ -207,17 +330,22 @@ export function mineScreen(opts: MineOptions): void {
   }
 
   /**
-   * Redecorate.
+   * "Mika, Jo, and Lu" — in whatever language is on.
    *
-   * The same studio, saving quietly — FLOW.md: "the arrival animation
-   * belongs to the first arrival only". There is nothing to announce about
-   * changing a hat, and re-running the reveal would say otherwise.
-   *
-   * The draft machinery is deliberately NOT used here. A draft exists to
-   * survive losing an unreleased duck; this duck is already in the pond, so
-   * the thing to protect is the version that is in it. Changes land when
-   * Next is tapped, or not at all.
+   * `Intl.ListFormat` because the joining word is not translatable by
+   * substitution: English wants "and" with an Oxford comma, Chinese wants a
+   * different separator and a different final word. The browser knows.
    */
+  function nameList(names: string[]): string {
+    try {
+      return new Intl.ListFormat(document.documentElement.lang || "en", {
+        style: "long", type: "conjunction",
+      }).format(names);
+    } catch {
+      return names.join(", ");
+    }
+  }
+
   function redecorate(duck: PondDuck): void {
     /*
      * ══ A COPY OF THE ARRAY IS NOT A COPY OF WHAT IS IN IT ══
@@ -270,167 +398,6 @@ export function mineScreen(opts: MineOptions): void {
   }
 
   // ── 10 · message and settings ─────────────────────────────────────────
-  function settings(duck: PondDuck): void {
-    screen(root, () => {
-      root.replaceChildren();
-      const { root: sheetRoot, body: wrap } = sheet();
-      wrap.append(
-        el("p", "p-eyebrow", t("manage.01")),
-        el("h2", "p-title", t("manage.02")),
-      );
-
-      let name = duck.name;
-      let message = duck.message;
-
-      const nameField = field({
-        label: t("sign.03"), placeholder: t("sign.04"), max: 18, value: name,
-        onInput: (v) => { name = v; },
-      });
-      const messageField = field({
-        label: t("sign.06"), placeholder: t("sign.07"), max: 90, value: message,
-        multiline: true,
-        onInput: (v) => { message = v; },
-      });
-      /*
-       * ══ THE PUBLIC ADDRESS, AND ONLY THE PUBLIC ONE ══
-       * Two links belong to a duck and they are not the same kind of thing.
-       * The PRIVATE one is a credential — there is no account behind it, so
-       * a rotatable key just loses people their duck, and it is shown
-       * readonly. The PUBLIC one is an address you might want to say out
-       * loud, and the server has been able to change it since the day it
-       * was written. Nothing on the client ever offered it.
-       *
-       * Checked while you type, because the answer is "somebody already has
-       * that" often enough that finding out only on Save is unkind — and
-       * the server already answers exactly this question.
-       */
-      let slug = duck.slug;
-      const slugHint = el("p", "p-hint p-hint-inline", "");
-      const slugField = field({
-        label: t("manage.10"), placeholder: t("manage.11"),
-        max: SLUG_MAX, value: duck.slug,
-        onInput: (v) => { slug = v; void checkSlug(v); },
-      });
-      slugField.wrap.append(slugHint);
-
-      let checking = 0;
-      async function checkSlug(value: string): Promise<void> {
-        const mine = ++checking;
-        const tidy = value.trim().toLowerCase();
-        if (tidy === duck.slug) { slugHint.textContent = ""; return; }
-        if (tidy.length < SLUG_MIN) {
-          slugHint.textContent = t("manage.14");
-          slugHint.classList.remove("p-hint-good");
-          return;
-        }
-        try {
-          const res = await api.slugFree(tidy);
-          // A slower answer to an older keystroke must not overwrite a
-          // newer one — people type faster than a round trip.
-          if (mine !== checking) return;
-          slugHint.textContent = res.ok ? t("manage.12") : t("manage.13");
-          slugHint.classList.toggle("p-hint-good", res.ok);
-        } catch {
-          if (mine === checking) slugHint.textContent = "";
-        }
-      }
-
-      wrap.append(nameField.wrap, messageField.wrap, slugField.wrap);
-
-      const status = el("p", "p-note", "");
-      const save = button("p-btn", t("manage.08"), () => {
-        status.textContent = "";
-        /*
-         * The address is a separate request because it is a separate kind
-         * of change: it can be REFUSED for a reason the person can act on
-         * ("somebody has that one"), where a name and a message cannot. So
-         * it goes first, and if it is refused nothing else is written —
-         * a half-saved settings screen is worse than a rejected one.
-         */
-        const tidy = slug.trim().toLowerCase();
-        const renamed = tidy && tidy !== duck.slug
-          ? api.rename(editKey, tidy).then((res) => { duck.slug = res.slug; })
-          : Promise.resolve();
-
-        void renamed.then(
-          () => saveTheRest(),
-          (err: unknown) => {
-            status.textContent =
-              err instanceof ApiError && err.status === 409
-                ? t("manage.13") : t("live.error");
-          },
-        );
-      });
-
-      const saveTheRest = (): void => {
-        void api
-          .update(editKey, {
-            tint: duck.tint,
-            stickers: duck.stickers,
-            paint: duck.paint,
-            name,
-            message,
-          })
-          .then(
-            () => {
-              duck.name = name;
-              duck.message = message;
-              status.textContent = t("live.saved");
-            },
-            (err: unknown) => {
-              status.textContent =
-                err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
-            },
-          );
-      };
-
-      const actions = el("div", "p-actions");
-      actions.append(save, button("p-btn p-btn-quiet", t("mine.05"), () => view(duck)));
-      wrap.append(actions, status);
-
-      // ── take my duck out ────────────────────────────────────────────
-      //
-      // Behind a confirmation, because it cannot be undone — there is no
-      // account to restore it from and the private link dies with it. The
-      // confirmation states what goes, in full, before the second tap.
-      const danger = el("div", "p-danger");
-      const remove = button("p-btn p-btn-danger", t("manage.09"), () => {
-        danger.replaceChildren(
-          el("p", "p-body", t("live.remove.sure")),
-          // The deck's own sentence, not a paraphrase of it. This is the
-          // promise the contact screen made, repeated at the moment it is
-          // being kept.
-          el("p", "p-note", t("manage.07")),
-        );
-        const confirm = el("div", "p-actions");
-        confirm.append(
-          button("p-btn p-btn-danger", t("live.remove.yes"), () => {
-            void api.remove(editKey).then(
-              () => {
-                // The local copy of the key is now a key to nothing.
-                try {
-                  localStorage.removeItem("pond.editKey.v1");
-                } catch {
-                  /* private mode; the key is gone from the server either way */
-                }
-                clearDraft();
-                gone();
-              },
-              () => {
-                danger.replaceChildren(el("p", "p-note", t("live.error")));
-              },
-            );
-          }),
-          button("p-btn p-btn-quiet", t("pond.37"), () => settings(duck)),
-        );
-        danger.append(confirm);
-      });
-      danger.append(remove);
-      wrap.append(danger);
-      root.append(sheetRoot);
-    });
-  }
-
   function gone(): void {
     screen(root, () => {
       root.replaceChildren();

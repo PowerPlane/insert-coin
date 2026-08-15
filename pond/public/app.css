@@ -1905,3 +1905,17 @@ a.p-chip {
 .p-hint-good {
   color: var(--p-ink);
 }
+
+/*
+ * The ring, in a header slot. Smaller than the screen that was only about
+ * the ring: here it sits where every other screen puts a still duck, so it
+ * takes about the space that picture would have taken and leaves the first
+ * field on screen with the keyboard up.
+ */
+.p-orbit-compact {
+  flex: 0 0 auto;
+}
+
+.p-orbit-compact .p-orbit-art {
+  max-width: 176px;
+}

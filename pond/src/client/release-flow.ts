@@ -50,6 +50,12 @@ export interface FlowOptions {
   ) => () => void;
   /** The card keeper's name, if this card has one. Decides the scope picker. */
   keeper: string | null;
+  /**
+   * The duck exists and is in the pond. Put it in the water NOW — the card
+   * that says so is about to be shown over it.
+   */
+  onReleased: (duck: ReleaseResult) => void;
+  /** The card has been dismissed. Nothing to do but get out of the way. */
   onDone: (duck: ReleaseResult) => void;
   onBrowse: () => void;
 }
@@ -318,7 +324,19 @@ export function releaseFlow(opts: FlowOptions): void {
       // nobody able to edit or remove it.
       rememberEditKey(made.editKey);
       clearDraft();
+      /*
+       * ══ IT GOES IN NOW, NOT WHEN THE CARD IS DISMISSED ══
+       * The card says "your duck is in", so it had better be going in. It
+       * used to wait for Done, which meant reading that sentence over a
+       * pond your duck was not yet part of, and then watching it arrive
+       * after you had already been told.
+       *
+       * The card covers the bottom of the screen and the water above it is
+       * clear, so the arrival plays behind it and Done becomes what it
+       * looks like: closing a card, not triggering an event.
+       */
       keep(made);
+      opts.onReleased(made);
     } catch (err) {
       // Nothing is cleared — the draft is still there, and the button
       // simply comes back. Offline is a different sentence from broken.

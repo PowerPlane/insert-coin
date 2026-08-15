@@ -126,6 +126,15 @@ export function drawOrbit(
   wavers: readonly OrbitDuck[],
   t: number,
   size: number,
+  /**
+   * Whether to write each name on its duck.
+   *
+   * Off when the ring is small and the names are already in a sentence
+   * beneath it. Six-pixel type on a moving duck is not something anybody
+   * reads — they read the sentence — so drawing it there is decoration
+   * that says the same thing twice.
+   */
+  named = true,
 ): void {
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, size, size);
@@ -150,7 +159,7 @@ export function drawOrbit(
       at.x, at.y, ORBIT_CELL,
     );
 
-    if (!w.name) return;
+    if (!named || !w.name) return;
     // A name on a white chip, because it lands on water as often as not.
     ctx.font = `600 ${fontSize}px ${MONO}`;
     ctx.textAlign = "center";

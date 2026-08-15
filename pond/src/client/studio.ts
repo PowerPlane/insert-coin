@@ -12,7 +12,7 @@
 import { GRID, clampPaintValue, encodePaint } from "./codec.js";
 import { el, button, nav as navStrip, view } from "./dom.js";
 import { icon, type IconName } from "./icons.js";
-import { drawDuck } from "./render.js";
+import { blitWater, createWaterBuffer, drawDuck, drawWater } from "./render.js";
 import {
   FORTUNES, PAINT_COLOURS, STICKER_GRAB_SLACK, TINTS, slotOnDuck, stickerAt,
 } from "./sprites.js";
@@ -60,6 +60,9 @@ const EDIT_CELL = 12;
 /** The outline on a sticker being moved. The pond's ink, not a system blue. */
 const SELECT_INK = "#0b3d52";
 
+/** The paint grid: present enough to aim by, faint enough to ignore. */
+const GRID_INK = "rgba(11, 61, 82, 0.13)";
+
 export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   const { state } = opts;
 
@@ -96,8 +99,46 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = false;
 
+  /*
+   * ══ THE DUCK IS BEING MADE FOR SOMEWHERE ══
+   * It was drawn on the panel's own surface, which made the studio a form
+   * with a picture in it. On water it is a duck you are getting ready to
+   * put in a pond — the same water, dithered the same way, so the thing on
+   * screen is already the thing that will be floating.
+   *
+   * Shallow (`deep: false`), because this is one duck close up rather than
+   * a pond receding: the deep ramp is a depth cue, and there is no depth
+   * here to cue.
+   */
+  const water = createWaterBuffer(GRID, GRID);
+
   const redraw = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    /*
+     * Frame 0: the water here does not move. The pond's drifting sparkle is
+     * what makes it feel alive, and behind a duck somebody is decorating it
+     * would be the one thing on screen competing for attention with the
+     * thing they came to make. Still water, same dither.
+     */
+    drawWater(water, 0, false);
+    blitWater(ctx, water, canvas.width, canvas.height);
+
+    /*
+     * The pixel grid, on the Draw tab only. Painting is the one thing here
+     * done cell by cell, so it is the one place the cells should be
+     * visible — and everywhere else they would be scaffolding over the
+     * duck somebody is trying to look at.
+     */
+    if (tab === "draw") {
+      ctx.strokeStyle = GRID_INK;
+      ctx.lineWidth = 1;
+      for (let i = 1; i < GRID; i++) {
+        const at = i * EDIT_CELL + 0.5;
+        ctx.beginPath(); ctx.moveTo(at, 0); ctx.lineTo(at, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, at); ctx.lineTo(canvas.width, at); ctx.stroke();
+      }
+    }
+
     drawDuck(
       ctx,
       { fortune: opts.fortune, tint: state.tint, paint: state.paint, stickers: state.stickers },
@@ -309,6 +350,14 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
      * reassurance half is the part that is true everywhere, so it stays.
      */
     hint.textContent = next === "stickers" ? t("studio.18") : t("studio.19");
+    /*
+     * The DUCK is redrawn too, not just the panel below it. The paint grid
+     * only appears on the Draw tab, so without this it never appeared at
+     * all — switching to Draw changed the panel and left the canvas exactly
+     * as it was, and the grid only turned up after the first brush stroke
+     * happened to redraw for another reason.
+     */
+    redraw();
     drawPanel();
   };
 

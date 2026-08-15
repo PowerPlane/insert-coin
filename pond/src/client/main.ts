@@ -566,7 +566,23 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       await refresh();
       const duck = view.find(id);
       if (duck) {
-        view.lookAt(id, true);
+        /*
+         * ══ FRAME IT, THEN DROP IT ══
+         * The camera used to GLIDE to the duck while the duck was falling,
+         * so two things moved at once and neither could be watched: you
+         * cannot follow something coming down while the ground slides
+         * underneath it. Reported as exactly that — "it feels weird".
+         *
+         * The prototype settled this and wrote down why: frame the landing
+         * spot before the duck falls, with no camera animation at all, and
+         * let it fall into an already-close view. The drop IS the motion;
+         * the camera does not need to be.
+         *
+         * A snap rather than a glide is free here: the keep screen is
+         * closing over the water in the same instant, so there is nothing
+         * on screen to jump.
+         */
+        view.camera.snap({ x: duck.wx, y: duck.wy });
         view.arrive(duck);
         return;
       }
@@ -666,13 +682,23 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
           resumePolling();
           void syncCta();
         },
-        onDone: (made) => {
-          // Back to the water, and the camera goes to look at what they
-          // just made — the one move that is watched rather than operated.
+        /*
+         * The duck is in. It goes into the water NOW, behind the card that
+         * says so — the card covers the bottom and the water above it is
+         * clear, so the whole arrival is watched while somebody is reading
+         * their private link.
+         *
+         * Polling stays paused: a refresh mid-arrival is the one thing
+         * that can replace a duck in mid-air, and there is nothing to poll
+         * for while a card is up anyway.
+         */
+        onReleased: (made) => { void arriveWhenItLands(made.id); },
+        onDone: () => {
+          // Nothing to trigger. The duck went in a moment ago; this is
+          // just getting the card out of the way.
           overlay.replaceChildren();
           resumePolling();
           void syncCta();
-          void arriveWhenItLands(made.id);
         },
       });
     });

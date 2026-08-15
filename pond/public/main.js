@@ -161,6 +161,7 @@ function button(className, label, onClick, aria) {
   b.addEventListener("click", onClick);
   return b;
 }
+var KEYBOARD_SETTLE_MS = 320;
 function field(opts) {
   const wrap2 = el("label", "p-field");
   if (opts.label) wrap2.append(el("span", "p-field-label", opts.label));
@@ -175,6 +176,15 @@ function field(opts) {
     wrap2.append(input);
     return { wrap: wrap2, input };
   }
+  input.addEventListener("focus", () => {
+    window.setTimeout(() => {
+      if (document.activeElement !== input) return;
+      const box = input.getBoundingClientRect();
+      const room = window.visualViewport?.height ?? window.innerHeight;
+      if (box.top >= 0 && box.bottom <= room) return;
+      input.scrollIntoView({ block: "center" });
+    }, KEYBOARD_SETTLE_MS);
+  });
   const count = el("span", "p-field-count");
   const showCount = () => {
     const points = [...input.value].length;
@@ -1171,7 +1181,7 @@ function orbitAt(i, t2, size, of = 4) {
     labelAbove: Math.sin(angle) < 0
   };
 }
-function drawOrbit(ctx, mine, wavers, t2, size) {
+function drawOrbit(ctx, mine, wavers, t2, size, named = true) {
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, size, size);
   const fontSize = Math.round(size * 0.042);
@@ -1190,7 +1200,7 @@ function drawOrbit(ctx, mine, wavers, t2, size) {
       at.y,
       ORBIT_CELL
     );
-    if (!w.name) return;
+    if (!named || !w.name) return;
     ctx.font = `600 ${fontSize}px ${MONO2}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
@@ -1781,6 +1791,7 @@ function fortuneTitle(fortune) {
 // src/client/studio.ts
 var EDIT_CELL = 12;
 var SELECT_INK = "#0b3d52";
+var GRID_INK = "rgba(11, 61, 82, 0.13)";
 function studioScreen(root2, opts) {
   const { state } = opts;
   root2.replaceChildren();
@@ -1798,8 +1809,26 @@ function studioScreen(root2, opts) {
   canvas.setAttribute("aria-label", t("studio.04"));
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
+  const water = createWaterBuffer(GRID, GRID);
   const redraw = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawWater(water, 0, false);
+    blitWater(ctx, water, canvas.width, canvas.height);
+    if (tab === "draw") {
+      ctx.strokeStyle = GRID_INK;
+      ctx.lineWidth = 1;
+      for (let i = 1; i < GRID; i++) {
+        const at = i * EDIT_CELL + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(at, 0);
+        ctx.lineTo(at, canvas.height);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, at);
+        ctx.lineTo(canvas.width, at);
+        ctx.stroke();
+      }
+    }
     drawDuck(
       ctx,
       { fortune: opts.fortune, tint: state.tint, paint: state.paint, stickers: state.stickers },
@@ -1923,6 +1952,7 @@ function studioScreen(root2, opts) {
       (c) => c.classList.toggle("on", c.dataset.tab === next)
     );
     hint.textContent = next === "stickers" ? t("studio.18") : t("studio.19");
+    redraw();
     drawPanel();
   };
   for (const [key, label] of [
@@ -2145,115 +2175,19 @@ function mineScreen(opts) {
     screen(root2, () => {
       root2.replaceChildren();
       const { root: viewRoot, body: wrap2 } = view();
-      wrap2.append(
-        el("p", "p-eyebrow", t("mine.01")),
-        el("h1", "p-title", t("mine.02"))
-      );
-      const bumps = duck.bumps === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(duck.bumps) });
-      wrap2.append(el("p", "p-body", `${since(duck.created)} · ${bumps}`));
-      const stage = el("div", "p-orbit");
-      const canvas = el("canvas", "p-orbit-art");
-      canvas.width = ORBIT_SIZE;
-      canvas.height = ORBIT_SIZE;
-      canvas.setAttribute("role", "img");
-      stage.append(canvas);
+      wrap2.append(nav({ label: t("studio.01"), onClick: opts.onPond }, t("mine.02")));
+      const stage = el("div", "p-orbit p-orbit-compact");
+      const ring = el("canvas", "p-orbit-art");
+      ring.width = ORBIT_SIZE;
+      ring.height = ORBIT_SIZE;
+      ring.setAttribute("role", "img");
+      ring.setAttribute("aria-label", t("mine.01"));
+      stage.append(ring);
       wrap2.append(stage);
-      const who = el("p", "p-orbit-who", "");
-      who.hidden = true;
-      wrap2.append(who);
-      startOrbit(canvas, who, duck);
-      wrap2.append(spacer());
-      const actions = el("div", "p-actions");
-      const pair = el("div", "p-actions-pair");
-      pair.append(
-        button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)),
-        button("p-btn p-btn-quiet", t("mine.07"), () => settings(duck))
-      );
-      actions.append(button("p-btn", t("mine.05"), opts.onPond), pair);
-      wrap2.append(actions);
-      root2.append(viewRoot);
-    });
-  }
-  function nameList(names) {
-    try {
-      return new Intl.ListFormat(document.documentElement.lang || "en", {
-        style: "long",
-        type: "conjunction"
-      }).format(names);
-    } catch {
-      return names.join(", ");
-    }
-  }
-  function startOrbit(canvas, who, duck) {
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    let wavers = [];
-    let tick = 0;
-    const paint = () => {
-      if (!canvas.isConnected) {
-        window.clearInterval(timer);
-        return;
-      }
-      drawOrbit(ctx, duck, wavers, tick++, ORBIT_SIZE);
-    };
-    const timer = window.setInterval(paint, STEP_MS);
-    paint();
-    void api.bumpers(duck.id).then(
-      (res) => {
-        if (!canvas.isConnected || !res.bumpers.length) return;
-        wavers = res.bumpers;
-        const names = res.bumpers.map((b) => b.name).filter(Boolean);
-        if (names.length) {
-          who.textContent = t("mine.04", { names: nameList(names) });
-          who.hidden = false;
-        }
-        paint();
-      },
-      // A screen that shows your duck is still a screen worth having.
-      () => {
-      }
-    );
-  }
-  function redecorate(duck) {
-    const state = {
-      tint: duck.tint,
-      stickers: duck.stickers.map((st) => ({ ...st })),
-      paint: decodePaint(duck.paint)
-    };
-    studioScreen(root2, {
-      fortune: duck.fortune,
-      state,
-      // Not "Skip" and not "Next": this duck is already in the pond, so
-      // the only thing forward means here is keeping what you changed.
-      forward: t("manage.08"),
-      onChange: () => {
-      },
-      onBack: () => view2(duck),
-      onNext: () => {
-        const { tint, stickers, paint } = toPayload(state);
-        void api.update(editKey, { tint, stickers, paint, name: duck.name, message: duck.message }).then(
-          () => {
-            duck.tint = tint;
-            duck.stickers = stickers;
-            duck.paint = paint;
-            view2(duck);
-          },
-          () => {
-            const note = el("p", "p-note", t("live.error"));
-            root2.querySelector(".p-screen")?.append(note);
-          }
-        );
-      }
-    });
-  }
-  function settings(duck) {
-    screen(root2, () => {
-      root2.replaceChildren();
-      const { root: sheetRoot, body: wrap2 } = sheet();
-      wrap2.append(
-        el("p", "p-eyebrow", t("manage.01")),
-        el("h2", "p-title", t("manage.02"))
-      );
+      const bumps = duck.bumps === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(duck.bumps) });
+      const stats = el("p", "p-orbit-who", `${since(duck.created)} · ${bumps}`);
+      wrap2.append(stats);
+      startOrbit(ring, stats, duck);
       let name = duck.name;
       let message = duck.message;
       const nameField = field({
@@ -2310,21 +2244,16 @@ function mineScreen(opts) {
           if (mine === checking) slugHint.textContent = "";
         }
       }
-      wrap2.append(nameField.wrap, messageField.wrap, slugField.wrap);
-      const status = el("p", "p-note", "");
-      const save = button("p-btn", t("manage.08"), () => {
-        status.textContent = "";
-        const tidy = slug.trim().toLowerCase();
-        const renamed = tidy && tidy !== duck.slug ? api.rename(editKey, tidy).then((res) => {
-          duck.slug = res.slug;
-        }) : Promise.resolve();
-        void renamed.then(
-          () => saveTheRest(),
-          (err) => {
-            status.textContent = err instanceof ApiError && err.status === 409 ? t("manage.13") : t("live.error");
-          }
-        );
+      const link = field({
+        label: t("manage.05"),
+        placeholder: "",
+        max: 200,
+        value: `${location.origin}/e/${editKey}`,
+        readonly: true
       });
+      link.input.classList.add("p-link");
+      wrap2.append(nameField.wrap, messageField.wrap, slugField.wrap, link.wrap);
+      const status = el("p", "p-note", "");
       const saveTheRest = () => {
         void api.update(editKey, {
           tint: duck.tint,
@@ -2343,16 +2272,29 @@ function mineScreen(opts) {
           }
         );
       };
+      const save = button("p-btn", t("manage.08"), () => {
+        status.textContent = "";
+        const tidy = slug.trim().toLowerCase();
+        const renamed = tidy && tidy !== duck.slug ? api.rename(editKey, tidy).then((res) => {
+          duck.slug = res.slug;
+        }) : Promise.resolve();
+        void renamed.then(saveTheRest, (err) => {
+          status.textContent = err instanceof ApiError && err.status === 409 ? t("manage.13") : t("live.error");
+        });
+      });
+      wrap2.append(spacer());
       const actions = el("div", "p-actions");
-      actions.append(save, button("p-btn p-btn-quiet", t("mine.05"), () => view2(duck)));
+      const pair = el("div", "p-actions-pair");
+      pair.append(
+        button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)),
+        button("p-btn p-btn-quiet", t("mine.05"), opts.onPond)
+      );
+      actions.append(save, pair);
       wrap2.append(actions, status);
       const danger = el("div", "p-danger");
       const remove = button("p-btn p-btn-danger", t("manage.09"), () => {
         danger.replaceChildren(
           el("p", "p-body", t("live.remove.sure")),
-          // The deck's own sentence, not a paraphrase of it. This is the
-          // promise the contact screen made, repeated at the moment it is
-          // being kept.
           el("p", "p-note", t("manage.07"))
         );
         const confirm = el("div", "p-actions");
@@ -2360,10 +2302,6 @@ function mineScreen(opts) {
           button("p-btn p-btn-danger", t("live.remove.yes"), () => {
             void api.remove(editKey).then(
               () => {
-                try {
-                  localStorage.removeItem("pond.editKey.v1");
-                } catch {
-                }
                 clearDraft();
                 gone();
               },
@@ -2372,13 +2310,84 @@ function mineScreen(opts) {
               }
             );
           }),
-          button("p-btn p-btn-quiet", t("pond.37"), () => settings(duck))
+          button("p-btn p-btn-quiet", t("pond.37"), () => view2(duck))
         );
         danger.append(confirm);
       });
       danger.append(remove);
       wrap2.append(danger);
-      root2.append(sheetRoot);
+      root2.append(viewRoot);
+    });
+  }
+  function startOrbit(canvas, stats, duck) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    let wavers = [];
+    let tick = 0;
+    const paint = () => {
+      if (!canvas.isConnected) {
+        window.clearInterval(timer);
+        return;
+      }
+      drawOrbit(ctx, duck, wavers, tick++, ORBIT_SIZE, false);
+    };
+    const timer = window.setInterval(paint, STEP_MS);
+    paint();
+    void api.bumpers(duck.id).then(
+      (res) => {
+        if (!canvas.isConnected || !res.bumpers.length) return;
+        wavers = res.bumpers;
+        const names = res.bumpers.map((b) => b.name).filter(Boolean);
+        if (names.length) {
+          stats.textContent = `${since(duck.created)} · ${t("mine.04", { names: nameList(names) })}`;
+        }
+        paint();
+      },
+      // A screen that shows your duck is still a screen worth having.
+      () => {
+      }
+    );
+  }
+  function nameList(names) {
+    try {
+      return new Intl.ListFormat(document.documentElement.lang || "en", {
+        style: "long",
+        type: "conjunction"
+      }).format(names);
+    } catch {
+      return names.join(", ");
+    }
+  }
+  function redecorate(duck) {
+    const state = {
+      tint: duck.tint,
+      stickers: duck.stickers.map((st) => ({ ...st })),
+      paint: decodePaint(duck.paint)
+    };
+    studioScreen(root2, {
+      fortune: duck.fortune,
+      state,
+      // Not "Skip" and not "Next": this duck is already in the pond, so
+      // the only thing forward means here is keeping what you changed.
+      forward: t("manage.08"),
+      onChange: () => {
+      },
+      onBack: () => view2(duck),
+      onNext: () => {
+        const { tint, stickers, paint } = toPayload(state);
+        void api.update(editKey, { tint, stickers, paint, name: duck.name, message: duck.message }).then(
+          () => {
+            duck.tint = tint;
+            duck.stickers = stickers;
+            duck.paint = paint;
+            view2(duck);
+          },
+          () => {
+            const note = el("p", "p-note", t("live.error"));
+            root2.querySelector(".p-screen")?.append(note);
+          }
+        );
+      }
     });
   }
   function gone() {
@@ -3006,6 +3015,7 @@ function releaseFlow(opts) {
       rememberEditKey(made.editKey);
       clearDraft();
       keep(made);
+      opts.onReleased(made);
     } catch (err) {
       const offline = err instanceof ApiError && err.status === 0;
       status.textContent = offline ? t("live.offline") : t("live.error");
@@ -4898,7 +4908,7 @@ async function pondScreen(bootstrap) {
       await refresh();
       const duck = view2.find(id);
       if (duck) {
-        view2.lookAt(id, true);
+        view2.camera.snap({ x: duck.wx, y: duck.wy });
         view2.arrive(duck);
         return;
       }
@@ -4953,11 +4963,23 @@ async function pondScreen(bootstrap) {
             resumePolling();
             void syncCta();
           },
-          onDone: (made) => {
+          /*
+           * The duck is in. It goes into the water NOW, behind the card that
+           * says so — the card covers the bottom and the water above it is
+           * clear, so the whole arrival is watched while somebody is reading
+           * their private link.
+           *
+           * Polling stays paused: a refresh mid-arrival is the one thing
+           * that can replace a duck in mid-air, and there is nothing to poll
+           * for while a card is up anyway.
+           */
+          onReleased: (made) => {
+            void arriveWhenItLands(made.id);
+          },
+          onDone: () => {
             overlay.replaceChildren();
             resumePolling();
             void syncCta();
-            void arriveWhenItLands(made.id);
           }
         });
       });

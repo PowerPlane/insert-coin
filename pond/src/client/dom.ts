@@ -35,6 +35,12 @@ export function button(
 }
 
 /** A labelled text field with a live character count. */
+/**
+ * About how long a phone keyboard takes to come up. Long enough that the
+ * viewport has settled, short enough not to be seen as a delay.
+ */
+const KEYBOARD_SETTLE_MS = 320;
+
 export function field(opts: {
   /** Omitted when a heading above already names the field. */
   label?: string;
@@ -92,6 +98,31 @@ export function field(opts: {
     wrap.append(input);
     return { wrap, input };
   }
+
+  /*
+   * ══ A FIELD YOU ARE TYPING IN HAS TO BE VISIBLE ══
+   * The keyboard takes roughly half the screen, and any screen with a
+   * header — a duck, a ring of bumpers — can have every one of its fields
+   * below that line. Browsers mostly scroll a focused field into view, but
+   * "mostly" is doing a lot of work: it varies by browser, by whether the
+   * scroller is the page or an element, and by whether the visual viewport
+   * changed at all.
+   *
+   * So it is done here, and only when it is actually needed — scrolling a
+   * field that was already in view is a jump for no reason.
+   *
+   * After a beat, because the keyboard is still on its way in and the
+   * viewport it is about to leave is not the one to measure against.
+   */
+  input.addEventListener("focus", () => {
+    window.setTimeout(() => {
+      if (document.activeElement !== input) return;
+      const box = input.getBoundingClientRect();
+      const room = window.visualViewport?.height ?? window.innerHeight;
+      if (box.top >= 0 && box.bottom <= room) return;
+      input.scrollIntoView({ block: "center" });
+    }, KEYBOARD_SETTLE_MS);
+  });
 
   const count = el("span", "p-field-count");
   const showCount = () => {

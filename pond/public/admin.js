@@ -18,6 +18,7 @@ function button(className, label, onClick, aria) {
   b.addEventListener("click", onClick);
   return b;
 }
+var KEYBOARD_SETTLE_MS = 320;
 function field(opts) {
   const wrap = el("label", "p-field");
   if (opts.label) wrap.append(el("span", "p-field-label", opts.label));
@@ -32,6 +33,15 @@ function field(opts) {
     wrap.append(input);
     return { wrap, input };
   }
+  input.addEventListener("focus", () => {
+    window.setTimeout(() => {
+      if (document.activeElement !== input) return;
+      const box = input.getBoundingClientRect();
+      const room = window.visualViewport?.height ?? window.innerHeight;
+      if (box.top >= 0 && box.bottom <= room) return;
+      input.scrollIntoView({ block: "center" });
+    }, KEYBOARD_SETTLE_MS);
+  });
   const count = el("span", "p-field-count");
   const showCount = () => {
     const points = [...input.value].length;
