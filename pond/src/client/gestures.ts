@@ -69,6 +69,13 @@ export interface GestureTarget {
   onTap(clientX: number, clientY: number): boolean;
 }
 
+/**
+ * How far a notch of wheel zooms. Larger is slower; 400 makes one detent
+ * of a mouse wheel about a third of a rung, so a rung takes a deliberate
+ * turn rather than a twitch.
+ */
+const WHEEL_ZOOM_TAU = 400;
+
 export class Gestures {
   /** Live pointers, each with a short trail of where it has been. */
   private readonly points = new Map<number, Sample[]>();
@@ -257,18 +264,46 @@ export class Gestures {
     return null;
   }
 
+  /**
+   * ══ A TRACKPAD HAS TWO GESTURES AND THEY BOTH ARRIVE AS `wheel` ══
+   *
+   * A PINCH arrives as ctrl+wheel. Browsers have reported it that way since
+   * long before there was an event for it, and every map on the web relies
+   * on the convention.
+   *
+   * A TWO-FINGER SWIPE arrives as a plain wheel, and it means scroll.
+   *
+   * This treated both as zoom, so swiping around the pond on a laptop
+   * changed the zoom instead of moving — which is the one thing a trackpad
+   * user will try first. A mouse wheel has no swipe, so it keeps zooming:
+   * there is nothing else it could sensibly mean over a canvas with no
+   * scrollbar.
+   */
   private readonly wheel = (e: WheelEvent): void => {
     e.preventDefault();
-    const rect = this.el.getBoundingClientRect();
     const { camera } = this.target;
-    // A notch of wheel is a zoom step, anchored under the cursor. ctrl+wheel
-    // is what a trackpad pinch reports as, and means the same thing here.
-    const factor = Math.exp(-e.deltaY / 400);
     const d = this.target.dpr();
-    camera.zoomAbout(
-      camera.cam.cell * factor,
-      (e.clientX - (rect.left + rect.width / 2)) * d,
-      (e.clientY - (rect.top + rect.height / 2)) * d,
-    );
+
+    if (e.ctrlKey) {
+      const rect = this.el.getBoundingClientRect();
+      const factor = Math.exp(-e.deltaY / WHEEL_ZOOM_TAU);
+      camera.zoomAbout(
+        camera.cam.cell * factor,
+        (e.clientX - (rect.left + rect.width / 2)) * d,
+        (e.clientY - (rect.top + rect.height / 2)) * d,
+      );
+      return;
+    }
+
+    /*
+     * Pan. The deltas are in CSS pixels and the camera speaks sprite
+     * pixels, so they are converted through the zoom — otherwise the same
+     * swipe travels four times as far zoomed out as zoomed in.
+     *
+     * Negated, because `pan` takes the distance the CONTENT moves and a
+     * scroll down means the content goes up.
+     */
+    const cell = camera.cam.cell;
+    camera.pan((-e.deltaX * d) / cell, (-e.deltaY * d) / cell);
   };
 }

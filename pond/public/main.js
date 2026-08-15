@@ -2999,6 +2999,7 @@ var VELOCITY_WINDOW_MS = 120;
 var TAP_SLOP_PX = 8;
 var DOUBLE_TAP_MS = 300;
 var DOUBLE_TAP_SLOP_PX = 32;
+var WHEEL_ZOOM_TAU = 400;
 var Gestures = class {
   constructor(el3, target) {
     this.el = el3;
@@ -3128,17 +3129,37 @@ var Gestures = class {
     );
     return null;
   }
+  /**
+   * ══ A TRACKPAD HAS TWO GESTURES AND THEY BOTH ARRIVE AS `wheel` ══
+   *
+   * A PINCH arrives as ctrl+wheel. Browsers have reported it that way since
+   * long before there was an event for it, and every map on the web relies
+   * on the convention.
+   *
+   * A TWO-FINGER SWIPE arrives as a plain wheel, and it means scroll.
+   *
+   * This treated both as zoom, so swiping around the pond on a laptop
+   * changed the zoom instead of moving — which is the one thing a trackpad
+   * user will try first. A mouse wheel has no swipe, so it keeps zooming:
+   * there is nothing else it could sensibly mean over a canvas with no
+   * scrollbar.
+   */
   wheel = (e) => {
     e.preventDefault();
-    const rect = this.el.getBoundingClientRect();
     const { camera } = this.target;
-    const factor = Math.exp(-e.deltaY / 400);
     const d = this.target.dpr();
-    camera.zoomAbout(
-      camera.cam.cell * factor,
-      (e.clientX - (rect.left + rect.width / 2)) * d,
-      (e.clientY - (rect.top + rect.height / 2)) * d
-    );
+    if (e.ctrlKey) {
+      const rect = this.el.getBoundingClientRect();
+      const factor = Math.exp(-e.deltaY / WHEEL_ZOOM_TAU);
+      camera.zoomAbout(
+        camera.cam.cell * factor,
+        (e.clientX - (rect.left + rect.width / 2)) * d,
+        (e.clientY - (rect.top + rect.height / 2)) * d
+      );
+      return;
+    }
+    const cell = camera.cam.cell;
+    camera.pan(-e.deltaX * d / cell, -e.deltaY * d / cell);
   };
 };
 
@@ -3388,6 +3409,8 @@ var SEP_CONTACT = GRID * 0.86;
 var SEP_ROOM = GRID * 1.75;
 var SEP_STRENGTH = 0.06;
 var SEP_ROOM_SCALE = 0.16;
+var ARRIVED_ROOM = GRID * 2.6;
+var ARRIVED_ROOM_MS = 4200;
 var CALL_PULL = 75e-4;
 var CALL_SWIRL = 0.1;
 var RING_SQUASH = 0.8;
@@ -3414,8 +3437,7 @@ var MIST_LEAD_MS = BAD_LUCK_BURN_MS - BAD_LUCK_MIST_AT_MS;
 var GREAT_STREAMERS = SHOP_PAIR;
 var LOOK_DELAY_MS = 700;
 var LOOK_DELAY_GREAT_MS = 950;
-var SHOCKWAVE_REACH = 26;
-var SHOCKWAVE_FORCE = 1.5;
+var SHOCKWAVE_FORCE = 2.6;
 function hashId(id) {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) {
@@ -3807,6 +3829,7 @@ var PondView = class {
     if (duck.fortune === 0) fireworkStreamers(this.particles, duck.wx, duck.wy, GREAT_STREAMERS);
     if (duck.fortune === 3) ignite(duck, BAD_LUCK_BURN_MS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
+    duck.roomUntil = now + ARRIVED_ROOM_MS;
     if (!duck.selfDirected) {
       const delay = duck.fortune === 0 ? LOOK_DELAY_GREAT_MS : LOOK_DELAY_MS;
       window.setTimeout(() => {
@@ -3909,12 +3932,13 @@ var PondView = class {
     this.ripples.push({ x: wx, y: wy, t: performance.now(), max });
     splashDroplets(this.particles, wx, wy, amplitude);
     const { side } = this.camera;
+    const reach = max;
     for (const d of this.ducks) {
       const dx = wrapDelta(wx, d.wx, side);
       const dy = wrapDelta(wy, d.wy, side);
       const dist = Math.hypot(dx, dy) || 1;
-      if (dist >= SHOCKWAVE_REACH) continue;
-      const f = (1 - dist / SHOCKWAVE_REACH) * amplitude * SHOCKWAVE_FORCE;
+      if (dist >= reach) continue;
+      const f = (1 - dist / reach) * amplitude * SHOCKWAVE_FORCE;
       d.vx = (d.vx ?? 0) + dx / dist * f;
       d.vy = (d.vy ?? 0) + dy / dist * f;
     }
@@ -4112,6 +4136,7 @@ var PondView = class {
   /** The same rule over an arbitrary set, at an arbitrary strength. */
   separateSome(list, strength, roomy) {
     const { side } = this.camera;
+    const now = performance.now();
     const g = roomy ? SEP_ROOM : SEP_CONTACT;
     const buckets = /* @__PURE__ */ new Map();
     const ducks = list;
@@ -4134,8 +4159,10 @@ var PondView = class {
             const dx = wrapDelta(d.wx, o.wx, side);
             const dy = wrapDelta(d.wy, o.wy, side);
             const dist = Math.hypot(dx, dy);
-            if (dist <= 0.01 || dist >= g) continue;
-            const f = dist < SEP_CONTACT ? (SEP_CONTACT - dist) / dist * strength : roomy ? (SEP_ROOM - dist) / dist * strength * SEP_ROOM_SCALE : 0;
+            if (dist <= 0.01) continue;
+            const wants = o.roomUntil && now < o.roomUntil ? ARRIVED_ROOM : g;
+            if (dist >= wants) continue;
+            const f = dist < SEP_CONTACT ? (SEP_CONTACT - dist) / dist * strength : dist < wants && wants > g ? (wants - dist) / dist * strength * SEP_ROOM_SCALE * ((o.roomUntil - now) / ARRIVED_ROOM_MS) : roomy ? (SEP_ROOM - dist) / dist * strength * SEP_ROOM_SCALE : 0;
             if (!f) continue;
             d.vx = (d.vx ?? 0) - dx * f;
             d.vy = (d.vy ?? 0) - dy * f;

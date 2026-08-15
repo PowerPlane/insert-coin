@@ -97,6 +97,11 @@ export interface Placed extends PondDuck {
    * See `land`.
    */
   selfDirected?: boolean;
+  /**
+   * Until when this duck is given a wider berth than everybody else,
+   * because it has just arrived. See ARRIVED_ROOM.
+   */
+  roomUntil?: number;
   /** Left over from being bumped, or from bumping. Decays to nothing. */
   vx?: number;
   vy?: number;
@@ -242,6 +247,22 @@ const SEP_STRENGTH = 0.06;
 const SEP_ROOM_SCALE = 0.16;
 
 /*
+ * ══ A DUCK THAT HAS JUST ARRIVED GETS A MOMENT OF ROOM ══
+ * The splash shoves the crowd, but the shove is not what decides where they
+ * end up: separation pulls everyone back to its own comfortable spacing
+ * within a second, so a harder splash barely changes the result. Measured —
+ * doubling the force moved the resting neighbour by a twentieth of a duck.
+ *
+ * So the room is asked for directly. For a few seconds after it lands, a new
+ * arrival keeps a wider berth than everybody else, the way a circle opens up
+ * when somebody jumps into a pool. Then it relaxes, and the pond closes back
+ * in around it — which is the nicer half of the idea, because the space
+ * arriving and the space going are both things you can watch.
+ */
+const ARRIVED_ROOM = GRID * 2.6;
+const ARRIVED_ROOM_MS = 4200;
+
+/*
  * ══ THE WHISTLE'S FORCES ══
  * Every one of these is an impulse applied once per world tick. They are
  * small because they compound: a called duck is pulled every tick for as
@@ -323,10 +344,19 @@ const GREAT_STREAMERS = SHOP_PAIR;
 const LOOK_DELAY_MS = 700;
 const LOOK_DELAY_GREAT_MS = 950;
 
-/** How far a splash shoves the ducks floating near it, in sprite cells. */
-const SHOCKWAVE_REACH = 26;
-/** And how hard, per unit of amplitude. */
-const SHOCKWAVE_FORCE = 1.5;
+/**
+ * ══ THE PUSH REACHES AS FAR AS THE RIPPLE YOU CAN SEE ══
+ * It used to be a flat 26 cells — barely one duck wide — whatever had hit
+ * the water, so a duck LANDING cleared no more space than a fingertip. That
+ * is backwards: the ripple already grows with the amplitude, and a person
+ * watching expects the ducks the ripple reaches to be the ducks that move.
+ *
+ * So the reach IS the ripple's radius, and the only thing left to tune is
+ * how hard. A landing is the heaviest thing that happens to this pond, so
+ * it both reaches furthest and shoves hardest — and what it leaves behind
+ * is a bit of room around the new arrival, which is the point.
+ */
+const SHOCKWAVE_FORCE = 2.6;
 
 /**
  * A stable pseudo-random number from a duck's id.
@@ -900,6 +930,8 @@ export class PondView {
      */
     if (duck.fortune === 3) ignite(duck, BAD_LUCK_BURN_MS);
     this.splash(duck.wx, duck.wy, SPLASH_LAND);
+    // And the pond makes way for it, for a moment. See ARRIVED_ROOM.
+    duck.roomUntil = now + ARRIVED_ROOM_MS;
 
     /*
      * ══ ONE THING DRIVES THE CAMERA AT A TIME ══
@@ -1043,12 +1075,13 @@ export class PondView {
      * drawing rather than a pond.
      */
     const { side } = this.camera;
+    const reach = max;
     for (const d of this.ducks) {
       const dx = wrapDelta(wx, d.wx, side);
       const dy = wrapDelta(wy, d.wy, side);
       const dist = Math.hypot(dx, dy) || 1;
-      if (dist >= SHOCKWAVE_REACH) continue;
-      const f = (1 - dist / SHOCKWAVE_REACH) * amplitude * SHOCKWAVE_FORCE;
+      if (dist >= reach) continue;
+      const f = (1 - dist / reach) * amplitude * SHOCKWAVE_FORCE;
       d.vx = (d.vx ?? 0) + (dx / dist) * f;
       d.vy = (d.vy ?? 0) + (dy / dist) * f;
     }
@@ -1299,6 +1332,7 @@ export class PondView {
   /** The same rule over an arbitrary set, at an arbitrary strength. */
   private separateSome(list: Placed[], strength: number, roomy: boolean): void {
     const { side } = this.camera;
+    const now = performance.now();
     const g = roomy ? SEP_ROOM : SEP_CONTACT;
     const buckets = new Map<string, Placed[]>();
     const ducks = list;
@@ -1324,13 +1358,25 @@ export class PondView {
             const dx = wrapDelta(d.wx, o.wx, side);
             const dy = wrapDelta(d.wy, o.wy, side);
             const dist = Math.hypot(dx, dy);
-            if (dist <= 0.01 || dist >= g) continue;
+            if (dist <= 0.01) continue;
+            /*
+             * A newly-arrived duck asks for more room than the grid was
+             * bucketed for, so its neighbours are considered out to the
+             * wider radius — `g` only decides which buckets were LOOKED at,
+             * and one ring of neighbours covers this comfortably.
+             */
+            const wants = o.roomUntil && now < o.roomUntil ? ARRIVED_ROOM : g;
+            if (dist >= wants) continue;
             const f =
               dist < SEP_CONTACT
                 ? ((SEP_CONTACT - dist) / dist) * strength
-                : roomy
-                  ? ((SEP_ROOM - dist) / dist) * strength * SEP_ROOM_SCALE
-                  : 0;
+                : dist < wants && wants > g
+                  // Making way. Gentle, and it fades as the welcome wears off.
+                  ? ((wants - dist) / dist) * strength * SEP_ROOM_SCALE *
+                    ((o.roomUntil! - now) / ARRIVED_ROOM_MS)
+                  : roomy
+                    ? ((SEP_ROOM - dist) / dist) * strength * SEP_ROOM_SCALE
+                    : 0;
             if (!f) continue;
             d.vx = (d.vx ?? 0) - dx * f;
             d.vy = (d.vy ?? 0) - dy * f;
