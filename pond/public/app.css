@@ -876,21 +876,59 @@ a.p-btn {
 /*
  * One person who bumped you. A tappable 44px square, not 38: it is a
  * control, and every other control here clears the same floor.
+ *
+ * ══ THE TINT IS THE DESIGN; THE BEVEL WAS A REGRESSION ══
+ * These gained an outline when they stopped being `div`s and became real
+ * <button>s — the accessibility fix brought the UA's own border and bevel
+ * with it, and that landed on top of the tinted square the design already
+ * had. Two frames around one duck.
+ *
+ * So the tint and the pixel-corner clip stay exactly as they were, and
+ * only the chrome a button arrives with is stripped.
+ *
+ * Properties are reset one at a time rather than with `all: unset`, for
+ * the reason written at the top of this file: `all: unset` destroys the
+ * clip-path and text-transform that earlier grouped rules set, and it has
+ * already cost this project twice — including the clip-path this very
+ * rule depends on.
  */
 .p-bumper {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
   position: relative;
   width: var(--tap);
   height: var(--tap);
-  background: var(--quiet);
-  clip-path: var(--px-corner);
   display: grid;
   place-items: center;
+  /* The box, unchanged from before it was a button. */
+  background: var(--quiet);
+  clip-path: var(--px-corner);
 }
 
-.p-bumper canvas {
-  image-rendering: pixelated;
-  width: 32px;
-  height: 32px;
+/*
+ * Focus rings and `clip-path` do not get on — an outset outline is clipped
+ * away entirely, which this project has now been bitten by three times. An
+ * INSET shadow lives inside the clip and survives.
+ */
+.p-bumper:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--field-500);
+}
+
+/*
+ * That duck is not in the pond in front of you — taken out, or whistled
+ * away by a filter. Dimmed rather than given a different box, so it reads
+ * as the same kind of thing, just not reachable.
+ */
+.p-bumper:disabled {
+  cursor: default;
+  opacity: 0.4;
 }
 
 .p-bumper canvas {

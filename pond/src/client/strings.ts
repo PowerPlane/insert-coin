@@ -188,7 +188,7 @@ export const EN = {
   "contact.08": "Skip contact", // Button
   "contact.09": "Leave an address if you want a postcard. David will not share it.", // Body
   "pond.01": "14 ducks", // Button
-  "pond.02": "BY-002 — about this card. Opens davidyang.work in a new tab.", // Screen reader
+  "pond.02": "BY-002 — about this card. Opens byproductlab.com in a new tab.", // Screen reader
   "pond.03": "Show everyone again", // Screen reader
   "pond.04": "Whistle for", // Body
   "pond.05": "Back to the whole pond", // Screen reader
@@ -421,7 +421,7 @@ export const ZH_HANT: Record<StringKey, string> = {
 
   // ── the pond ──────────────────────────────────────────────────────────
   "pond.01": "14 隻鴨子",
-  "pond.02": "BY-002 — 關於這張卡片。會在新分頁打開 davidyang.work。",
+  "pond.02": "BY-002 — 關於這張卡片。會在新分頁打開 byproductlab.com。",
   "pond.03": "重新顯示全部",
   "pond.04": "呼喚",
   "pond.05": "回到整個池塘",

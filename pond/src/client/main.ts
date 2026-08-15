@@ -135,9 +135,14 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    * The card's own mark, opposite the count. It is the only thing on the
    * water that leaves the pond, so it says where it goes before it is
    * tapped — pond.02 is the whole sentence, not a decoration.
+   *
+   * It points at byproductlab.com rather than davidyang.work: BY-002 is a
+   * ByProduct Lab part number, and somebody tapping the code stamped on
+   * the card is asking about the thing in their hand, not about the
+   * person who made it.
    */
   const mark = el("a", "p-mark", "BY-002");
-  mark.href = "https://davidyang.work";
+  mark.href = "https://byproductlab.com";
   mark.target = "_blank";
   mark.rel = "noopener noreferrer";
   mark.setAttribute("aria-label", t("pond.02"));
