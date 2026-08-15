@@ -561,9 +561,28 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    * camera at least goes to where it will be — rather than the flow
    * ending on nothing at all.
    */
+  /**
+   * True once this pond screen has been torn down.
+   *
+   * ══ AN AWAIT IS A PLACE THE SCREEN CAN VANISH ══
+   * The retry loop below awaits a fetch and then a timeout, up to several
+   * times. Every one of those is a moment the person can leave — and the
+   * loop had no way to find out. It would come back from a `refresh()`
+   * that resolved after the view had stopped, snap the camera of a dead
+   * PondView and start an arrival nobody would ever see, on a canvas
+   * detached from the document.
+   *
+   * Found in review rather than on screen, because the symptom is a few
+   * wasted frames and a fetch nobody reads: invisible until it is not.
+   */
+  let gone = false;
+
   async function arriveWhenItLands(id: string): Promise<void> {
     for (let attempt = 0; attempt < ARRIVAL_TRIES; attempt++) {
       await refresh();
+      // Checked after every await, not just at the top: the screen can go
+      // during the fetch as easily as during the wait.
+      if (gone) return;
       const duck = view.find(id);
       if (duck) {
         /*
@@ -587,6 +606,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
         return;
       }
       await new Promise((r) => setTimeout(r, ARRIVAL_RETRY_MS));
+      if (gone) return;
     }
     // It is in the pond somewhere; the next poll will place it.
     console.warn("[pond] released duck has not appeared yet:", id);
@@ -846,6 +866,8 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   }, 20_000);
 
   teardown = () => {
+    // Before anything is stopped, so a loop waking mid-teardown sees it.
+    gone = true;
     clearInterval(zoomPoll);
     clearInterval(poll);
     window.removeEventListener("resize", fit);

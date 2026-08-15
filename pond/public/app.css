@@ -1192,6 +1192,80 @@ a.p-btn {
 /* ── taking a duck out ───────────────────────────────────────────────── */
 
 /*
+ * A row that lets a chip be chip-sized.
+ *
+ * Chips in a flex column stretch to the full width and stop reading as
+ * toggles — an "on/off" control the width of the primary button is a
+ * button, whatever its colour says.
+ */
+.p-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/*
+ * A hint that is a sentence rather than a label.
+ *
+ * `.p-hint` is centred, letterspaced, 0.66rem mono — right for "Free" or
+ * "Taken" under a field, and wrong for "A visitor's phone can still choose
+ * another language." Centred uppercase mono reads as a HEADING, so the
+ * card setup screen had four headings and no explanations, and the longest
+ * one wrapped into a centred two-line block that looked like a title.
+ *
+ * These are prose, and the prototype set them as prose: left-aligned,
+ * sentence case, at a size somebody reads.
+ */
+.p-hint-block {
+  margin: -0.1rem 0 0.5rem;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--p-soft);
+  max-width: 42ch;
+}
+
+/*
+ * The duck a keeper linked to their card.
+ *
+ * A row, because the three things in it answer one question between them:
+ * the picture says WHICH duck, the name and address say which one it is
+ * on the record, and the chip takes it back off. A stack would read as
+ * three separate settings.
+ */
+.p-linked {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.p-linked-art {
+  /* Drawn at 3 sprite pixels and shown at 48: scaled UP by a whole
+     number, which is the only way a pixel sprite may be enlarged. */
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+}
+
+.p-linked-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.p-linked-who small {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--p-soft);
+  /* An address can be longer than the row. Better clipped than wrapped
+     onto a second line that pushes the chip out of reach. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
  * A quiet, undramatic action with its own explanation.
  *
  * Taking back a contact is not the same kind of act as taking a duck out,

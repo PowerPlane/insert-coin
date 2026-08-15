@@ -20,7 +20,25 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const workerDir = join(__dirname, "..", "src", "worker");
-const read = (f: string) => readFileSync(join(workerDir, f), "utf8");
+const readRaw = (f: string) => readFileSync(join(workerDir, f), "utf8");
+
+/**
+ * A module's source, with SQL comments closed up.
+ *
+ * ══ `FROM/**\/contacts` IS A READ ══
+ * The guards below look for `FROM\s+contacts`, and SQL lets a comment sit
+ * wherever whitespace may: `SELECT * FROM/**\/contacts` is a perfectly
+ * ordinary read that the pattern does not match. Nobody would write that
+ * by accident, which is exactly the problem — a privacy guard that only
+ * catches the accidental version is a guard against typos.
+ *
+ * So comments are removed before matching, in both the JS and the SQL
+ * sense, and the checks then see the statement the database would.
+ */
+const read = (f: string): string =>
+  readRaw(f)
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/--[^\n]*/g, " ");
 
 describe("contacts are structurally isolated", () => {
   it("the public duck module never names the contacts table", () => {
@@ -135,6 +153,22 @@ describe("contacts are structurally isolated", () => {
     const upToNextRoute = block.slice(0, block.indexOf("── the owner's own duck"));
     expect(upToNextRoute).toMatch(/req\.method\s*!==\s*"DELETE"/);
     expect(upToNextRoute).not.toMatch(/"GET"/);
+  });
+
+  it("a SQL comment cannot smuggle a read past the guard", () => {
+    /*
+     * The guard is only worth having if it survives someone TRYING. This
+     * is the exact evasion a reviewer found: legal SQL, a real read, and
+     * invisible to a plain `FROM\s+contacts`.
+     */
+    const sneaky = `const q = "SELECT value FROM/**/contacts WHERE duck_id = ?1";`;
+    const cleaned = sneaky.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+    expect(cleaned).toMatch(/\bFROM\s+contacts\b/i);
+
+    // And the dash form, which hides the rest of its line.
+    const dashed = "SELECT value FROM --x\ncontacts WHERE duck_id = ?1";
+    const cleanedDash = dashed.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+    expect(cleanedDash).toMatch(/\bFROM\s+contacts\b/i);
   });
 
   it("deleting a duck cascades to its contact", () => {

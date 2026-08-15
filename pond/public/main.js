@@ -90,6 +90,14 @@ var api = {
   }),
   mine: (editKey) => request(`/duck/${editKey}`),
   /**
+   * A duck by its public address. No key involved — this is what anybody
+   * sees, and it is how the card setup screen can show the keeper the duck
+   * they linked rather than the string they linked it with.
+   */
+  bySlug: (slug) => request(
+    `/duck/by-slug/${encodeURIComponent(slug)}`
+  ),
+  /**
    * Is this public address free?
    *
    * Answers only about the one it was asked about, so it leaks nothing that
@@ -108,10 +116,10 @@ var api = {
   /**
    * Take back the contact left with a duck, keeping the duck.
    *
-   * `removed` says whether there was one to take. There is deliberately no
-   * way to ASK that question — the answer only exists as a consequence of
-   * withdrawing, so a private link cannot be used to find out whether
-   * somebody left their number. See src/worker/contact.ts.
+   * The response says only that it is done. Whether there WAS one is not
+   * reported and cannot be asked: it is the same fact this route refuses
+   * to serve over GET, and spending it destructively would not make it
+   * less of a leak. See src/worker/contact.ts.
    */
   withdrawContact: (editKey) => request(`/duck/${editKey}/contact`, { method: "DELETE" })
 };
@@ -1575,10 +1583,8 @@ var EN = {
   // Button
   "manage.16": "If you left a way to reply, this deletes it. Your duck stays in the pond.",
   // Privacy note
-  "manage.17": "Gone. Nobody can reply to you now.",
+  "manage.17": "Done. Nobody can reply to you now.",
   // Result
-  "manage.18": "There was nothing to take back.",
-  // Result, no contact was left
   "shared.01": "Tap ducks in the pond. Drag stickers in the studio.",
   // Body
   "shared.02": "Add 100 ducks",
@@ -1775,8 +1781,7 @@ var ZH_HANT = {
   "manage.09": "把我的鴨子帶走",
   "manage.15": "收回我的聯絡方式",
   "manage.16": "如果你留了聯絡方式，這會把它刪掉。鴨子會留在池塘裡。",
-  "manage.17": "已刪除。現在沒有人能回覆你了。",
-  "manage.18": "沒有留下聯絡方式。",
+  "manage.17": "已完成。現在沒有人能回覆你了。",
   // ── the prototype's own scaffolding ───────────────────────────────────
   "shared.01": "點池塘裡的鴨子。在工作室裡拖曳貼紙。",
   "shared.02": "加入 100 隻鴨子",
@@ -2318,8 +2323,8 @@ function mineScreen(opts) {
       const takeBack = button("p-btn p-btn-quiet", t("manage.15"), () => {
         takeBack.disabled = true;
         void api.withdrawContact(editKey).then(
-          (res) => {
-            privacyNote.textContent = t(res.removed ? "manage.17" : "manage.18");
+          () => {
+            privacyNote.textContent = t("manage.17");
             takeBack.remove();
           },
           () => {
@@ -2721,6 +2726,7 @@ function project(wx, wy, cam, renderCell, canvasW, canvasH, side) {
 }
 
 // src/client/keeper.ts
+var LINKED_CELL = 3;
 async function get() {
   const res = await fetch("/api/keeper", { credentials: "same-origin" });
   return res.ok ? await res.json() : null;
@@ -2734,12 +2740,9 @@ function cardSetup(opts) {
   function render(state) {
     screen(root2, () => {
       root2.replaceChildren();
-      const { root: sheetRoot, body: wrap2 } = sheet();
-      wrap2.append(
-        el("p", "p-eyebrow", t("keeper.01")),
-        el("h2", "p-title", t("keeper.02")),
-        el("p", "p-note", t("keeper.03"))
-      );
+      const { root: viewRoot, body: wrap2 } = view();
+      wrap2.append(nav({ label: t("keeper.18"), onClick: opts.onDone }, t("keeper.02")));
+      wrap2.append(el("p", "p-note", t("keeper.03")));
       let name = state.keeper;
       const nameField = field({
         label: t("keeper.04"),
@@ -2751,20 +2754,54 @@ function cardSetup(opts) {
           hint.textContent = v ? t("live.keeper.hint", { keeper: v }) : t("keeper.06");
         }
       });
-      const hint = el("p", "p-hint", name ? t("live.keeper.hint", { keeper: name }) : t("keeper.06"));
+      const hint = el(
+        "p",
+        "p-hint-block",
+        name ? t("live.keeper.hint", { keeper: name }) : t("keeper.06")
+      );
       wrap2.append(nameField.wrap, hint);
       let editKey = recallEditKey() ?? "";
       wrap2.append(el("p", "p-field-label", t("keeper.07")));
       if (state.duckSlug) {
-        const linked = el("div", "p-actions");
-        linked.append(
-          el("p", "p-body", `/d/${state.duckSlug}`),
-          button("p-chip", t("keeper.08"), () => {
-            editKey = "";
-            void save({ editKey: "" });
-          })
-        );
+        const linked = el("div", "p-linked");
+        const art = el("canvas", "p-linked-art");
+        art.width = GRID * LINKED_CELL;
+        art.height = GRID * LINKED_CELL;
+        art.setAttribute("role", "img");
+        const who = el("div", "p-linked-who");
+        const name2 = el("b", "", "");
+        who.append(name2, el("small", "", `/d/${state.duckSlug}`));
+        linked.append(art, who, button("p-chip", t("keeper.08"), () => {
+          editKey = "";
+          void save({ editKey: "" });
+        }));
         wrap2.append(linked);
+        void api.bySlug(state.duckSlug).then(
+          ({ duck }) => {
+            if (!art.isConnected) return;
+            const ctx = art.getContext("2d");
+            if (!ctx) return;
+            ctx.imageSmoothingEnabled = false;
+            drawDuck(
+              ctx,
+              {
+                fortune: duck.fortune,
+                tint: duck.tint,
+                paint: decodePaint(duck.paint),
+                stickers: duck.stickers
+              },
+              0,
+              0,
+              LINKED_CELL
+            );
+            art.setAttribute("aria-label", duck.name || `/d/${duck.slug}`);
+            if (duck.name) name2.textContent = duck.name;
+          },
+          // The link is a fact the server already gave us. A picture that
+          // will not load does not make it less true.
+          () => {
+          }
+        );
       } else {
         const paste = field({
           placeholder: t("keeper.10"),
@@ -2774,7 +2811,7 @@ function cardSetup(opts) {
             editKey = v.trim().replace(/^.*\/e\//, "");
           }
         });
-        wrap2.append(paste.wrap, el("p", "p-hint", t("keeper.11")));
+        wrap2.append(paste.wrap, el("p", "p-hint-block", t("keeper.11")));
       }
       let lang = state.lang;
       wrap2.append(el("p", "p-field-label", t("keeper.12")));
@@ -2783,17 +2820,23 @@ function cardSetup(opts) {
         ["en", t("keeper.13")],
         ["zh-Hant", t("keeper.14")]
       ];
+      const paintLang = () => {
+        buttons.forEach((b, i) => {
+          const on = langButtons[i][0] === lang;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-pressed", String(on));
+        });
+      };
       const buttons = langButtons.map(
         ([value, label]) => button("p-chip", label, () => {
           lang = value;
-          buttons.forEach((b, i) => b.classList.toggle("on", langButtons[i][0] === lang));
+          paintLang();
         })
       );
-      buttons.forEach((b, i) => {
-        b.classList.toggle("on", langButtons[i][0] === lang);
-        langs.append(b);
-      });
-      wrap2.append(langs, el("p", "p-hint", t("keeper.15")));
+      buttons.forEach((b) => langs.append(b));
+      paintLang();
+      langs.setAttribute("role", "group");
+      wrap2.append(langs, el("p", "p-hint-block", t("keeper.15")));
       let adopt = false;
       if (state.orphans > 0) {
         const adoptBtn = button(
@@ -2802,9 +2845,13 @@ function cardSetup(opts) {
           () => {
             adopt = !adopt;
             adoptBtn.classList.toggle("on", adopt);
+            adoptBtn.setAttribute("aria-pressed", String(adopt));
           }
         );
-        wrap2.append(el("p", "p-field-label", t("keeper.16")), adoptBtn);
+        adoptBtn.setAttribute("aria-pressed", "false");
+        const adoptRow = el("div", "p-chip-row");
+        adoptRow.append(adoptBtn);
+        wrap2.append(adoptRow);
       }
       const status = el("p", "p-note", "");
       const actions = el("div", "p-actions");
@@ -2812,8 +2859,8 @@ function cardSetup(opts) {
         button("p-btn", t("keeper.17"), () => void save({ name, lang, editKey, adopt })),
         button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone)
       );
-      wrap2.append(actions, status);
-      root2.append(sheetRoot);
+      wrap2.append(spacer(), actions, status);
+      root2.append(viewRoot);
       async function save(body) {
         try {
           const res = await fetch("/api/keeper", {
@@ -4945,9 +4992,11 @@ async function pondScreen(bootstrap) {
     }
     return ARRIVAL_MIN_CELL;
   }
+  let gone = false;
   async function arriveWhenItLands(id) {
     for (let attempt = 0; attempt < ARRIVAL_TRIES; attempt++) {
       await refresh();
+      if (gone) return;
       const duck = view2.find(id);
       if (duck) {
         view2.camera.snap({ x: duck.wx, y: duck.wy });
@@ -4955,6 +5004,7 @@ async function pondScreen(bootstrap) {
         return;
       }
       await new Promise((r) => setTimeout(r, ARRIVAL_RETRY_MS));
+      if (gone) return;
     }
     console.warn("[pond] released duck has not appeared yet:", id);
   }
@@ -5115,6 +5165,7 @@ async function pondScreen(bootstrap) {
     if (polling) void refresh();
   }, 2e4);
   teardown = () => {
+    gone = true;
     clearInterval(zoomPoll);
     clearInterval(poll);
     window.removeEventListener("resize", fit);

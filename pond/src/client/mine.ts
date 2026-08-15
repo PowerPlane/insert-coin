@@ -280,16 +280,18 @@ export function mineScreen(opts: MineOptions): void {
        * would make the safe way out look as frightening as the drastic one.
        *
        * It is always offered, never conditional, because the client is not
-       * told whether a contact exists — nothing may ask that question. The
-       * copy is written for both answers, and the result says which it was.
+       * told whether a contact exists — nothing may ask that question, and
+       * the server does not say afterwards either. So the result is one
+       * sentence that is true whichever it was: whatever the state before,
+       * nobody can reply now.
        */
       const privacy = el("div", "p-quiet-act");
       const privacyNote = el("p", "p-note", t("manage.16"));
       const takeBack = button("p-btn p-btn-quiet", t("manage.15"), () => {
         takeBack.disabled = true;
         void api.withdrawContact(editKey).then(
-          (res) => {
-            privacyNote.textContent = t(res.removed ? "manage.17" : "manage.18");
+          () => {
+            privacyNote.textContent = t("manage.17");
             // Nothing left to withdraw either way, so the button has done
             // the only job it had.
             takeBack.remove();

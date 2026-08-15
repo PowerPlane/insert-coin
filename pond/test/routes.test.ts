@@ -280,21 +280,35 @@ describe("the deletion promise, over HTTP", () => {
 
     const res = await v.api(`/api/duck/${editKey}/contact`, { method: "DELETE" });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, removed: true });
+    expect(await res.json()).toEqual({ ok: true });
 
     expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts WHERE duck_id = ?1`, id)).toBe(0);
     // The duck is the whole point: it stays, decorated, named, in the pond.
     expect(await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1`, id)).toBe(1);
   });
 
-  it("says plainly when there was nothing to take back", async () => {
+  it("answers a duck that never had a contact exactly the same way", async () => {
+    /*
+     * ══ THE RESPONSE IS NOT AN ORACLE ══
+     * An earlier version returned `removed`, so the screen could say
+     * "Gone" or "there was nothing to take back". That boolean is the
+     * same fact this route refuses to serve over GET — "did this person
+     * leave their number" — merely spent destructively, and a leaked
+     * private link could still ask it once.
+     *
+     * Byte-for-byte identical, so there is nothing left to compare.
+     */
     const e = await env();
     const v = new Visitor(e);
-    const { editKey } = await release(v, {});
+    const withOne = await release(v, { contact: "sam@example.com" });
+    const v2 = new Visitor(e);
+    const without = await release(v2, {});
 
-    const res = await v.api(`/api/duck/${editKey}/contact`, { method: "DELETE" });
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, removed: false });
+    const a = await v.api(`/api/duck/${withOne.editKey}/contact`, { method: "DELETE" });
+    const b = await v2.api(`/api/duck/${without.editKey}/contact`, { method: "DELETE" });
+
+    expect(a.status).toBe(b.status);
+    expect(await a.text()).toBe(await b.text());
   });
 
   it("withdrawing twice is not an error", async () => {
@@ -304,10 +318,12 @@ describe("the deletion promise, over HTTP", () => {
     const v = new Visitor(e);
     const { editKey } = await release(v, { contact: "sam@example.com" });
 
-    expect(await (await v.api(`/api/duck/${editKey}/contact`, { method: "DELETE" })).json())
-      .toEqual({ ok: true, removed: true });
-    expect(await (await v.api(`/api/duck/${editKey}/contact`, { method: "DELETE" })).json())
-      .toEqual({ ok: true, removed: false });
+    const first = await v.api(`/api/duck/${editKey}/contact`, { method: "DELETE" });
+    const again = await v.api(`/api/duck/${editKey}/contact`, { method: "DELETE" });
+    expect(first.status).toBe(200);
+    expect(again.status).toBe(200);
+    // And the second says nothing the first did not.
+    expect(await again.text()).toBe(await first.text());
   });
 
   it("refuses an edit key that names no duck", async () => {

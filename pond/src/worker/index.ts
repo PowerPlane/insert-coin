@@ -426,8 +426,22 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     // guessed would report the same "nothing to take back" as withdrawing
     // from your own empty duck — and that answer is worth a probe.
     if (!(await duckByEditKey(env, editKey))) return notFound(headers);
-    const removed = await withdrawContact(env, editKey);
-    return json({ ok: true, removed }, { headers });
+    /*
+     * ══ THE ANSWER IS THE SAME EITHER WAY ══
+     * This used to return `removed`, so the copy could say "Gone" or
+     * "there was nothing to take back". Reviewed and dropped: that
+     * boolean is the same bit this route refuses to serve over GET, just
+     * spent destructively. "Did this person leave their number" is a
+     * smaller leak than the number and still one nobody agreed to, and
+     * arguing that from the GET while shipping it in the DELETE is not an
+     * argument, it is a loophole.
+     *
+     * The withdrawal still happens. Only the report of what was there
+     * before it is gone, and one sentence covers both cases honestly:
+     * after this, nobody can reply either way.
+     */
+    await withdrawContact(env, editKey);
+    return json({ ok: true }, { headers });
   }
 
   // ── the owner's own duck ────────────────────────────────────────────────

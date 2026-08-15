@@ -14,8 +14,15 @@
  */
 
 import { api, recallEditKey } from "./api.js";
-import { button, el, field, screen, sheet } from "./dom.js";
+import {
+  button, el, field, nav as navStrip, screen, spacer, view as fullView,
+} from "./dom.js";
 import { t } from "./strings.js";
+import { GRID, decodePaint } from "./codec.js";
+import { drawDuck } from "./render.js";
+
+/** Sprite pixels per side for the linked duck's thumbnail. */
+const LINKED_CELL = 3;
 
 interface KeeperState {
   epochId: string;
@@ -46,13 +53,20 @@ export function cardSetup(opts: CardSetupOptions): void {
   function render(state: KeeperState): void {
     screen(root, () => {
       root.replaceChildren();
-      const { root: sheetRoot, body: wrap } = sheet();
-
-      wrap.append(
-        el("p", "p-eyebrow", t("keeper.01")),
-        el("h2", "p-title", t("keeper.02")),
-        el("p", "p-note", t("keeper.03")),
-      );
+      /*
+       * ══ A FULL VIEW, LIKE EVERY OTHER WORKING SCREEN ══
+       * This was the last bottom sheet in the flow. A sheet says "a small
+       * thing, over what you were doing" — but setting up a card has five
+       * fields and a keyboard, and it is not over anything: it is reached
+       * by blowing on a card, with no pond behind it to return to.
+       *
+       * The way out is in the nav, where it is in the rest of the flow,
+       * rather than only at the foot of a form somebody has to scroll
+       * past a keyboard to reach.
+       */
+      const { root: viewRoot, body: wrap } = fullView();
+      wrap.append(navStrip({ label: t("keeper.18"), onClick: opts.onDone }, t("keeper.02")));
+      wrap.append(el("p", "p-note", t("keeper.03")));
 
       // ── the card's name ─────────────────────────────────────────────
       let name = state.keeper;
@@ -65,7 +79,10 @@ export function cardSetup(opts: CardSetupOptions): void {
           hint.textContent = v ? t("live.keeper.hint", { keeper: v }) : t("keeper.06");
         },
       });
-      const hint = el("p", "p-hint", name ? t("live.keeper.hint", { keeper: name }) : t("keeper.06"));
+      const hint = el(
+        "p", "p-hint-block",
+        name ? t("live.keeper.hint", { keeper: name }) : t("keeper.06"),
+      );
       wrap.append(nameField.wrap, hint);
 
       // ── the keeper's own duck ───────────────────────────────────────
@@ -76,15 +93,59 @@ export function cardSetup(opts: CardSetupOptions): void {
       wrap.append(el("p", "p-field-label", t("keeper.07")));
 
       if (state.duckSlug) {
-        const linked = el("div", "p-actions");
-        linked.append(
-          el("p", "p-body", `/d/${state.duckSlug}`),
-          button("p-chip", t("keeper.08"), () => {
-            editKey = "";
-            void save({ editKey: "" });
-          }),
-        );
+        /*
+         * ══ SHOW THE DUCK, NOT THE STRING ══
+         * This said "/d/tidal-fern" and nothing else. A slug is an address:
+         * correct, unmemorable, and no help at all in answering the only
+         * question anybody has here — "is that the right duck?" A person
+         * who linked the wrong one would read their own address back and
+         * agree with it.
+         *
+         * So it shows the duck. The picture is the confirmation; the
+         * address stays underneath for anyone who wants to check it.
+         */
+        const linked = el("div", "p-linked");
+        const art = el("canvas", "p-linked-art");
+        art.width = GRID * LINKED_CELL;
+        art.height = GRID * LINKED_CELL;
+        art.setAttribute("role", "img");
+        const who = el("div", "p-linked-who");
+        const name = el("b", "", "");
+        who.append(name, el("small", "", `/d/${state.duckSlug}`));
+        linked.append(art, who, button("p-chip", t("keeper.08"), () => {
+          editKey = "";
+          void save({ editKey: "" });
+        }));
         wrap.append(linked);
+
+        /*
+         * Fetched after the screen is up, never before it. The address is
+         * already on screen and already correct; the picture is a
+         * confirmation of it, and a setup screen that will not render until
+         * an unrelated duck has loaded is a screen that breaks when that
+         * duck is gone.
+         */
+        void api.bySlug(state.duckSlug).then(
+          ({ duck }) => {
+            if (!art.isConnected) return;
+            const ctx = art.getContext("2d");
+            if (!ctx) return;
+            ctx.imageSmoothingEnabled = false;
+            drawDuck(
+              ctx,
+              {
+                fortune: duck.fortune, tint: duck.tint,
+                paint: decodePaint(duck.paint), stickers: duck.stickers,
+              },
+              0, 0, LINKED_CELL,
+            );
+            art.setAttribute("aria-label", duck.name || `/d/${duck.slug}`);
+            if (duck.name) name.textContent = duck.name;
+          },
+          // The link is a fact the server already gave us. A picture that
+          // will not load does not make it less true.
+          () => {},
+        );
       } else {
         const paste = field({
           placeholder: t("keeper.10"), max: 200, value: editKey,
@@ -95,7 +156,7 @@ export function cardSetup(opts: CardSetupOptions): void {
             editKey = v.trim().replace(/^.*\/e\//, "");
           },
         });
-        wrap.append(paste.wrap, el("p", "p-hint", t("keeper.11")));
+        wrap.append(paste.wrap, el("p", "p-hint-block", t("keeper.11")));
       }
 
       // ── language ────────────────────────────────────────────────────
@@ -109,17 +170,31 @@ export function cardSetup(opts: CardSetupOptions): void {
         ["en", t("keeper.13")],
         ["zh-Hant", t("keeper.14")],
       ];
+      /*
+       * `aria-pressed`, not just a class.
+       *
+       * A chip that shows its state with a colour shows it to exactly one
+       * kind of person. These are the only control on the screen whose
+       * whole job is to say which of two things is currently true, so the
+       * one that says it out loud has to say it too.
+       */
+      const paintLang = (): void => {
+        buttons.forEach((b, i) => {
+          const on = langButtons[i]![0] === lang;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-pressed", String(on));
+        });
+      };
       const buttons = langButtons.map(([value, label]) =>
         button("p-chip", label, () => {
           lang = value;
-          buttons.forEach((b, i) => b.classList.toggle("on", langButtons[i]![0] === lang));
+          paintLang();
         }),
       );
-      buttons.forEach((b, i) => {
-        b.classList.toggle("on", langButtons[i]![0] === lang);
-        langs.append(b);
-      });
-      wrap.append(langs, el("p", "p-hint", t("keeper.15")));
+      buttons.forEach((b) => langs.append(b));
+      paintLang();
+      langs.setAttribute("role", "group");
+      wrap.append(langs, el("p", "p-hint-block", t("keeper.15")));
 
       // ── adopting the ducks that came before ─────────────────────────
       //
@@ -134,9 +209,26 @@ export function cardSetup(opts: CardSetupOptions): void {
           () => {
             adopt = !adopt;
             adoptBtn.classList.toggle("on", adopt);
+            // It is a yes/no about somebody else's ducks. Whether the
+            // answer is currently yes is the only thing worth announcing.
+            adoptBtn.setAttribute("aria-pressed", String(adopt));
           },
         );
-        wrap.append(el("p", "p-field-label", t("keeper.16")), adoptBtn);
+        adoptBtn.setAttribute("aria-pressed", "false");
+        /*
+         * The chip carries the whole sentence, so it does not also get a
+         * label saying the same words. "Add the 12 earlier ducks to this
+         * card" above a button reading "Add the 12 earlier ducks" is one
+         * thought printed twice, and the second printing is the one you
+         * have to press.
+         *
+         * Wrapped, because a bare chip in this column stretches to the
+         * full width and stops looking like a toggle: it looked like a
+         * third primary button, sitting above the actual one.
+         */
+        const adoptRow = el("div", "p-chip-row");
+        adoptRow.append(adoptBtn);
+        wrap.append(adoptRow);
       }
 
       // ── save ────────────────────────────────────────────────────────
@@ -146,8 +238,11 @@ export function cardSetup(opts: CardSetupOptions): void {
         button("p-btn", t("keeper.17"), () => void save({ name, lang, editKey, adopt })),
         button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone),
       );
-      wrap.append(actions, status);
-      root.append(sheetRoot);
+      // Eats the space between the last field and the buttons, so the
+      // primary sits at the foot on a tall phone and directly under the
+      // form on a short one.
+      wrap.append(spacer(), actions, status);
+      root.append(viewRoot);
 
       async function save(body: Record<string, unknown>): Promise<void> {
         try {

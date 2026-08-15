@@ -161,6 +161,16 @@ export const api = {
   mine: (editKey: string) => request<{ duck: Record<string, unknown> }>(`/duck/${editKey}`),
 
   /**
+   * A duck by its public address. No key involved — this is what anybody
+   * sees, and it is how the card setup screen can show the keeper the duck
+   * they linked rather than the string they linked it with.
+   */
+  bySlug: (slug: string) =>
+    request<{ duck: PondDuck; bumpers: Bumper[] }>(
+      `/duck/by-slug/${encodeURIComponent(slug)}`,
+    ),
+
+  /**
    * Is this public address free?
    *
    * Answers only about the one it was asked about, so it leaks nothing that
@@ -194,13 +204,13 @@ export const api = {
   /**
    * Take back the contact left with a duck, keeping the duck.
    *
-   * `removed` says whether there was one to take. There is deliberately no
-   * way to ASK that question — the answer only exists as a consequence of
-   * withdrawing, so a private link cannot be used to find out whether
-   * somebody left their number. See src/worker/contact.ts.
+   * The response says only that it is done. Whether there WAS one is not
+   * reported and cannot be asked: it is the same fact this route refuses
+   * to serve over GET, and spending it destructively would not make it
+   * less of a leak. See src/worker/contact.ts.
    */
   withdrawContact: (editKey: string) =>
-    request<{ ok: true; removed: boolean }>(`/duck/${editKey}/contact`, { method: "DELETE" }),
+    request<{ ok: true }>(`/duck/${editKey}/contact`, { method: "DELETE" }),
 };
 
 /**
