@@ -1891,3 +1891,17 @@ a.p-chip {
   visibility: hidden;
   pointer-events: none;
 }
+
+/*
+ * A hint that belongs to the field above it — "free", "taken". Sits with
+ * the counter rather than under the whole form, because it is an answer
+ * about THIS box and needs to read as one.
+ */
+.p-hint-inline {
+  margin: 0.15rem 0 0;
+  text-align: left;
+}
+
+.p-hint-good {
+  color: var(--p-ink);
+}

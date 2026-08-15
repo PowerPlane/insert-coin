@@ -160,6 +160,24 @@ export const api = {
 
   mine: (editKey: string) => request<{ duck: Record<string, unknown> }>(`/duck/${editKey}`),
 
+  /**
+   * Is this public address free?
+   *
+   * Answers only about the one it was asked about, so it leaks nothing that
+   * visiting /d/<slug> would not already reveal.
+   */
+  slugFree: (slug: string) =>
+    request<{ ok: boolean; slug: string; reason: string | null }>(
+      `/slug/check?s=${encodeURIComponent(slug)}`,
+    ),
+
+  /** Rename a duck's public address. 409 means somebody already has it. */
+  rename: (editKey: string, slug: string) =>
+    request<{ ok: true; slug: string }>("/slug", {
+      method: "POST",
+      body: JSON.stringify({ editKey, slug }),
+    }),
+
   update: (
     editKey: string,
     duck: {

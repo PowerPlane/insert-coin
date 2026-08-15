@@ -20,6 +20,7 @@ import {
 import { ORBIT_SIZE, STEP_MS, drawOrbit, type OrbitDuck } from "./orbit.js";
 import { drawDuck } from "./render.js";
 import { GRID, decodePaint } from "./codec.js";
+import { SLUG_MAX, SLUG_MIN } from "./slug-limits.js";
 import { studioScreen, toPayload } from "./studio.js";
 import { t } from "./strings.js";
 import type { PondDuck } from "./types.js";
@@ -290,11 +291,78 @@ export function mineScreen(opts: MineOptions): void {
         multiline: true,
         onInput: (v) => { message = v; },
       });
-      wrap.append(nameField.wrap, messageField.wrap);
+      /*
+       * ══ THE PUBLIC ADDRESS, AND ONLY THE PUBLIC ONE ══
+       * Two links belong to a duck and they are not the same kind of thing.
+       * The PRIVATE one is a credential — there is no account behind it, so
+       * a rotatable key just loses people their duck, and it is shown
+       * readonly. The PUBLIC one is an address you might want to say out
+       * loud, and the server has been able to change it since the day it
+       * was written. Nothing on the client ever offered it.
+       *
+       * Checked while you type, because the answer is "somebody already has
+       * that" often enough that finding out only on Save is unkind — and
+       * the server already answers exactly this question.
+       */
+      let slug = duck.slug;
+      const slugHint = el("p", "p-hint p-hint-inline", "");
+      const slugField = field({
+        label: t("manage.10"), placeholder: t("manage.11"),
+        max: SLUG_MAX, value: duck.slug,
+        onInput: (v) => { slug = v; void checkSlug(v); },
+      });
+      slugField.wrap.append(slugHint);
+
+      let checking = 0;
+      async function checkSlug(value: string): Promise<void> {
+        const mine = ++checking;
+        const tidy = value.trim().toLowerCase();
+        if (tidy === duck.slug) { slugHint.textContent = ""; return; }
+        if (tidy.length < SLUG_MIN) {
+          slugHint.textContent = t("manage.14");
+          slugHint.classList.remove("p-hint-good");
+          return;
+        }
+        try {
+          const res = await api.slugFree(tidy);
+          // A slower answer to an older keystroke must not overwrite a
+          // newer one — people type faster than a round trip.
+          if (mine !== checking) return;
+          slugHint.textContent = res.ok ? t("manage.12") : t("manage.13");
+          slugHint.classList.toggle("p-hint-good", res.ok);
+        } catch {
+          if (mine === checking) slugHint.textContent = "";
+        }
+      }
+
+      wrap.append(nameField.wrap, messageField.wrap, slugField.wrap);
 
       const status = el("p", "p-note", "");
       const save = button("p-btn", t("manage.08"), () => {
         status.textContent = "";
+        /*
+         * The address is a separate request because it is a separate kind
+         * of change: it can be REFUSED for a reason the person can act on
+         * ("somebody has that one"), where a name and a message cannot. So
+         * it goes first, and if it is refused nothing else is written —
+         * a half-saved settings screen is worse than a rejected one.
+         */
+        const tidy = slug.trim().toLowerCase();
+        const renamed = tidy && tidy !== duck.slug
+          ? api.rename(editKey, tidy).then((res) => { duck.slug = res.slug; })
+          : Promise.resolve();
+
+        void renamed.then(
+          () => saveTheRest(),
+          (err: unknown) => {
+            status.textContent =
+              err instanceof ApiError && err.status === 409
+                ? t("manage.13") : t("live.error");
+          },
+        );
+      });
+
+      const saveTheRest = (): void => {
         void api
           .update(editKey, {
             tint: duck.tint,
@@ -314,7 +382,7 @@ export function mineScreen(opts: MineOptions): void {
                 err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
             },
           );
-      });
+      };
 
       const actions = el("div", "p-actions");
       actions.append(save, button("p-btn p-btn-quiet", t("mine.05"), () => view(duck)));

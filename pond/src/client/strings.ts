@@ -245,6 +245,11 @@ export const EN = {
   "manage.05": "Your private link", // Field label
   "manage.06": "ducky.davidyang.work/e/9fQ2xK7pLm", // Example value
   "manage.07": "Taking your duck out deletes its message and contact at the same time. Nothing is kept.", // Privacy note
+  "manage.10": "Its address in the pond", // Field label
+  "manage.11": "Letters, numbers and dashes", // Placeholder
+  "manage.12": "Free", // Hint, the address is available
+  "manage.13": "Taken", // Hint, somebody has it
+  "manage.14": "Three letters or more", // Hint, not a usable address
   "manage.08": "Save changes", // Button
   "manage.09": "Take my duck out", // Button
   "shared.01": "Tap ducks in the pond. Drag stickers in the studio.", // Body
@@ -464,6 +469,11 @@ export const ZH_HANT: Record<StringKey, string> = {
   "manage.05": "你的私人連結",
   "manage.06": "ducky.davidyang.work/e/9fQ2xK7pLm",
   "manage.07": "把鴨子帶走時，留言和聯絡方式會一起刪掉。什麼都不會留下。",
+  "manage.10": "它在池塘裡的網址",
+  "manage.11": "字母、數字和連字號",
+  "manage.12": "可以用",
+  "manage.13": "已被使用",
+  "manage.14": "至少三個字",
   "manage.08": "儲存變更",
   "manage.09": "把我的鴨子帶走",
 

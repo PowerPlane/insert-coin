@@ -1,0 +1,35 @@
+pond: a duck's public address can be changed
+
+The server has been able to rename one since the day it was written -
+`renameDuck`, plus a `/slug/check` endpoint whose entire purpose is to
+power a live "that one is taken" hint while somebody types. The client had
+neither. `api.ts` had no slug method at all, so the one thing a person
+might actually want to change about their duck's link was the one thing
+they could not.
+
+TWO LINKS, TWO DIFFERENT THINGS. The PRIVATE link is a credential: there is
+no account behind it, so a rotatable key just loses people their duck, and
+it stays readonly wherever it is shown. The PUBLIC address is something you
+might say out loud, and it belongs in settings beside the name and the
+message.
+
+Checked WHILE YOU TYPE, because "somebody already has that" is a common
+enough answer that finding out only on Save is unkind — and the server
+already answers exactly this question. A slower reply to an older keystroke
+cannot overwrite a newer one; people type faster than a round trip.
+
+Saved as its OWN request, before the rest. It is the only field here that
+can be refused for a reason the person can act on, so if it is refused
+nothing else is written: a half-saved settings screen is worse than a
+rejected one. Verified — a taken name sends one request and stops with
+"Taken"; a free one renames and then saves the name and message.
+
+The length limits are stated twice, in the client and in the worker,
+because the bundle must not reach across into server code. That is exactly
+the kind of pair that drifts, and a client STRICTER than its server refuses
+names the server would have taken — so a test holds the two together.
+
+320 tests, 14 screens.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RkfdFVYGoAen4NUTKu3Bbx

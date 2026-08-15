@@ -89,6 +89,20 @@ var api = {
     body: JSON.stringify({ editKey, text })
   }),
   mine: (editKey) => request(`/duck/${editKey}`),
+  /**
+   * Is this public address free?
+   *
+   * Answers only about the one it was asked about, so it leaks nothing that
+   * visiting /d/<slug> would not already reveal.
+   */
+  slugFree: (slug) => request(
+    `/slug/check?s=${encodeURIComponent(slug)}`
+  ),
+  /** Rename a duck's public address. 409 means somebody already has it. */
+  rename: (editKey, slug) => request("/slug", {
+    method: "POST",
+    body: JSON.stringify({ editKey, slug })
+  }),
   update: (editKey, duck) => request(`/duck/${editKey}`, { method: "PATCH", body: JSON.stringify(duck) }),
   remove: (editKey) => request(`/duck/${editKey}`, { method: "DELETE" })
 };
@@ -1211,6 +1225,10 @@ function drawOrbit(ctx, mine, wavers, t2, size) {
 }
 var MONO2 = "'IBM Plex Mono', ui-monospace, monospace";
 
+// src/client/slug-limits.ts
+var SLUG_MIN = 3;
+var SLUG_MAX = 32;
+
 // src/client/strings.ts
 var SCOPE_STRINGS = {
   "scope.01": "Who can see this",
@@ -1520,6 +1538,16 @@ var EN = {
   // Example value
   "manage.07": "Taking your duck out deletes its message and contact at the same time. Nothing is kept.",
   // Privacy note
+  "manage.10": "Its address in the pond",
+  // Field label
+  "manage.11": "Letters, numbers and dashes",
+  // Placeholder
+  "manage.12": "Free",
+  // Hint, the address is available
+  "manage.13": "Taken",
+  // Hint, somebody has it
+  "manage.14": "Three letters or more",
+  // Hint, not a usable address
   "manage.08": "Save changes",
   // Button
   "manage.09": "Take my duck out",
@@ -1711,6 +1739,11 @@ var ZH_HANT = {
   "manage.05": "你的私人連結",
   "manage.06": "ducky.davidyang.work/e/9fQ2xK7pLm",
   "manage.07": "把鴨子帶走時，留言和聯絡方式會一起刪掉。什麼都不會留下。",
+  "manage.10": "它在池塘裡的網址",
+  "manage.11": "字母、數字和連字號",
+  "manage.12": "可以用",
+  "manage.13": "已被使用",
+  "manage.14": "至少三個字",
   "manage.08": "儲存變更",
   "manage.09": "把我的鴨子帶走",
   // ── the prototype's own scaffolding ───────────────────────────────────
@@ -2242,10 +2275,57 @@ function mineScreen(opts) {
           message = v;
         }
       });
-      wrap2.append(nameField.wrap, messageField.wrap);
+      let slug = duck.slug;
+      const slugHint = el("p", "p-hint p-hint-inline", "");
+      const slugField = field({
+        label: t("manage.10"),
+        placeholder: t("manage.11"),
+        max: SLUG_MAX,
+        value: duck.slug,
+        onInput: (v) => {
+          slug = v;
+          void checkSlug(v);
+        }
+      });
+      slugField.wrap.append(slugHint);
+      let checking = 0;
+      async function checkSlug(value) {
+        const mine = ++checking;
+        const tidy = value.trim().toLowerCase();
+        if (tidy === duck.slug) {
+          slugHint.textContent = "";
+          return;
+        }
+        if (tidy.length < SLUG_MIN) {
+          slugHint.textContent = t("manage.14");
+          slugHint.classList.remove("p-hint-good");
+          return;
+        }
+        try {
+          const res = await api.slugFree(tidy);
+          if (mine !== checking) return;
+          slugHint.textContent = res.ok ? t("manage.12") : t("manage.13");
+          slugHint.classList.toggle("p-hint-good", res.ok);
+        } catch {
+          if (mine === checking) slugHint.textContent = "";
+        }
+      }
+      wrap2.append(nameField.wrap, messageField.wrap, slugField.wrap);
       const status = el("p", "p-note", "");
       const save = button("p-btn", t("manage.08"), () => {
         status.textContent = "";
+        const tidy = slug.trim().toLowerCase();
+        const renamed = tidy && tidy !== duck.slug ? api.rename(editKey, tidy).then((res) => {
+          duck.slug = res.slug;
+        }) : Promise.resolve();
+        void renamed.then(
+          () => saveTheRest(),
+          (err) => {
+            status.textContent = err instanceof ApiError && err.status === 409 ? t("manage.13") : t("live.error");
+          }
+        );
+      });
+      const saveTheRest = () => {
         void api.update(editKey, {
           tint: duck.tint,
           stickers: duck.stickers,
@@ -2262,7 +2342,7 @@ function mineScreen(opts) {
             status.textContent = err instanceof ApiError && err.status === 0 ? t("live.offline") : t("live.error");
           }
         );
-      });
+      };
       const actions = el("div", "p-actions");
       actions.append(save, button("p-btn p-btn-quiet", t("mine.05"), () => view2(duck)));
       wrap2.append(actions, status);
