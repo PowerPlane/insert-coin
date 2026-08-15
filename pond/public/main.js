@@ -1134,16 +1134,15 @@ function drawRipples(buf, ripples, now) {
 var STOPS = 24;
 var STEP_MS = 420;
 var TICKS_PER_STOP = 3;
-var SPACING = 6;
 var SQUASH = 0.74;
 var RADIUS = 0.38;
 var ORBIT_SIZE = 620;
 var ORBIT_CELL = 6;
 var CENTRE_CELL = 10;
-function orbitAt(i, t2, size) {
+function orbitAt(i, t2, size, of = 4) {
   const centre = size / 2;
   const radius = size * RADIUS;
-  const step = Math.floor(t2 / TICKS_PER_STOP) + i * SPACING;
+  const step = Math.floor(t2 / TICKS_PER_STOP) + i * STOPS / Math.max(1, of);
   const angle = step % STOPS / STOPS * Math.PI * 2;
   const x = centre + Math.cos(angle) * radius - GRID * ORBIT_CELL / 2;
   const y = centre + Math.sin(angle) * radius * SQUASH - GRID * ORBIT_CELL / 2;
@@ -1163,7 +1162,7 @@ function drawOrbit(ctx, mine, wavers, t2, size) {
   ctx.clearRect(0, 0, size, size);
   const fontSize = Math.round(size * 0.042);
   wavers.forEach((w, i) => {
-    const at = orbitAt(i, t2, size);
+    const at = orbitAt(i, t2, size, wavers.length);
     drawDuck(
       ctx,
       {
@@ -1183,7 +1182,11 @@ function drawOrbit(ctx, mine, wavers, t2, size) {
     ctx.textBaseline = "top";
     const width = ctx.measureText(w.name).width;
     const chipH = fontSize * 1.45;
-    const bx = at.x + GRID * ORBIT_CELL / 2;
+    const half2 = width / 2 + fontSize * 0.45;
+    const bx = Math.min(
+      size - half2,
+      Math.max(half2, at.x + GRID * ORBIT_CELL / 2)
+    );
     const by = at.labelAbove ? at.y - fontSize * 0.35 - chipH : at.y + GRID * ORBIT_CELL + fontSize * 0.35;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(bx - width / 2 - fontSize * 0.45, by, width + fontSize * 0.9, chipH);
@@ -2181,7 +2184,7 @@ function mineScreen(opts) {
   function redecorate(duck) {
     const state = {
       tint: duck.tint,
-      stickers: [...duck.stickers],
+      stickers: duck.stickers.map((st) => ({ ...st })),
       paint: decodePaint(duck.paint)
     };
     studioScreen(root2, {
@@ -3637,8 +3640,23 @@ var PondView = class {
         burning: old.burning,
         burnUntil: old.burnUntil,
         misted: old.misted,
-        fireLitAt: old.fireLitAt
+        fireLitAt: old.fireLitAt,
+        /*
+         * ══ A DUCK IN THE AIR IS STILL IN THE AIR AFTER A POLL ══
+         * `arrivals` holds the duck OBJECT, and a poll built a fresh one to
+         * replace it — so the pond drew a landed duck while the old object
+         * went on falling in the arrivals list, shadow and all. It takes two
+         * requests in flight at once to see it, and releasing a duck starts
+         * exactly two: the poller resuming, and the arrival looking for it.
+         *
+         * Motion is ours, and being mid-fall is motion.
+         */
+        falling: old.falling,
+        roomUntil: old.roomUntil,
+        selfDirected: old.selfDirected,
+        mine: old.mine
       };
+      for (const a of this.arrivals) if (a.duck.id === fresh.id) a.duck = merged;
       mergeFire(merged, fresh.fire, now);
       return merged;
     });
@@ -4001,9 +4019,20 @@ var PondView = class {
     this.ducks.push(placed);
     return placed;
   }
-  /** Take a local duck back out. Server ducks are managed by `setDucks`. */
+  /**
+   * Take a local duck back out — and everything that was happening to it.
+   *
+   * Removing it from `ducks` alone was not enough: a duck taken away
+   * mid-fall stayed in `arrivals`, so its shadow kept growing on water
+   * nobody was looking at any more, and it "landed" a moment later with a
+   * splash and a fortune on a screen that had moved on. Leaving the arrival
+   * screen quickly could stack a second one on top of the first.
+   *
+   * Anything holding a duck by reference has to let go here.
+   */
   removeLocal(id) {
     this.ducks = this.ducks.filter((d) => d.id !== id);
+    this.arrivals = this.arrivals.filter((a) => a.duck.id !== id);
   }
   /**
    * Bring a duck to where it can still be SEEN once its card is up.
@@ -4828,6 +4857,7 @@ async function pondScreen(bootstrap) {
       go.type = "button";
       go.addEventListener("click", () => {
         pausePolling();
+        call(null);
         releaseFlow({
           root: overlay,
           fortune: session.fortune ?? 1,

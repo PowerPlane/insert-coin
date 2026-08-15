@@ -643,6 +643,14 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       // moment you start decorating stops being a place you are making
       // something for.
       pausePolling();
+      /*
+       * ══ NOBODY IS BEING WHISTLED FOR DURING AN ARRIVAL ══
+       * A filter left up from before treats the arrival's preview duck as
+       * uncalled — it has no keeper, because it does not exist yet — and
+       * shoves it out of frame while it is still falling. The whistle
+       * belongs to browsing the pond, and this is not that.
+       */
+      call(null);
       releaseFlow({
         root: overlay,
         fortune: session.fortune ?? 1,

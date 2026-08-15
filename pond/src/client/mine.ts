@@ -218,9 +218,21 @@ export function mineScreen(opts: MineOptions): void {
    * Next is tapped, or not at all.
    */
   function redecorate(duck: PondDuck): void {
+    /*
+     * ══ A COPY OF THE ARRAY IS NOT A COPY OF WHAT IS IN IT ══
+     * `[...duck.stickers]` makes a new list of the SAME sticker objects, and
+     * dragging one in the studio moves it by writing to `x`/`y`. So backing
+     * out without saving left the duck in memory already changed: the screen
+     * showed the new position, the server had the old one, and the next
+     * thing to save would have quietly written a move nobody confirmed.
+     *
+     * Each sticker is copied too. Redecorating is a DRAFT — it exists to be
+     * abandoned — and a draft that edits the thing it is a draft of is not
+     * one.
+     */
     const state = {
       tint: duck.tint,
-      stickers: [...duck.stickers],
+      stickers: duck.stickers.map((st) => ({ ...st })),
       paint: decodePaint(duck.paint),
     };
 

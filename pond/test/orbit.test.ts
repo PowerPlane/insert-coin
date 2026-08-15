@@ -26,10 +26,43 @@ const middleOf = (s: { x: number; y: number }) => ({
 });
 
 describe("the ring", () => {
-  it("spreads four bumpers around it rather than stacking them", () => {
-    const spots = [0, 1, 2, 3].map((i) => middleOf(orbitAt(i, 0, ORBIT_SIZE)));
-    const seen = new Set(spots.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`));
-    expect(seen.size).toBe(4);
+  it("spreads however many turned up, without ever stacking two", () => {
+    /*
+     * The gap used to be a fixed six stops — a quarter of the circle — and
+     * the server returns up to FIVE bumpers. The fifth landed on stop 30,
+     * which is stop 6 again: one duck drawn exactly on another, both names
+     * in the same place.
+     */
+    for (let count = 1; count <= 6; count++) {
+      const spots = [...Array(count)].map((_, i) =>
+        middleOf(orbitAt(i, 0, ORBIT_SIZE, count)));
+      const seen = new Set(spots.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`));
+      expect(seen.size, `${count} bumpers`).toBe(count);
+    }
+  });
+
+  it("spreads them EVENLY, whatever the count", () => {
+    /*
+     * Not merely distinct: five bunched into a third of the ring would pass
+     * the test above and look nothing like an orbit.
+     *
+     * Measured in the ellipse's own parameter, not in the angle you would
+     * read off the screen. Equal steps around a SQUASHED ring do not
+     * subtend equal angles from the middle — that is what squashing means —
+     * so the vertical is un-squashed first. An earlier version of this test
+     * did not, and reported the code as wrong for being an ellipse.
+     */
+    const SQUASH = 0.74;
+    for (const count of [3, 5]) {
+      const angles = [...Array(count)].map((_, i) => {
+        const p = middleOf(orbitAt(i, 0, ORBIT_SIZE, count));
+        return Math.atan2((p.y - centre) / SQUASH, p.x - centre);
+      }).sort((a, b) => a - b);
+      const gaps = angles.map((a, i) =>
+        i ? a - angles[i - 1]! : a + Math.PI * 2 - angles[angles.length - 1]!);
+      const want = (Math.PI * 2) / count;
+      for (const g of gaps) expect(g, `${count} bumpers`).toBeCloseTo(want, 1);
+    }
   });
 
   it("is an ellipse, not a circle — a ring lying ON the water", () => {

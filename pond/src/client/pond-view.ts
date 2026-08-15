@@ -619,7 +619,21 @@ export class PondView {
         dartToX: old.dartToX, dartToY: old.dartToY,
         burning: old.burning, burnUntil: old.burnUntil,
         misted: old.misted, fireLitAt: old.fireLitAt,
+        /*
+         * ══ A DUCK IN THE AIR IS STILL IN THE AIR AFTER A POLL ══
+         * `arrivals` holds the duck OBJECT, and a poll built a fresh one to
+         * replace it — so the pond drew a landed duck while the old object
+         * went on falling in the arrivals list, shadow and all. It takes two
+         * requests in flight at once to see it, and releasing a duck starts
+         * exactly two: the poller resuming, and the arrival looking for it.
+         *
+         * Motion is ours, and being mid-fall is motion.
+         */
+        falling: old.falling, roomUntil: old.roomUntil,
+        selfDirected: old.selfDirected, mine: old.mine,
       };
+      // And the arrival is holding the OLD object; point it at this one.
+      for (const a of this.arrivals) if (a.duck.id === fresh.id) a.duck = merged;
       mergeFire(merged, fresh.fire, now);
       return merged;
     });
@@ -1154,9 +1168,22 @@ export class PondView {
     return placed;
   }
 
-  /** Take a local duck back out. Server ducks are managed by `setDucks`. */
+  /**
+   * Take a local duck back out — and everything that was happening to it.
+   *
+   * Removing it from `ducks` alone was not enough: a duck taken away
+   * mid-fall stayed in `arrivals`, so its shadow kept growing on water
+   * nobody was looking at any more, and it "landed" a moment later with a
+   * splash and a fortune on a screen that had moved on. Leaving the arrival
+   * screen quickly could stack a second one on top of the first.
+   *
+   * Anything holding a duck by reference has to let go here.
+   */
   removeLocal(id: string): void {
     this.ducks = this.ducks.filter((d) => d.id !== id);
+    this.arrivals = this.arrivals.filter((a) => a.duck.id !== id);
+    // The whistle is a predicate over whatever is in the pond, so a duck
+    // that is no longer in it is already forgotten.
   }
 
   /**

@@ -32,8 +32,16 @@ export const STOPS = 24;
 export const STEP_MS = 420;
 /** Ticks per stop, so the ring turns slowly enough to read the names. */
 const TICKS_PER_STOP = 3;
-/** How far apart around the ring two bumpers start. */
-const SPACING = 6;
+/*
+ * ══ THEY SPREAD BY HOW MANY THERE ARE ══
+ * This was a fixed six stops apart, which is a quarter of the circle — and
+ * the server returns up to FIVE bumpers. The fifth lands on 30 stops, which
+ * is stop 6 again, exactly on top of the first: one duck drawn over another
+ * with both names in the same place.
+ *
+ * The gap is the circle divided by however many turned up, so any number of
+ * them is evenly spread and no two can ever coincide.
+ */
 /** A ring on water, not a hoop in the air. */
 const SQUASH = 0.74;
 /** Radius as a fraction of the canvas — clears the duck in the middle. */
@@ -76,10 +84,12 @@ export interface OrbitSpot {
  * `size` is the canvas edge in pixels; the ring is sized from it, so one
  * function serves any canvas.
  */
-export function orbitAt(i: number, t: number, size: number): OrbitSpot {
+export function orbitAt(i: number, t: number, size: number, of = 4): OrbitSpot {
   const centre = size / 2;
   const radius = size * RADIUS;
-  const step = Math.floor(t / TICKS_PER_STOP) + i * SPACING;
+  // Not a whole number of stops for every count, and that is fine: the
+  // stops quantise the TURNING, not where each duck sits around the ring.
+  const step = Math.floor(t / TICKS_PER_STOP) + (i * STOPS) / Math.max(1, of);
   const angle = ((step % STOPS) / STOPS) * Math.PI * 2;
 
   const x = centre + Math.cos(angle) * radius - (GRID * ORBIT_CELL) / 2;
@@ -128,7 +138,7 @@ export function drawOrbit(
   const fontSize = Math.round(size * 0.042);
 
   wavers.forEach((w, i) => {
-    const at = orbitAt(i, t, size);
+    const at = orbitAt(i, t, size, wavers.length);
     drawDuck(
       ctx,
       {
@@ -147,7 +157,17 @@ export function drawOrbit(
     ctx.textBaseline = "top";
     const width = ctx.measureText(w.name).width;
     const chipH = fontSize * 1.45;
-    const bx = at.x + (GRID * ORBIT_CELL) / 2;
+    /*
+     * Kept inside the canvas. A name can be eighteen characters, and a
+     * chip centred on a duck at the left or right of the ring runs off the
+     * edge — so the longest names, which are the ones hardest to read
+     * anyway, were the ones getting cut in half.
+     */
+    const half = width / 2 + fontSize * 0.45;
+    const bx = Math.min(
+      size - half,
+      Math.max(half, at.x + (GRID * ORBIT_CELL) / 2),
+    );
     const by = at.labelAbove
       ? at.y - fontSize * 0.35 - chipH
       : at.y + GRID * ORBIT_CELL + fontSize * 0.35;
