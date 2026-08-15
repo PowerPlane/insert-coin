@@ -24,6 +24,7 @@ import { cardSetup, claimFromUrl } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, SPLASH_TAP, type Placed } from "./pond-view.js";
 import { GRID } from "./codec.js";
+import { bumpsToShow } from "./bumps.js";
 import { TAG, drawDuck } from "./render.js";
 import { prefersReducedMotion } from "./viewport.js";
 import { fortuneTitle, setLang, t, type Lang } from "./strings.js";
@@ -1044,6 +1045,21 @@ function openDuckCard(view: PondView, duck: Placed): void {
   void api.bumpers(duck.id).then(
     (res) => {
       if (!res.bumpers.length || !panel.isConnected) return;
+      /*
+       * ══ TWO VIEWS OF ONE FACT, FROM TWO SOURCES ══
+       * The sentence above comes from `duck.bumps`, polled with the pond
+       * every twenty seconds. This row comes from its own request, made
+       * when the card opens. Between a bump and the next poll they
+       * disagree, and the card said "nobody has bumped it yet" directly
+       * above a row of four people who had.
+       *
+       * The row is the fresher and more specific answer — it names them —
+       * so it corrects the sentence rather than sitting under it
+       * contradicting it. Seen against the bench, where the two come from
+       * different fixtures; the same window exists in production, just
+       * narrower.
+       */
+      showStats(bumpsToShow(duck.bumps, res.bumpers));
       bumpers.append(el("p", "p-field-label", t("pond.28")));
       const row = el("div", "p-bumprow");
       for (const b of res.bumpers) {

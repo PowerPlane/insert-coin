@@ -4748,6 +4748,12 @@ var PondView = class {
   }
 };
 
+// src/client/bumps.ts
+function bumpsToShow(polled, bumpers) {
+  const named = bumpers.reduce((n, b) => n + (Number.isFinite(b.count) ? b.count : 0), 0);
+  return Math.max(polled > 0 ? polled : 0, named > 0 ? named : 0);
+}
+
 // src/client/main.ts
 function boot() {
   const el3 = document.getElementById("pond-bootstrap");
@@ -5248,6 +5254,7 @@ function openDuckCard(view2, duck) {
   void api.bumpers(duck.id).then(
     (res) => {
       if (!res.bumpers.length || !panel.isConnected) return;
+      showStats(bumpsToShow(duck.bumps, res.bumpers));
       bumpers.append(el2("p", "p-field-label", t("pond.28")));
       const row = el2("div", "p-bumprow");
       for (const b of res.bumpers) {
