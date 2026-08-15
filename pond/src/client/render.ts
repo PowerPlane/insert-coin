@@ -34,8 +34,6 @@ export const DWELL = [1.0, 1.45, 0.85, 1.25] as const;
 export interface Drawable {
   fortune: number;
   tint: number;
-  /** Yours. Wears a label, at zooms where a label is readable. */
-  mine?: boolean;
   paint?: Uint8Array | string | null;
   stickers?: Sticker[] | null;
   burning?: boolean;

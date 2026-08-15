@@ -14,7 +14,10 @@
  */
 
 import { ApiError, api, clearDraft } from "./api.js";
-import { button, el, field, screen, sheet } from "./dom.js";
+import {
+  button, el, field, screen, sheet, spacer, view as fullView,
+} from "./dom.js";
+import { ORBIT_SIZE, STEP_MS, drawOrbit, type OrbitDuck } from "./orbit.js";
 import { drawDuck } from "./render.js";
 import { GRID, decodePaint } from "./codec.js";
 import { studioScreen, toPayload } from "./studio.js";
@@ -87,11 +90,10 @@ export function mineScreen(opts: MineOptions): void {
   function view(duck: PondDuck): void {
     screen(root, () => {
       root.replaceChildren();
-      const { root: sheetRoot, body: wrap } = sheet(true);
+      const { root: viewRoot, body: wrap } = fullView();
       wrap.append(
         el("p", "p-eyebrow", t("mine.01")),
-        preview(duck, 6),
-        el("h1", "p-title", duck.name || t("mine.02")),
+        el("h1", "p-title", t("mine.02")),
       );
 
       // The two facts worth coming back for: how long it has been in, and
@@ -99,15 +101,108 @@ export function mineScreen(opts: MineOptions): void {
       const bumps = duck.bumps === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(duck.bumps) });
       wrap.append(el("p", "p-body", `${since(duck.created)} · ${bumps}`));
 
+      /*
+       * ══ THE PEOPLE WHO BUMPED YOU, CIRCLING ══
+       * There is no notification here — you find out somebody bumped your
+       * duck by COMING BACK, which is the whole point of a private link
+       * and no account. So this screen has to be worth arriving at, and a
+       * static picture of your own duck with a number under it is not.
+       *
+       * The ring loads after the screen: an empty stage is honest while it
+       * is on its way, and the duck in the middle is drawn from the first
+       * frame either way.
+       */
+      const stage = el("div", "p-orbit");
+      const canvas = el("canvas", "p-orbit-art");
+      canvas.width = ORBIT_SIZE;
+      canvas.height = ORBIT_SIZE;
+      canvas.setAttribute("role", "img");
+      stage.append(canvas);
+      wrap.append(stage);
+
+      // Named underneath, in a sentence, because a ring of moving labels is
+      // something to enjoy and a sentence is something to READ.
+      const who = el("p", "p-orbit-who", "");
+      who.hidden = true;
+      wrap.append(who);
+
+      startOrbit(canvas, who, duck);
+
+      wrap.append(spacer());
       const actions = el("div", "p-actions");
-      actions.append(
-        button("p-btn", t("mine.05"), opts.onPond),
+      /*
+       * Back is the one primary. Redecorate and Settings are a pair of
+       * equal alternatives, so they sit side by side rather than stacking —
+       * three full-width buttons read as three steps.
+       */
+      const pair = el("div", "p-actions-pair");
+      pair.append(
         button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)),
         button("p-btn p-btn-quiet", t("mine.07"), () => settings(duck)),
       );
+      actions.append(button("p-btn", t("mine.05"), opts.onPond), pair);
       wrap.append(actions);
-      root.append(sheetRoot);
+      root.append(viewRoot);
     });
+  }
+
+  /**
+   * "Mika, Jo, Lu, and Sam" — in whatever language is on.
+   *
+   * `Intl.ListFormat` because the joining word is not translatable by
+   * substitution: English wants "and" with an Oxford comma, Chinese wants
+   * 、 between and 和 before the last, and neither is a matter of swapping
+   * one token. The browser already knows all of this.
+   */
+  function nameList(names: string[]): string {
+    try {
+      return new Intl.ListFormat(document.documentElement.lang || "en", {
+        style: "long", type: "conjunction",
+      }).format(names);
+    } catch {
+      // Very old Safari. A comma list still reads.
+      return names.join(", ");
+    }
+  }
+
+  /**
+   * Turn the ring, and stop turning it when the screen goes.
+   *
+   * The interval is cleared by the NEXT screen replacing the canvas: every
+   * screen here starts with `replaceChildren`, so a canvas that is no
+   * longer in the document is the signal that this screen is over. Cheaper
+   * and less forgettable than a teardown every caller has to remember.
+   */
+  function startOrbit(canvas: HTMLCanvasElement, who: HTMLElement, duck: PondDuck): void {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    let wavers: OrbitDuck[] = [];
+    let tick = 0;
+
+    const paint = () => {
+      if (!canvas.isConnected) {
+        window.clearInterval(timer);
+        return;
+      }
+      drawOrbit(ctx, duck, wavers, tick++, ORBIT_SIZE);
+    };
+    const timer = window.setInterval(paint, STEP_MS);
+    paint();
+
+    void api.bumpers(duck.id).then(
+      (res) => {
+        if (!canvas.isConnected || !res.bumpers.length) return;
+        wavers = res.bumpers;
+        const names = res.bumpers.map((b) => b.name).filter(Boolean);
+        if (names.length) {
+          who.textContent = t("mine.04", { names: nameList(names) });
+          who.hidden = false;
+        }
+        paint();
+      },
+      // A screen that shows your duck is still a screen worth having.
+      () => {},
+    );
   }
 
   /**

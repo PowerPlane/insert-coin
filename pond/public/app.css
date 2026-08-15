@@ -1817,3 +1817,64 @@ a.p-chip {
   background: var(--p-ink);
   color: var(--p-surface);
 }
+
+/* ── the bumpers, circling ────────────────────────────────────────────── */
+
+/*
+ * The ring takes whatever height is going. It is the subject of this
+ * screen, so it gets the space between the sentence above it and the
+ * buttons below rather than a fixed size that is wrong on two phones out
+ * of three.
+ */
+.p-orbit {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * Drawn at 620 and shown at up to 290: scaled DOWN, which is the one
+ * direction a pixel sprite survives. `pixelated` keeps the edges hard on
+ * the way.
+ */
+.p-orbit-art {
+  width: 100%;
+  max-width: 290px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+/*
+ * The same people, as a sentence. The ring is something to enjoy; a line of
+ * names is something to READ, and a moving label is neither.
+ */
+.p-orbit-who {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--p-soft);
+  /*
+   * Clear of the ring. The lowest name sits near the bottom edge of the
+   * canvas, so with no gap the sentence reads as a fifth label rather than
+   * as a caption for all four.
+   */
+  margin: 0.35rem 0 0;
+}
+
+.p-orbit-who[hidden] {
+  display: none;
+}
+
+/*
+ * Two equal alternatives, side by side. Redecorate and Settings are the
+ * same KIND of thing — neither is the way forward — and stacking them
+ * full-width under the primary reads as three steps in a sequence.
+ */
+.p-actions-pair {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.p-actions-pair > * {
+  flex: 1;
+}

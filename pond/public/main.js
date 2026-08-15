@@ -1130,6 +1130,84 @@ function drawRipples(buf, ripples, now) {
   buf.canvas.getContext("2d").putImageData(buf.image, 0, 0);
 }
 
+// src/client/orbit.ts
+var STOPS = 24;
+var STEP_MS = 420;
+var TICKS_PER_STOP = 3;
+var SPACING = 6;
+var SQUASH = 0.74;
+var RADIUS = 0.38;
+var ORBIT_SIZE = 620;
+var ORBIT_CELL = 6;
+var CENTRE_CELL = 10;
+function orbitAt(i, t2, size) {
+  const centre = size / 2;
+  const radius = size * RADIUS;
+  const step = Math.floor(t2 / TICKS_PER_STOP) + i * SPACING;
+  const angle = step % STOPS / STOPS * Math.PI * 2;
+  const x = centre + Math.cos(angle) * radius - GRID * ORBIT_CELL / 2;
+  const y = centre + Math.sin(angle) * radius * SQUASH - GRID * ORBIT_CELL / 2;
+  return {
+    x: Math.round(x / ORBIT_CELL) * ORBIT_CELL,
+    y: Math.round(y / ORBIT_CELL) * ORBIT_CELL,
+    // Going left means facing left. Without this they moonwalk half the way
+    // round, which is the sort of thing you feel before you can name.
+    flip: Math.cos(angle) < 0,
+    // Above the centre line means the name goes above the duck: away from
+    // the middle, where there is nothing to collide with.
+    labelAbove: Math.sin(angle) < 0
+  };
+}
+function drawOrbit(ctx, mine, wavers, t2, size) {
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, size, size);
+  const fontSize = Math.round(size * 0.042);
+  wavers.forEach((w, i) => {
+    const at = orbitAt(i, t2, size);
+    drawDuck(
+      ctx,
+      {
+        fortune: w.fortune,
+        tint: w.tint,
+        paint: w.paint ? decodePaint(w.paint) : null,
+        stickers: w.stickers ?? null,
+        flip: at.flip
+      },
+      at.x,
+      at.y,
+      ORBIT_CELL
+    );
+    if (!w.name) return;
+    ctx.font = `600 ${fontSize}px ${MONO2}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const width = ctx.measureText(w.name).width;
+    const chipH = fontSize * 1.45;
+    const bx = at.x + GRID * ORBIT_CELL / 2;
+    const by = at.labelAbove ? at.y - fontSize * 0.35 - chipH : at.y + GRID * ORBIT_CELL + fontSize * 0.35;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(bx - width / 2 - fontSize * 0.45, by, width + fontSize * 0.9, chipH);
+    ctx.fillStyle = "#0b3d52";
+    ctx.fillText(w.name, bx, by + fontSize * 0.22);
+  });
+  const half = GRID * CENTRE_CELL / 2;
+  drawDuck(
+    ctx,
+    {
+      fortune: mine.fortune,
+      tint: mine.tint,
+      paint: mine.paint ? decodePaint(mine.paint) : null,
+      stickers: mine.stickers ?? null
+    },
+    Math.round((size / 2 - half) / CENTRE_CELL) * CENTRE_CELL,
+    Math.round((size / 2 - half) / CENTRE_CELL) * CENTRE_CELL,
+    CENTRE_CELL
+  );
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+var MONO2 = "'IBM Plex Mono', ui-monospace, monospace";
+
 // src/client/strings.ts
 var SCOPE_STRINGS = {
   "scope.01": "Who can see this",
@@ -1417,8 +1495,8 @@ var EN = {
   // Heading
   "mine.03": "In the pond for six days. Four people bumped your duck.",
   // Body
-  "mine.04": "Mika, Jo, Lu, and Sam bumped your duck.",
-  // Body
+  "mine.04": "{names} bumped your duck.",
+  // Body, under the orbit
   "mine.05": "Back to the pond",
   // Button
   "mine.06": "Redecorate",
@@ -1618,7 +1696,7 @@ var ZH_HANT = {
   "mine.01": "歡迎回來",
   "mine.02": "你的鴨子",
   "mine.03": "在池塘裡六天了。有四個人戳過你的鴨子。",
-  "mine.04": "Mika、Jo、Lu 和 Sam 戳過你的鴨子。",
+  "mine.04": "{names} 戳過你的鴨子。",
   "mine.05": "回到池塘",
   "mine.06": "重新裝飾",
   "mine.07": "設定",
@@ -2029,23 +2107,75 @@ function mineScreen(opts) {
   function view2(duck) {
     screen(root2, () => {
       root2.replaceChildren();
-      const { root: sheetRoot, body: wrap2 } = sheet(true);
+      const { root: viewRoot, body: wrap2 } = view();
       wrap2.append(
         el("p", "p-eyebrow", t("mine.01")),
-        preview(duck, 6),
-        el("h1", "p-title", duck.name || t("mine.02"))
+        el("h1", "p-title", t("mine.02"))
       );
       const bumps = duck.bumps === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(duck.bumps) });
       wrap2.append(el("p", "p-body", `${since(duck.created)} · ${bumps}`));
+      const stage = el("div", "p-orbit");
+      const canvas = el("canvas", "p-orbit-art");
+      canvas.width = ORBIT_SIZE;
+      canvas.height = ORBIT_SIZE;
+      canvas.setAttribute("role", "img");
+      stage.append(canvas);
+      wrap2.append(stage);
+      const who = el("p", "p-orbit-who", "");
+      who.hidden = true;
+      wrap2.append(who);
+      startOrbit(canvas, who, duck);
+      wrap2.append(spacer());
       const actions = el("div", "p-actions");
-      actions.append(
-        button("p-btn", t("mine.05"), opts.onPond),
+      const pair = el("div", "p-actions-pair");
+      pair.append(
         button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)),
         button("p-btn p-btn-quiet", t("mine.07"), () => settings(duck))
       );
+      actions.append(button("p-btn", t("mine.05"), opts.onPond), pair);
       wrap2.append(actions);
-      root2.append(sheetRoot);
+      root2.append(viewRoot);
     });
+  }
+  function nameList(names) {
+    try {
+      return new Intl.ListFormat(document.documentElement.lang || "en", {
+        style: "long",
+        type: "conjunction"
+      }).format(names);
+    } catch {
+      return names.join(", ");
+    }
+  }
+  function startOrbit(canvas, who, duck) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    let wavers = [];
+    let tick = 0;
+    const paint = () => {
+      if (!canvas.isConnected) {
+        window.clearInterval(timer);
+        return;
+      }
+      drawOrbit(ctx, duck, wavers, tick++, ORBIT_SIZE);
+    };
+    const timer = window.setInterval(paint, STEP_MS);
+    paint();
+    void api.bumpers(duck.id).then(
+      (res) => {
+        if (!canvas.isConnected || !res.bumpers.length) return;
+        wavers = res.bumpers;
+        const names = res.bumpers.map((b) => b.name).filter(Boolean);
+        if (names.length) {
+          who.textContent = t("mine.04", { names: nameList(names) });
+          who.hidden = false;
+        }
+        paint();
+      },
+      // A screen that shows your duck is still a screen worth having.
+      () => {
+      }
+    );
   }
   function redecorate(duck) {
     const state = {

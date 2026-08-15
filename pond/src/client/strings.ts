@@ -234,7 +234,7 @@ export const EN = {
   "mine.01": "Welcome back", // Body
   "mine.02": "Your duck", // Heading
   "mine.03": "In the pond for six days. Four people bumped your duck.", // Body
-  "mine.04": "Mika, Jo, Lu, and Sam bumped your duck.", // Body
+  "mine.04": "{names} bumped your duck.", // Body, under the orbit
   "mine.05": "Back to the pond", // Button
   "mine.06": "Redecorate", // Button
   "mine.07": "Settings", // Button
@@ -451,7 +451,7 @@ export const ZH_HANT: Record<StringKey, string> = {
   "mine.01": "歡迎回來",
   "mine.02": "你的鴨子",
   "mine.03": "在池塘裡六天了。有四個人戳過你的鴨子。",
-  "mine.04": "Mika、Jo、Lu 和 Sam 戳過你的鴨子。",
+  "mine.04": "{names} 戳過你的鴨子。",
   "mine.05": "回到池塘",
   "mine.06": "重新裝飾",
   "mine.07": "設定",
