@@ -101,20 +101,34 @@ constexpr uint16_t BLOW_GAP_MS = 20;
 // holds the card. A tap is not: anyone can tap a card across a table, and
 // everything in the URL is typed text.
 //
-// The window is not a flat ten seconds. Only a person already blowing is
-// claiming, so it closes after CLAIM_FIRST_BLOW_MS if nothing arrives and
-// opens out to CLAIM_WINDOW_MS once the first blow lands. That gives the
-// keeper their window and hands the ordinary visitor their boot back.
+// There is no separate window. The gesture used to get 2.5 s of its own
+// before the show, with the LEDs off, and the bench found the flaw at once:
+// an invisible pause looks exactly like the card thinking, and it was over
+// before anybody would react. The show is the window now — the mic stays up
+// and the animations pump the watcher between frames, so four blows count
+// whenever they arrive. CLAIM_FIRST_BLOW_MS, CLAIM_BETWEEN_BLOWS_MS and
+// CLAIM_WINDOW_MS went with it; nothing is on a deadline any more.
 constexpr uint8_t CLAIM_BLOWS = 4;
-// How long an unclaimed boot waits before deciding nobody is blowing.
-constexpr uint16_t CLAIM_FIRST_BLOW_MS = 2500;
-// Having started, this long without another blow means they stopped.
-constexpr uint16_t CLAIM_BETWEEN_BLOWS_MS = 3000;
-// A ceiling regardless, so a noisy room cannot hold the card here.
-constexpr uint16_t CLAIM_WINDOW_MS = 10000;
 // The envelope must fall for this long before the next blow counts, or one
 // long breath reads as four and the gesture proves nothing.
 constexpr uint16_t CLAIM_GAP_MS = 120;
+
+// Entering setup: one sweep down the strip, bad-luck banks to first ducky.
+// Slow enough to read as deliberate — speed is what the reveals have, and
+// this must not look like one.
+constexpr uint16_t SETUP_SWEEP_STEP_MS = 85;
+constexpr uint16_t SETUP_SWEEP_HOLD_MS = 240;
+
+// Failing to arm: everything blinking hard, fast, three times. Not the
+// entry sweep reversed — that would make success and failure a matter of
+// noticing which way the light moved.
+constexpr uint8_t  CLAIM_FAILED_BLINKS = 3;
+constexpr uint16_t CLAIM_FAILED_MS     = 110;
+
+// How long the card sits in setup mode, awake and listening, before giving
+// up and retiring the claim itself. Matches the fortune's live window: it
+// is the same question — how long does somebody get to find their phone.
+constexpr uint16_t SETUP_WINDOW_SECONDS = 300;
 
 // How many further attempts to retire an armed claim, backing off 1, 2, 4,
 // 8, 16, 32 s. A stale fortune is a small loss; a live claim left on the tag

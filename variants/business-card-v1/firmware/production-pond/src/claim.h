@@ -13,29 +13,48 @@
 // shoulder is already spent by the time they try it. To claim your card
 // they have to make the number go up, and only the gesture does that.
 //
-// ══ WHY THE WINDOW CLOSES EARLY ══
-// The design opens a ten-second window on every power-up. Taken literally
-// that taxes every boot — including the ordinary one, where somebody put a
-// coin in to watch a duck and has no idea a gesture exists.
+// ══ WHY THERE IS NO WINDOW ══
+// The gesture used to get 2.5 seconds of its own, after the boot flash and
+// before the show, with the LEDs off. It did not work, and the bench found
+// it immediately: an invisible pause is indistinguishable from the card
+// thinking, and it was over before anybody would react. You had to already
+// be blowing as you pushed the coin in.
 //
-// But only a person who is ALREADY BLOWING is claiming. So the window
-// closes after CLAIM_FIRST_BLOW_MS if nothing has arrived, and only opens
-// out to the full ten seconds once the first blow lands. The keeper gets
-// their window; the visitor waits about two seconds and never learns there
-// was one.
+// So the show itself is the window now. The mic stays up, the animations
+// pump the watcher between frames, and four blows count whenever they
+// arrive. Landing them abandons the show — no lottery, no reveal, no
+// fortune patched onto the tag — because setting a card up is not a turn
+// at the game, and burning a fortune nobody will claim was the old
+// behaviour's other half.
 
 #pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
 
-// Listen for the gesture. Blocking, and it lights one LED per blow so the
-// count is visible — stopping at three has to look different from stopping
-// at four, or a failure is indistinguishable from a card that is broken.
+// Start watching for the gesture. Non-blocking; the show pumps it.
+void claim_watch_begin();
+
+// Pump the watcher for `ms`, sampling the mic and counting blows, then
+// return false. Returns true EARLY — and immediately on every later call —
+// once CLAIM_BLOWS have landed, which is how the animations know to stop
+// spending time on frames nobody is going to see.
 //
-// Returns true only when CLAIM_BLOWS have landed. Leaves the mic running:
-// the caller owns mic_init/mic_deinit.
-bool claim_listen();
+// The caller owns mic_init/mic_deinit; the mic must be up.
+bool claim_watch_delay(uint16_t ms);
+
+// Have the four blows landed? Cheap, and safe to ask after the show.
+bool claim_watch_done();
+
+// Sit in setup mode until the keeper leaves or the window runs out.
+//
+// Dark and listening. Four blows retire the claim and return true; the
+// window expiring returns false. Each blow lights one ducky frame — the
+// count is shown HERE and not during the show, because here the banks are
+// idle and whoever is blowing meant to be.
+//
+// Blocking, and the CPU stays awake throughout. Requires the mic to be up.
+bool claim_setup_wait(uint16_t seconds);
 
 // Arm the tag. Advances the card's claim counter, signs it, and rewrites
 // the two spans that carry a claim — `&g=` and `&t=` — in place.

@@ -1,5 +1,7 @@
 #include "anim.h"
 
+#include "claim.h"
+
 #include <Arduino.h>
 
 #include "config.h"
@@ -27,9 +29,14 @@ void anim_boot_capture() {
 void anim_ducky_walk() {
     // Hard cuts between frames -- stop-motion charm. Bank N is just
     // BANK_DUCKY_FRAME_(N+1); the indices line up.
+    //
+    // `claim_watch_delay` rather than `delay`: the show IS the claim
+    // window, so every frame boundary is a chance for a blow to land. It
+    // returns true once four have, and then there is nothing worth
+    // finishing — the card is going to card setup, not to a fortune.
     for (uint8_t frame = 0; frame < 4; frame++) {
         bank_all_mask((uint16_t)1 << frame);
-        delay(WALK_DWELL_MS[frame]);
+        if (claim_watch_delay(WALK_DWELL_MS[frame])) break;
     }
     bank_all_off();
 }
@@ -48,14 +55,22 @@ static uint16_t lottery_mask(uint8_t i) {
 
 uint8_t anim_lottery() {
     bank_all_off();
-    for (uint8_t c = 0; c < LOTTERY_CYCLES; c++) {
+    for (uint8_t c = 0; c < LOTTERY_CYCLES && !claim_watch_done(); c++) {
         uint16_t dwell = LOTTERY_DWELL_MS[c];
         for (uint8_t i = 0; i < 4; i++) {
             bank_all_mask(lottery_mask(i));
-            delay(dwell);
+            if (claim_watch_delay(dwell)) break;
         }
     }
     bank_all_off();
+
+    /*
+     * A claimed card is not having a turn, so it does not draw one. The
+     * caller checks `claim_watch_done()` and never reads this value, but
+     * returning early also skips the reseed — which spends ADC samples
+     * nobody is going to use.
+     */
+    if (claim_watch_done()) return 0;
 
     rng_seed_from_mic(RNG_RESEED_SAMPLES);
 #if FORCE_FORTUNE >= 0
@@ -217,6 +232,59 @@ static void anim_reveal_fire() {
     }
     pwm_all_off();
     bank_all_off();
+}
+
+/*
+ * ══ BACKWARDS, BECAUSE NOTHING ELSE IS ══
+ * The duck walks left to right, the lottery climbs, the reveals bloom
+ * outward. Every motion this card makes goes forwards, so one sweep the
+ * other way — from the fire banks down to the first ducky frame — is the
+ * one thing that cannot read as part of the game.
+ *
+ * Once, not repeated. It is a door closing behind you, not a status light.
+ */
+void anim_setup_enter() {
+    for (uint8_t i = 0; i < NUM_BANKS; i++) {
+        const uint8_t bank = (uint8_t)(NUM_BANKS - 1 - i);
+        bank_all_mask((uint16_t)1u << bank);
+        delay(SETUP_SWEEP_STEP_MS);
+    }
+    bank_all_off();
+    delay(SETUP_SWEEP_HOLD_MS);
+}
+
+/*
+ * The way out, forwards. Entering runs backwards because nothing else on
+ * this card does; leaving runs the normal direction again, which is the
+ * card saying it is an ordinary card once more.
+ */
+void anim_setup_leave() {
+    for (uint8_t bank = 0; bank < NUM_BANKS; bank++) {
+        bank_all_mask((uint16_t)1u << bank);
+        delay(SETUP_SWEEP_STEP_MS);
+    }
+    bank_all_off();
+    delay(SETUP_SWEEP_HOLD_MS);
+}
+
+/*
+ * ══ FAILURE IS NOT A SLOWER SUCCESS ══
+ * A keeper standing there has to know their card did NOT take the claim
+ * before they walk off and tap it — an unarmed card opens a duck screen,
+ * and finding that out on the phone is finding it out too late.
+ *
+ * So this is not the entry sweep in another direction, which would make
+ * the two a matter of noticing which way the light moved. It is a hard
+ * fast blink of everything at once: no sweep, no sequence, nothing that
+ * resembles the vocabulary of the show.
+ */
+void anim_claim_failed() {
+    for (uint8_t i = 0; i < CLAIM_FAILED_BLINKS; i++) {
+        bank_all_on();
+        delay(CLAIM_FAILED_MS);
+        bank_all_off();
+        delay(CLAIM_FAILED_MS);
+    }
 }
 
 void anim_run_reveal(uint8_t fortune) {

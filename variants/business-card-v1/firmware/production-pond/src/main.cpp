@@ -53,6 +53,67 @@
 #include "sleepy.h"
 #include "unused_pins.h"
 
+/*
+ * Retire whatever this boot put on the tag, then sleep for good.
+ *
+ * Extracted because there are now two ways to reach it — a fortune's live
+ * window, and setup mode — and the rules for leaving are identical and
+ * fiddly enough that a second copy would drift. Never returns.
+ */
+[[noreturn]] static void clear_and_sleep(bool patched, bool armed) {
+    (void)patched;
+    // Restore the default so a later tap lands on the read-only pond
+    // instead of an expired fortune.
+    //
+    // This one genuinely matters, so it is not best-effort: going to
+    // terminal sleep with a stale digit still live means the NEXT person to
+    // tap this card claims a duck they did not earn, and nothing wakes the
+    // MCU to fix it until someone pulls the coin. Each ndef_patch_default()
+    // already retries NDEF_WRITE_ATTEMPTS times internally; if RF is still
+    // holding the bus, back off a second and try the whole sequence again.
+    bool still_armed = armed;
+    for (uint8_t round = 0; round < NDEF_CLEAR_ROUNDS; round++) {
+        ndef_init();
+        const bool cleared = ndef_patch_default();
+        // An armed URL left armed is a claim lying on the floor: anyone who
+        // picks the card up next taps into somebody else's setup screen.
+        // Cleared on the same schedule as the fortune, for the same reason.
+        if (still_armed && claim_disarm()) still_armed = false;
+        ndef_deinit();
+        if (cleared && !still_armed) break;
+        // Almost certainly a phone parked on the antenna. Sleeping a second
+        // costs nothing here and is the most likely way for it to move.
+        sleep_timed_seconds(1);
+    }
+
+    /*
+     * ══ NEVER SLEEP STILL ARMED ══
+     * The loop above gives up after NDEF_CLEAR_ROUNDS. For a stale fortune
+     * that is an acceptable loss — the worst case is somebody seeing luck
+     * they did not earn. For a live CLAIM it is not: the counter is already
+     * spent in EEPROM, so the URL on the tag stays valid until somebody
+     * rewrites it, and the next person to tap this card walks into the
+     * keeper's setup screen.
+     *
+     * Bumping the counter again does not help — the server has not seen the
+     * exposed one either, so it would still be accepted. The only thing
+     * that retires it is getting those bytes rewritten. So the card keeps
+     * trying, backing off further each time, and only then sleeps.
+     *
+     * This costs battery in a case that should never happen (a phone parked
+     * on the antenna through the whole sequence), and costs nothing at all
+     * in the case that always happens.
+     */
+    for (uint8_t round = 0; still_armed && round < CLAIM_DISARM_ROUNDS; round++) {
+        sleep_timed_seconds((uint16_t)(1u << round));
+        ndef_init();
+        if (claim_disarm()) still_armed = false;
+        ndef_deinit();
+    }
+
+    sleep_forever();
+}
+
 void setup() {
     bank_init();
     pwm_init();
@@ -67,17 +128,79 @@ void setup() {
     anim_boot_capture();
 
     /*
-     * The claim window, while the mic is already up and before the show
-     * spends the battery. It returns in about CLAIM_FIRST_BLOW_MS unless
-     * somebody is actually blowing, so the ordinary boot barely notices it.
+     * ══ THE SHOW IS THE CLAIM WINDOW ══
+     * The gesture used to have 2.5 s of its own, here, with the LEDs off.
+     * It did not work and the bench found it at once: an invisible pause is
+     * indistinguishable from the card thinking, and it closed before
+     * anybody would react — you had to be blowing already as the coin went
+     * in. Blow once the duck was walking and nothing was listening.
+     *
+     * Now the watcher starts here and the animations pump it between
+     * frames, so four blows count whenever they arrive: during the walk,
+     * during the lottery, whenever somebody thinks to try.
      */
-    const bool claimed = claim_listen();
+    claim_watch_begin();
 
     delay(POST_BOOT_PAUSE_MS);
     anim_ducky_walk();
     delay(POST_WALK_PAUSE_MS);
 
     uint8_t fortune = anim_lottery();
+    const bool claimed = claim_watch_done();
+
+    /*
+     * ══ SETTING A CARD UP IS NOT A TURN AT THE GAME ══
+     * A claimed card deals no fortune. It used to deal one anyway, and the
+     * result was a tag carrying both a fortune digit and a claim, where the
+     * tap opens Card setup and the fortune is simply lost — a coin spent on
+     * nothing, and one more thing on the tag to go stale.
+     *
+     * So the show is over. The tag gets the claim and only the claim.
+     */
+    if (claimed) {
+        ndef_init();
+        const bool identified = provision_ensure();
+        const bool armed = identified && claim_arm();
+        ndef_deinit();
+
+        if (!armed) {
+            // Nothing was promised: the tag still holds the counter the
+            // server has already retired. Say so unmistakably — an unarmed
+            // card opens a duck screen, and finding that out on the phone
+            // is finding it out too late.
+            mic_deinit();
+            anim_claim_failed();
+            clear_and_sleep(false, false);
+        }
+
+        /*
+         * ══ SETUP MODE ══
+         * One sweep backwards down the strip, and then the card waits in
+         * the dark while the phone does the work. Four more blows retire
+         * the claim and end it — the way out for somebody who armed a card
+         * they did not mean to, or who has finished and would rather the
+         * next tap open a duck.
+         *
+         * The mic stays up for that, so this is the one path where the CPU
+         * is awake through its whole window rather than in a timed sleep.
+         * A few milliamps for five minutes is a fraction of a percent of
+         * the coin cell, and setting a card up happens once.
+         */
+        anim_setup_enter();
+        const bool left = claim_setup_wait(SETUP_WINDOW_SECONDS);
+        mic_deinit();
+
+        // Leaving gets the sweep FORWARDS — the mirror of the way in.
+        // Playing the same animation for both would make arriving and
+        // leaving a matter of remembering which way the light went.
+        if (left) anim_setup_leave();
+
+        // Either way the claim is retired here rather than left on the
+        // tag. `clear_and_sleep` keeps trying until it takes — see the
+        // note on never sleeping still armed.
+        clear_and_sleep(false, true);
+    }
+
     // Only the fire reveal needs the mic. Disabling ADC1 here saves
     // ~25 uA across the great/little/uncertain reveal paths.
     if (fortune != FORTUNE_BAD) {
@@ -140,56 +263,7 @@ void setup() {
         sleep_timed_seconds(NDEF_EXPIRY_SECONDS);
     }
 
-    // Restore the default so a later tap lands on the read-only pond
-    // instead of an expired fortune.
-    //
-    // This one genuinely matters, so it is not best-effort: going to
-    // terminal sleep with a stale digit still live means the NEXT person to
-    // tap this card claims a duck they did not earn, and nothing wakes the
-    // MCU to fix it until someone pulls the coin. Each ndef_patch_default()
-    // already retries NDEF_WRITE_ATTEMPTS times internally; if RF is still
-    // holding the bus, back off a second and try the whole sequence again.
-    bool still_armed = armed;
-    for (uint8_t round = 0; round < NDEF_CLEAR_ROUNDS; round++) {
-        ndef_init();
-        const bool cleared = ndef_patch_default();
-        // An armed URL left armed is a claim lying on the floor: anyone who
-        // picks the card up next taps into somebody else's setup screen.
-        // Cleared on the same schedule as the fortune, for the same reason.
-        if (still_armed && claim_disarm()) still_armed = false;
-        ndef_deinit();
-        if (cleared && !still_armed) break;
-        // Almost certainly a phone parked on the antenna. Sleeping a second
-        // costs nothing here and is the most likely way for it to move.
-        sleep_timed_seconds(1);
-    }
-
-    /*
-     * ══ NEVER SLEEP STILL ARMED ══
-     * The loop above gives up after NDEF_CLEAR_ROUNDS. For a stale fortune
-     * that is an acceptable loss — the worst case is somebody seeing luck
-     * they did not earn. For a live CLAIM it is not: the counter is already
-     * spent in EEPROM, so the URL on the tag stays valid until somebody
-     * rewrites it, and the next person to tap this card walks into the
-     * keeper's setup screen.
-     *
-     * Bumping the counter again does not help — the server has not seen the
-     * exposed one either, so it would still be accepted. The only thing
-     * that retires it is getting those bytes rewritten. So the card keeps
-     * trying, backing off further each time, and only then sleeps.
-     *
-     * This costs battery in a case that should never happen (a phone parked
-     * on the antenna through the whole sequence), and costs nothing at all
-     * in the case that always happens.
-     */
-    for (uint8_t round = 0; still_armed && round < CLAIM_DISARM_ROUNDS; round++) {
-        sleep_timed_seconds((uint16_t)(1u << round));
-        ndef_init();
-        if (claim_disarm()) still_armed = false;
-        ndef_deinit();
-    }
-
-    sleep_forever();
+    clear_and_sleep(patched, armed);
 }
 
 void loop() {
