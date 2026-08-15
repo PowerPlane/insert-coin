@@ -1348,6 +1348,203 @@ a.p-btn {
 }
 
 /*
+ * ── your duck, on one page ───────────────────────────────────────────── */
+
+/*
+ * Everything below is scoped to this one screen. The fields, counters and
+ * gaps elsewhere in the flow are sized for screens with room; these are
+ * the same components asked to fit a page, and nothing outside the
+ * settings screen should shrink because this one had to.
+ */
+
+/* Two rows of message rather than three. 90 characters wrap to two on a
+   phone; the third row was empty on every duck in the pond. */
+.p-mine-view textarea.p-input {
+  min-height: calc(var(--tap) * 1.35);
+}
+
+/*
+ * The counter joins the label's line instead of taking one of its own.
+ * It reads as "Name … 4", which is what a counter is for, and gives back
+ * about 15px per field across four of them.
+ */
+.p-mine-view .p-field {
+  position: relative;
+}
+
+.p-mine-view .p-field-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+  line-height: 1.1;
+}
+
+/* Closer than the flow screens: this one is a form to work through, not
+   a page to read. */
+.p-mine-view.p-view-pad {
+  gap: 0.45rem;
+  padding-top: max(40px, calc(env(safe-area-inset-top) + 18px));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+/*
+ * The contact's hint and its way out, on one line.
+ *
+ * `align-items: center` rather than baseline: the link is a 44px tap
+ * target and the hint is two lines of small text, and centring them is
+ * the only arrangement where neither looks dropped.
+ */
+.p-contact-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.p-contact-foot .p-hint-tight {
+  flex: 1;
+  min-width: 0;
+}
+
+.p-contact-foot .p-linkish {
+  /* `0 0 auto` let it size to its text and run off the right edge on a
+     390px phone. It may not grow, must not shrink below its own words,
+     and wraps the sentence beside it instead. */
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+
+/* Taking a duck out is still the gravest thing here, but it does not need
+   a rule AND a margin AND a full-height button to say so. */
+.p-mine-view .p-danger {
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+}
+
+/*
+ * The ring and the sentence about it, side by side.
+ *
+ * They were stacked, which spent 176px on the ring and another 37 on a
+ * caption that had nothing beside it. They are one thought — this is your
+ * duck, this is how it has been getting on — so they read as one row, in
+ * about the height the ring alone used to take.
+ */
+.p-mine-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.p-mine-head .p-orbit-compact {
+  flex: 0 0 auto;
+}
+
+/*
+ * Specificity, not source order: `.p-orbit-compact .p-orbit-art` sets 176
+ * further down this file, and an equally-specific rule up here loses to
+ * it. Naming both ancestors wins by one class and says why it needs to.
+ */
+.p-mine-head .p-orbit-compact .p-orbit-art {
+  max-width: 118px;
+}
+
+.p-mine-head .p-orbit-who {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  text-align: left;
+}
+
+/*
+ * The private link as a row, not a field.
+ *
+ * Nobody edits this and nobody reads it character by character — they send
+ * it to themselves. So it gets the one control that matters and none of
+ * the height a text input spends on being editable: 44px against 67.
+ */
+.p-linkrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+.p-linkrow .p-field-label {
+  flex: 0 0 auto;
+}
+
+.p-linkrow-url {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--p-soft);
+  /* It is longer than the row on every phone. Clipped rather than
+     wrapped: a second line here would push the Copy button out of reach,
+     and the whole point of this row is that it is one line high. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * A hint that has to earn its height. Same voice as `.p-hint-block`, half
+ * the space around it, because it sits inside a field's own group rather
+ * than between two of them.
+ */
+.p-hint-tight {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/*
+ * An action that reads as a sentence, not a button.
+ *
+ * Taking a contact back is deliberate but small, and it had a full 44px
+ * quiet button plus a note — 90px for one rare act, on a screen that has
+ * none to spare. As a link under the field it keeps the tap target and
+ * loses the furniture.
+ */
+.p-linkish {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.p-linkish:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--field-500);
+}
+
+/*
+ * Save's answer, directly under the header row that holds Save.
+ *
+ * It used to sit under the button at the foot of the form. With Save in
+ * the nav, its reply has to be where the nav is — a confirmation you have
+ * to scroll to find is not a confirmation.
+ */
+.p-save-note {
+  margin: -0.35rem 0 0;
+  min-height: 0;
+  text-align: right;
+}
+
+.p-save-note:empty {
+  display: none;
+}
+
+/*
  * The duck a keeper linked to their card.
  *
  * A row, because the three things in it answer one question between them:

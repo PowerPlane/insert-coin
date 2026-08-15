@@ -121,6 +121,17 @@ var api = {
    * to serve over GET, and spending it destructively would not make it
    * less of a leak. See src/worker/contact.ts.
    */
+  /**
+   * Set or replace the contact left with a duck.
+   *
+   * There is no matching read, and there never will be: the screen that
+   * calls this shows an EMPTY field, so this is "replace", not "edit".
+   * See src/worker/release.ts.
+   */
+  setContact: (editKey, contact) => request(`/duck/${editKey}/contact`, {
+    method: "PUT",
+    body: JSON.stringify({ contact })
+  }),
   withdrawContact: (editKey) => request(`/duck/${editKey}/contact`, { method: "DELETE" })
 };
 var DRAFT_KEY = "pond.draft.v1";
@@ -1591,6 +1602,16 @@ var EN = {
   // Button
   "manage.15": "Take back my contact",
   // Button
+  "manage.19": "Type here to set or replace how David can reply. Blank changes nothing.",
+  // Hint
+  "manage.20": "Save",
+  // Button, in the header row where there is no room for a sentence
+  "manage.21": "Copy",
+  // Button, the private link
+  "manage.22": "Copied",
+  // Button, after copying
+  "manage.23": "Take it back",
+  // Button, beside the hint that names what "it" is
   "manage.16": "If you left a way to reply, this deletes it. Your duck stays in the pond.",
   // Privacy note
   "manage.17": "Done. Nobody can reply to you now.",
@@ -1795,6 +1816,11 @@ var ZH_HANT = {
   "manage.08": "儲存變更",
   "manage.09": "把我的鴨子帶走",
   "manage.15": "收回我的聯絡方式",
+  "manage.19": "在這裡填寫，就能設定或更換 David 回覆你的方式。留白則不會有任何改變。",
+  "manage.20": "儲存",
+  "manage.21": "複製",
+  "manage.22": "已複製",
+  "manage.23": "收回",
   "manage.16": "如果你留了聯絡方式，這會把它刪掉。鴨子會留在池塘裡。",
   "manage.17": "已完成。現在沒有人能回覆你了。",
   // ── the prototype's own scaffolding ───────────────────────────────────
@@ -2217,7 +2243,31 @@ function mineScreen(opts) {
     screen(root2, () => {
       root2.replaceChildren();
       const { root: viewRoot, body: wrap2 } = view();
-      wrap2.append(nav({ label: t("studio.01"), onClick: opts.onPond }, t("mine.02")));
+      wrap2.classList.add("p-mine-view");
+      const status = el("p", "p-note p-save-note", "");
+      function doSave() {
+        status.textContent = "";
+        const tidy = slug.trim().toLowerCase();
+        const renamed = tidy && tidy !== duck.slug ? api.rename(editKey, tidy).then((res) => {
+          duck.slug = res.slug;
+        }) : Promise.resolve();
+        void renamed.then(saveTheRest, (err) => {
+          status.textContent = err instanceof ApiError && err.status === 409 ? t("manage.13") : t("live.error");
+        });
+      }
+      wrap2.append(
+        nav(
+          // A SHORT label. "Back to the pond" in the corner is wide enough
+          // to shove the title off centre.
+          { label: t("studio.01"), onClick: opts.onPond },
+          t("mine.02"),
+          // Short here too, for the same reason: "Save changes" is the
+          // sentence a full-width button has room for, and this is not one.
+          { label: t("manage.20"), onClick: () => doSave() }
+        ),
+        status
+      );
+      const header = el("div", "p-mine-head");
       const stage = el("div", "p-orbit p-orbit-compact");
       const ring = el("canvas", "p-orbit-art");
       ring.width = ORBIT_SIZE;
@@ -2225,10 +2275,10 @@ function mineScreen(opts) {
       ring.setAttribute("role", "img");
       ring.setAttribute("aria-label", t("mine.01"));
       stage.append(ring);
-      wrap2.append(stage);
       const bumps = duck.bumps === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(duck.bumps) });
       const stats = el("p", "p-orbit-who", `${since(duck.created)} · ${bumps}`);
-      wrap2.append(stats);
+      header.append(stage, stats);
+      wrap2.append(header);
       startOrbit(ring, stats, duck);
       let name = duck.name;
       let message = duck.message;
@@ -2286,17 +2336,63 @@ function mineScreen(opts) {
           if (mine === checking) slugHint.textContent = "";
         }
       }
-      const link = field({
-        label: t("manage.05"),
-        placeholder: "",
-        max: 200,
-        value: `${location.origin}/e/${editKey}`,
-        readonly: true
+      let contact = "";
+      const contactField = field({
+        label: t("contact.04"),
+        placeholder: t("contact.05"),
+        max: 120,
+        value: "",
+        onInput: (v) => {
+          contact = v;
+        }
       });
-      link.input.classList.add("p-link");
-      wrap2.append(nameField.wrap, messageField.wrap, slugField.wrap, link.wrap);
-      const status = el("p", "p-note", "");
+      const contactNote = el("p", "p-hint-block p-hint-tight", t("manage.19"));
+      const takeBack = button("p-linkish", t("manage.23"), () => {
+        takeBack.disabled = true;
+        void api.withdrawContact(editKey).then(
+          () => {
+            contactNote.textContent = t("manage.17");
+            takeBack.remove();
+          },
+          () => {
+            contactNote.textContent = t("live.error");
+            takeBack.disabled = false;
+          }
+        );
+      });
+      const contactFoot = el("div", "p-contact-foot");
+      contactFoot.append(contactNote, takeBack);
+      contactField.wrap.append(contactFoot);
+      const linkRow = el("div", "p-linkrow");
+      const linkText = el("span", "p-linkrow-url", `${location.origin}/e/${editKey}`);
+      const copy = button("p-chip", t("manage.21"), () => {
+        void navigator.clipboard?.writeText(`${location.origin}/e/${editKey}`).then(
+          () => {
+            copy.textContent = t("manage.22");
+            window.setTimeout(() => {
+              copy.textContent = t("manage.21");
+            }, 1400);
+          },
+          // The clipboard can be refused. The link is on screen and can be
+          // selected by hand, so this is a failed convenience, not an error.
+          () => {
+          }
+        );
+      });
+      linkRow.append(el("span", "p-field-label", t("manage.05")), linkText, copy);
+      wrap2.append(nameField.wrap, messageField.wrap, slugField.wrap, contactField.wrap, linkRow);
       const saveTheRest = () => {
+        if (contact.trim()) {
+          void api.setContact(editKey, contact.trim()).then(
+            () => {
+              contact = "";
+              contactField.input.value = "";
+            },
+            () => {
+              status.textContent = t("live.error");
+            }
+          );
+        }
         void api.update(editKey, {
           tint: duck.tint,
           stickers: duck.stickers,
@@ -2314,42 +2410,10 @@ function mineScreen(opts) {
           }
         );
       };
-      const save = button("p-btn", t("manage.08"), () => {
-        status.textContent = "";
-        const tidy = slug.trim().toLowerCase();
-        const renamed = tidy && tidy !== duck.slug ? api.rename(editKey, tidy).then((res) => {
-          duck.slug = res.slug;
-        }) : Promise.resolve();
-        void renamed.then(saveTheRest, (err) => {
-          status.textContent = err instanceof ApiError && err.status === 409 ? t("manage.13") : t("live.error");
-        });
-      });
       wrap2.append(spacer());
       const actions = el("div", "p-actions");
-      const pair = el("div", "p-actions-pair");
-      pair.append(
-        button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)),
-        button("p-btn p-btn-quiet", t("mine.05"), opts.onPond)
-      );
-      actions.append(save, pair);
-      wrap2.append(actions, status);
-      const privacy = el("div", "p-quiet-act");
-      const privacyNote = el("p", "p-note", t("manage.16"));
-      const takeBack = button("p-btn p-btn-quiet", t("manage.15"), () => {
-        takeBack.disabled = true;
-        void api.withdrawContact(editKey).then(
-          () => {
-            privacyNote.textContent = t("manage.17");
-            takeBack.remove();
-          },
-          () => {
-            privacyNote.textContent = t("live.error");
-            takeBack.disabled = false;
-          }
-        );
-      });
-      privacy.append(takeBack, privacyNote);
-      wrap2.append(privacy);
+      actions.append(button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)));
+      wrap2.append(actions);
       const danger = el("div", "p-danger");
       const remove = button("p-btn p-btn-danger", t("manage.09"), () => {
         danger.replaceChildren(

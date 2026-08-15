@@ -209,6 +209,19 @@ export const api = {
    * to serve over GET, and spending it destructively would not make it
    * less of a leak. See src/worker/contact.ts.
    */
+  /**
+   * Set or replace the contact left with a duck.
+   *
+   * There is no matching read, and there never will be: the screen that
+   * calls this shows an EMPTY field, so this is "replace", not "edit".
+   * See src/worker/release.ts.
+   */
+  setContact: (editKey: string, contact: string) =>
+    request<{ ok: true }>(`/duck/${editKey}/contact`, {
+      method: "PUT",
+      body: JSON.stringify({ contact }),
+    }),
+
   withdrawContact: (editKey: string) =>
     request<{ ok: true }>(`/duck/${editKey}/contact`, { method: "DELETE" }),
 };

@@ -1,5 +1,5 @@
 /**
- * Releasing a duck — the one write that touches `contacts`.
+ * Releasing a duck, and every other write that touches `contacts`.
  *
  * ══ WHY THIS IS ITS OWN FILE ══
  * `ducks.ts` may not name the `contacts` table at all. That rule is what
@@ -16,12 +16,69 @@
  * There is no SELECT from `contacts` anywhere in this file either. Nothing
  * reads a contact except the admin screens, which are Phase 4 and will get
  * their own module and their own password.
+ *
+ * ══ AND NOW A SECOND WRITE, IN THE SAME FILE ON PURPOSE ══
+ * `setContact` lives here rather than beside the withdrawal in contact.ts,
+ * and the reason is the invariant rather than the subject matter: the
+ * isolation test asserts that exactly ONE module writes this table. A
+ * second writer anywhere would make that assertion pass by listing two
+ * files, which is a weaker claim wearing the same words. So the file
+ * keeps its meaning — everything that puts a contact IN is here, and the
+ * only thing that takes one OUT is in contact.ts, which cannot read or
+ * write, only delete.
  */
 
 import type { ContactScope, ValidatedDuck } from "./ducks.js";
 import { freeSlug } from "./slug.js";
 import type { Env } from "./types.js";
 import { nowSec, randomId } from "./util.js";
+
+/**
+ * Replace the contact left with a duck, or set one for the first time.
+ *
+ * ══ WHAT THIS DELIBERATELY CANNOT DO ══
+ * It takes a value and stores it. It never reads one back, and there is no
+ * function anywhere that will — the screen offering this shows an EMPTY
+ * field, always, because prefilling it would mean handing a stranger's
+ * phone number to whoever is holding a private link that got pasted into a
+ * group chat.
+ *
+ * So this is "replace", not "edit". You cannot see what is there; you can
+ * only put something else in its place, or take it out entirely (that is
+ * `withdrawContact`, and it is a different verb in a different file).
+ *
+ * ══ THE SCOPE IS NOT A CHOICE HERE ══
+ * `'david'` always, and that is the narrowest of the three. The contact
+ * screen can offer to share with the card's keeper because it runs inside
+ * a card SESSION and knows who that keeper is; the private-link screen has
+ * no session and no keeper to name. Offering "share with the keeper" there
+ * would be asking somebody to agree to a person the screen cannot name.
+ *
+ * Storing the narrowest scope also means a person who once agreed to a
+ * wider one and now edits their contact has that consent NARROWED rather
+ * than silently carried over. Narrowing is always safe; widening would
+ * need to be asked for.
+ */
+export async function setContact(
+  env: Env,
+  editKey: string,
+  value: string,
+): Promise<boolean> {
+  // The same shape check the duck reads use, so a malformed key never
+  // reaches the database.
+  if (!/^[A-Za-z0-9]{16,64}$/.test(editKey)) return false;
+  if (!value) return false;
+
+  const res = await env.DB.prepare(
+    `INSERT INTO contacts (duck_id, value, scope, epoch_id, created)
+     SELECT d.id, ?2, 'david', d.epoch_id, ?3 FROM ducks d WHERE d.edit_key = ?1
+     ON CONFLICT(duck_id) DO UPDATE SET value = ?2, scope = 'david', created = ?3`,
+  )
+    .bind(editKey, value, nowSec())
+    .run();
+
+  return Boolean(res.meta.changes);
+}
 
 export interface CreatedDuck {
   id: string;

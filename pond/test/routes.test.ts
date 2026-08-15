@@ -357,6 +357,110 @@ describe("the deletion promise, over HTTP", () => {
     expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts WHERE duck_id = ?1`, id)).toBe(1);
   });
 
+  /*
+   * ══ REPLACING A CONTACT, WITHOUT EVER SEEING IT ══
+   * The settings screen offers an EMPTY field, always. You cannot read
+   * what is there; you can only put something else in its place, or take
+   * it out. These tests pin that shape, because the obvious "improvement"
+   * — prefill it so people can edit — is the one change that would hand a
+   * stranger's phone number to whoever holds a pasted private link.
+   */
+  it("PUT /contact replaces a contact without echoing the old one", async () => {
+    const e = await env();
+    const v = new Visitor(e);
+    const { editKey, id } = await release(v, { contact: "sam@example.com" });
+
+    const res = await v.api(`/api/duck/${editKey}/contact`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contact: "sam@newjob.example" }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).not.toContain("sam@example.com");
+
+    const row = await e.DB.prepare(`SELECT value, scope FROM contacts WHERE duck_id = ?1`)
+      .bind(id).first<{ value: string; scope: string }>();
+    expect(row?.value).toBe("sam@newjob.example");
+    // One row, not two: the duck's contact was replaced, not accumulated.
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts WHERE duck_id = ?1`, id)).toBe(1);
+  });
+
+  it("stores the narrowest scope, even over a wider one", async () => {
+    /*
+     * The contact screen can offer to share with the card's KEEPER,
+     * because it runs inside a session that knows who that is. The
+     * private-link screen has no session and no keeper to name, so it
+     * cannot ask — and a screen that cannot ask must not assume. Editing
+     * therefore narrows an existing wider consent rather than carrying it
+     * silently forward.
+     */
+    const e = await env();
+    const v = new Visitor(e);
+    const { editKey, id } = await release(v, { contact: "sam@example.com", scope: "keeper" });
+    expect((await e.DB.prepare(`SELECT scope FROM contacts WHERE duck_id = ?1`)
+      .bind(id).first<{ scope: string }>())?.scope).toBe("keeper");
+
+    await v.api(`/api/duck/${editKey}/contact`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contact: "sam@newjob.example" }),
+    });
+    expect((await e.DB.prepare(`SELECT scope FROM contacts WHERE duck_id = ?1`)
+      .bind(id).first<{ scope: string }>())?.scope).toBe("david");
+  });
+
+  it("answers a first contact exactly as it answers a replacement", async () => {
+    // Same argument as the DELETE: the response must not reveal whether
+    // there was one there before.
+    const e = await env();
+    const withOne = new Visitor(e);
+    const a = await release(withOne, { contact: "sam@example.com" });
+    const without = new Visitor(e);
+    const b = await release(without, {});
+
+    const put = (v: Visitor, key: string) => v.api(`/api/duck/${key}/contact`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contact: "new@example.com" }),
+    });
+    const ra = await put(withOne, a.editKey);
+    const rb = await put(without, b.editKey);
+    expect(ra.status).toBe(rb.status);
+    expect(await ra.text()).toBe(await rb.text());
+  });
+
+  it("refuses a PUT with an edit key that names no duck", async () => {
+    const e = await env();
+    const v = new Visitor(e);
+    await release(v, {});
+    const res = await v.api(`/api/duck/${"z".repeat(32)}/contact`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contact: "someone@example.com" }),
+    });
+    expect(res.status).toBe(404);
+    // And nothing was written for a duck that does not exist.
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts`)).toBe(0);
+  });
+
+  it("refuses an empty contact rather than storing a blank one", async () => {
+    // Empty means "leave it alone" on the screen. It must never reach the
+    // database as a contact somebody can be written to at.
+    const e = await env();
+    const v = new Visitor(e);
+    const { editKey, id } = await release(v, { contact: "sam@example.com" });
+    const res = await v.api(`/api/duck/${editKey}/contact`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contact: "   " }),
+    });
+    expect(res.status).toBe(400);
+    // The one that was there is untouched.
+    expect((await e.DB.prepare(`SELECT value FROM contacts WHERE duck_id = ?1`)
+      .bind(id).first<{ value: string }>())?.value).toBe("sam@example.com");
+  });
+
   it("never returns the contact value on the owner's own read", async () => {
     // The private link is ownership, but it is also a string that gets
     // pasted into group chats. It buys editing, not a copy of the number.

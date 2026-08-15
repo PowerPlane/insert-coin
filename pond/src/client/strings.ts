@@ -258,6 +258,11 @@ export const EN = {
   "manage.08": "Save changes", // Button
   "manage.09": "Take my duck out", // Button
   "manage.15": "Take back my contact", // Button
+  "manage.19": "Type here to set or replace how David can reply. Blank changes nothing.", // Hint
+  "manage.20": "Save", // Button, in the header row where there is no room for a sentence
+  "manage.21": "Copy", // Button, the private link
+  "manage.22": "Copied", // Button, after copying
+  "manage.23": "Take it back", // Button, beside the hint that names what "it" is
   "manage.16": "If you left a way to reply, this deletes it. Your duck stays in the pond.", // Privacy note
   "manage.17": "Done. Nobody can reply to you now.", // Result
   "shared.01": "Tap ducks in the pond. Drag stickers in the studio.", // Body
@@ -490,6 +495,11 @@ export const ZH_HANT: Record<StringKey, string> = {
   "manage.08": "儲存變更",
   "manage.09": "把我的鴨子帶走",
   "manage.15": "收回我的聯絡方式",
+  "manage.19": "在這裡填寫，就能設定或更換 David 回覆你的方式。留白則不會有任何改變。",
+  "manage.20": "儲存",
+  "manage.21": "複製",
+  "manage.22": "已複製",
+  "manage.23": "收回",
   "manage.16": "如果你留了聯絡方式，這會把它刪掉。鴨子會留在池塘裡。",
   "manage.17": "已完成。現在沒有人能回覆你了。",
 

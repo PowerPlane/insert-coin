@@ -30,7 +30,7 @@ import {
   resolveReports, setHidden, signIn,
 } from "./admin.js";
 import { claimCard, keeperState, saveKeeper } from "./keeper.js";
-import { createDuck } from "./release.js";
+import { createDuck, setContact } from "./release.js";
 import { normaliseSlug, slugTaken } from "./slug.js";
 import { bump, extinguish, maybeIgnite, report, say } from "./social.js";
 import { keeperNameOfCard } from "./keeper.js";
@@ -420,12 +420,29 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
    * `contact.ts`.
    */
   if (path.startsWith("/api/duck/") && path.endsWith("/contact")) {
-    if (req.method !== "DELETE") return notFound(headers);
+    if (req.method !== "DELETE" && req.method !== "PUT") return notFound(headers);
     const editKey = path.slice("/api/duck/".length, -"/contact".length);
     // The key has to name a real duck, or withdrawing from a key somebody
     // guessed would report the same "nothing to take back" as withdrawing
     // from your own empty duck — and that answer is worth a probe.
     if (!(await duckByEditKey(env, editKey))) return notFound(headers);
+
+    if (req.method === "PUT") {
+      const body = await readJson(req);
+      if (!body) return badRequest("bad body", headers);
+      // The same cleaning the release gives it. A contact never renders in
+      // the pond, but it is still text somebody typed.
+      const value = cleanText(body.contact, 120);
+      if (!value) return badRequest("no contact", headers);
+      await setContact(env, editKey, value);
+      /*
+       * Identical whether this replaced one or was the first. Same
+       * argument as the DELETE below: "was there already a contact here"
+       * is the question this route exists to refuse.
+       */
+      return json({ ok: true }, { headers });
+    }
+
     /*
      * ══ THE ANSWER IS THE SAME EITHER WAY ══
      * This used to return `removed`, so the copy could say "Gone" or

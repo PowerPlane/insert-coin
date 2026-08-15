@@ -119,13 +119,80 @@ export function mineScreen(opts: MineOptions): void {
     screen(root, () => {
       root.replaceChildren();
       const { root: viewRoot, body: wrap } = fullView();
+      // Everything sized for one page is scoped to this class, so no other
+      // screen in the flow gets quietly shorter because this one had to.
+      wrap.classList.add("p-mine-view");
 
-      // A SHORT label. "Back to the pond" in the corner is wide enough to
-      // shove the title off centre, and the full sentence is on the button
-      // at the foot where there is room for it.
-      wrap.append(navStrip({ label: t("studio.01"), onClick: opts.onPond }, t("mine.02")));
+      /*
+       * ══ ONE PAGE, NOT A SCROLL ══
+       * This screen was 1156px in an 844px phone: everything below the
+       * message box was off the bottom, which put "Save changes" — the
+       * only reason most people open it — out of sight behind a scroll.
+       *
+       * Three moves, in the order they earn their space:
+       *
+       *   Save goes in the header row, opposite Back. It is the Done of
+       *   every settings screen on the platform, it is always reachable
+       *   even with the keyboard up, and it gives back a whole 44px row
+       *   plus its gap.
+       *
+       *   "Back to the pond" goes entirely. It did the same thing as the
+       *   Back in the nav, and the only argument for keeping both was that
+       *   the nav scrolls away — which stops being true the moment the
+       *   page does not scroll.
+       *
+       *   The ring and the sentence about it become one row instead of
+       *   two stacked blocks. They are one thought — this is your duck and
+       *   this is how it has been getting on — and side by side they read
+       *   as one, in about the height the ring alone used to take.
+       *
+       * The budget is 390x844. At 320x568 it still scrolls, and that is
+       * arithmetic rather than a decision: a ring, five fields and two
+       * actions do not fit 568px at a readable size. `p8.test` pins the
+       * 390 case so it cannot quietly grow back.
+       */
+      const status = el("p", "p-note p-save-note", "");
 
-      // ── the record, as the header ─────────────────────────────────────
+      /*
+       * Declared as a function rather than a const so the nav above can
+       * refer to it before it is written. The alternative was building the
+       * nav last and prepending it, which puts the top of the screen at
+       * the bottom of the file.
+       */
+      function doSave(): void {
+        status.textContent = "";
+        /*
+         * The address goes first and on its own, because it is the only
+         * field here that can be REFUSED for a reason a person can act on.
+         * If it is refused nothing else is written: a half-saved settings
+         * screen is worse than a rejected one.
+         */
+        const tidy = slug.trim().toLowerCase();
+        const renamed = tidy && tidy !== duck.slug
+          ? api.rename(editKey, tidy).then((res) => { duck.slug = res.slug; })
+          : Promise.resolve();
+
+        void renamed.then(saveTheRest, (err: unknown) => {
+          status.textContent =
+            err instanceof ApiError && err.status === 409 ? t("manage.13") : t("live.error");
+        });
+      }
+
+      wrap.append(
+        navStrip(
+          // A SHORT label. "Back to the pond" in the corner is wide enough
+          // to shove the title off centre.
+          { label: t("studio.01"), onClick: opts.onPond },
+          t("mine.02"),
+          // Short here too, for the same reason: "Save changes" is the
+          // sentence a full-width button has room for, and this is not one.
+          { label: t("manage.20"), onClick: () => doSave() },
+        ),
+        status,
+      );
+
+      // ── the record, as a header row ───────────────────────────────────
+      const header = el("div", "p-mine-head");
       const stage = el("div", "p-orbit p-orbit-compact");
       const ring = el("canvas", "p-orbit-art");
       ring.width = ORBIT_SIZE;
@@ -133,7 +200,6 @@ export function mineScreen(opts: MineOptions): void {
       ring.setAttribute("role", "img");
       ring.setAttribute("aria-label", t("mine.01"));
       stage.append(ring);
-      wrap.append(stage);
 
       /*
        * The two facts worth coming back for, in one line: how long it has
@@ -145,7 +211,8 @@ export function mineScreen(opts: MineOptions): void {
         ? t("live.bumps.one")
         : t("live.bumps", { n: String(duck.bumps) });
       const stats = el("p", "p-orbit-who", `${since(duck.created)} · ${bumps}`);
-      wrap.append(stats);
+      header.append(stage, stats);
+      wrap.append(header);
       startOrbit(ring, stats, duck);
 
       // ── the settings, which are the work ──────────────────────────────
@@ -202,18 +269,89 @@ export function mineScreen(opts: MineOptions): void {
         }
       }
 
-      const link = field({
-        label: t("manage.05"), placeholder: "", max: 200,
-        value: `${location.origin}/e/${editKey}`, readonly: true,
+      /*
+       * ══ A CONTACT YOU CAN REPLACE BUT NEVER READ ══
+       * The field is EMPTY, always, and that is the whole design rather
+       * than an omission. Prefilling it would mean the server handing back
+       * a phone number to whoever is holding this link — and a private
+       * link is a string that gets pasted into group chats. So you cannot
+       * see what is there. You can put something else in its place, or
+       * take it out.
+       *
+       * Which makes blank mean LEAVE IT ALONE, never delete. Somebody
+       * fixing a typo in their name must not lose their contact by not
+       * typing in a box they had no reason to touch. Removal stays its own
+       * deliberate act, on the line below.
+       *
+       * The scope is not offered here and is fixed to "only David" by the
+       * server. The contact screen can offer to share with the card's
+       * keeper because it runs inside a session that knows who that is;
+       * this screen has neither, and a screen that cannot name the person
+       * must not ask you to agree to them.
+       */
+      let contact = "";
+      const contactField = field({
+        label: t("contact.04"), placeholder: t("contact.05"), max: 120, value: "",
+        onInput: (v) => { contact = v; },
       });
-      link.input.classList.add("p-link");
+      const contactNote = el("p", "p-hint-block p-hint-tight", t("manage.19"));
+      // The short label. The sentence next to it already says what "it"
+      // is, and the long one ran off the edge of a 390px phone.
+      const takeBack = button("p-linkish", t("manage.23"), () => {
+        takeBack.disabled = true;
+        void api.withdrawContact(editKey).then(
+          () => { contactNote.textContent = t("manage.17"); takeBack.remove(); },
+          () => { contactNote.textContent = t("live.error"); takeBack.disabled = false; },
+        );
+      });
+      /*
+       * The hint and the way out share a line. Stacked they were 38px of
+       * sentence over a 44px link for one rare act, on the screen with the
+       * least room in the flow; side by side the link keeps its full tap
+       * target and the sentence keeps its full width beside it.
+       */
+      const contactFoot = el("div", "p-contact-foot");
+      contactFoot.append(contactNote, takeBack);
+      contactField.wrap.append(contactFoot);
 
-      wrap.append(nameField.wrap, messageField.wrap, slugField.wrap, link.wrap);
+      /*
+       * The private link as a ROW rather than a field. It is not something
+       * anybody edits or reads character by character — it is something
+       * they send to themselves — so it gets the one control that matters
+       * and none of the height a text field spends on being editable.
+       */
+      const linkRow = el("div", "p-linkrow");
+      const linkText = el("span", "p-linkrow-url", `${location.origin}/e/${editKey}`);
+      const copy = button("p-chip", t("manage.21"), () => {
+        void navigator.clipboard?.writeText(`${location.origin}/e/${editKey}`).then(
+          () => {
+            copy.textContent = t("manage.22");
+            window.setTimeout(() => { copy.textContent = t("manage.21"); }, 1400);
+          },
+          // The clipboard can be refused. The link is on screen and can be
+          // selected by hand, so this is a failed convenience, not an error.
+          () => {},
+        );
+      });
+      linkRow.append(el("span", "p-field-label", t("manage.05")), linkText, copy);
 
-      // ── what you can do ───────────────────────────────────────────────
-      const status = el("p", "p-note", "");
+      wrap.append(nameField.wrap, messageField.wrap, slugField.wrap, contactField.wrap, linkRow);
 
       const saveTheRest = (): void => {
+        // The contact is written separately: it lives in its own table
+        // behind its own route, and it must not be able to fail the rest
+        // of the form or be failed by it.
+        if (contact.trim()) {
+          void api.setContact(editKey, contact.trim()).then(
+            () => {
+              // Cleared on success so a second Save does not write it
+              // again, and so nothing that was typed stays on screen.
+              contact = "";
+              contactField.input.value = "";
+            },
+            () => { status.textContent = t("live.error"); },
+          );
+        }
         void api
           .update(editKey, {
             tint: duck.tint, stickers: duck.stickers, paint: duck.paint, name, message,
@@ -231,79 +369,17 @@ export function mineScreen(opts: MineOptions): void {
           );
       };
 
-      const save = button("p-btn", t("manage.08"), () => {
-        status.textContent = "";
-        /*
-         * The address goes first and on its own, because it is the only
-         * field here that can be REFUSED for a reason a person can act on.
-         * If it is refused nothing else is written: a half-saved settings
-         * screen is worse than a rejected one.
-         */
-        const tidy = slug.trim().toLowerCase();
-        const renamed = tidy && tidy !== duck.slug
-          ? api.rename(editKey, tidy).then((res) => { duck.slug = res.slug; })
-          : Promise.resolve();
-
-        void renamed.then(saveTheRest, (err: unknown) => {
-          status.textContent =
-            err instanceof ApiError && err.status === 409 ? t("manage.13") : t("live.error");
-        });
-      });
-
       wrap.append(spacer());
-      const actions = el("div", "p-actions");
-      /*
-       * Save is the only gold. Redecorate and Back are a pair of equal
-       * alternatives — neither is the way forward from here — so they sit
-       * side by side rather than stacking, which would read as three steps.
-       */
-      const pair = el("div", "p-actions-pair");
-      pair.append(
-        button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)),
-        button("p-btn p-btn-quiet", t("mine.05"), opts.onPond),
-      );
-      actions.append(save, pair);
-      wrap.append(actions, status);
 
       /*
-       * ══ TAKING A CONTACT BACK, WITHOUT TAKING THE DUCK OUT ══
-       * Until this existed, withdrawing a phone number meant destroying the
-       * duck it came with: give up the thing you made to take back the
-       * thing you regret. Nobody should be asked to make that trade, least
-       * of all the person who trusted the sentence "only David sees this".
-       *
-       * It sits ABOVE the rule rather than below it because it is not the
-       * same kind of act. Taking your duck out is final and loses things;
-       * this loses exactly one thing, on purpose, and everything else
-       * carries on. Putting them in one block would borrow the danger
-       * zone's weight for something that does not need it — and worse,
-       * would make the safe way out look as frightening as the drastic one.
-       *
-       * It is always offered, never conditional, because the client is not
-       * told whether a contact exists — nothing may ask that question, and
-       * the server does not say afterwards either. So the result is one
-       * sentence that is true whichever it was: whatever the state before,
-       * nobody can reply now.
+       * Redecorate on its own. It used to sit beside "Back to the pond" as
+       * one of two equal alternatives; with Back gone from here there is
+       * nothing to pair it with, and a lone quiet button under the form is
+       * exactly what it is — the other thing you might have come to do.
        */
-      const privacy = el("div", "p-quiet-act");
-      const privacyNote = el("p", "p-note", t("manage.16"));
-      const takeBack = button("p-btn p-btn-quiet", t("manage.15"), () => {
-        takeBack.disabled = true;
-        void api.withdrawContact(editKey).then(
-          () => {
-            privacyNote.textContent = t("manage.17");
-            // Nothing left to withdraw either way, so the button has done
-            // the only job it had.
-            takeBack.remove();
-          },
-          () => {
-            privacyNote.textContent = t("live.error");
-            takeBack.disabled = false;
-          },
-        );
-      });
-      privacy.append(takeBack, privacyNote);
-      wrap.append(privacy);
+      const actions = el("div", "p-actions");
+      actions.append(button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)));
+      wrap.append(actions);
 
       /*
        * ══ TAKING IT OUT LIVES BELOW EVERYTHING, BEHIND A RULE ══
