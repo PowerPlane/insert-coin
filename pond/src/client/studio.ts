@@ -31,6 +31,16 @@ export interface StudioState {
 type Tab = "colour" | "stickers" | "draw";
 
 export interface StudioOptions {
+  /**
+   * What the forward action is called, in both places it appears.
+   *
+   * Making a duck, it is "Skip" at the top and "Next" at the foot: you are
+   * passing through. REDECORATING one that is already in the pond, both of
+   * those are wrong — there is nothing to skip and nothing next, and a top
+   * corner reading "Skip" that quietly SAVES your changes is worse than
+   * wrong, it is misleading.
+   */
+  forward?: string;
   fortune: number;
   state: StudioState;
   onChange: (state: StudioState) => void;
@@ -70,10 +80,11 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
    * place you both abandon and complete, and left the foot of the screen
    * with nothing to press.
    */
+  const forward = opts.forward ?? t("studio.03");
   const nav = navStrip(
     { label: t("studio.01"), onClick: opts.onBack },
     t("studio.02"),
-    { label: t("studio.03"), onClick: opts.onNext },
+    { label: forward, onClick: opts.onNext },
   );
 
   // ── the duck being made ───────────────────────────────────────────────
@@ -454,7 +465,8 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   const foot = el("div", "p-foot");
   const hint = el("p", "p-hint", "");
   foot.append(
-    el("div", "p-actions").appendChild(button("p-btn", t("studio.17"), opts.onNext)).parentElement!,
+    el("div", "p-actions")
+      .appendChild(button("p-btn", opts.forward ?? t("studio.17"), opts.onNext)).parentElement!,
     hint,
   );
 

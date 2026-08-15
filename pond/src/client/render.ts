@@ -118,7 +118,7 @@ export function drawDuck(
  * drawn at all: four screen pixels of type is not text, and zoomed out you
  * are reading the shape of the crowd rather than names.
  */
-const TAG = {
+export const TAG = {
   MIN_CELL: 3,
   /** In sprite cells, measured from the duck's top-left. */
   X: 4, Y: -6, W: 16, H: 5,

@@ -24,7 +24,7 @@ import { cardSetup, claimFromUrl } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, SPLASH_TAP, type Placed } from "./pond-view.js";
 import { GRID } from "./codec.js";
-import { drawDuck } from "./render.js";
+import { TAG, drawDuck } from "./render.js";
 import { prefersReducedMotion } from "./viewport.js";
 import { fortuneTitle, setLang, t, type Lang } from "./strings.js";
 import { watchSize } from "./viewport.js";
@@ -479,7 +479,12 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    * What this replaced was a sheet containing a PICTURE of a duck, shown
    * instantly. Everything above was already built and none of it ran.
    */
-  function playArrival(fortune: number, tint: number, onSheet: () => void): () => void {
+  function playArrival(
+    fortune: number,
+    tint: number,
+    sheet: HTMLElement,
+    onSheet: () => void,
+  ): () => void {
     const id = "arrival-preview";
     // Wide, and at the pond's own framing rather than wherever the camera
     // was left. There is nothing to look at yet but the water it will hit.
@@ -495,9 +500,16 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     view.arrive(duck);
 
     const timers = [
-      // Close in, once the effect has said its piece.
+      /*
+       * Close in, once the effect has said its piece — and centre it in the
+       * water the sheet is ABOUT to leave, not in the whole screen. The
+       * sheet is laid out already precisely so it can be measured here.
+       */
       window.setTimeout(
-        () => view.focus(id, ARRIVAL_CLOSE_CELL, ARRIVAL_DUCK_Y, ARRIVAL_CLOSE_MS),
+        () => {
+          const covered = sheet.getBoundingClientRect().height;
+          view.focusClear(id, closeCell(covered), covered, ARRIVAL_CLOSE_MS);
+        },
         fortune === 0 ? ARRIVAL_CLOSE_GREAT_MS : ARRIVAL_CLOSE_WAIT_MS,
       ),
       // And only then the sheet.
@@ -512,6 +524,22 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       timers.forEach(clearTimeout);
       view.removeLocal(id);
     };
+  }
+
+  /**
+   * The closest rung that still leaves the duck room to be looked at.
+   *
+   * The block is the duck plus the tag above it — 30 sprite cells, not 24 —
+   * because the tag is what a person is reading as much as the duck.
+   */
+  function closeCell(coveredCss: number): number {
+    const water = Math.max(0, view.stageHeight() - coveredCss);
+    const BLOCK_CELLS = GRID + -TAG.Y;
+    for (const cell of [ARRIVAL_CLOSE_CELL, 6, 4, 3, 2]) {
+      if (cell < ARRIVAL_MIN_CELL) break;
+      if (BLOCK_CELLS * cell <= water * ARRIVAL_BLOCK_SHARE) return cell;
+    }
+    return ARRIVAL_MIN_CELL;
   }
 
   /**
@@ -837,8 +865,23 @@ const ARRIVAL_DROP_Y = 0.34;
 const ARRIVAL_CLOSE_WAIT_MS = 700;
 /** 大吉 is the loudest arrival; cutting it short throws the moment away. */
 const ARRIVAL_CLOSE_GREAT_MS = 850;
-/** Close enough to look at rather than to locate. */
+/**
+ * Close enough to look at rather than to locate — as a PROPORTION.
+ *
+ * The prototype closes to a fixed cell 8, which is right on the phone it
+ * was drawn for. On a short screen it is not: the sheet takes 275px
+ * whatever the screen is, so a 568-tall phone has 293px of water left, and
+ * a duck-plus-tag at cell 8 is 120 of it. That is not "closed in on the
+ * duck", it is the duck wearing the screen.
+ *
+ * So the rung is chosen from the water actually available. 8 stays the
+ * ceiling — it is as close as the pond ever goes — and 6 the floor, so it
+ * is always nearer than the framing you arrived from.
+ */
 const ARRIVAL_CLOSE_CELL = 8;
+const ARRIVAL_MIN_CELL = 6;
+/** How much of the visible water the duck and its tag may take. */
+const ARRIVAL_BLOCK_SHARE = 0.4;
 /** Where the duck sits once the camera arrives, down the visible frame. */
 const ARRIVAL_DUCK_Y = 0.3;
 const ARRIVAL_CLOSE_MS = 900;

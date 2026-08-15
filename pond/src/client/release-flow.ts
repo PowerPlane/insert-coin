@@ -17,7 +17,9 @@
 import { ApiError, api, clearDraft, loadDraft, rememberEditKey, saveDraft } from "./api.js";
 import type { ContactScope } from "./api.js";
 import { GRID, decodePaint } from "./codec.js";
-import { button, el, field, screen, sheet, spacer, view } from "./dom.js";
+import {
+  button, el, field, nav as navStrip, screen, sheet, spacer, view,
+} from "./dom.js";
 import { drawDuck } from "./render.js";
 import { type StudioState, studioScreen, toPayload } from "./studio.js";
 import { SCOPE_STRINGS, fortuneTitle, t } from "./strings.js";
@@ -39,7 +41,13 @@ export interface FlowOptions {
    * this screen's job is to say what the fortune IS, once the duck that
    * carries it has landed.
    */
-  playArrival: (fortune: number, tint: number, onSheet: () => void) => () => void;
+  playArrival: (
+    fortune: number,
+    tint: number,
+    /** The sheet, already laid out, so its height can be measured. */
+    sheet: HTMLElement,
+    onSheet: () => void,
+  ) => () => void;
   /** The card keeper's name, if this card has one. Decides the scope picker. */
   keeper: string | null;
   onDone: (duck: ReleaseResult) => void;
@@ -146,11 +154,19 @@ export function releaseFlow(opts: FlowOptions): void {
     );
     wrap.append(actions);
 
-    // Held back until the duck has landed and its fortune has been seen.
-    sheetRoot.hidden = true;
+    /*
+     * Held back until the duck has landed and its fortune has been seen —
+     * but LAID OUT the whole time.
+     *
+     * `hidden` would take it out of layout, and the camera needs to know
+     * how much water this sheet is about to cover so it can centre the duck
+     * in what is left. A sheet with no height yet answers that question
+     * wrongly, and the duck ends up high.
+     */
+    sheetRoot.classList.add("p-waiting");
     root.append(sheetRoot);
-    endArrival = opts.playArrival(opts.fortune, draft.studio.tint, () => {
-      sheetRoot.hidden = false;
+    endArrival = opts.playArrival(opts.fortune, draft.studio.tint, sheetRoot, () => {
+      sheetRoot.classList.remove("p-waiting");
     });
   }
 
@@ -180,7 +196,16 @@ export function releaseFlow(opts: FlowOptions): void {
     // A full screen, not a sheet: this one is mostly typing, and a sheet
     // with the keyboard up has almost nothing left to show.
     const { root: viewRoot, body: wrap } = view();
-    wrap.append(el("p", "p-eyebrow", t("sign.01")), preview(6), el("h2", "p-title", t("sign.02")));
+    /*
+     * ══ EVERY STEP HAS A WAY BACK ══
+     * The prototype has none here, and neither did this: once you left the
+     * studio you could not return to it, so a duck you decided against was
+     * a duck you had to release anyway. Nothing is being saved to a server
+     * yet and the draft survives, so there is no cost to stepping back and
+     * no reason to prevent it.
+     */
+    wrap.append(navStrip({ label: t("studio.01"), onClick: studio }, t("sign.01")));
+    wrap.append(preview(6), el("h2", "p-title", t("sign.02")));
 
     const name = field({
       label: t("sign.03"), placeholder: t("sign.04"), max: 18, value: draft.name,
@@ -206,8 +231,8 @@ export function releaseFlow(opts: FlowOptions): void {
   function contactBody(): void {
     root.replaceChildren();
     const { root: viewRoot, body: wrap } = view();
+    wrap.append(navStrip({ label: t("studio.01"), onClick: sign }, t("contact.01")));
     wrap.append(
-      el("p", "p-eyebrow", t("contact.01")),
       el("h2", "p-title", t("contact.02")),
       el("p", "p-body", t("contact.03")),
     );

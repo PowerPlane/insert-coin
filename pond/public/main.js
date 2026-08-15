@@ -1749,10 +1749,11 @@ function studioScreen(root2, opts) {
   const { state } = opts;
   root2.replaceChildren();
   const { root: viewRoot, body: wrap2 } = view();
+  const forward = opts.forward ?? t("studio.03");
   const nav2 = nav(
     { label: t("studio.01"), onClick: opts.onBack },
     t("studio.02"),
-    { label: t("studio.03"), onClick: opts.onNext }
+    { label: forward, onClick: opts.onNext }
   );
   const canvas = el("canvas", "p-edit");
   canvas.width = GRID * EDIT_CELL;
@@ -2003,7 +2004,7 @@ function studioScreen(root2, opts) {
   const foot = el("div", "p-foot");
   const hint = el("p", "p-hint", "");
   foot.append(
-    el("div", "p-actions").appendChild(button("p-btn", t("studio.17"), opts.onNext)).parentElement,
+    el("div", "p-actions").appendChild(button("p-btn", opts.forward ?? t("studio.17"), opts.onNext)).parentElement,
     hint
   );
   wrap2.append(nav2, canvas, utils, tabs, panel, foot);
@@ -2186,6 +2187,9 @@ function mineScreen(opts) {
     studioScreen(root2, {
       fortune: duck.fortune,
       state,
+      // Not "Skip" and not "Next": this duck is already in the pond, so
+      // the only thing forward means here is keeping what you changed.
+      forward: t("manage.08"),
       onChange: () => {
       },
       onBack: () => view2(duck),
@@ -2793,10 +2797,10 @@ function releaseFlow(opts) {
       })
     );
     wrap2.append(actions);
-    sheetRoot.hidden = true;
+    sheetRoot.classList.add("p-waiting");
     root2.append(sheetRoot);
-    endArrival = opts.playArrival(opts.fortune, draft.studio.tint, () => {
-      sheetRoot.hidden = false;
+    endArrival = opts.playArrival(opts.fortune, draft.studio.tint, sheetRoot, () => {
+      sheetRoot.classList.remove("p-waiting");
     });
   }
   let endArrival = () => {
@@ -2813,7 +2817,8 @@ function releaseFlow(opts) {
   function signBody() {
     root2.replaceChildren();
     const { root: viewRoot, body: wrap2 } = view();
-    wrap2.append(el("p", "p-eyebrow", t("sign.01")), preview(6), el("h2", "p-title", t("sign.02")));
+    wrap2.append(nav({ label: t("studio.01"), onClick: studio }, t("sign.01")));
+    wrap2.append(preview(6), el("h2", "p-title", t("sign.02")));
     const name = field({
       label: t("sign.03"),
       placeholder: t("sign.04"),
@@ -2846,8 +2851,8 @@ function releaseFlow(opts) {
   function contactBody() {
     root2.replaceChildren();
     const { root: viewRoot, body: wrap2 } = view();
+    wrap2.append(nav({ label: t("studio.01"), onClick: sign }, t("contact.01")));
     wrap2.append(
-      el("p", "p-eyebrow", t("contact.01")),
       el("h2", "p-title", t("contact.02")),
       el("p", "p-body", t("contact.03"))
     );
@@ -4021,6 +4026,48 @@ var PondView = class {
     const frameH = rect.height / OVERSCAN * this.dpr() / cell;
     this.camera.glide({ x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell }, ms);
   }
+  /** The visible stage in CSS pixels — the canvas box minus its overscan. */
+  stageHeight() {
+    return this.opts.canvas.getBoundingClientRect().height / OVERSCAN;
+  }
+  /**
+   * Centre a duck in the water that is actually LEFT above something.
+   *
+   * ══ A FRACTION OF THE SCREEN IS NOT A FRACTION OF THE WATER ══
+   * The arrival parked its duck 30% down the FRAME, which sounds centred
+   * and is not: a sheet covers the bottom third, so 30% of the whole screen
+   * lands well up in the water that remains. Measured on a 390x844 phone,
+   * the duck sat 48px above the middle of the visible water — 195px of
+   * space above it and 291 below, before counting the tag.
+   *
+   * And the tag is not nothing. It hangs SIX CELLS above the duck and is
+   * five tall, so the block a person actually sees is half a duck taller at
+   * the top than at the bottom. Centring the sprite leaves the thing they
+   * are looking at sitting high.
+   *
+   * So both are measured: the water left, and the block that has to sit in
+   * the middle of it. The duck card learned this same lesson — see
+   * `lookAtAbove` — because a constant can only ever be right for one
+   * layout.
+   */
+  focusClear(id, minCell, clearBelowCss, ms) {
+    const d = this.find(id);
+    if (!d) return;
+    const cell = Math.max(this.camera.cam.cell, minCell);
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const waterCss = Math.max(0, rect.height / OVERSCAN - clearBelowCss);
+    const tagCells = d.mine && cell >= TAG.MIN_CELL ? -TAG.Y : 0;
+    const blockTop = GRID / 2 + tagCells;
+    const blockBottom = GRID / 2;
+    const offsetCells = -(blockTop - blockBottom) / 2;
+    const frameH = rect.height / OVERSCAN * this.dpr() / cell;
+    const wantCss = waterCss / 2;
+    const wantFrac = wantCss / (rect.height / OVERSCAN);
+    this.camera.glide(
+      { x: d.wx, y: d.wy + frameH * (0.5 - wantFrac) + offsetCells, cell },
+      ms
+    );
+  }
   /**
    * Move each duck toward wherever the whistle put it.
    *
@@ -4653,7 +4700,7 @@ async function pondScreen(bootstrap) {
   });
   count.addEventListener("click", openGather);
   root.append(whistle, sheet2);
-  function playArrival(fortune, tint, onSheet) {
+  function playArrival(fortune, tint, sheet3, onSheet) {
     const id = "arrival-preview";
     view2.camera.snap({ cell: HOME_CELL });
     const at = view2.frameAt(0.5, ARRIVAL_DROP_Y);
@@ -4678,9 +4725,16 @@ async function pondScreen(bootstrap) {
     }, at);
     view2.arrive(duck);
     const timers = [
-      // Close in, once the effect has said its piece.
+      /*
+       * Close in, once the effect has said its piece — and centre it in the
+       * water the sheet is ABOUT to leave, not in the whole screen. The
+       * sheet is laid out already precisely so it can be measured here.
+       */
       window.setTimeout(
-        () => view2.focus(id, ARRIVAL_CLOSE_CELL, ARRIVAL_DUCK_Y, ARRIVAL_CLOSE_MS),
+        () => {
+          const covered = sheet3.getBoundingClientRect().height;
+          view2.focusClear(id, closeCell(covered), covered, ARRIVAL_CLOSE_MS);
+        },
         fortune === 0 ? ARRIVAL_CLOSE_GREAT_MS : ARRIVAL_CLOSE_WAIT_MS
       ),
       // And only then the sheet.
@@ -4693,6 +4747,15 @@ async function pondScreen(bootstrap) {
       timers.forEach(clearTimeout);
       view2.removeLocal(id);
     };
+  }
+  function closeCell(coveredCss) {
+    const water = Math.max(0, view2.stageHeight() - coveredCss);
+    const BLOCK_CELLS = GRID + -TAG.Y;
+    for (const cell of [ARRIVAL_CLOSE_CELL, 6, 4, 3, 2]) {
+      if (cell < ARRIVAL_MIN_CELL) break;
+      if (BLOCK_CELLS * cell <= water * ARRIVAL_BLOCK_SHARE) return cell;
+    }
+    return ARRIVAL_MIN_CELL;
   }
   async function arriveWhenItLands(id) {
     for (let attempt = 0; attempt < ARRIVAL_TRIES; attempt++) {
@@ -4865,7 +4928,8 @@ var ARRIVAL_DROP_Y = 0.34;
 var ARRIVAL_CLOSE_WAIT_MS = 700;
 var ARRIVAL_CLOSE_GREAT_MS = 850;
 var ARRIVAL_CLOSE_CELL = 8;
-var ARRIVAL_DUCK_Y = 0.3;
+var ARRIVAL_MIN_CELL = 6;
+var ARRIVAL_BLOCK_SHARE = 0.4;
 var ARRIVAL_CLOSE_MS = 900;
 var ARRIVAL_SHEET_MS = 1100;
 var ARRIVAL_SHEET_GREAT_MS = 1500;

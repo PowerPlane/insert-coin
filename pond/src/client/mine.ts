@@ -227,6 +227,9 @@ export function mineScreen(opts: MineOptions): void {
     studioScreen(root, {
       fortune: duck.fortune,
       state,
+      // Not "Skip" and not "Next": this duck is already in the pond, so
+      // the only thing forward means here is keeping what you changed.
+      forward: t("manage.08"),
       onChange: () => {
         /* nothing: this duck is already in the water */
       },

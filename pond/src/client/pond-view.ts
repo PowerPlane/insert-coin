@@ -37,6 +37,7 @@ import {
   createWaterBuffer,
   drawDuck,
   drawRipples,
+  TAG,
   drawTag,
   drawWater,
   type WaterBuffer,
@@ -1186,6 +1187,65 @@ export class PondView {
     const rect = this.opts.canvas.getBoundingClientRect();
     const frameH = ((rect.height / OVERSCAN) * this.dpr()) / cell;
     this.camera.glide({ x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell }, ms);
+  }
+
+  /** The visible stage in CSS pixels — the canvas box minus its overscan. */
+  stageHeight(): number {
+    return this.opts.canvas.getBoundingClientRect().height / OVERSCAN;
+  }
+
+  /**
+   * Centre a duck in the water that is actually LEFT above something.
+   *
+   * ══ A FRACTION OF THE SCREEN IS NOT A FRACTION OF THE WATER ══
+   * The arrival parked its duck 30% down the FRAME, which sounds centred
+   * and is not: a sheet covers the bottom third, so 30% of the whole screen
+   * lands well up in the water that remains. Measured on a 390x844 phone,
+   * the duck sat 48px above the middle of the visible water — 195px of
+   * space above it and 291 below, before counting the tag.
+   *
+   * And the tag is not nothing. It hangs SIX CELLS above the duck and is
+   * five tall, so the block a person actually sees is half a duck taller at
+   * the top than at the bottom. Centring the sprite leaves the thing they
+   * are looking at sitting high.
+   *
+   * So both are measured: the water left, and the block that has to sit in
+   * the middle of it. The duck card learned this same lesson — see
+   * `lookAtAbove` — because a constant can only ever be right for one
+   * layout.
+   */
+  focusClear(id: string, minCell: number, clearBelowCss: number, ms: number): void {
+    const d = this.find(id);
+    if (!d) return;
+    const cell = Math.max(this.camera.cam.cell, minCell);
+    const rect = this.opts.canvas.getBoundingClientRect();
+
+    // The water above whatever is covering the bottom.
+    const waterCss = Math.max(0, rect.height / OVERSCAN - clearBelowCss);
+    // The block: the duck, plus the tag above it when it wears one. In
+    // sprite cells, then converted once.
+    const tagCells = d.mine && cell >= TAG.MIN_CELL ? -TAG.Y : 0;
+    const blockTop = GRID / 2 + tagCells;
+    const blockBottom = GRID / 2;
+    /*
+     * Where the duck's own centre must be for the BLOCK to be centred.
+     *
+     * The block is taller at the TOP (the tag hangs above), so its middle
+     * sits above the duck's middle — which means the duck has to sit LOWER
+     * than the water's centre, which means the camera moves UP. Hence the
+     * minus: getting this backwards moves the duck the wrong way by twice
+     * the tag, and it still looks almost right, which is the worst kind of
+     * wrong.
+     */
+    const offsetCells = -(blockTop - blockBottom) / 2;
+
+    const frameH = ((rect.height / OVERSCAN) * this.dpr()) / cell;
+    const wantCss = waterCss / 2;
+    const wantFrac = wantCss / (rect.height / OVERSCAN);
+    this.camera.glide(
+      { x: d.wx, y: d.wy + frameH * (0.5 - wantFrac) + offsetCells, cell },
+      ms,
+    );
   }
 
   /**

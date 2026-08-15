@@ -1878,3 +1878,16 @@ a.p-chip {
 .p-actions-pair > * {
   flex: 1;
 }
+
+/*
+ * A screen waiting for its moment.
+ *
+ * Laid out but not seen and not touchable: the camera measures how much
+ * water this is about to cover so it can centre the duck in what remains,
+ * and `hidden` would take it out of layout entirely and answer that
+ * question with zero.
+ */
+.p-screen.p-waiting {
+  visibility: hidden;
+  pointer-events: none;
+}
