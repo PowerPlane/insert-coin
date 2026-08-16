@@ -359,6 +359,14 @@ Safe to require, because **every tag carries `&c=`, `&g=` and `&t=`** —
 `config.h` writes all three at provisioning and only the digit is ever
 patched. There is no such thing as a real tap without a signature.
 
+**And one line is not the whole of it.** `pondPage` reads the serial a
+second time, straight from the query string, and hands it to
+`keeperLanguage` (`src/worker/pages.ts:53`) — without `safeToken`, let
+alone a signature. Typing a serial somebody once saw still picks the
+language the page renders in. That is a small thing on its own; it is the
+same pattern, and it is in the same function that mints the session, so it
+gets fixed at the same time rather than found again later.
+
 Two consequences to state rather than discover:
 
 - A card flashed with the placeholder all-zero key never verifies, so its
@@ -368,6 +376,56 @@ Two consequences to state rather than discover:
   reflash-and-erase, not a database edit.
 - Provenance for every future duck now depends on `CARD_SECRET` being
   right in production. Hence the admin warning above.
+
+---
+
+### 6.1 What `/api/claim/first` must actually check
+
+Written out rather than left to "the caller has a duck from it", which is
+too loose to implement from — Codex read it as `edit_key + ducks.card_id`
+and that would be wrong.
+
+`ducks.card_id` is **durable provenance**. It says which card minted a
+duck, months ago, and it never expires. Proving you hold the private link
+of a duck that came from a card is therefore not proof you are holding
+that card *now* — and holding it now is the entire thing being proved.
+
+The fresh-tap proof is the **session**, and the link between the session
+and the duck is `sessions.spent_duck`, written by `release.ts` when the
+duck is created. So all five, together:
+
+1. a live session from the `pond_s` cookie,
+2. `session.card_id` is not null — which, after § 6, means the signature
+   verified on this tap,
+3. `session.spent_duck` is set — this session actually released a duck,
+4. that duck's `card_id` equals the session's card,
+5. the card row exists and is not `disabled`.
+
+Then, and only then, open the epoch. `card_epochs.card_id` is a foreign
+key to `cards` and `card_epochs.counter` is `NOT NULL`, so both have to be
+satisfied explicitly: insert the card's **current** `claim_counter`, not
+an advanced one, so a later four-blow claim still passes `claim_counter <
+?1` in `claimCard`. The race is settled by the partial unique index rather
+than by a read-then-write, and the loser is told somebody already keeps
+this card.
+
+### 6.2 `keeper_duck` needs an invariant, not just an edit key
+
+§ 4.4 makes a duck's edit key a durable credential for `/api/keeper` when
+that duck is the epoch's `keeper_duck`. On its own that is circular:
+`saveKeeper` currently accepts **any** duck whose edit key is submitted,
+with no card or epoch constraint at all
+(`src/worker/keeper.ts:295-300`). A keeper holding a one-hour cookie could
+therefore point `keeper_duck` at a duck they control and convert an
+expiring cookie into permanent authority over the card — and any unrelated
+private link becomes card-settings authority the moment it is saved.
+
+So `keeper_duck` gains a constraint: **it must be a duck minted by this
+card.** `UPDATE … SET keeper_duck = (SELECT id FROM ducks WHERE edit_key =
+?1 AND card_id = ?2)`, with the card taken from the epoch rather than from
+the request. That is true by construction in every honest case — the
+keeper's duck came from the card they keep — and it closes the loop, since
+the credential now names a duck that the card itself produced.
 
 ---
 
