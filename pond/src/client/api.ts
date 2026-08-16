@@ -153,7 +153,7 @@ export const api = {
     }),
 
   say: (editKey: string, text: string) =>
-    request<{ ok: boolean; text?: string; retryAfter?: number }>("/say", {
+    request<{ ok: boolean; text?: string; nextAt?: number; retryAfter?: number }>("/say", {
       method: "POST",
       body: JSON.stringify({ editKey, text }),
     }),
@@ -283,6 +283,42 @@ export function clearDraft(): void {
  * because localStorage does not survive a new device or a cleared browser.
  */
 const KEY_STORE = "pond.editKey.v1";
+
+/**
+ * When this duck may speak again, in epoch seconds.
+ *
+ * ══ WHY THIS IS REMEMBERED AT ALL ══
+ * The say button greys out and counts down, so it has to know the deadline
+ * before anything is tapped — and there is nowhere else to learn it. A say
+ * vanishes from the pond payload after SAY_VISIBLE_SEC, and the cooldown
+ * outlives it by four minutes, so for most of the quiet period the pond
+ * cannot say when it ends.
+ *
+ * The server supplies the moment; this only carries it across a reload.
+ * It is a convenience, never the enforcement: the cooldown is checked in
+ * one atomic INSERT on the server, and a cleared localStorage buys nothing
+ * but a refusal a second later.
+ */
+const QUIET_UNTIL = "pond.quietUntil.v1";
+
+export function rememberQuiet(nextAt: number): void {
+  try {
+    localStorage.setItem(QUIET_UNTIL, String(nextAt));
+  } catch {
+    /* The button just stays alive and the server refuses. No harm. */
+  }
+}
+
+/** Seconds still to wait, or 0 when it may speak now. */
+export function quietFor(): number {
+  try {
+    const at = Number(localStorage.getItem(QUIET_UNTIL) ?? 0);
+    if (!Number.isFinite(at) || at <= 0) return 0;
+    return Math.max(0, Math.ceil(at - Date.now() / 1000));
+  } catch {
+    return 0;
+  }
+}
 
 export function rememberEditKey(key: string): void {
   try {

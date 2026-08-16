@@ -69,6 +69,7 @@ export const LIVE_STRINGS = {
   "live.bumps": "{n} bumps",
   "live.bumps.one": "1 bump",
   "live.bumps.none": "nobody has bumped it yet",
+  "live.say.wait": "Your duck can speak again in {time}", // Screen reader, the say button while quiet
   "live.sr.duck": "{name}'s duck, {fortune}", // Screen reader, one duck in the list
   "live.sr.bumper": "{name}, {bumps} — open their duck", // Screen reader, a bumper chip
   "live.sr.anon": "Someone", // Screen reader, a duck with no name
@@ -325,6 +326,7 @@ export const ZH_HANT: Record<StringKey, string> = {
   "live.bumps": "被戳 {n} 次",
   "live.bumps.one": "被戳 1 次",
   "live.bumps.none": "還沒有人戳過它",
+  "live.say.wait": "你的鴨子再過 {time} 就能說話了",
   "live.sr.duck": "{name} 的鴨子，{fortune}",
   "live.sr.bumper": "{name}，{bumps} — 打開他們的鴨子",
   "live.sr.anon": "某人",

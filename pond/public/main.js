@@ -161,6 +161,22 @@ function clearDraft() {
   }
 }
 var KEY_STORE = "pond.editKey.v1";
+var QUIET_UNTIL = "pond.quietUntil.v1";
+function rememberQuiet(nextAt) {
+  try {
+    localStorage.setItem(QUIET_UNTIL, String(nextAt));
+  } catch {
+  }
+}
+function quietFor() {
+  try {
+    const at = Number(localStorage.getItem(QUIET_UNTIL) ?? 0);
+    if (!Number.isFinite(at) || at <= 0) return 0;
+    return Math.max(0, Math.ceil(at - Date.now() / 1e3));
+  } catch {
+    return 0;
+  }
+}
 function rememberEditKey(key) {
   try {
     localStorage.setItem(KEY_STORE, key);
@@ -1287,6 +1303,8 @@ var LIVE_STRINGS = {
   "live.bumps": "{n} bumps",
   "live.bumps.one": "1 bump",
   "live.bumps.none": "nobody has bumped it yet",
+  "live.say.wait": "Your duck can speak again in {time}",
+  // Screen reader, the say button while quiet
   "live.sr.duck": "{name}'s duck, {fortune}",
   // Screen reader, one duck in the list
   "live.sr.bumper": "{name}, {bumps} — open their duck",
@@ -1654,6 +1672,7 @@ var ZH_HANT = {
   "live.bumps": "被戳 {n} 次",
   "live.bumps.one": "被戳 1 次",
   "live.bumps.none": "還沒有人戳過它",
+  "live.say.wait": "你的鴨子再過 {time} 就能說話了",
   "live.sr.duck": "{name} 的鴨子，{fortune}",
   "live.sr.bumper": "{name}，{bumps} — 打開他們的鴨子",
   "live.sr.anon": "某人",
@@ -5273,7 +5292,28 @@ async function pondScreen(bootstrap) {
   }
   function sayButton() {
     const b = button("p-glyph", "", () => openSay(), t("say.01"));
-    b.append(icon("chat", 22));
+    const tick = () => {
+      const left = quietFor();
+      b.disabled = left > 0;
+      b.classList.toggle("p-glyph-quiet", left > 0);
+      if (left > 0) {
+        const mm = Math.floor(left / 60);
+        const ss = String(left % 60).padStart(2, "0");
+        b.replaceChildren(el2("span", "p-glyph-count", `${mm}:${ss}`));
+        b.setAttribute("aria-label", t("live.say.wait", { time: `${mm}:${ss}` }));
+      } else {
+        b.replaceChildren(icon("chat", 22));
+        b.setAttribute("aria-label", t("say.01"));
+      }
+    };
+    tick();
+    const timer = window.setInterval(() => {
+      if (!b.isConnected) {
+        window.clearInterval(timer);
+        return;
+      }
+      tick();
+    }, 1e3);
     return b;
   }
   function settingsButton() {
@@ -5314,14 +5354,20 @@ async function pondScreen(bootstrap) {
       if (!text) return;
       send.disabled = true;
       void api.say(hasDuck(), text).then(
-        () => {
+        (res) => {
+          if (typeof res.nextAt === "number") rememberQuiet(res.nextAt);
           close();
           void refresh();
+          void syncCta();
         },
         (err) => {
           send.disabled = false;
           note.hidden = false;
           const cooling = err instanceof ApiError && err.status === 429;
+          if (cooling && err.retryAfter > 0) {
+            rememberQuiet(Math.ceil(Date.now() / 1e3) + err.retryAfter);
+            void syncCta();
+          }
           note.textContent = cooling ? t("say.07", {
             minutes: String(Math.max(1, Math.ceil(err.retryAfter / 60)))
           }) : t("say.08");

@@ -14,7 +14,14 @@
 import type { Env } from "./types.js";
 import { cleanText, nowSec } from "./util.js";
 
-export const SAY_COOLDOWN_SEC = 10 * 60;
+/*
+ * How long a duck stays quiet between messages.
+ *
+ * Five minutes, down from ten. The cooldown is the design — it is what
+ * keeps the pond ambient rather than a chat room — and ten proved to be
+ * enough to feel like a punishment rather than a rhythm.
+ */
+export const SAY_COOLDOWN_SEC = 5 * 60;
 export const SAY_MAX_CHARS = 60;
 export const FIRE_BURN_SEC = 90;
 export const FIRE_MIN_GAP_SEC = 45;
@@ -105,8 +112,8 @@ export async function bump(
 }
 
 /**
- * Say something. The 10-minute cooldown is enforced here, not in the
- * client, because the client is the one part an attacker controls.
+ * Say something. The cooldown is enforced here, not in the client,
+ * because the client is the one part an attacker controls.
  *
  * The INSERT ... SELECT ... WHERE NOT EXISTS makes the cooldown atomic:
  * two simultaneous posts cannot both pass a separate "check then insert".
@@ -115,7 +122,9 @@ export async function say(
   env: Env,
   duckId: string,
   raw: unknown,
-): Promise<{ ok: true; text: string } | { ok: false; retryAfter: number }> {
+): Promise<
+  { ok: true; text: string; nextAt: number } | { ok: false; retryAfter: number }
+> {
   const text = cleanText(raw, SAY_MAX_CHARS);
   const ts = nowSec();
 
@@ -131,7 +140,19 @@ export async function say(
     .bind(duckId, text, ts, ts - SAY_COOLDOWN_SEC)
     .run();
 
-  if (res.meta.changes) return { ok: true, text };
+  /*
+   * `nextAt` on SUCCESS, not only on refusal.
+   *
+   * The button that offers this has to grey out and count down, and it can
+   * only do that if it knows when it may speak again. Deriving it on the
+   * client from a copy of SAY_COOLDOWN_SEC would put the same number in
+   * two places and let them drift; the pond payload cannot supply it
+   * either, because a say disappears from there after SAY_VISIBLE_SEC and
+   * the cooldown outlives it by four minutes.
+   *
+   * So the one place that knows says so, in the same breath as the write.
+   */
+  if (res.meta.changes) return { ok: true, text, nextAt: ts + SAY_COOLDOWN_SEC };
 
   const last = await env.DB.prepare(
     `SELECT created FROM says WHERE duck_id = ?1 ORDER BY created DESC LIMIT 1`,

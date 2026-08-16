@@ -12,7 +12,7 @@
  */
 
 import {
-  ApiError, api, loadDraft, recallEditKey,
+  ApiError, api, loadDraft, quietFor, recallEditKey, rememberQuiet,
   type ReportReason, type SessionState,
 } from "./api.js";
 import { button, ditherEdge, field, sheet as makeSheet } from "./dom.js";
@@ -906,10 +906,52 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     cta.append(sayButton(), settingsButton());
   }
 
-  /** Say something. Sixty characters, forty-five seconds, once per ten minutes. */
+  /** Say something. Sixty characters, forty-five seconds, once per five minutes. */
   function sayButton(): HTMLElement {
     const b = button("p-glyph", "", () => openSay(), t("say.01"));
-    b.append(icon("chat", 22));
+
+    /*
+     * ══ THE WAIT IS SHOWN, NOT DISCOVERED ══
+     * The cooldown used to be invisible until you had written a message,
+     * tapped send, and been refused — so the only way to find out the pond
+     * wanted you quiet was to be turned away after doing the work.
+     *
+     * The button carries it instead. While the duck is quiet the glyph is
+     * replaced by the time remaining and the control is disabled; when it
+     * runs out the glyph comes back and it is live again. Nothing is
+     * hidden and nothing is wasted.
+     *
+     * The countdown is a CONVENIENCE, never the enforcement — that is one
+     * atomic INSERT on the server. Clearing the browser's storage buys an
+     * enabled button and a refusal a second later.
+     */
+    const tick = (): void => {
+      const left = quietFor();
+      b.disabled = left > 0;
+      b.classList.toggle("p-glyph-quiet", left > 0);
+      if (left > 0) {
+        // m:ss, because "273 seconds" is a number and "4:33" is a wait.
+        const mm = Math.floor(left / 60);
+        const ss = String(left % 60).padStart(2, "0");
+        b.replaceChildren(el("span", "p-glyph-count", `${mm}:${ss}`));
+        b.setAttribute("aria-label", t("live.say.wait", { time: `${mm}:${ss}` }));
+      } else {
+        b.replaceChildren(icon("chat", 22));
+        b.setAttribute("aria-label", t("say.01"));
+      }
+    };
+    tick();
+
+    /*
+     * Once a second while it is counting, and the interval stops itself
+     * when the button leaves the document — the CTA is rebuilt on every
+     * `syncCta`, and a timer per rebuild would pile up for the life of the
+     * page. Same rule as the orbit's, for the same reason.
+     */
+    const timer = window.setInterval(() => {
+      if (!b.isConnected) { window.clearInterval(timer); return; }
+      tick();
+    }, 1000);
     return b;
   }
 
@@ -966,9 +1008,13 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       if (!text) return;
       send.disabled = true;
       void api.say(hasDuck()!, text).then(
-        () => {
+        (res) => {
+          // The server said when this duck may speak again; the button
+          // outside is about to start counting it down.
+          if (typeof res.nextAt === "number") rememberQuiet(res.nextAt);
           close();
           void refresh();
+          void syncCta();
         },
         (err: unknown) => {
           send.disabled = false;
@@ -980,6 +1026,12 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
            * because `request` throws on any non-2xx and carries it there.
            */
           const cooling = err instanceof ApiError && err.status === 429;
+          // Refused because it is still quiet: take the server's figure,
+          // which is authoritative, and let the button show it.
+          if (cooling && err.retryAfter > 0) {
+            rememberQuiet(Math.ceil(Date.now() / 1000) + err.retryAfter);
+            void syncCta();
+          }
           note.textContent = cooling
             ? t("say.07", {
                 minutes: String(Math.max(1, Math.ceil(err.retryAfter / 60))),

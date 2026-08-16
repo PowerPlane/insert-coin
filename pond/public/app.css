@@ -1386,6 +1386,26 @@ a.p-btn {
 }
 
 /*
+ * The say button, while the duck is quiet.
+ *
+ * Same footprint as the glyph it replaces, so the bar does not resize
+ * under the thumb every five minutes — a control that changes SIZE when
+ * it changes state reads as two different controls.
+ */
+.p-glyph-quiet {
+  color: var(--p-soft);
+  cursor: default;
+}
+
+.p-glyph-count {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  /* Tabular figures, so the digits do not jitter as the seconds tick. */
+}
+
+/*
  * ── the admin's provenance ───────────────────────────────────────────── */
 
 /*
