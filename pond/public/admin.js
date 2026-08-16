@@ -145,7 +145,11 @@ async function load() {
   }
   view(state.ducks, state.cards, "ducks");
 }
-function view(ducks, cards, tab) {
+function provenance(d) {
+  if (!d.card) return "no card";
+  return d.keeper ? `${d.keeper} · ${d.card}` : d.card;
+}
+function view(ducks, cards, tab, cardFilter = null) {
   screen(root, () => {
     root.replaceChildren();
     const wrap = el("div", "a-screen");
@@ -160,7 +164,7 @@ function view(ducks, cards, tab) {
       ["contacts", `Contacts ${withContacts.length}`],
       ["cards", `Cards ${cards.length}`]
     ]) {
-      const b = button("p-tab", label, () => view(ducks, cards, key));
+      const b = button("p-tab", label, () => view(ducks, cards, key, cardFilter));
       b.classList.toggle("on", tab === key);
       tabs.append(b);
     }
@@ -168,10 +172,26 @@ function view(ducks, cards, tab) {
     if (reported && tab === "ducks") {
       wrap.append(el("p", "a-flag", `${reported} reported`));
     }
+    const show = (next) => view(ducks, cards, "ducks", next);
+    if (cardFilter) {
+      const named = cards.find((c) => c.id === cardFilter);
+      const bar = el("div", "a-filter");
+      bar.append(
+        el(
+          "span",
+          "a-filter-who",
+          named?.keeper ? `${named.keeper} · ${cardFilter}` : cardFilter
+        ),
+        button("p-chip", "✕", () => show(null), "Show every card again")
+      );
+      wrap.append(bar);
+    }
+    const shown = cardFilter ? ducks.filter((d) => d.card === cardFilter) : ducks;
+    const shownContacts = withContacts.filter((d) => !cardFilter || d.card === cardFilter);
     const list = el("div", "a-list");
-    if (tab === "ducks") ducks.forEach((d) => list.append(duckRow(d, ducks, cards)));
-    if (tab === "contacts") withContacts.forEach((d) => list.append(contactRow(d, ducks, cards)));
-    if (tab === "cards") cards.forEach((c) => list.append(cardRow(c)));
+    if (tab === "ducks") shown.forEach((d) => list.append(duckRow(d, show)));
+    if (tab === "contacts") shownContacts.forEach((d) => list.append(contactRow(d, ducks, cards)));
+    if (tab === "cards") cards.forEach((c) => list.append(cardRow(c, show)));
     if (!list.childElementCount) {
       list.append(el("p", "a-empty", EMPTY[tab]));
     }
@@ -187,13 +207,26 @@ function view(ducks, cards, tab) {
 function meta(d) {
   return [FORTUNES[d.fortune] ?? "", d.keeper ? `via ${d.keeper}` : "", day(d.created)].filter(Boolean).join(" · ");
 }
-function duckRow(d, ducks, cards) {
+function duckRow(d, show) {
   const row = el("div", "a-row");
   const head = el("p", "a-row-name", d.name || "(no name)");
   if (d.hidden) head.append(el("span", "a-badge", "hidden"));
   if (d.reports) head.append(el("span", "a-badge a-badge-hot", `${d.reports} reported`));
   row.append(head, el("p", "a-row-meta", meta(d)));
   if (d.message) row.append(el("p", "a-row-msg", `“${d.message}”`));
+  const from = el("div", "a-from");
+  from.append(el("span", "a-from-label", "from"));
+  if (d.card) {
+    from.append(button(
+      "p-chip",
+      provenance(d),
+      () => show(d.card),
+      `Show every duck from card ${d.card}`
+    ));
+  } else {
+    from.append(el("span", "a-row-meta", provenance(d)));
+  }
+  row.append(from);
   const actions = el("div", "a-actions");
   actions.append(
     button("p-chip", d.hidden ? "Unhide" : "Hide", () => {
@@ -211,8 +244,6 @@ function duckRow(d, ducks, cards) {
   open.rel = "noreferrer";
   actions.append(open);
   row.append(actions);
-  void ducks;
-  void cards;
   return row;
 }
 function contactRow(d, ducks, cards) {
@@ -241,14 +272,26 @@ function contactRow(d, ducks, cards) {
   void cards;
   return row;
 }
-function cardRow(c) {
+function cardRow(c, show) {
   const row = el("div", "a-row");
   const head = el("p", "a-row-name", c.keeper ?? c.label ?? c.id);
   if (c.disabled) head.append(el("span", "a-badge", "disabled"));
   row.append(head);
   row.append(
-    el("p", "a-row-meta", [c.id, `${c.ducks} ducks`, c.lang ?? "", day(c.created)].filter(Boolean).join(" · "))
+    el("p", "a-row-meta", [c.id, c.lang ?? "", day(c.created)].filter(Boolean).join(" · "))
   );
+  const actions = el("div", "a-actions");
+  if (c.ducks > 0) {
+    actions.append(button(
+      "p-chip",
+      `${c.ducks} ${c.ducks === 1 ? "duck" : "ducks"}`,
+      () => show(c.id),
+      `Show every duck from card ${c.id}`
+    ));
+  } else {
+    actions.append(el("span", "a-row-meta", "no ducks yet"));
+  }
+  row.append(actions);
   return row;
 }
 void load();

@@ -1386,6 +1386,57 @@ a.p-btn {
 }
 
 /*
+ * ── the admin's provenance ───────────────────────────────────────────── */
+
+/*
+ * "from <keeper> · <serial>", as a control.
+ *
+ * Set apart from the meta line above it so it does not read as a third
+ * comma-separated fact. It is the one thing on a duck row that leads
+ * somewhere.
+ */
+.a-from {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.a-from-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+}
+
+/*
+ * Showing one card's ducks. Same shape as the pond's whistle bar — what
+ * you are looking at, and the way out of it — because it is the same idea
+ * and the admin should not invent a second vocabulary for it.
+ */
+.a-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--quiet);
+  clip-path: var(--px-corner);
+}
+
+.a-filter-who {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--p-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
  * ── your duck, on one page ───────────────────────────────────────────── */
 
 /*
