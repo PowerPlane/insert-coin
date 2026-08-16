@@ -1040,8 +1040,17 @@ export class PondView {
     const { canvas } = this.opts;
     const cols = Math.ceil(canvas.width / cell);
     const rows = Math.ceil(canvas.height / cell);
+    // Cheap when nothing changed: it compares two ints.
     if (this.water && this.water.cols === cols && this.water.rows === rows) return;
     this.water = createWaterBuffer(cols, rows);
+    /*
+     * Handed back PAINTED. `createWaterBuffer` allocates a transparent
+     * canvas, and a transparent water blit does not clear the frame — it
+     * leaves the last one on screen at the new zoom. Painting here means
+     * no caller can produce that frame, including `resize`, which fits
+     * the buffer nowhere near a draw.
+     */
+    drawWater(this.water, this.frame);
   }
 
   /**
@@ -1681,15 +1690,47 @@ export class PondView {
     const { ctx } = this;
 
     if (this.water) {
-      drawWater(this.water, this.frame);
+      /*
+       * ══ SIZE THE BUFFER, THEN PAINT IT — IN THAT ORDER ══
+       * This was the zoom flicker, and it was reported three times before
+       * it was found, because every measurement taken of it was of the
+       * MODEL. The camera was continuous, the CSS scale was continuous,
+       * the duck radius grew smoothly through the render-cell switch.
+       * Nothing in the model was ever wrong. The bug was in what got
+       * blitted.
+       *
+       * `fitWater` ran AFTER `drawWater`. Painting a buffer and then
+       * throwing it away is only wasted work; the damage is that the
+       * replacement is blitted the same frame and `createWaterBuffer`
+       * only ALLOCATES — nothing has called `putImageData` on it, so its
+       * canvas is fully transparent.
+       *
+       * And a transparent blit is not a blank frame. There is no
+       * `clearRect` anywhere in here: the water is opaque and covers the
+       * canvas, so THE WATER BLIT IS THE CLEAR. Draw nothing and the
+       * previous frame stays exactly where it was, while the element's
+       * CSS scale has already moved to the new zoom — so for one frame
+       * the pond is the last frame, resampled to the wrong size. Snapping
+       * 6→4 at cam.cell 5 redisplays it at 1.25 instead of 0.83: water
+       * cells 1.5× too big, for 16ms, once per zoom step. A pinch crosses
+       * several ladder boundaries, which is why a pinch flickered and a
+       * single button press only twitched.
+       *
+       * Measured, not reasoned: an instrumented build counted exactly one
+       * unpainted blit per zoom step and none while idle.
+       *
+       * The order below is the whole fix, and `fitWater` paints anything
+       * it allocates so that the invariant — never blit an unpainted
+       * buffer — survives the next person who reorders this function.
+       */
+      this.fitWater(renderCell);
+      const water = this.water;
+      drawWater(water, this.frame);
 
       // Into the buffer, before the blit: a ripple should dither with the
       // water rather than sit on top of it as a smooth circle. Buffer
       // pixels are sprite pixels, so world coordinates convert by the same
       // projection the ducks use, divided back down by the cell size.
-      // Follow the zoom. Cheap when nothing changed: it compares two ints.
-      this.fitWater(renderCell);
-
       if (this.ripples.length) {
         const inBuffer = this.ripples.map((r) => {
           const p = project(
@@ -1698,10 +1739,10 @@ export class PondView {
           );
           return { ...r, x: Math.round(p.x / renderCell), y: Math.round(p.y / renderCell) };
         });
-        drawRipples(this.water, inBuffer, now);
+        drawRipples(water, inBuffer, now);
       }
 
-      blitWater(ctx, this.water, canvas.width, canvas.height);
+      blitWater(ctx, water, canvas.width, canvas.height);
     }
 
     /*

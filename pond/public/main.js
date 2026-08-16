@@ -4272,6 +4272,7 @@ var PondView = class {
     const rows = Math.ceil(canvas.height / cell);
     if (this.water && this.water.cols === cols && this.water.rows === rows) return;
     this.water = createWaterBuffer(cols, rows);
+    drawWater(this.water, this.frame);
   }
   /**
    * Put a duck's fire out — because somebody tapped it, or because it
@@ -4758,8 +4759,9 @@ var PondView = class {
     const { renderCell, scale } = this.camera.frame();
     const { ctx } = this;
     if (this.water) {
-      drawWater(this.water, this.frame);
       this.fitWater(renderCell);
+      const water = this.water;
+      drawWater(water, this.frame);
       if (this.ripples.length) {
         const inBuffer = this.ripples.map((r) => {
           const p = project(
@@ -4773,9 +4775,9 @@ var PondView = class {
           );
           return { ...r, x: Math.round(p.x / renderCell), y: Math.round(p.y / renderCell) };
         });
-        drawRipples(this.water, inBuffer, now);
+        drawRipples(water, inBuffer, now);
       }
-      blitWater(ctx, this.water, canvas.width, canvas.height);
+      blitWater(ctx, water, canvas.width, canvas.height);
     }
     for (const a of this.arrivals) {
       const p = Math.min(1, (now - a.at) / FALL_MS);
