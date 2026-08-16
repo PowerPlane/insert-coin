@@ -1,6 +1,8 @@
 # Keeping a card
 
-A plan, not an implementation. Nothing in § 4 onwards is built yet.
+**Built, 16 Aug 2026.** This was written as a plan and is kept as the
+record of why the thing works the way it does. § 9 lists what shipped and
+in what order; § 11 is what the building changed about the plan.
 
 The brief: a card should just work. Nobody should have to register one,
 and the person who opens a new card should be able to say "this one is
@@ -479,23 +481,23 @@ is a duck whose owner has lost the private link.
 
 ---
 
-## 9. Order of work
+## 9. What shipped, in the order it shipped
 
-1. **§ 6 first**, on its own, with tests: bind the card only when it
-   verified. It is independent, it is a fix regardless, and everything else
-   is unsafe without it.
-2. `POST /api/claim/first` — claim by session. Refuses unless the card is
-   verified, has no current epoch, and the caller has a duck from it.
-   `/api/session` gains `keeperOffer: boolean` so the bar can ask once.
-3. The sheet: `cardSetup` gains a compact presentation, prefilled, with the
-   paste field gone and the reserved-name refusal rendered inline.
-4. The bar row, with dismissal.
-5. `/api/keeper` accepts an edit key whose duck is a `keeper_duck`; the
-   duck's settings screen gains the card row.
-6. § 4.5 — take my name off, someone else keeps it now.
-7. Admin § 7.1–7.4, destructive one last.
-8. `CARD_SECRET` warning in admin, and resolve which serial Kariina's card
-   actually reports (todo #49).
+1. **§ 6**, alone and first — `a0a5ea1`. The card is bound to a session
+   only once its signature verifies, and `pondPage` stops reading the raw
+   `?c=` a second time to pick the page's language.
+2. `POST /api/claim/first` — `4919b97`. Plus `keeperOffer` on
+   `/api/session`, answered by the server rather than inferred.
+3. `keeper_duck`'s invariant and the durable edit-key credential —
+   `8b9ef2a`.
+4. Handing a card on, and adopting the duck that claimed it — `b82e849`.
+5. The offer row and the compact sheet — `eb71c2e`.
+6. The settings-screen card row, and claiming on a later visit —
+   `a56a13b`.
+7. Admin § 7.1–7.4 and the `CARD_SECRET` banner — `db7d835`.
+
+Still open: which serial Kariina's card actually reports (todo #49), and
+erasing the KS0KEKBX EEPROM (todo #38). Neither blocks any of the above.
 
 ---
 
@@ -521,3 +523,43 @@ is a duck whose owner has lost the private link.
    way to take over a card that already has a keeper, so it stays. It could
    later be retired in favour of admin-only transfer, once there is any
    evidence about whether a real person ever performs it.
+
+
+---
+
+## 11. What building it changed
+
+Four things the plan had wrong or missing, each found by writing a test
+that asserted the obvious and getting back something else.
+
+**The duck that claims a card was left an orphan.** Adoption is an
+explicit offer everywhere else, because ducks made before a claim are
+somebody else's. But the duck that PROVED the claim is not one of those,
+and leaving it unadopted made the keeper's own duck the one duck on the
+card that did not read *via*. `claimFromSession` now adopts exactly that
+one, guarded by `epoch_id IS NULL` so it can never reach into a previous
+tenure.
+
+**"Dismissal is not final" was false.** Claiming needed
+`sessions.spent_duck`, so somebody who tapped "Not now" and picked the
+card up the next day got a fresh session with no duck attached — and
+would have been told to make a SECOND duck to keep a card they already
+had one duck from. A private link is now accepted instead, and only ever
+alongside a live session for the same card: the session still proves
+present possession, and the key only answers which duck is theirs.
+
+**Absent was the same as empty.** Omitting `editKey` from a save nulled
+`keeper_duck`. Harmless while the link was decoration; once it became the
+durable credential it would have locked a keeper out of their own card
+for changing their language.
+
+**The test fixture was not the schema.** `test/helpers.ts` applied
+`0001_init.sql` and stopped, so every test database was missing the two
+columns `0002` adds — and `/api/admin` had never been driven by a test at
+all. The first one to try it died on `no such column: c.replied`. The
+fixture now applies the whole directory.
+
+And one layout thing, which is the same lesson as everywhere else here:
+`.p-zoom` cleared `var(--tap) + 20px`, which assumed the bar was exactly
+one row. It counted rows only after the offer made it two and the minus
+button landed on the dismiss.
