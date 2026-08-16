@@ -1431,6 +1431,50 @@ a.p-btn {
 }
 
 /*
+ * The card editor, folded away until it is wanted.
+ *
+ * There are a hundred cards and the common act is reading them; naming a
+ * keeper happens once per card. A form on every row would drown the list
+ * it is attached to.
+ */
+.a-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 2px solid var(--quiet-shadow);
+}
+
+.a-edit[hidden] {
+  display: none;
+}
+
+.a-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.a-field-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+}
+
+/*
+ * Destructive, and it looks it — but as a chip rather than the full-width
+ * red button the pond uses, because this one is offered ONLY for a card
+ * nothing hangs off. The weight should match what is actually at stake.
+ */
+.a-chip-danger {
+  background: var(--danger-quiet, #fde8e4);
+  color: #8f2b20;
+}
+
+/*
  * ── the admin's provenance ───────────────────────────────────────────── */
 
 /*

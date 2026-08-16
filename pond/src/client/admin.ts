@@ -396,7 +396,111 @@ function cardRow(c: AdminCard, show: (card: string | null) => void): HTMLElement
   } else {
     actions.append(el("span", "a-row-meta", "no ducks yet"));
   }
+
+  /*
+   * ══ EDITING A CARD IS RARE AND CONSEQUENTIAL ══
+   * Folded away behind one chip rather than laid out on every row. There
+   * are a hundred of these and the common act is reading them; naming a
+   * keeper happens once per card, and a form on every row would drown the
+   * list it is attached to.
+   */
+  const edit = el("div", "a-edit");
+  edit.hidden = true;
+  actions.append(button("p-chip", "Edit", () => {
+    edit.hidden = !edit.hidden;
+  }, `Edit card ${c.id}`));
   row.append(actions);
+
+  const note = el("p", "a-row-meta", "");
+  const field = (label: string, value: string, max: number): HTMLInputElement => {
+    const wrap = el("label", "a-field");
+    const input = el("input", "p-input");
+    input.type = "text";
+    input.value = value;
+    input.maxLength = max;
+    wrap.append(el("span", "a-field-label", label), input);
+    edit.append(wrap);
+    return input;
+  };
+
+  const label = field("Label — admin only", c.label ?? "", 40);
+  const keeper = field("Keeper name — shown as “via …”", c.keeper ?? "", 18);
+
+  /*
+   * The keeper's default language. A pair of chips rather than a select,
+   * because there are two and a native select on this screen would be the
+   * only one in the product.
+   */
+  let lang = c.lang === "zh-Hant" ? "zh-Hant" : "en";
+  const langs = el("div", "p-chip-row");
+  const langBtns: [string, string][] = [["en", "English"], ["zh-Hant", "繁體中文"]];
+  const paintLangs = () => {
+    [...langs.children].forEach((b, i) => {
+      const on = langBtns[i]![0] === lang;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+  };
+  langBtns.forEach(([value, text]) => {
+    langs.append(button("p-chip", text, () => { lang = value; paintLangs(); }));
+  });
+  paintLangs();
+  edit.append(el("span", "a-field-label", "Language this card opens in"), langs);
+
+  const save = el("div", "a-actions");
+  save.append(button("p-chip", "Save card", () => {
+    note.textContent = "";
+    void api("/card/label", { card: c.id, label: label.value })
+      .then(() => api("/card/keeper", { card: c.id, name: keeper.value, lang }))
+      .then(load, async (err: unknown) => {
+        /*
+         * The one refusal somebody can act on gets its own sentence. A
+         * keeper called "admin" or "pond" would be quoting the pond
+         * itself on every duck from this card, which is why the
+         * four-blow path refuses it too.
+         */
+        note.textContent = String(err).includes("409")
+          ? "That keeper name is kept for the pond itself. Try another."
+          : "Could not save.";
+      });
+  }));
+
+  /*
+   * Disabled, not deleted. `mintSession` refuses a disabled card, so this
+   * stops new fortunes and claims dead while every duck that came off it
+   * keeps its keeper — and it is one tap back, which delete never is.
+   */
+  save.append(button("p-chip", c.disabled ? "Switch back on" : "Switch off", () => {
+    void api("/card/disabled", { card: c.id, disabled: !c.disabled }).then(load);
+  }));
+
+  /*
+   * ══ DELETE ONLY WHEN IT COSTS NOTHING ══
+   * The server refuses a card with any ducks or any epochs, because
+   * deleting one cascades its epochs away and strips every duck that came
+   * off it of its keeper — for people who never asked — and adding the
+   * serial back cannot undo it. So the button is only offered for a card
+   * that has never been used, and it still asks twice.
+   */
+  if (c.ducks === 0) {
+    const danger = el("div", "a-actions");
+    danger.append(button("p-chip a-chip-danger", "Delete card", () => {
+      danger.replaceChildren(
+        el("p", "a-row-meta", `Delete ${c.id}? Only possible because nothing hangs off it.`),
+        button("p-chip a-chip-danger", "Yes, delete", () => {
+          void api("/card/delete", { card: c.id }).then(load, () => {
+            note.textContent = "That card is in use. Switch it off instead.";
+          });
+        }),
+        button("p-chip", "Keep it", () => load()),
+      );
+    }));
+    edit.append(save, danger, note);
+  } else {
+    edit.append(save, note);
+  }
+
+  row.append(edit);
   return row;
 }
 

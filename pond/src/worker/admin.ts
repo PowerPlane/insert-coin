@@ -15,7 +15,8 @@
  */
 
 import type { Env } from "./types.js";
-import { json, nowSec, timingSafeEqual } from "./util.js";
+import { isReservedKeeperName } from "./keeper.js";
+import { cleanText, json, nowSec, timingSafeEqual } from "./util.js";
 
 /** Twelve hours: long enough for an evening of moderation, short enough. */
 const ADMIN_TTL_SEC = 12 * 60 * 60;
@@ -175,6 +176,124 @@ export async function markContact(
       : `UPDATE contacts SET postcard = ?1 WHERE duck_id = ?2`;
   const res = await env.DB.prepare(sql).bind(done ? nowSec() : null, duckId).run();
   return Boolean(res.meta.changes);
+}
+
+/**
+ * Rename a card, in the admin's own words.
+ *
+ * `label` is what the Cards tab shows when a card has no keeper yet — "the
+ * one I gave Sam". It is never seen by a visitor and never leaves this
+ * screen.
+ */
+export async function setCardLabel(env: Env, cardId: string, label: string): Promise<boolean> {
+  const res = await env.DB.prepare(`UPDATE cards SET label = ?1 WHERE id = ?2`)
+    .bind(cleanText(label, 40), cardId)
+    .run();
+  return Boolean(res.meta.changes);
+}
+
+/**
+ * Switch a card off, or back on.
+ *
+ * ══ THIS IS THE KILL SWITCH, AND IT IS WHY DELETE IS NOT ══
+ * `mintSession` refuses a disabled card, so this stops new fortunes and
+ * new claims dead while leaving every duck that came off it exactly where
+ * it is, still carrying its keeper's name. And it is reversible, which is
+ * the whole difference: a card switched off by mistake is one tap from
+ * being a card again.
+ */
+export async function setCardDisabled(
+  env: Env,
+  cardId: string,
+  disabled: boolean,
+): Promise<boolean> {
+  const res = await env.DB.prepare(`UPDATE cards SET disabled = ?1 WHERE id = ?2`)
+    .bind(disabled ? 1 : 0, cardId)
+    .run();
+  return Boolean(res.meta.changes);
+}
+
+/**
+ * Amend the CURRENT keeper's settings.
+ *
+ * ══ AMEND, NEVER END AND REOPEN ══
+ * The obvious implementation is to end the epoch and open a new one with
+ * the new name. It would be wrong. A contact's consent is tied to the
+ * epoch it was given under — "shared with Sam" means SAM — so ending an
+ * epoch to change a spelling would orphan consent that somebody gave to a
+ * person who has not actually changed.
+ *
+ * Ending an epoch is what a NEW KEEPER does, by holding the card and
+ * blowing on it. This is the admin correcting a label on the same tenure,
+ * which is a different act and must not look like the other one.
+ *
+ * Refuses a reserved name for the same reason the four-blow path does: a
+ * keeper called "admin" or "pond" would be quoting the pond itself on
+ * every duck from that card.
+ */
+export async function setKeeper(
+  env: Env,
+  cardId: string,
+  fields: { name?: unknown; lang?: unknown },
+): Promise<{ ok: true } | { error: "reserved name" | "no epoch" }> {
+  const epoch = await env.DB.prepare(
+    `SELECT id FROM card_epochs WHERE card_id = ?1 AND ended IS NULL`,
+  )
+    .bind(cardId)
+    .first<{ id: string }>();
+  // No open epoch means nobody has claimed this card, and there is no
+  // tenure to amend. Not an error worth dressing up — the Cards tab knows.
+  if (!epoch) return { error: "no epoch" };
+
+  if (fields.name !== undefined) {
+    const name = cleanText(fields.name, 18);
+    if (isReservedKeeperName(name)) return { error: "reserved name" };
+    await env.DB.prepare(`UPDATE card_epochs SET keeper_name = ?1 WHERE id = ?2`)
+      .bind(name, epoch.id)
+      .run();
+  }
+  if (fields.lang !== undefined) {
+    const lang = fields.lang === "zh-Hant" ? "zh-Hant" : "en";
+    await env.DB.prepare(`UPDATE card_epochs SET lang = ?1 WHERE id = ?2`)
+      .bind(lang, epoch.id)
+      .run();
+  }
+  return { ok: true };
+}
+
+/**
+ * Remove a card entirely — and only when that costs nothing.
+ *
+ * ══ WHY THIS REFUSES MORE THAN IT ACCEPTS ══
+ * `card_epochs.card_id` is ON DELETE CASCADE and `ducks.epoch_id` is ON
+ * DELETE SET NULL, so deleting a card with any history silently strips
+ * every duck that came off it of its keeper — "via Sam" gone, for ducks
+ * belonging to people who never asked. `ducks.card_id` has no on-delete
+ * rule at all, so it either errors or dangles depending on whether keys
+ * are being enforced.
+ *
+ * And it cannot be undone by adding the serial back: the epochs are gone,
+ * and `claim_counter` returns to 0, which makes a counter the server
+ * already retired acceptable again — a replay window opened by a cleanup.
+ *
+ * So this deletes only a card that has never been used: no ducks, no
+ * epochs. A mis-provisioned or bench card. Anything else is `disabled`,
+ * which is reversible and costs nobody their provenance.
+ */
+export async function deleteCard(
+  env: Env,
+  cardId: string,
+): Promise<{ ok: true } | { error: "in use" }> {
+  const used = await env.DB.prepare(
+    `SELECT (SELECT COUNT(*) FROM ducks WHERE card_id = ?1)
+          + (SELECT COUNT(*) FROM card_epochs WHERE card_id = ?1) AS n`,
+  )
+    .bind(cardId)
+    .first<{ n: number }>();
+  if (Number(used?.n ?? 0) > 0) return { error: "in use" };
+
+  await env.DB.prepare(`DELETE FROM cards WHERE id = ?1`).bind(cardId).run();
+  return { ok: true };
 }
 
 /** Clear the open reports on a duck once it has been dealt with. */

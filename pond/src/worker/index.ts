@@ -26,8 +26,8 @@ import {
 } from "./ducks.js";
 import { withdrawContact } from "./contact.js";
 import {
-  adminDucks, adminState, authorised, contactsCsv, markContact,
-  resolveReports, setHidden, signIn,
+  adminDucks, adminState, authorised, contactsCsv, deleteCard, markContact,
+  resolveReports, setCardDisabled, setCardLabel, setHidden, setKeeper, signIn,
 } from "./admin.js";
 import { claimCard, keeperState, saveKeeper } from "./keeper.js";
 import { createDuck, setContact } from "./release.js";
@@ -389,6 +389,44 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
 
     if (req.method === "POST") {
       const body = await readJson(req);
+
+      /*
+       * ── the cards, before the ducks ─────────────────────────────────
+       * These are keyed by a card SERIAL, not a duck id, so they are
+       * matched before the duck-id guard below rejects them for not
+       * looking like one.
+       */
+      if (path.startsWith("/api/admin/card")) {
+        const card = safeToken(typeof body?.card === "string" ? body.card : null, 12);
+        if (!card) return badRequest("bad card", headers);
+
+        if (path === "/api/admin/card/label") {
+          const ok = await setCardLabel(env, card, String(body?.label ?? ""));
+          return ok ? json({ ok: true }, { headers }) : notFound(headers);
+        }
+        if (path === "/api/admin/card/disabled") {
+          const ok = await setCardDisabled(env, card, Boolean(body?.disabled));
+          return ok ? json({ ok: true }, { headers }) : notFound(headers);
+        }
+        if (path === "/api/admin/card/keeper") {
+          const res = await setKeeper(env, card, { name: body?.name, lang: body?.lang });
+          if ("error" in res) {
+            // The two refusals a person can act on, so they are told apart
+            // rather than both becoming "something went wrong".
+            return json({ ok: false, error: res.error }, { status: 409, headers });
+          }
+          return json({ ok: true }, { headers });
+        }
+        if (path === "/api/admin/card/delete") {
+          const res = await deleteCard(env, card);
+          if ("error" in res) {
+            return json({ ok: false, error: res.error }, { status: 409, headers });
+          }
+          return json({ ok: true }, { headers });
+        }
+        return notFound(headers);
+      }
+
       const duckId = typeof body?.id === "string" ? body.id : "";
       if (!DUCK_ID.test(duckId)) return badRequest("bad id", headers);
 

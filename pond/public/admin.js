@@ -308,7 +308,71 @@ function cardRow(c, show) {
   } else {
     actions.append(el("span", "a-row-meta", "no ducks yet"));
   }
+  const edit = el("div", "a-edit");
+  edit.hidden = true;
+  actions.append(button("p-chip", "Edit", () => {
+    edit.hidden = !edit.hidden;
+  }, `Edit card ${c.id}`));
   row.append(actions);
+  const note = el("p", "a-row-meta", "");
+  const field2 = (label2, value, max) => {
+    const wrap = el("label", "a-field");
+    const input = el("input", "p-input");
+    input.type = "text";
+    input.value = value;
+    input.maxLength = max;
+    wrap.append(el("span", "a-field-label", label2), input);
+    edit.append(wrap);
+    return input;
+  };
+  const label = field2("Label — admin only", c.label ?? "", 40);
+  const keeper = field2("Keeper name — shown as “via …”", c.keeper ?? "", 18);
+  let lang = c.lang === "zh-Hant" ? "zh-Hant" : "en";
+  const langs = el("div", "p-chip-row");
+  const langBtns = [["en", "English"], ["zh-Hant", "繁體中文"]];
+  const paintLangs = () => {
+    [...langs.children].forEach((b, i) => {
+      const on = langBtns[i][0] === lang;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+  };
+  langBtns.forEach(([value, text]) => {
+    langs.append(button("p-chip", text, () => {
+      lang = value;
+      paintLangs();
+    }));
+  });
+  paintLangs();
+  edit.append(el("span", "a-field-label", "Language this card opens in"), langs);
+  const save = el("div", "a-actions");
+  save.append(button("p-chip", "Save card", () => {
+    note.textContent = "";
+    void api("/card/label", { card: c.id, label: label.value }).then(() => api("/card/keeper", { card: c.id, name: keeper.value, lang })).then(load, async (err) => {
+      note.textContent = String(err).includes("409") ? "That keeper name is kept for the pond itself. Try another." : "Could not save.";
+    });
+  }));
+  save.append(button("p-chip", c.disabled ? "Switch back on" : "Switch off", () => {
+    void api("/card/disabled", { card: c.id, disabled: !c.disabled }).then(load);
+  }));
+  if (c.ducks === 0) {
+    const danger = el("div", "a-actions");
+    danger.append(button("p-chip a-chip-danger", "Delete card", () => {
+      danger.replaceChildren(
+        el("p", "a-row-meta", `Delete ${c.id}? Only possible because nothing hangs off it.`),
+        button("p-chip a-chip-danger", "Yes, delete", () => {
+          void api("/card/delete", { card: c.id }).then(load, () => {
+            note.textContent = "That card is in use. Switch it off instead.";
+          });
+        }),
+        button("p-chip", "Keep it", () => load())
+      );
+    }));
+    edit.append(save, danger, note);
+  } else {
+    edit.append(save, note);
+  }
+  row.append(edit);
   return row;
 }
 void load();

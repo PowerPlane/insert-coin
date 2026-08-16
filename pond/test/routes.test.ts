@@ -472,7 +472,7 @@ describe("the deletion promise, over HTTP", () => {
     expect(body).not.toContain("sam@example.com");
   });
 
-  it("every page can be added to an iPhone home screen", async () => {
+it("every page can be added to an iPhone home screen", async () => {
     /*
      * Asked for as "minimise the Safari URL bar", which iOS gives no way
      * to do. Installed to the Home Screen there is no bar at all, which
@@ -831,5 +831,120 @@ describe("every response carries the security headers, errors included", () => {
     for (const h of REQUIRED) expect(res.headers.get(h), h).not.toBeNull();
     // The cookie was minted for this request and would have been lost.
     expect(res.headers.getSetCookie?.().some((c) => c.startsWith("pond_v="))).toBe(true);
+  });
+});
+
+describe("the admin editing cards", () => {
+  const signedIn = async (e: Env) => {
+    const v = new Visitor(e);
+    await v.api("/api/admin/in", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password: "test-admin" }),
+    });
+    return v;
+  };
+  const post = (v: Visitor, path: string, body: unknown) =>
+    v.api(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  it("renames a card, and sets the current keeper without ending the epoch", async () => {
+    /*
+     * The point of the whole feature: find the card that made a duck and
+     * put the right name on it, so future taps say "via Kariina".
+     *
+     * AMENDING the open epoch rather than ending it is the part that
+     * matters. A contact's consent is tied to the epoch it was given
+     * under — "shared with Sam" means Sam — so ending one to fix a
+     * spelling would orphan consent that was given to a person who has
+     * not changed.
+     */
+    const e = await env();
+    await makeCard(e.DB, { card: "CARD0001" });
+    const v = await signedIn(e);
+
+    expect((await post(v, "/api/admin/card/label", { card: "CARD0001", label: "the one for Kariina" })).status).toBe(200);
+    const before = await e.DB.prepare(`SELECT id FROM card_epochs WHERE card_id = ?1 AND ended IS NULL`)
+      .bind("CARD0001").first<{ id: string }>();
+
+    expect((await post(v, "/api/admin/card/keeper", { card: "CARD0001", name: "Kariina", lang: "zh-Hant" })).status).toBe(200);
+
+    const after = await e.DB.prepare(
+      `SELECT id, keeper_name, lang, ended FROM card_epochs WHERE card_id = ?1 AND ended IS NULL`,
+    ).bind("CARD0001").first<{ id: string; keeper_name: string; lang: string; ended: number | null }>();
+    expect(after?.keeper_name).toBe("Kariina");
+    expect(after?.lang).toBe("zh-Hant");
+    // The SAME epoch, still open. Not a new tenure.
+    if (before) expect(after?.id).toBe(before.id);
+    expect(after?.ended).toBeNull();
+  });
+
+  it("refuses a reserved keeper name here too", async () => {
+    // The four-blow path already refuses these; an admin route that did
+    // not would be a way around the guard rather than a second one.
+    const e = await env();
+    await makeCard(e.DB, { card: "CARD0002" });
+    const v = await signedIn(e);
+    const res = await post(v, "/api/admin/card/keeper", { card: "CARD0002", name: "admin" });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ ok: false, error: "reserved name" });
+  });
+
+  it("switches a card off and on again", async () => {
+    const e = await env();
+    await makeCard(e.DB, { card: "CARD0003" });
+    const v = await signedIn(e);
+    await post(v, "/api/admin/card/disabled", { card: "CARD0003", disabled: true });
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1 AND disabled = 1`, "CARD0003")).toBe(1);
+    await post(v, "/api/admin/card/disabled", { card: "CARD0003", disabled: false });
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1 AND disabled = 0`, "CARD0003")).toBe(1);
+  });
+
+  it("will not delete a card that anything hangs off", async () => {
+    /*
+     * ══ THE REFUSAL IS THE FEATURE ══
+     * `card_epochs.card_id` is ON DELETE CASCADE and `ducks.epoch_id` is
+     * ON DELETE SET NULL, so deleting a used card strips every duck that
+     * came off it of its keeper — for people who never asked. Adding the
+     * serial back does not undo it: the epochs are gone and
+     * `claim_counter` returns to 0, which makes a retired counter valid
+     * again.
+     */
+    const e = await env();
+    await makeCard(e.DB, { card: "CARD0004" });
+    const v = await signedIn(e);
+
+    const res = await post(v, "/api/admin/card/delete", { card: "CARD0004" });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ ok: false, error: "in use" });
+    // Still there, with its history.
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1`, "CARD0004")).toBe(1);
+  });
+
+  it("deletes a card that has never been used", async () => {
+    // A mis-provisioned or bench card: no ducks, no epochs, nothing to
+    // lose. This is the only case where delete costs nobody anything.
+    const e = await env();
+    await e.DB.prepare(`INSERT INTO cards (id, label, created) VALUES (?1, ?2, ?3)`)
+      .bind("CARD0005", "flashed by mistake", 1786600000).run();
+    const v = await signedIn(e);
+
+    const res = await post(v, "/api/admin/card/delete", { card: "CARD0005" });
+    expect(res.status).toBe(200);
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1`, "CARD0005")).toBe(0);
+  });
+
+  it("lets nobody who is not signed in touch any of it", async () => {
+    const e = await env();
+    await makeCard(e.DB, { card: "CARD0006" });
+    const v = new Visitor(e); // no sign-in
+    for (const path of ["label", "disabled", "keeper", "delete"]) {
+      const res = await post(v, `/api/admin/card/${path}`, { card: "CARD0006", name: "x" });
+      expect(res.status, path).toBe(404);
+    }
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1`, "CARD0006")).toBe(1);
   });
 });
