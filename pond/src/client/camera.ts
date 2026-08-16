@@ -62,6 +62,11 @@ export const HOME_CELL: Cell = 4;
 
 /** Anything answering a control: zoom, home, whistle, opening a duck card. */
 export const CAM_UI = 480;
+/**
+ * A zoom somebody pressed for. Shorter than CAM_UI and eased out, because
+ * a tap is a request for a result rather than an invitation to travel.
+ */
+export const CAM_ZOOM = 280;
 /** The one thing watched rather than operated: a duck being released. */
 export const CAM_MOMENT = 1100;
 
@@ -124,6 +129,8 @@ interface Move {
   to: Camera;
   start: number;
   ms: number;
+  /** How this particular move is timed. See easeOutCubic. */
+  ease: (p: number) => number;
 }
 
 /** A flick, decaying. Sprite pixels per millisecond. */
@@ -136,6 +143,23 @@ interface Fling {
 /** One easing for both position and zoom — see rule 3. */
 export function easeInOutCubic(p: number): number {
   return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+}
+
+/**
+ * For a move somebody just ASKED for.
+ *
+ * ══ EASE-IN IS A LAG WHEN THE INPUT WAS A TAP ══
+ * `easeInOutCubic` starts almost stationary — measured off a real zoom
+ * press, the cell had not moved at all 40ms after the click and had
+ * travelled 0.05 of a step by 100ms. On a glide TOWARD something that is
+ * right: the camera gathers itself and sets off. On a button it is a
+ * delay, and it was reported as one — "a jump delay feeling".
+ *
+ * A discrete request should be answered at once and settle gently, which
+ * is ease-OUT. The considered moves keep the other curve.
+ */
+export function easeOutCubic(p: number): number {
+  return 1 - Math.pow(1 - p, 3);
 }
 
 /**
@@ -247,7 +271,12 @@ export class PondCamera {
    * The target is resolved through `wrapDelta`, so gliding to a duck near
    * the seam goes the short way round rather than scrolling the whole world.
    */
-  glide(to: Partial<Camera>, ms = CAM_UI, now = performance.now()): void {
+  glide(
+    to: Partial<Camera>,
+    ms = CAM_UI,
+    now = performance.now(),
+    ease: (p: number) => number = easeInOutCubic,
+  ): void {
     /*
      * Reduced motion arrives, it does not travel.
      *
@@ -269,7 +298,7 @@ export class PondCamera {
       y: to.y === undefined ? from.y : from.y + wrapDelta(from.y, to.y, this.side),
       cell: to.cell === undefined ? from.cell : clampCell(to.cell),
     };
-    this.move = { from, to: target, start: now, ms };
+    this.move = { from, to: target, start: now, ms, ease };
   }
 
   /** Jump with no animation. For arrival, and for a finger on the glass. */
@@ -329,16 +358,20 @@ export class PondCamera {
    * The destination is the same arithmetic `zoomAbout` does; the only
    * difference is that it is handed to `glide` instead of assigned.
    */
-  glideAbout(nextCell: number, ax: number, ay: number, ms = CAM_UI): void {
+  glideAbout(nextCell: number, ax: number, ay: number, ms = CAM_ZOOM): void {
     const from = this.cam.cell;
     const to = clampCell(nextCell);
     if (to === from) return;
     // Keep the world point under the anchor still: its offset from the
     // camera scales by exactly the zoom ratio.
     const k = 1 / from - 1 / to;
+    // Double tap is a request too, so it gets the same answer-at-once feel
+    // as the buttons rather than the travelling glide.
     this.glide(
       { x: wrap(this.cam.x + ax * k, this.side), y: wrap(this.cam.y + ay * k, this.side), cell: to },
       ms,
+      performance.now(),
+      easeOutCubic,
     );
   }
 
@@ -405,7 +438,7 @@ export class PondCamera {
     const m = this.move;
 
     const p = Math.min(1, (now - m.start) / m.ms);
-    const e = easeInOutCubic(p);
+    const e = m.ease(p);
 
     this.cam.x = wrap(m.from.x + (m.to.x - m.from.x) * e, this.side);
     this.cam.y = wrap(m.from.y + (m.to.y - m.from.y) * e, this.side);

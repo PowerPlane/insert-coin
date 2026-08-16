@@ -19,7 +19,7 @@ import { button, ditherEdge, field, sheet as makeSheet } from "./dom.js";
 import { icon } from "./icons.js";
 import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
-import { CAM_UI, HOME_CELL } from "./camera.js";
+import { CAM_UI, CAM_ZOOM, HOME_CELL, easeOutCubic } from "./camera.js";
 import { cardSetup, claimFromUrl } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, SPLASH_TAP, type Placed } from "./pond-view.js";
@@ -369,7 +369,12 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       const next = view.camera.step(dir);
       // null at the ends of the ladder. Disable rather than no-op silently,
       // so the control tells the truth about what it can do.
-      if (next !== null) view.camera.glide({ cell: next }, CAM_UI);
+      // A press is answered at once and settles — see easeOutCubic. The
+      // considered glides (looking at a duck, the arrival) keep CAM_UI and
+      // its ease-in-out.
+      if (next !== null) {
+        view.camera.glide({ cell: next }, CAM_ZOOM, performance.now(), easeOutCubic);
+      }
       syncZoom();
     });
     return b;

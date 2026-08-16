@@ -2601,6 +2601,7 @@ function mineScreen(opts) {
 var CELLS2 = [2, 3, 4, 6, 8];
 var HOME_CELL = 4;
 var CAM_UI = 480;
+var CAM_ZOOM = 280;
 var CAM_MOMENT = 1100;
 var FLING_TAU = 325;
 var FLING_REST = 4e-3;
@@ -2609,6 +2610,9 @@ var SETTLE_TAU = 90;
 var OVERSCAN = 1.5;
 function easeInOutCubic(p) {
   return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+}
+function easeOutCubic(p) {
+  return 1 - Math.pow(1 - p, 3);
 }
 function worldSide(frameSpritePx, ducks) {
   return Math.max(frameSpritePx * 2.4, duckSpread(ducks));
@@ -2680,7 +2684,7 @@ var PondCamera = class {
    * The target is resolved through `wrapDelta`, so gliding to a duck near
    * the seam goes the short way round rather than scrolling the whole world.
    */
-  glide(to, ms = CAM_UI, now = performance.now()) {
+  glide(to, ms = CAM_UI, now = performance.now(), ease = easeInOutCubic) {
     if (prefersReducedMotion()) {
       this.snap(to);
       return;
@@ -2691,7 +2695,7 @@ var PondCamera = class {
       y: to.y === void 0 ? from.y : from.y + wrapDelta(from.y, to.y, this.side),
       cell: to.cell === void 0 ? from.cell : clampCell(to.cell)
     };
-    this.move = { from, to: target, start: now, ms };
+    this.move = { from, to: target, start: now, ms, ease };
   }
   /** Jump with no animation. For arrival, and for a finger on the glass. */
   snap(to) {
@@ -2745,14 +2749,16 @@ var PondCamera = class {
    * The destination is the same arithmetic `zoomAbout` does; the only
    * difference is that it is handed to `glide` instead of assigned.
    */
-  glideAbout(nextCell, ax, ay, ms = CAM_UI) {
+  glideAbout(nextCell, ax, ay, ms = CAM_ZOOM) {
     const from = this.cam.cell;
     const to = clampCell(nextCell);
     if (to === from) return;
     const k = 1 / from - 1 / to;
     this.glide(
       { x: wrap(this.cam.x + ax * k, this.side), y: wrap(this.cam.y + ay * k, this.side), cell: to },
-      ms
+      ms,
+      performance.now(),
+      easeOutCubic
     );
   }
   /**
@@ -2804,7 +2810,7 @@ var PondCamera = class {
     }
     const m = this.move;
     const p = Math.min(1, (now - m.start) / m.ms);
-    const e = easeInOutCubic(p);
+    const e = m.ease(p);
     this.cam.x = wrap(m.from.x + (m.to.x - m.from.x) * e, this.side);
     this.cam.y = wrap(m.from.y + (m.to.y - m.from.y) * e, this.side);
     this.cam.cell = m.from.cell + (m.to.cell - m.from.cell) * e;
@@ -5034,7 +5040,9 @@ async function pondScreen(bootstrap) {
     b.setAttribute("aria-label", aria);
     b.addEventListener("click", () => {
       const next = view2.camera.step(dir);
-      if (next !== null) view2.camera.glide({ cell: next }, CAM_UI);
+      if (next !== null) {
+        view2.camera.glide({ cell: next }, CAM_ZOOM, performance.now(), easeOutCubic);
+      }
       syncZoom();
     });
     return b;

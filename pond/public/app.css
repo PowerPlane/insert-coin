@@ -131,6 +131,31 @@ html[lang="zh-Hant"] body {
   transform: translate(-50%, -50%);
   image-rendering: pixelated;
   touch-action: none;
+  /*
+   * ══ THE FLICKER DURING A PINCH ══
+   * Reported on mobile Safari: ducks flash at their PREVIOUS size while
+   * pinching. The drawing model was measured and cleared — across a real
+   * zoom the computed scale and the applied CSS scale agree on every
+   * frame, and a duck's radius grows continuously, including through the
+   * render-cell change from 4 to 6 where a seam would show if there were
+   * one.
+   *
+   * What is left is the composite. This canvas is `image-rendering:
+   * pixelated` under a transform whose scale changes every frame, and
+   * Safari rasterizes such a layer at one scale and re-rasterizes it
+   * asynchronously — showing the previous raster in between. That is the
+   * flash, and it is not something the JavaScript can be made to fix.
+   *
+   * `will-change` promotes it to its own compositor layer up front, so the
+   * scale is a GPU transform of an existing texture rather than a repeated
+   * re-rasterization. One element, so the memory cost is a single layer
+   * that was going to be promoted during the gesture anyway.
+   *
+   * NOT VERIFIED HERE — this behaviour does not reproduce in headless
+   * Chrome, and there is no Safari on this machine. It needs a pinch on a
+   * real iPhone to confirm.
+   */
+  will-change: transform;
 }
 
 /* ── shared shapes ────────────────────────────────────────────────────── */
