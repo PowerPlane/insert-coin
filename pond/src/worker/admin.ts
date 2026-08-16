@@ -163,11 +163,20 @@ export interface AdminCard {
   claimed: boolean;
   /** Ducks from this card that no tenure has adopted. */
   orphans: number;
+  /*
+   * ══ THE HIGH-WATER MARK ══
+   * A claim is accepted only when its counter EXCEEDS this. It is the
+   * single number that decides whether four blows work, and it was
+   * invisible — so "the gesture did nothing" could not be told apart
+   * from "the card armed at a counter the server had already retired"
+   * without reading the tag with a phone.
+   */
+  claimCounter: number;
 }
 
 export async function adminCards(env: Env): Promise<AdminCard[]> {
   const { results } = await env.DB.prepare(
-    `SELECT c.id, c.label, c.created, c.disabled,
+    `SELECT c.id, c.label, c.created, c.disabled, c.claim_counter,
             e.id AS epoch, e.keeper_name AS keeper, e.lang,
             (SELECT COUNT(*) FROM ducks d WHERE d.card_id = c.id) AS ducks,
             (SELECT COUNT(*) FROM ducks d
@@ -187,6 +196,7 @@ export async function adminCards(env: Env): Promise<AdminCard[]> {
     ducks: Number(r.ducks ?? 0),
     claimed: Boolean(r.epoch),
     orphans: Number(r.orphans ?? 0),
+    claimCounter: Number(r.claim_counter ?? 0),
   }));
 }
 

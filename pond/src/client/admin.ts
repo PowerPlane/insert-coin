@@ -49,6 +49,8 @@ interface AdminCard {
      to assign somebody. */
   claimed: boolean;
   orphans: number;
+  /* The high-water mark. Four blows work only above this. */
+  claimCounter: number;
 }
 
 type Tab = "ducks" | "contacts" | "cards";
@@ -491,8 +493,17 @@ function cardRow(c: AdminCard, show: (card: string | null) => void): HTMLElement
   row.append(head);
   // The serial IS shown here and nowhere else: this is the one reader who
   // needs to match a row to a card in their hand.
+  /*
+   * The serial, the language, the day — and the claim counter, because it
+   * is the one number that says whether four blows will be accepted. A
+   * card whose tag armed at or below this is a card whose gesture will be
+   * refused, and without it on screen that is indistinguishable from the
+   * gesture not having registered at all.
+   */
   row.append(
-    el("p", "a-row-meta", [c.id, c.lang ?? "", day(c.created)].filter(Boolean).join(" · ")),
+    el("p", "a-row-meta",
+      [c.id, c.lang ?? "", `claim ${c.claimCounter}`, day(c.created)]
+        .filter(Boolean).join(" · ")),
   );
 
   /*

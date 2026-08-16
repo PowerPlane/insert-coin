@@ -164,7 +164,18 @@ void setup() {
      * still the belt at the other end. This is the braces.
      */
     ndef_init();
-    if (provision_ok()) {
+    /*
+     * `provision_ensure`, not `provision_ok`. The latter returns a static
+     * that only becomes true INSIDE ensure — so gating on it here, before
+     * ensure has run for this power-up, meant the whole block was dead
+     * code. It compiled, it shipped, and it cleared nothing.
+     *
+     * Ensure is one EEPROM read on a card that has been provisioned. On a
+     * virgin one it writes the whole record, which used to happen after
+     * the lottery; doing it here is if anything better, because the tag
+     * resolves sooner rather than later in the show.
+     */
+    if (provision_ensure()) {
         ndef_patch_default();
         claim_disarm();
     }

@@ -369,7 +369,11 @@ function cardRow(c, show) {
   if (c.disabled) head.append(el("span", "a-badge", "disabled"));
   row.append(head);
   row.append(
-    el("p", "a-row-meta", [c.id, c.lang ?? "", day(c.created)].filter(Boolean).join(" · "))
+    el(
+      "p",
+      "a-row-meta",
+      [c.id, c.lang ?? "", `claim ${c.claimCounter}`, day(c.created)].filter(Boolean).join(" · ")
+    )
   );
   const actions = el("div", "a-actions");
   if (c.ducks > 0) {

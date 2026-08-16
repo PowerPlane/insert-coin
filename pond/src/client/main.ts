@@ -21,7 +21,7 @@ import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
 import { CAM_UI, CAM_ZOOM, HOME_CELL, easeOutCubic } from "./camera.js";
 import {
-  cardSetup, claimIsFresh, rememberClaimAttempt, resolveClaim,
+  cardSetup, claimIsFresh, claimIsSpent, rememberClaimAttempt, resolveClaim,
 } from "./keeper.js";
 import type { ClaimResult } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
@@ -2022,8 +2022,27 @@ async function main(): Promise<void> {
      * `resolveClaim` returns "refused" for a network failure as well as
      * for a real refusal, so only the answers that prove the server
      * actually decided something are recorded.
+     *
+     * ══ AND A QUESTION IS NOT AN ANSWER ══
+     * `takeover` is excluded, and it is the one that was wrong. The
+     * server is explicit that asking spends nothing — "the counter is NOT
+     * spent, no epoch is touched" — precisely so somebody who decides not
+     * to take a card over has lost nothing and their card is still armed.
+     * Recording it here contradicted that from the other side: the server
+     * kept the gesture live, and this browser wrote it off. The card was
+     * then genuinely claimable by everyone EXCEPT the person holding it,
+     * and the symptom is silence — no question, no refusal, no setup,
+     * just the pond, which is indistinguishable from four blows that
+     * never registered.
+     *
+     * One belief, two copies, only one updated. Again.
+     *
+     * So the counter is recorded where an answer actually exists: on
+     * decline, and on both outcomes of confirm. A question that is never
+     * answered — the tab is closed, the phone locks — stays fresh, which
+     * is correct: nothing happened, so nothing was spent.
      */
-    if (outcome.kind !== "none") rememberClaimAttempt(url);
+    if (claimIsSpent(outcome.kind)) rememberClaimAttempt(url);
   }
 
   /*
@@ -2084,6 +2103,12 @@ async function main(): Promise<void> {
     actions.append(
       button("p-btn", t("keeper.33"), () => {
         void resolveClaim(url, true).then((r) => {
+          // Answered, so now it is spent — whichever way it went. A
+          // confirm that succeeded burnt the counter on the server; one
+          // that was refused proves the server had already retired it.
+          // Neither is worth asking again, and this path recorded
+          // nothing at all before.
+          if (claimIsSpent(r.kind)) rememberClaimAttempt(url);
           root.replaceChildren();
           if (r.kind === "claimed") {
             cardSetup({ root, onDone: () => root.replaceChildren() });
@@ -2100,7 +2125,22 @@ async function main(): Promise<void> {
        * and somebody who has just declined to take a card over wants to
        * be put down, not moved on.
        */
-      button("p-btn p-btn-quiet", t("keeper.34"), () => root.replaceChildren()),
+      button("p-btn p-btn-quiet", t("keeper.34"), () => {
+        /*
+         * Declining IS an answer, so it is recorded here rather than at
+         * the moment the question went up. Same counter, asked once. The
+         * card stays armed and the server still holds the gesture — so
+         * the card is not lost, it simply stops interrogating somebody
+         * who has already said no.
+         *
+         * Blowing four times again is the way back to it. Note that on a
+         * card still inside its five-minute setup window those four
+         * blows RETIRE the claim instead (firmware `claim_setup_wait`) —
+         * the coin has to come out and go back in first.
+         */
+        rememberClaimAttempt(url);
+        root.replaceChildren();
+      }),
     );
     body.append(actions);
     root.append(sheetRoot);

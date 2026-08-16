@@ -2456,6 +2456,9 @@ function rememberClaimAttempt(url) {
   } catch {
   }
 }
+function claimIsSpent(kind) {
+  return kind === "claimed" || kind === "refused";
+}
 async function resolveClaim(url, confirm = false) {
   const card = url.searchParams.get("c");
   const g = url.searchParams.get("g");
@@ -6221,7 +6224,7 @@ async function main() {
   let outcome = { kind: "none" };
   if (claimIsFresh(url)) {
     outcome = await resolveClaim(url);
-    if (outcome.kind !== "none") rememberClaimAttempt(url);
+    if (claimIsSpent(outcome.kind)) rememberClaimAttempt(url);
   }
   const dealt = Number(url.searchParams.get("d") ?? 0) >= 1;
   const asking = outcome.kind === "takeover" && !dealt;
@@ -6248,6 +6251,7 @@ async function main() {
     actions.append(
       button("p-btn", t("keeper.33"), () => {
         void resolveClaim(url, true).then((r) => {
+          if (claimIsSpent(r.kind)) rememberClaimAttempt(url);
           root2.replaceChildren();
           if (r.kind === "claimed") {
             cardSetup({ root: root2, onDone: () => root2.replaceChildren() });
@@ -6262,7 +6266,10 @@ async function main() {
        * and somebody who has just declined to take a card over wants to
        * be put down, not moved on.
        */
-      button("p-btn p-btn-quiet", t("keeper.34"), () => root2.replaceChildren())
+      button("p-btn p-btn-quiet", t("keeper.34"), () => {
+        rememberClaimAttempt(url);
+        root2.replaceChildren();
+      })
     );
     body.append(actions);
     root2.append(sheetRoot);

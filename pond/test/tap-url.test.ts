@@ -22,7 +22,9 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { claimIsFresh, isClaimUrl, rememberClaimAttempt } from "../src/client/keeper.js";
+import {
+  claimIsFresh, claimIsSpent, isClaimUrl, rememberClaimAttempt,
+} from "../src/client/keeper.js";
 
 /** A tag, as provisioned. Only the digit changes between taps. */
 const tag = (digit: number, counter = 0) =>
@@ -130,5 +132,38 @@ describe("a claim is only fresh once", () => {
 
   it("is never fresh for something that is not a claim", () => {
     expect(claimIsFresh(new URL("https://x.test/?d=1&c=5BKZH69H&g=0000&t=abc"))).toBe(false);
+  });
+
+  /*
+   * ══ ASKING IS NOT SPENDING ══
+   * `claimCard` does not advance the counter to raise the takeover
+   * question — the card stays armed on purpose, so declining costs
+   * nothing. The client recorded the question as though it were an
+   * answer, and the two halves of one belief disagreed: the server held
+   * the gesture open while this browser wrote it off. The card then went
+   * silent on the only phone that mattered.
+   */
+  it("does not spend the counter merely for asking", () => {
+    expect(claimIsSpent("takeover"), "the server charged nothing").toBe(false);
+    expect(claimIsSpent("none"), "never reached the server").toBe(false);
+    expect(claimIsSpent("claimed")).toBe(true);
+    expect(claimIsSpent("refused")).toBe(true);
+  });
+
+  it("keeps the gesture live when a takeover goes unanswered", () => {
+    const url = armed(3);
+    // The tab is closed, or the phone locks, while the question is up.
+    if (claimIsSpent("takeover")) rememberClaimAttempt(url);
+    expect(claimIsFresh(url), "nothing was decided, so nothing is spent").toBe(true);
+  });
+
+  it("stops asking once the same counter has been declined", () => {
+    const url = armed(3);
+    // Declining IS an answer, recorded at the button rather than at the
+    // moment the question went up. Same counter, asked once.
+    rememberClaimAttempt(url);
+    expect(claimIsFresh(url), "they already said no").toBe(false);
+    // And four fresh blows bump the counter, so the card is not lost.
+    expect(claimIsFresh(armed(4)), "a new gesture asks again").toBe(true);
   });
 });

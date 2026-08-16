@@ -657,6 +657,30 @@ export function rememberClaimAttempt(url: URL): void {
   }
 }
 
+/**
+ * Has this counter been decided, so that asking again is pointless?
+ *
+ * ══ THE SERVER AND THE BROWSER MUST AGREE ON "SPENT" ══
+ * `claimCard` is explicit that merely ASKING spends nothing: on a
+ * takeover the counter is not advanced, no epoch is touched, and the card
+ * stays armed — deliberately, so that declining costs nothing. The client
+ * recorded every non-`none` answer as spent, takeover included, and the
+ * two halves disagreed. The server kept the gesture live; this browser
+ * wrote it off. A card in that state is claimable by everybody except the
+ * person holding it, and it fails SILENTLY: no question, no refusal, no
+ * setup screen, just the pond — which looks exactly like four blows that
+ * never registered.
+ *
+ * Named and exported so there is one copy of the rule and a test can hold
+ * it. The bug it replaces existed because the rule lived in an expression
+ * at a call site, where nothing could contradict it.
+ */
+export function claimIsSpent(kind: ClaimResult["kind"]): boolean {
+  // `none` never reached the server — an offline tap must stay askable.
+  // `takeover` is a question the server pointedly did not charge for.
+  return kind === "claimed" || kind === "refused";
+}
+
 /** What a tap on an armed card turned out to be. */
 export type ClaimResult =
   | { kind: "claimed" }
