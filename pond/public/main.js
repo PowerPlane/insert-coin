@@ -1901,11 +1901,10 @@ function studioScreen(root2, opts) {
   const { state } = opts;
   root2.replaceChildren();
   const { root: viewRoot, body: wrap2 } = view();
-  const forward = opts.forward ?? t("studio.03");
   const nav2 = nav(
     { label: t("studio.01"), onClick: opts.onBack },
     t("studio.02"),
-    { label: forward, onClick: opts.onNext }
+    opts.forward ? void 0 : { label: t("studio.03"), onClick: opts.onNext }
   );
   const canvas = el("canvas", "p-edit");
   canvas.width = GRID * EDIT_CELL;

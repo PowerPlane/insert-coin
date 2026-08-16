@@ -472,6 +472,34 @@ describe("the deletion promise, over HTTP", () => {
     expect(body).not.toContain("sam@example.com");
   });
 
+  it("every page can be added to an iPhone home screen", async () => {
+    /*
+     * Asked for as "minimise the Safari URL bar", which iOS gives no way
+     * to do. Installed to the Home Screen there is no bar at all, which
+     * is what the request was reaching for — and it hands the layout back
+     * the chrome the screens were budgeted against.
+     *
+     * Checked on the rendered HTML rather than by reading shell.ts,
+     * because the head is a template literal and a stray backtick in a
+     * comment silently truncated it once already.
+     */
+    const e = await env();
+    const html = await (await pondPage(
+      new Request(`${ORIGIN}/`), e,
+    )).text();
+
+    expect(html).toContain('rel="manifest"');
+    expect(html).toContain("/manifest.webmanifest");
+    expect(html).toContain('rel="apple-touch-icon"');
+    expect(html).toContain("apple-mobile-web-app-title");
+    /*
+     * And deliberately NOT this one: Apple advises against it now, and it
+     * can spoil the install when the manifest is what is being honoured.
+     * Asserted so it cannot be added back as a well-meaning "fix".
+     */
+    expect(html).not.toContain('name="apple-mobile-web-app-capable"');
+  });
+
   it("the pond never carries an edit key, now that the admin does", async () => {
     /*
      * The admin shows a duck's private link so somebody who lost theirs

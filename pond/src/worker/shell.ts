@@ -84,6 +84,29 @@ function jsonBlock(data: unknown): string {
 export function renderShell(o: ShellOptions): string {
   const title = escapeHtml(o.title);
   const description = escapeHtml(o.description);
+  /*
+   * ══ ADD TO HOME SCREEN ══
+   * Asked for as "minimise the Safari URL bar", which iOS gives no way to
+   * do — the bar collapses when somebody scrolls and at no other time.
+   * Installed to the Home Screen there is no bar at all, which is what the
+   * request was reaching for, and it hands the layout back the ~90-180px
+   * of chrome the screens were budgeted against.
+   *
+   * The manifest carries it: display=standalone is what Apple reads to
+   * open a Home Screen site as a web app rather than in a tab.
+   *
+   * Deliberately no apple-mobile-web-app-capable meta. Apple now advises
+   * against it and it can spoil the install when the manifest is the thing
+   * being honoured; a test asserts its absence so it cannot come back as a
+   * well-meaning fix.
+   *
+   * The apple-touch-icon stays because iOS still reaches for it first, and
+   * it is opaque on purpose: iOS composites black behind a transparent
+   * icon, which would put a black square on somebody's home screen.
+   *
+   * These notes live here rather than in the markup because the markup is
+   * downloaded by every visitor and this is for whoever edits it next.
+   */
   return `<!doctype html>
 <html lang="${o.lang}">
 <head>
@@ -98,6 +121,10 @@ ${o.noindex ? '<meta name="robots" content="noindex, nofollow, noarchive">\n' : 
 <meta property="og:description" content="${description}">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#8ecae6">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="The Pond">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>

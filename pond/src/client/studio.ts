@@ -83,11 +83,22 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
    * place you both abandon and complete, and left the foot of the screen
    * with nothing to press.
    */
-  const forward = opts.forward ?? t("studio.03");
+  /*
+   * ══ AND THE TOP SLOT IS ONLY EVER THE WAY OUT ══
+   * `forward` used to feed BOTH this nav slot and the foot, so redecorate
+   * — which passes "Save changes" — got two of them: one in the top right
+   * corner and a gold one under the work. Reported as exactly that.
+   *
+   * The rule above says why only one can be right. The top slot is the
+   * ABANDON offer and the foot is the COMMIT, and redecorate has no
+   * abandon: this duck is already in the pond, so leaving without saving
+   * is just Back. So a screen that names its own commit gets no forward
+   * slot at all, and the nav goes back to being one thing.
+   */
   const nav = navStrip(
     { label: t("studio.01"), onClick: opts.onBack },
     t("studio.02"),
-    { label: forward, onClick: opts.onNext },
+    opts.forward ? undefined : { label: t("studio.03"), onClick: opts.onNext },
   );
 
   // ── the duck being made ───────────────────────────────────────────────
