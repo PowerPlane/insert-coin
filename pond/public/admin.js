@@ -293,6 +293,20 @@ function duckRow(d, show, cardList) {
       void api("/resolve", { id: d.id }).then(load);
     }));
   }
+  const gone = el("div", "a-actions");
+  gone.append(button("p-chip a-chip-danger", "Delete", () => {
+    gone.replaceChildren(
+      el(
+        "p",
+        "a-row-meta",
+        `Delete ${d.name || "this duck"}${d.contact ? " and its contact" : ""}? This cannot be undone.`
+      ),
+      button("p-chip a-chip-danger", "Yes, delete", () => {
+        void api("/duck/delete", { id: d.id }).then(load);
+      }),
+      button("p-chip", "Keep it", () => load())
+    );
+  }));
   const open = el("a", "p-chip", "Open");
   open.href = `/d/${d.slug}`;
   open.target = "_blank";
@@ -310,7 +324,7 @@ function duckRow(d, show, cardList) {
     });
   }, `Copy the private link for ${who}`);
   actions.append(recover);
-  row.append(actions);
+  row.append(actions, gone);
   return row;
 }
 function contactRow(d, ducks, cards) {

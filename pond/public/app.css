@@ -2382,75 +2382,20 @@ a.p-chip {
 }
 
 /*
- * ══ KEEP THIS CARD YOURS ══
- * The one piece of chrome in the pond that asks for something. It is a
- * labelled row rather than a third glyph because a glyph is a reminder of
- * something you already know how to do, and nobody has heard of this.
+ * ══ THE OFFER IS A GLYPH NOW ══
+ * It was a wide labelled row above the two glyphs, with its own dismiss.
+ * On a phone it dominated a bar whose job is to get out of the way, and
+ * the dismiss competed with the two controls that matter. The words moved
+ * into the sheet, where somebody has actually stopped to read, and the bar
+ * kept a third `.p-glyph` — no rules of its own, because it is the same
+ * control as the other two and should stay that way without being told.
  *
- * ══ AND IT ONLY LEADS WHEN THERE IS NOTHING TO LEAD ══
- * Above the two glyphs it is the only thing with words, and going first
- * is right — there is no task in that bar, just two small things you may
- * do. But the bar has another state where the offer belongs: a fortune
- * waiting AND a card going spare, which is what somebody returning to an
- * unclaimed card sees. There "Decorate it" is the task they came for and
- * the offer is an aside, so it goes UNDER it.
- *
- * Expressed as `order: -1` scoped to the glyph row rather than as a
- * branch in `buildCta`: the offer is appended last in both states, and
- * the stylesheet decides where last means.
+ * `--cta-rows` stays on `.p-zoom`. Nothing sets it to 2 today, and that is
+ * the point: the next thing that adds a row to the bar sets it there and
+ * the zoom column moves on its own, instead of landing on top of whatever
+ * arrived.
  */
-.p-cta-glyphs .p-offer {
-  order: -1;
-}
 
-.p-offer {
-  flex-basis: 100%;
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-}
-
-.p-offer-take {
-  flex: 1;
-  /* It is an invitation, not the task. The wide quiet button is the same
-     weight as "Decorate it" was — no louder, because a person who ignores
-     it has lost nothing. */
-  margin: 0;
-}
-
-/*
- * The dismiss. Square, so it reads as a close rather than as the second of
- * two choices — and a full tap target, because the answer "no" deserves
- * the same 44px the answer "yes" gets.
- */
-.p-offer-x {
-  all: unset;
-  clip-path: var(--px-corner);
-  cursor: pointer;
-  box-sizing: border-box;
-  width: var(--tap);
-  min-height: var(--tap);
-  display: grid;
-  place-items: center;
-  font-family: var(--mono);
-  font-size: 1rem;
-  color: var(--p-faint);
-  background: var(--p-surface);
-}
-
-.p-offer-x:focus-visible {
-  outline: 2px solid var(--p-ink);
-  outline-offset: 2px;
-}
-
-/*
- * The offer is a second row, so the zoom column has further to climb.
- * Declared here, beside the thing that causes it, rather than as a number
- * in the zoom's own rule that nobody would think to revisit.
- */
-#pond:has(.p-offer) .p-zoom {
-  --cta-rows: 2;
-}
 
 .p-glyph {
   all: unset;

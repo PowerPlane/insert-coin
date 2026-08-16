@@ -420,6 +420,27 @@ export async function deleteCardDucks(env: Env, cardId: string): Promise<number>
   return Number(res.meta.changes ?? 0);
 }
 
+/**
+ * Remove one duck.
+ *
+ * ══ HIDE IS FOR MODERATION; THIS IS FOR REMOVAL ══
+ * `setHidden` exists because almost everything admin does to somebody
+ * else's duck should be one tap back. This is the other case: a test
+ * duck, a duplicate, a person who asked in a message rather than through
+ * their own private link. Hiding those leaves them in the pond forever,
+ * invisible and counted.
+ *
+ * One `DELETE FROM ducks`, so `ducks_before_delete` fires and the
+ * contact, the fires, the says, the reports and the bumps go with it —
+ * the same path "Take my duck out" uses. There is no second way to remove
+ * a duck in this product and there must not be, because the deletion
+ * promise is made in writing on the contact screen.
+ */
+export async function deleteDuckAsAdmin(env: Env, duckId: string): Promise<boolean> {
+  const res = await env.DB.prepare(`DELETE FROM ducks WHERE id = ?1`).bind(duckId).run();
+  return Boolean(res.meta.changes);
+}
+
 /** Clear the open reports on a duck once it has been dealt with. */
 export async function resolveReports(env: Env, duckId: string): Promise<number> {
   const res = await env.DB.prepare(

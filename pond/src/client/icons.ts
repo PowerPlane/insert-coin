@@ -138,6 +138,45 @@ export const ICONS = {
     ".kkkkkkk.",
     ".........",
   ],
+  /*
+   * ══ THE CARD ITSELF ══
+   * Drawn as the object in your hand: a business card in landscape, with
+   * two short rules where a name and a line under it would be. At 22px
+   * the outline is what reads; the two rules are what stop it reading as
+   * a plain rectangle.
+   *
+   * A key was the other candidate and is worse here — the question this
+   * glyph asks is "is this card yours", not "unlock something", and a key
+   * next to a gear at the same size is two pieces of hardware in a row.
+   */
+  card: [
+    "..........................",
+    "..........................",
+    "..........................",
+    "..........................",
+    "..kkkkkkkkkkkkkkkkkkkkkk..",
+    "..kkkkkkkkkkkkkkkkkkkkkk..",
+    "..kkk................kkk..",
+    "..kkk................kkk..",
+    "..kkk................kkk..",
+    "..kkk...kkkkkkkkkk...kkk..",
+    "..kkk...kkkkkkkkkk...kkk..",
+    "..kkk................kkk..",
+    "..kkk................kkk..",
+    "..kkk...kkkkkk.......kkk..",
+    "..kkk...kkkkkk.......kkk..",
+    "..kkk................kkk..",
+    "..kkk................kkk..",
+    "..kkk................kkk..",
+    "..kkkkkkkkkkkkkkkkkkkkkk..",
+    "..kkkkkkkkkkkkkkkkkkkkkk..",
+    "..........................",
+    "..........................",
+    "..........................",
+    "..........................",
+    "..........................",
+    "..........................",
+  ],
   dice: [
     "kkkkkkkkk",
     "k.......k",

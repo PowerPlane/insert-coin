@@ -490,6 +490,45 @@ var ICONS = {
     ".kkkkkkk.",
     "........."
   ],
+  /*
+   * ══ THE CARD ITSELF ══
+   * Drawn as the object in your hand: a business card in landscape, with
+   * two short rules where a name and a line under it would be. At 22px
+   * the outline is what reads; the two rules are what stop it reading as
+   * a plain rectangle.
+   *
+   * A key was the other candidate and is worse here — the question this
+   * glyph asks is "is this card yours", not "unlock something", and a key
+   * next to a gear at the same size is two pieces of hardware in a row.
+   */
+  card: [
+    "..........................",
+    "..........................",
+    "..........................",
+    "..........................",
+    "..kkkkkkkkkkkkkkkkkkkkkk..",
+    "..kkkkkkkkkkkkkkkkkkkkkk..",
+    "..kkk................kkk..",
+    "..kkk................kkk..",
+    "..kkk................kkk..",
+    "..kkk...kkkkkkkkkk...kkk..",
+    "..kkk...kkkkkkkkkk...kkk..",
+    "..kkk................kkk..",
+    "..kkk................kkk..",
+    "..kkk...kkkkkk.......kkk..",
+    "..kkk...kkkkkk.......kkk..",
+    "..kkk................kkk..",
+    "..kkk................kkk..",
+    "..kkk................kkk..",
+    "..kkkkkkkkkkkkkkkkkkkkkk..",
+    "..kkkkkkkkkkkkkkkkkkkkkk..",
+    "..........................",
+    "..........................",
+    "..........................",
+    "..........................",
+    "..........................",
+    ".........................."
+  ],
   dice: [
     "kkkkkkkkk",
     "k.......k",
@@ -1496,8 +1535,12 @@ var KEEPER_STRINGS = {
   // paragraph at that moment is a paragraph nobody reads.
   "keeper.19": "Keep this card yours",
   // Button — the offer in the pond bar
-  "keeper.20": "Not now, thanks",
-  // Button — dismisses the offer
+  /*
+   * A decline, not a postponement. The offer stops asking about this
+   * card for good, so "Not now" would have been a small lie.
+   */
+  "keeper.20": "No thanks",
+  // Button — declines the offer for this card
   "keeper.21": "Keep it",
   // Button — the sheet's primary
   "keeper.22": "This card is yours",
@@ -1652,6 +1695,23 @@ var EN = {
   // Body
   "pond.17": "Your private link",
   // Field label
+  /*
+   * ══ A MESSAGE YOU SEND TO YOURSELF ══
+   * The text was the bare URL and the email subject was "Keep this link" —
+   * a heading lifted off the screen it came from, which means nothing in
+   * an inbox six months later. There are no accounts here, so this message
+   * IS the account recovery, and the person most likely to read it is the
+   * sender, long after they have forgotten what it was.
+   *
+   * So it says what it is, what it does, and why to keep it — in that
+   * order, and in about the space a text message should take.
+   */
+  "pond.42": "Your duck at David's Pond.\n\n{url}\n\nThere are no accounts, so this link is the only way back to it. Keep it.",
+  // SMS body
+  "pond.43": "Your duck at David's Pond",
+  // Email subject
+  "pond.44": "This is the link to your duck in the pond:\n\n{url}\n\nThere are no accounts here, so this link is the only way back to it. Use it to change your duck, redecorate it, or take it out of the pond.\n\nKeep it somewhere you will find it again.",
+  // Email body
   "pond.18": "ducky.davidyang.work/e/9fQ2xK7pLm",
   // Example value
   "pond.19": "Copy",
@@ -1862,7 +1922,7 @@ var ZH_HANT = {
   "keeper.18": "現在不要",
   // ── 把剛剛用的卡片變成自己的 ──────────────────────────────────────────
   "keeper.19": "把這張卡片留給自己",
-  "keeper.20": "先不用",
+  "keeper.20": "不用了，謝謝",
   "keeper.21": "留下來",
   "keeper.22": "這張卡片是你的",
   "keeper.23": "卡片設定",
@@ -1947,6 +2007,9 @@ var ZH_HANT = {
   "say.09": "你的鴨子設定",
   "pond.16": "沒有帳號。用這個連結修改、重新裝飾，或把鴨子帶走。",
   "pond.17": "你的私人連結",
+  "pond.42": "你在 David's Pond 的鴨子。\n\n{url}\n\n這裡沒有帳號，這個連結是唯一找回牠的方法，記得留著。",
+  "pond.43": "你在 David's Pond 的鴨子",
+  "pond.44": "這是你在池塘裡那隻鴨子的連結：\n\n{url}\n\n這裡沒有帳號，所以這個連結是唯一找回牠的方法。你可以用它修改鴨子、重新裝飾，或把牠帶走。\n\n記得存在之後找得到的地方。",
   "pond.18": "ducky.davidyang.work/e/9fQ2xK7pLm",
   "pond.19": "複製",
   "pond.20": "簡訊",
@@ -2017,9 +2080,12 @@ var TABLES = {
   "zh-Hant": ZH_HANT
 };
 var current = "en";
-function setLang(lang) {
-  current = lang;
-  if (typeof document !== "undefined") document.documentElement.lang = lang;
+function setLang(lang2) {
+  current = lang2;
+  if (typeof document !== "undefined") document.documentElement.lang = lang2;
+}
+function lang() {
+  return current;
 }
 function t(key, vars) {
   const table = TABLES[current] ?? {};
@@ -2041,6 +2107,16 @@ async function get(editKey) {
 }
 function cardSetup(opts) {
   const { root: root2 } = opts;
+  if (opts.offer) {
+    render({
+      epochId: "",
+      keeper: opts.suggestName ?? "",
+      lang: lang(),
+      duckSlug: null,
+      orphans: 0
+    });
+    return;
+  }
   void get(opts.editKey).then((state) => {
     if (!state) return opts.onDone();
     if (!state.keeper && opts.suggestName) state.keeper = opts.suggestName;
@@ -2123,7 +2199,7 @@ function cardSetup(opts) {
         });
         wrap2.append(paste.wrap, el("p", "p-hint-block", t("keeper.11")));
       }
-      let lang = state.lang;
+      let lang2 = state.lang;
       wrap2.append(el("p", "p-field-label", t("keeper.12")));
       const langs = el("div", "p-scopes");
       const langButtons = [
@@ -2132,14 +2208,14 @@ function cardSetup(opts) {
       ];
       const paintLang = () => {
         buttons.forEach((b, i) => {
-          const on = langButtons[i][0] === lang;
+          const on = langButtons[i][0] === lang2;
           b.classList.toggle("on", on);
           b.setAttribute("aria-pressed", String(on));
         });
       };
       const buttons = langButtons.map(
         ([value, label]) => button("p-chip", label, () => {
-          lang = value;
+          lang2 = value;
           paintLang();
         })
       );
@@ -2166,7 +2242,7 @@ function cardSetup(opts) {
       const status = el("p", "p-note", "");
       const actions = el("div", "p-actions");
       actions.append(
-        button("p-btn", t("keeper.17"), () => void save({ name, lang, editKey, adopt }))
+        button("p-btn", t("keeper.17"), () => void save({ name, lang: lang2, editKey, adopt }))
       );
       wrap2.append(spacer(), actions, status);
       root2.append(viewRoot);
@@ -2214,7 +2290,7 @@ function cardSetup(opts) {
         }
       });
       wrap2.append(nameField.wrap);
-      let lang = state.lang;
+      let lang2 = state.lang;
       wrap2.append(el("p", "p-field-label", t("keeper.12")));
       const langs = el("div", "p-scopes");
       langs.setAttribute("role", "group");
@@ -2224,13 +2300,13 @@ function cardSetup(opts) {
       ];
       const chips = choices.map(
         ([value, label]) => button("p-chip", label, () => {
-          lang = value;
+          lang2 = value;
           paint();
         })
       );
       const paint = () => {
         chips.forEach((b, i) => {
-          const on = choices[i][0] === lang;
+          const on = choices[i][0] === lang2;
           b.classList.toggle("on", on);
           b.setAttribute("aria-pressed", String(on));
         });
@@ -2258,13 +2334,28 @@ function cardSetup(opts) {
       const actions = el("div", "p-actions");
       actions.append(
         button("p-btn", t("keeper.21"), () => void save()),
-        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone)
+        /*
+         * "No thanks" only exists while there is something to decline. Once
+         * the card is theirs the second action is just a way out, and the
+         * nav already carries that.
+         */
+        opts.offer ? button("p-btn p-btn-quiet", t("keeper.20"), () => {
+          opts.onDecline?.();
+          opts.onDone();
+        }) : button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone)
       );
       wrap2.append(actions, status);
       root2.append(sheetRoot);
       nameField.input.focus();
       async function save() {
         try {
+          if (opts.offer && opts.onClaim) {
+            const took = await opts.onClaim();
+            if (!took) {
+              status.textContent = t("live.keeper.taken");
+              return;
+            }
+          }
           const res = await fetch("/api/keeper", {
             method: "POST",
             credentials: "same-origin",
@@ -2274,7 +2365,7 @@ function cardSetup(opts) {
              * the credential. Sent every time so a save an hour later is
              * the same request as a save a minute later.
              */
-            body: JSON.stringify({ name, lang, adopt, ...opts.editKey ? { editKey: opts.editKey } : {} })
+            body: JSON.stringify({ name, lang: lang2, adopt, ...opts.editKey ? { editKey: opts.editKey } : {} })
           });
           if (!res.ok) {
             const why = await res.json().catch(() => null);
@@ -3617,9 +3708,9 @@ function releaseFlow(opts) {
       });
     });
     const sms = el("a", "p-btn p-btn-quiet", t("pond.20"));
-    sms.href = `sms:?&body=${encodeURIComponent(url)}`;
+    sms.href = `sms:?&body=${encodeURIComponent(t("pond.42", { url }))}`;
     const mail = el("a", "p-btn p-btn-quiet", t("pond.21"));
-    mail.href = `mailto:?subject=${encodeURIComponent(t("pond.15"))}&body=${encodeURIComponent(url)}`;
+    mail.href = `mailto:?subject=${encodeURIComponent(t("pond.43"))}&body=${encodeURIComponent(t("pond.44", { url }))}`;
     actions.append(copy, sms, mail);
     wrap2.append(link.wrap, actions);
     wrap2.append(
@@ -5679,7 +5770,7 @@ async function pondScreen(bootstrap) {
       go.type = "button";
       go.addEventListener("click", () => beginRelease(session2));
       cta.append(go);
-      if (session2.keeperOffer && !offerDismissed()) cta.append(keeperOfferRow());
+      if (session2.keeperOffer && !offerDismissed()) cta.append(keeperGlyph());
       return;
     }
     if (!mine) {
@@ -5691,7 +5782,7 @@ async function pondScreen(bootstrap) {
     }
     cta.classList.add("p-cta-glyphs");
     cta.append(sayButton(), settingsButton());
-    if (session2.keeperOffer && !offerDismissed()) cta.append(keeperOfferRow());
+    if (session2.keeperOffer && !offerDismissed()) cta.append(keeperGlyph());
   }
   const OFFER_KEY = "pond.keeper.offer.dismissed";
   const offerKeyFor = () => `${OFFER_KEY}.${hasDuck() ?? "none"}`;
@@ -5702,53 +5793,34 @@ async function pondScreen(bootstrap) {
       return false;
     }
   };
-  function keeperOfferRow() {
-    const row = el2("div", "p-offer");
-    const take = el2("button", "p-btn p-btn-quiet p-offer-take", t("keeper.19"));
-    take.type = "button";
-    take.addEventListener("click", () => {
-      take.disabled = true;
-      void api.claimFirst(hasDuck()).then(
-        (res) => {
-          if (!res.ok) {
-            row.replaceChildren(el2("p", "p-note", t("live.keeper.taken")));
-            window.setTimeout(() => row.remove(), 2400);
-            return;
+  function keeperGlyph() {
+    const b = button("p-glyph", "", () => {
+      pausePolling();
+      const key = hasDuck() ?? void 0;
+      void myDuckName(key).then((suggestName) => {
+        cardSetup({
+          root: overlay,
+          compact: true,
+          offer: true,
+          editKey: key,
+          suggestName,
+          onClaim: () => api.claimFirst(key).then((r) => r.ok, () => false),
+          onDecline: () => {
+            try {
+              localStorage.setItem(offerKeyFor(), "1");
+            } catch {
+            }
+          },
+          onDone: () => {
+            overlay.replaceChildren();
+            resumePolling();
+            void syncCta();
           }
-          pausePolling();
-          const key = hasDuck() ?? void 0;
-          void myDuckName(key).then((suggestName) => {
-            cardSetup({
-              root: overlay,
-              compact: true,
-              editKey: key,
-              suggestName,
-              onDone: () => {
-                overlay.replaceChildren();
-                resumePolling();
-                void syncCta();
-              }
-            });
-          });
-        },
-        () => {
-          take.disabled = false;
-          row.append(el2("p", "p-note", t("live.error")));
-        }
-      );
-    });
-    const no = el2("button", "p-offer-x", "×");
-    no.type = "button";
-    no.setAttribute("aria-label", t("keeper.20"));
-    no.addEventListener("click", () => {
-      try {
-        localStorage.setItem(offerKeyFor(), "1");
-      } catch {
-      }
-      row.remove();
-    });
-    row.append(take, no);
-    return row;
+        });
+      });
+    }, t("keeper.19"));
+    b.append(icon("card", 22));
+    return b;
   }
   async function myDuckName(key) {
     if (!key) return void 0;

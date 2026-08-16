@@ -155,7 +155,11 @@ export const KEEPER_STRINGS = {
   // short: this arrives while somebody is watching their duck float, and a
   // paragraph at that moment is a paragraph nobody reads.
   "keeper.19": "Keep this card yours", // Button — the offer in the pond bar
-  "keeper.20": "Not now, thanks", // Button — dismisses the offer
+  /*
+   * A decline, not a postponement. The offer stops asking about this
+   * card for good, so "Not now" would have been a small lie.
+   */
+  "keeper.20": "No thanks", // Button — declines the offer for this card
   "keeper.21": "Keep it", // Button — the sheet's primary
   "keeper.22": "This card is yours", // Field label on your duck's settings
   "keeper.23": "Card settings", // Button
@@ -242,6 +246,20 @@ export const EN = {
   "pond.15": "Keep this link", // Heading
   "pond.16": "No accounts. Use this to edit, redecorate, or take your duck out.", // Body
   "pond.17": "Your private link", // Field label
+  /*
+   * ══ A MESSAGE YOU SEND TO YOURSELF ══
+   * The text was the bare URL and the email subject was "Keep this link" —
+   * a heading lifted off the screen it came from, which means nothing in
+   * an inbox six months later. There are no accounts here, so this message
+   * IS the account recovery, and the person most likely to read it is the
+   * sender, long after they have forgotten what it was.
+   *
+   * So it says what it is, what it does, and why to keep it — in that
+   * order, and in about the space a text message should take.
+   */
+  "pond.42": "Your duck at David's Pond.\n\n{url}\n\nThere are no accounts, so this link is the only way back to it. Keep it.", // SMS body
+  "pond.43": "Your duck at David's Pond", // Email subject
+  "pond.44": "This is the link to your duck in the pond:\n\n{url}\n\nThere are no accounts here, so this link is the only way back to it. Use it to change your duck, redecorate it, or take it out of the pond.\n\nKeep it somewhere you will find it again.", // Email body
   "pond.18": "ducky.davidyang.work/e/9fQ2xK7pLm", // Example value
   "pond.19": "Copy", // Button
   "pond.20": "Text", // Button
@@ -424,7 +442,7 @@ export const ZH_HANT: Record<StringKey, string> = {
 
   // ── 把剛剛用的卡片變成自己的 ──────────────────────────────────────────
   "keeper.19": "把這張卡片留給自己",
-  "keeper.20": "先不用",
+  "keeper.20": "不用了，謝謝",
   "keeper.21": "留下來",
   "keeper.22": "這張卡片是你的",
   "keeper.23": "卡片設定",
@@ -514,6 +532,9 @@ export const ZH_HANT: Record<StringKey, string> = {
   "say.09": "你的鴨子設定",
   "pond.16": "沒有帳號。用這個連結修改、重新裝飾，或把鴨子帶走。",
   "pond.17": "你的私人連結",
+  "pond.42": "你在 David's Pond 的鴨子。\n\n{url}\n\n這裡沒有帳號，這個連結是唯一找回牠的方法，記得留著。",
+  "pond.43": "你在 David's Pond 的鴨子",
+  "pond.44": "這是你在池塘裡那隻鴨子的連結：\n\n{url}\n\n這裡沒有帳號，所以這個連結是唯一找回牠的方法。你可以用它修改鴨子、重新裝飾，或把牠帶走。\n\n記得存在之後找得到的地方。",
   "pond.18": "ducky.davidyang.work/e/9fQ2xK7pLm",
   "pond.19": "複製",
   "pond.20": "簡訊",

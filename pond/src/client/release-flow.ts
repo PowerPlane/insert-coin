@@ -461,10 +461,19 @@ export function releaseFlow(opts: FlowOptions): void {
         input.select();
       });
     });
+    /*
+     * ══ THE MESSAGE HAS TO SURVIVE BEING FOUND LATER ══
+     * Both of these sent the bare URL, and the email's subject was "Keep
+     * this link" — a heading lifted off this screen, which says nothing in
+     * an inbox. There are no accounts here, so this message IS the account
+     * recovery, and the person most likely to open it is the sender, long
+     * after they have forgotten what it was.
+     */
     const sms = el("a", "p-btn p-btn-quiet", t("pond.20"));
-    sms.href = `sms:?&body=${encodeURIComponent(url)}`;
+    sms.href = `sms:?&body=${encodeURIComponent(t("pond.42", { url }))}`;
     const mail = el("a", "p-btn p-btn-quiet", t("pond.21"));
-    mail.href = `mailto:?subject=${encodeURIComponent(t("pond.15"))}&body=${encodeURIComponent(url)}`;
+    mail.href = `mailto:?subject=${encodeURIComponent(t("pond.43"))}`
+      + `&body=${encodeURIComponent(t("pond.44", { url }))}`;
 
     actions.append(copy, sms, mail);
     wrap.append(link.wrap, actions);

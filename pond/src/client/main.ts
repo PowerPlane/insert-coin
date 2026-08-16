@@ -1050,7 +1050,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     go.type = "button";
     go.addEventListener("click", () => beginRelease(session));
     cta.append(go);
-    if (session.keeperOffer && !offerDismissed()) cta.append(keeperOfferRow());
+    if (session.keeperOffer && !offerDismissed()) cta.append(keeperGlyph());
     return;
   }
 
@@ -1081,25 +1081,26 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     cta.append(sayButton(), settingsButton());
 
     /*
-     * ══ AN INVITATION NEEDS WORDS ══
-     * The card that made this duck has no keeper, and the person holding
-     * it is almost certainly the one who should. So offer it — but as a
-     * labelled row above the glyphs, not as a third glyph beside them.
+     * ══ AN INVITATION NEEDS WORDS — AND THE SHEET IS WHERE THEY GO ══
+     * The first version was a wide labelled row above the glyphs, on the
+     * argument that a glyph cannot explain an action nobody has heard of.
+     * Seen on a phone it was wrong in two ways at once: it dominated a bar
+     * whose whole job is to get out of the way, and its dismiss sat in the
+     * row as a third control competing with the two that matter.
      *
-     * A glyph is a REMINDER of something you already know how to do: say
-     * something, open your settings. This is an invitation to something
-     * nobody has heard of, and three unlabelled icons would be the worst
-     * of both — no explanation, and the two familiar ones squeezed to make
-     * room for it.
+     * The words were never the problem — their PLACE was. They belong in
+     * the sheet, which is where somebody who taps has actually stopped to
+     * read. So the bar gets a third glyph the same size as the other two,
+     * and the explanation, the decision and the way to decline all live
+     * one tap in.
      *
-     * It carries a dismiss, because "no, I am just playing with somebody
-     * else's card" is a real answer and a bar that keeps asking is a bar
-     * people stop reading. Dismissal is remembered per card-session and is
-     * NOT final: the offer stays reachable from the duck's own settings
-     * for as long as the card is unclaimed, so a decision made in three
-     * seconds while watching a duck float is never permanent.
+     * That also fixes something worse than layout: the row CLAIMED the
+     * card the moment it was pressed and explained afterwards. The sheet's
+     * primary claims now, after the reading — and "no thanks" has an
+     * honest place to be, which it could not have once the card was
+     * already taken.
      */
-    if (session.keeperOffer && !offerDismissed()) cta.append(keeperOfferRow());
+    if (session.keeperOffer && !offerDismissed()) cta.append(keeperGlyph());
   }
 
   /*
@@ -1127,64 +1128,37 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     }
   };
 
-  function keeperOfferRow(): HTMLElement {
-    const row = el("div", "p-offer");
-    const take = el("button", "p-btn p-btn-quiet p-offer-take", t("keeper.19"));
-    take.type = "button";
-    take.addEventListener("click", () => {
-      take.disabled = true;
-      void api.claimFirst(hasDuck()).then(
-        (res) => {
-          if (!res.ok) {
-            /*
-             * Somebody else got there first. Not a failure — a fact — so
-             * the offer goes away rather than inviting a retry that will
-             * lose the same race again.
-             */
-            row.replaceChildren(el("p", "p-note", t("live.keeper.taken")));
-            window.setTimeout(() => row.remove(), 2400);
-            return;
-          }
-          pausePolling();
-          // Read now rather than closed over: this button can outlive the
-          // bar that built it.
-          const key = hasDuck() ?? undefined;
-          void myDuckName(key).then((suggestName) => {
-            cardSetup({
-              root: overlay,
-              compact: true,
-              editKey: key,
-              suggestName,
-              onDone: () => {
-                overlay.replaceChildren();
-                resumePolling();
-                void syncCta();
-              },
-            });
-          });
-        },
-        () => {
-          take.disabled = false;
-          row.append(el("p", "p-note", t("live.error")));
-        },
-      );
-    });
-
-    const no = el("button", "p-offer-x", "×");
-    no.type = "button";
-    no.setAttribute("aria-label", t("keeper.20"));
-    no.addEventListener("click", () => {
-      try {
-        localStorage.setItem(offerKeyFor(), "1");
-      } catch {
-        // Nothing to do. It will be offered again next time, which is a
-        // smaller problem than never offering it at all.
-      }
-      row.remove();
-    });
-
-    row.append(take, no);
-    return row;
+  function keeperGlyph(): HTMLElement {
+    const b = button("p-glyph", "", () => {
+      pausePolling();
+      // Read now, not closed over: this button outlives the bar that made it.
+      const key = hasDuck() ?? undefined;
+      void myDuckName(key).then((suggestName) => {
+        cardSetup({
+          root: overlay,
+          compact: true,
+          offer: true,
+          editKey: key,
+          suggestName,
+          onClaim: () => api.claimFirst(key).then((r) => r.ok, () => false),
+          onDecline: () => {
+            try {
+              localStorage.setItem(offerKeyFor(), "1");
+            } catch {
+              // Offered again next time, which is a smaller problem than
+              // never offering it at all.
+            }
+          },
+          onDone: () => {
+            overlay.replaceChildren();
+            resumePolling();
+            void syncCta();
+          },
+        });
+      });
+    }, t("keeper.19"));
+    b.append(icon("card", 22));
+    return b;
   }
 
   /**

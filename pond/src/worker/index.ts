@@ -27,8 +27,8 @@ import {
 import { withdrawContact } from "./contact.js";
 import {
   adminDucks, adminState, attachDuck, authorised, contactsCsv, deleteCard,
-  deleteCardDucks, markContact, resetKeeper, resolveReports, setCardDisabled,
-  setCardLabel, setHidden, setKeeper, signIn, unlinkDucks,
+  deleteCardDucks, deleteDuckAsAdmin, markContact, resetKeeper, resolveReports,
+  setCardDisabled, setCardLabel, setHidden, setKeeper, signIn, unlinkDucks,
 } from "./admin.js";
 import {
   claimCard, claimFromSession, endTenure, ensureCard, epochForEditKey,
@@ -643,6 +643,14 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
           return json({ ok: true }, { headers });
         }
         return notFound(headers);
+      }
+
+      if (path === "/api/admin/duck/delete") {
+        const id = typeof body?.id === "string" ? body.id : "";
+        if (!DUCK_ID.test(id)) return badRequest("bad id", headers);
+        // Through the ordinary delete, so the trigger fires and the
+        // contact goes with the duck. See the note in admin.ts.
+        return json({ ok: await deleteDuckAsAdmin(env, id) }, { headers });
       }
 
       const duckId = typeof body?.id === "string" ? body.id : "";

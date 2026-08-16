@@ -376,6 +376,28 @@ function duckRow(
       void api("/resolve", { id: d.id }).then(load);
     }));
   }
+  /*
+   * ══ REMOVING ONE DUCK ══
+   * Hide is one tap back and is what almost everything here should be.
+   * This is not: it is for a test duck, a duplicate, or somebody who
+   * asked in a message rather than through their own private link — all
+   * of which Hide leaves in the pond forever, invisible and counted.
+   *
+   * Two taps, and the second names the duck, because the row it sits in
+   * looks like every other row and a mis-tap here cannot be undone.
+   */
+  const gone = el("div", "a-actions");
+  gone.append(button("p-chip a-chip-danger", "Delete", () => {
+    gone.replaceChildren(
+      el("p", "a-row-meta",
+        `Delete ${d.name || "this duck"}${d.contact ? " and its contact" : ""}? This cannot be undone.`),
+      button("p-chip a-chip-danger", "Yes, delete", () => {
+        void api("/duck/delete", { id: d.id }).then(load);
+      }),
+      button("p-chip", "Keep it", () => load()),
+    );
+  }));
+
   const open = el("a", "p-chip", "Open");
   open.href = `/d/${d.slug}`;
   open.target = "_blank";
@@ -414,7 +436,7 @@ function duckRow(
     });
   }, `Copy the private link for ${who}`);
   actions.append(recover);
-  row.append(actions);
+  row.append(actions, gone);
   return row;
 }
 

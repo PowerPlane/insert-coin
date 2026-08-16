@@ -2081,3 +2081,57 @@ describe("a four-blow claim takes the duck you already have", () => {
     expect(firstStill, "the first tenure keeps the duck it was given").toBe(1);
   });
 });
+
+/**
+ * Removing one duck from admin.
+ *
+ * Hide is one tap back and is what almost everything here should be. This
+ * is the other case — a test duck, a duplicate, somebody who asked in a
+ * message rather than through their own private link — all of which Hide
+ * leaves in the pond forever, invisible and counted.
+ */
+describe("admin can delete a single duck", () => {
+  async function admin(e: Env) {
+    const v = new Visitor(e);
+    expect((await v.post("/api/admin/in", { password: "test-admin" })).status).toBe(200);
+    return v;
+  }
+
+  it("takes the contact with it, like every other delete", async () => {
+    // THE DELETION PROMISE. There is one path out of the ducks table and
+    // this has to be it.
+    const e = await env();
+    const duck = await release(new Visitor(e), { contact: "sam@example.com" });
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts WHERE duck_id = ?1`, duck.id))
+      .toBe(1);
+
+    const a = await admin(e);
+    expect((await a.post("/api/admin/duck/delete", { id: duck.id })).status).toBe(200);
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1`, duck.id)).toBe(0);
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts WHERE duck_id = ?1`, duck.id),
+      "the contact went with it").toBe(0);
+  });
+
+  it("is behind the password like everything else here", async () => {
+    const e = await env();
+    const duck = await release(new Visitor(e));
+    const res = await handle(
+      new Request(`${ORIGIN}/api/admin/duck/delete`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: duck.id }),
+      }),
+      e,
+    );
+    // The same 404 an unknown route gets — an admin panel that announces
+    // itself is a thing to try passwords against.
+    expect(res.status).toBe(404);
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1`, duck.id)).toBe(1);
+  });
+
+  it("refuses a malformed id rather than guessing", async () => {
+    const e = await env();
+    const a = await admin(e);
+    expect((await a.post("/api/admin/duck/delete", { id: "../../x" })).status).toBe(400);
+  });
+});

@@ -18,7 +18,7 @@ import {
   button, el, field, nav as navStrip, screen, sheet as makeSheet, spacer,
   view as fullView,
 } from "./dom.js";
-import { t } from "./strings.js";
+import { lang, t } from "./strings.js";
 import { GRID, decodePaint } from "./codec.js";
 import { drawDuck } from "./render.js";
 
@@ -57,6 +57,22 @@ export interface CardSetupOptions {
   editKey?: string;
   /** Prefill for the name — what they signed their duck with. */
   suggestName?: string;
+  /*
+   * ══ THE OFFER, WHICH HAS NOT CLAIMED ANYTHING YET ══
+   * In this mode the card is NOT yet kept: the sheet is the explanation,
+   * and the primary is what claims it. The first version claimed on the
+   * button in the bar and opened this afterwards, which asked somebody to
+   * commit before reading what they were committing to — and left no
+   * honest place to put "no thanks", because by then it was too late to
+   * decline.
+   *
+   * There is also no keeper to load, so the initial GET is skipped.
+   */
+  offer?: boolean;
+  /** Taken when they decline. The caller decides what that remembers. */
+  onDecline?: () => void;
+  /** Claims the card. Resolves false if somebody else got there first. */
+  onClaim?: () => Promise<boolean>;
 }
 
 /**
@@ -75,6 +91,15 @@ async function get(editKey?: string): Promise<KeeperState | null> {
 
 export function cardSetup(opts: CardSetupOptions): void {
   const { root } = opts;
+
+  if (opts.offer) {
+    // Nothing to load: there is no tenure until the primary is pressed.
+    render({
+      epochId: "", keeper: opts.suggestName ?? "", lang: lang(),
+      duckSlug: null, orphans: 0,
+    });
+    return;
+  }
 
   void get(opts.editKey).then((state) => {
     if (!state) return opts.onDone();
@@ -407,7 +432,17 @@ export function cardSetup(opts: CardSetupOptions): void {
       const actions = el("div", "p-actions");
       actions.append(
         button("p-btn", t("keeper.21"), () => void save()),
-        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone),
+        /*
+         * "No thanks" only exists while there is something to decline. Once
+         * the card is theirs the second action is just a way out, and the
+         * nav already carries that.
+         */
+        opts.offer
+          ? button("p-btn p-btn-quiet", t("keeper.20"), () => {
+              opts.onDecline?.();
+              opts.onDone();
+            })
+          : button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone),
       );
       wrap.append(actions, status);
       root.append(sheetRoot);
@@ -415,6 +450,18 @@ export function cardSetup(opts: CardSetupOptions): void {
 
       async function save(): Promise<void> {
         try {
+          /*
+           * The claim happens here, on the primary, after they have read
+           * what keeping the card means — not on the button that opened
+           * this sheet.
+           */
+          if (opts.offer && opts.onClaim) {
+            const took = await opts.onClaim();
+            if (!took) {
+              status.textContent = t("live.keeper.taken");
+              return;
+            }
+          }
           const res = await fetch("/api/keeper", {
             method: "POST",
             credentials: "same-origin",
