@@ -1640,8 +1640,23 @@ async function main(): Promise<void> {
       body.append(
         el("p", "p-title", t("live.claim.no")),
         el("p", "p-body", t("live.claim.no.body")),
-        button("p-btn", t("mine.05"), () => root.replaceChildren()),
       );
+      /*
+       * ══ NAME THE CARD ══
+       * "this card is not one the pond knows" is true and useless. The
+       * serial is stamped on the card in somebody's hand, so printing it
+       * gives away nothing and turns a vague refusal into something they
+       * can act on — or quote to whoever keeps the pond.
+       *
+       * It diagnosed its own first real failure: a newly flashed card,
+       * refused because it had never been recorded, and the only way to
+       * find out was a database query.
+       */
+      const serial = url.searchParams.get("c");
+      if (serial && /^[A-Za-z0-9]{6,12}$/.test(serial)) {
+        body.append(el("p", "p-note", t("live.claim.no.card", { serial })));
+      }
+      body.append(button("p-btn", t("mine.05"), () => root.replaceChildren()));
       root.replaceChildren(sheetRoot);
     }
   }
