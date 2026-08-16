@@ -68,6 +68,7 @@ describe("繁體中文", () => {
       "pond.09", // −
       "pond.18", // an edit-key URL
       "pond.25", // Mika — an example name
+      "pond.41", // David's Pond — the place's name, not a phrase
       "sign.04", // Sam — an example name
       "sign.05", // 0 — a character count
       "studio.13", // 1×

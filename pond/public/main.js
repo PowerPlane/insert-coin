@@ -1482,8 +1482,10 @@ var EN = {
   // Body
   "pond.01": "14 ducks",
   // Button
-  "pond.02": "BY-002 — about this card. Opens byproductlab.com in a new tab.",
+  "pond.02": "David's Pond — who made this. Opens davidyang.work in a new tab.",
   // Screen reader
+  "pond.41": "David's Pond",
+  // The mark on the water
   "pond.03": "Show everyone again",
   // Screen reader
   "pond.04": "Whistle for",
@@ -1767,7 +1769,8 @@ var ZH_HANT = {
   "contact.09": "如果想收明信片，可以留下地址。David 不會把它分享出去。",
   // ── the pond ──────────────────────────────────────────────────────────
   "pond.01": "14 隻鴨子",
-  "pond.02": "BY-002 — 關於這張卡片。會在新分頁打開 byproductlab.com。",
+  "pond.02": "David's Pond — 這是誰做的。會在新分頁打開 davidyang.work。",
+  "pond.41": "David's Pond",
   "pond.03": "重新顯示全部",
   "pond.04": "呼喚",
   "pond.05": "回到整個池塘",
@@ -4928,8 +4931,8 @@ async function pondScreen(bootstrap) {
   const count = el2("button", "p-count");
   count.type = "button";
   count.setAttribute("aria-label", t("pond.13"));
-  const mark = el2("a", "p-mark", "BY-002");
-  mark.href = "https://byproductlab.com";
+  const mark = el2("a", "p-mark", t("pond.41"));
+  mark.href = "https://www.davidyang.work";
   mark.target = "_blank";
   mark.rel = "noopener noreferrer";
   mark.setAttribute("aria-label", t("pond.02"));

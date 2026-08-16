@@ -136,13 +136,17 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    * water that leaves the pond, so it says where it goes before it is
    * tapped — pond.02 is the whole sentence, not a decoration.
    *
-   * It points at byproductlab.com rather than davidyang.work: BY-002 is a
-   * ByProduct Lab part number, and somebody tapping the code stamped on
-   * the card is asking about the thing in their hand, not about the
-   * person who made it.
+   * It reads "David's Pond" rather than the part number it started as.
+   * BY-002 is what the card is called on a bill of materials; it is not
+   * what the place is called, and the one piece of chrome floating on the
+   * water should say whose pond somebody has wandered into.
+   *
+   * It goes to the portfolio rather than the lab: a stranger who taps the
+   * only words on the water is asking who made this, and that is a person
+   * before it is a part number.
    */
-  const mark = el("a", "p-mark", "BY-002");
-  mark.href = "https://byproductlab.com";
+  const mark = el("a", "p-mark", t("pond.41"));
+  mark.href = "https://www.davidyang.work";
   mark.target = "_blank";
   mark.rel = "noopener noreferrer";
   mark.setAttribute("aria-label", t("pond.02"));
