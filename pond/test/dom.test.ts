@@ -54,30 +54,72 @@ describe("field()", () => {
     }).not.toThrow();
   });
 
-  it("seeds the count from the value it was given", () => {
+  it("seeds the count from the value it was given, and says out of how many", () => {
+    // The denominator is the whole warning. A bare "5" is a number; "5/18"
+    // is a budget. See the note in field() — a message was lost to this.
     const f = field({ label: "Name", placeholder: "Sam", max: 18, value: "David" });
-    expect(f.wrap.querySelector(".p-field-count")?.textContent).toBe("5");
+    expect(f.wrap.querySelector(".p-field-count")?.textContent).toBe("5/18");
   });
 
   it("counts what a person sees, not UTF-16 units", () => {
     // The server counts code POINTS. An emoji costs one there, so it costs
     // one here — a courtesy that must never be stricter than the authority.
     const f = field({ label: "", placeholder: "", max: 10, value: "🦆🦆" });
-    expect(f.wrap.querySelector(".p-field-count")?.textContent).toBe("2");
+    expect(f.wrap.querySelector(".p-field-count")?.textContent).toBe("2/10");
+    // The attribute stays generous on purpose: it counts the wrong units,
+    // so it is a backstop against a huge paste and never the real limit.
     expect((f.input as HTMLInputElement).maxLength).toBe(20);
   });
 
-  it("reports and marks going over, and stops marking on the way back", () => {
+  it("stops where the server stops, instead of letting the end be thrown away", () => {
+    /*
+     * ══ THE MESSAGE THAT ENDED MID-CLAUSE ══
+     * `cleanText` keeps the first `max` code points and drops the rest in
+     * silence. Somebody wrote a ninety-character thought, the field let
+     * them keep typing, and what landed in the pond stopped on the word
+     * "in". The field now refuses the surplus rather than the server
+     * discarding it.
+     */
     const count = () => f.wrap.querySelector(".p-field-count")!;
     const f = field({ label: "", placeholder: "", max: 3, value: "" });
     f.input.value = "abcd";
     f.input.dispatchEvent(new Event("input"));
-    expect(count().textContent).toBe("4");
-    expect(count().classList.contains("over")).toBe(true);
+    expect(f.input.value).toBe("abc");
+    expect(count().textContent).toBe("3/3");
+    expect(count().classList.contains("over")).toBe(false);
 
     f.input.value = "ab";
     f.input.dispatchEvent(new Event("input"));
+    expect(f.input.value).toBe("ab");
     expect(count().classList.contains("over")).toBe(false);
+  });
+
+  it("trims by code points, so an emoji is not cut in half", () => {
+    // Slicing the UTF-16 string would leave a lone surrogate — a broken
+    // character the server then strips, losing MORE than the person typed.
+    const f = field({ label: "", placeholder: "", max: 2, value: "" });
+    f.input.value = "🦆🦆🦆";
+    f.input.dispatchEvent(new Event("input"));
+    expect(f.input.value).toBe("🦆🦆");
+    expect([...f.input.value].length).toBe(2);
+  });
+
+  it("leaves an IME alone until it has finished composing", () => {
+    /*
+     * A phonetic composition is longer than the characters it becomes —
+     * ㄅㄨˋ is three code points on the way to 不 — so trimming mid-
+     * composition eats the syllable somebody is still spelling. Half the
+     * people using this type Traditional Chinese.
+     */
+    const f = field({ label: "", placeholder: "", max: 2, value: "" });
+    f.input.dispatchEvent(new Event("compositionstart"));
+    f.input.value = "ㄅㄨˋ";
+    f.input.dispatchEvent(new Event("input"));
+    expect(f.input.value, "untouched while composing").toBe("ㄅㄨˋ");
+
+    f.input.value = "不好意思";
+    f.input.dispatchEvent(new Event("compositionend"));
+    expect(f.input.value, "trimmed once the characters are real").toBe("不好");
   });
 
   it("passes the value on input, and only then", () => {

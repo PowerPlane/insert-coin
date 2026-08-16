@@ -127,10 +127,60 @@ export function field(opts: {
   const count = el("span", "p-field-count");
   const showCount = () => {
     const points = [...input.value].length;
-    count.textContent = `${points}`;
+    // The denominator is the point. A bare "104" is a number, not a
+    // warning — it says nothing about how much room there was, and Kariina
+    // typed straight past it and lost the end of her sentence.
+    count.textContent = `${points}/${opts.max}`;
     count.classList.toggle("over", points > opts.max);
   };
+
+  /*
+   * ══ THE FIELD STOPS WHERE THE SERVER STOPS ══
+   * `cleanText` keeps the first `max` CODE POINTS and silently drops the
+   * rest — no error, no complaint, the message is just shorter than the
+   * one somebody wrote. That happened to a real message: 90 characters
+   * survived and it ends mid-clause, on the word "in".
+   *
+   * `maxLength` above cannot be the fix. It counts UTF-16 units, so a
+   * message of emoji would be cut at half the allowance — stricter than
+   * the server, which is the one direction a courtesy limit must never
+   * go. It stays at max*2 as a backstop against a pathological paste.
+   *
+   * So the stop is done here, counting the same units the server counts.
+   *
+   * ══ AND NOT WHILE AN IME IS OPEN ══
+   * Half the people using this type Traditional Chinese. A phonetic
+   * composition is LONGER than the characters it becomes — "ㄅㄨˋ" is
+   * three code points on the way to 不 — so trimming mid-composition
+   * would eat the syllable somebody is still spelling and leave the IME's
+   * internal state pointing at text that no longer exists. Wait for
+   * `compositionend`, which is the first moment the value means anything.
+   */
+  const clamp = () => {
+    const points = [...input.value];
+    if (points.length <= opts.max) return;
+    // Where the caret was, so a trim in the MIDDLE of a full field does
+    // not throw the caret to the end and make the next keystroke land
+    // somewhere nobody asked for.
+    const caret = input.selectionStart;
+    input.value = points.slice(0, opts.max).join("");
+    if (caret !== null) {
+      const at = Math.min(caret, input.value.length);
+      input.setSelectionRange(at, at);
+    }
+  };
+
+  let composing = false;
+  input.addEventListener("compositionstart", () => { composing = true; });
+  input.addEventListener("compositionend", () => {
+    composing = false;
+    clamp();
+    showCount();
+    opts.onInput?.(input.value);
+  });
+
   input.addEventListener("input", () => {
+    if (!composing) clamp();
     showCount();
     opts.onInput?.(input.value);
   });

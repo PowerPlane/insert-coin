@@ -45,10 +45,31 @@ function field(opts) {
   const count = el("span", "p-field-count");
   const showCount = () => {
     const points = [...input.value].length;
-    count.textContent = `${points}`;
+    count.textContent = `${points}/${opts.max}`;
     count.classList.toggle("over", points > opts.max);
   };
+  const clamp = () => {
+    const points = [...input.value];
+    if (points.length <= opts.max) return;
+    const caret = input.selectionStart;
+    input.value = points.slice(0, opts.max).join("");
+    if (caret !== null) {
+      const at = Math.min(caret, input.value.length);
+      input.setSelectionRange(at, at);
+    }
+  };
+  let composing = false;
+  input.addEventListener("compositionstart", () => {
+    composing = true;
+  });
+  input.addEventListener("compositionend", () => {
+    composing = false;
+    clamp();
+    showCount();
+    opts.onInput?.(input.value);
+  });
   input.addEventListener("input", () => {
+    if (!composing) clamp();
     showCount();
     opts.onInput?.(input.value);
   });
