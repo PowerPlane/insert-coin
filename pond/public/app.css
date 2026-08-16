@@ -311,7 +311,31 @@ html[lang="zh-Hant"] body {
   z-index: 30;
 }
 
-.p-hud > * {
+/*
+ * ══ DOUBLED ON PURPOSE, AND THE DOUBLING IS THE FIX ══
+ * The HUD is `pointer-events: none` so taps fall through to the water, and
+ * this turns it back on for the chips sitting on it. Written once as
+ * `.p-hud > *` it is specificity (0,1,0) — exactly equal to a component's
+ * own `.p-mark { all: unset }`, which appears LATER in this file and
+ * therefore wins. And `pointer-events` is INHERITED, so what `all: unset`
+ * resets it to is `none`, straight back from the line above.
+ *
+ * That is not hypothetical twice over. It killed `.p-count` — the whistle,
+ * so the pond's entire filter was unreachable by finger — and it was fixed
+ * there by declaring `pointer-events: auto` inside that component. The
+ * convention was written down and then not carried across to `.p-mark`,
+ * which is the "David's Pond" link: it computed to `none`, a tap at its
+ * centre landed on the canvas, and it silently stopped opening the
+ * portfolio. `.click()` in a test kept passing, because a synthetic click
+ * bypasses hit-testing altogether.
+ *
+ * Repeating the class makes this (0,2,0). It now wins over any component's
+ * reset wherever that component happens to sit in the file, so the next
+ * thing put on the HUD is tappable without anybody having to know this.
+ * The components still declare it themselves — see `.p-count` — because a
+ * component that only works in one parent is a component with a secret.
+ */
+.p-hud.p-hud > * {
   pointer-events: auto;
 }
 
@@ -323,6 +347,12 @@ html[lang="zh-Hant"] body {
  */
 .p-mark {
   all: unset;
+  /*
+   * Below the reset, and not optional: `all` resets INHERITED properties to
+   * inherit, and the HUD above says `none`. Without this line the only
+   * link that leaves the pond is not a link. Same note as `.p-count`.
+   */
+  pointer-events: auto;
   clip-path: var(--px-corner);
   font-family: var(--mono);
   text-transform: uppercase;
@@ -1895,6 +1925,33 @@ h2:focus-visible {
   .p-btn:active,
   .p-icon-btn:not(:disabled):active {
     transform: none;
+  }
+
+  /*
+   * ══ STOP IT MOVING; DO NOT STOP IT HAPPENING ══
+   * The sheet and the duck card rise out of the water, and that rise lives
+   * inside `no-preference`. So with Reduce Motion on there was no
+   * animation at all: a card was simply THERE on the frame after a tap,
+   * with nothing to say it had arrived. Reported as "not really showing,
+   * just popped", which is exactly right — a panel covering the bottom
+   * third of the screen appearing between two frames reads as a glitch,
+   * not as a screen.
+   *
+   * Reduce Motion is a request about MOVEMENT — the vestibular problem is
+   * things travelling across the view — and the accepted answer is to
+   * cross-fade instead of translate, not to cut the transition. So the
+   * information the rise was carrying ("this arrived, from down there")
+   * survives as a fade, and nothing travels.
+   *
+   * Stepped, like everything else here. A smooth 160ms fade beside a duck
+   * that walks at 12fps is the one thing on screen that gives away that
+   * this is a web page — the same argument the rise itself makes. Three
+   * steps, matching the scrim it appears with.
+   */
+  .p-sheet,
+  .p-card,
+  .p-scrim {
+    animation: p-fade 0.16s steps(3, end);
   }
 }
 
