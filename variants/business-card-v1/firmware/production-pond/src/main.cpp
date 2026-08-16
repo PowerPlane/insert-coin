@@ -139,6 +139,37 @@ void setup() {
      * frames, so four blows count whenever they arrive: during the walk,
      * during the lottery, whenever somebody thinks to try.
      */
+    /*
+     * ══ A POWER CYCLE MUST NOT LEAVE A CLAIM ON THE FLOOR ══
+     * `clear_and_sleep` retires the fortune and the claim at the END of a
+     * session, and it tries hard — see the note on never sleeping still
+     * armed. But it only runs if the card gets to the end. Pull the coin
+     * while a fortune is live, or in the five minutes after four blows,
+     * and it never runs at all: the tag keeps whatever it was holding,
+     * indefinitely, with nothing awake to fix it.
+     *
+     * Reinserting the coin used not to fix it either. The tag is not
+     * touched until after the walk and the lottery, so for the whole boot
+     * show a stale digit — or worse, an unspent claim — sat there
+     * readable. Anyone tapping in those seconds got a fortune nobody paid
+     * for, or walked into somebody else's setup screen.
+     *
+     * So a boot starts by putting the card back to nothing: no fortune, no
+     * claim. Fifteen bytes, about 90 ms, hidden inside a show that runs
+     * for seconds — and it happens before the watcher below, so blowing
+     * four times on THIS power-up still arms normally.
+     *
+     * Best effort on purpose. `ndef_write_byte` already retries, the show
+     * patches the digit again a moment later, and `clear_and_sleep` is
+     * still the belt at the other end. This is the braces.
+     */
+    ndef_init();
+    if (provision_ok()) {
+        ndef_patch_default();
+        claim_disarm();
+    }
+    ndef_deinit();
+
     claim_watch_begin();
 
     delay(POST_BOOT_PAUSE_MS);
