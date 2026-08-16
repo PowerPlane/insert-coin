@@ -549,9 +549,23 @@ html[lang="zh-Hant"] body {
    * Clear of the CTA and the wordmark below it, not just of the screen
    * edge. The old 76px assumed nothing was down there; with a call to
    * action present the minus button sat on top of it.
+   *
+   * ══ AND THE BAR IS NOT ALWAYS ONE ROW TALL ══
+   * That fix then assumed the CTA was exactly one 44px row, which was true
+   * of every state it had at the time. The keeper offer made it two, and
+   * the minus button sat on the dismiss — eight pixels apart, in the same
+   * column, measured rather than noticed. The same bug as the note above,
+   * one state later, which is the argument for counting the rows instead
+   * of writing down today's answer.
+   *
+   * `--cta-rows` is that count. Anything that adds a row to the bar sets
+   * it, and this arithmetic follows: each row is a tap target, and each
+   * row after the first also brings the bar's 8px gap.
    */
+  --cta-rows: 1;
   bottom: calc(
-    max(16px, env(safe-area-inset-bottom)) + var(--wordmark-room) + var(--tap) + 20px
+    max(16px, env(safe-area-inset-bottom)) + var(--wordmark-room)
+      + var(--tap) * var(--cta-rows) + (var(--cta-rows) - 1) * 8px + 20px
   );
   display: flex;
   flex-direction: column;
@@ -2358,6 +2372,74 @@ a.p-chip {
   flex-direction: row;
   justify-content: center;
   gap: 12px;
+  /*
+   * The offer sits ABOVE the glyphs, so the row has to be allowed to
+   * wrap — otherwise a full-width invitation squeezes two 44px controls
+   * into whatever is left, which is the exact failure the row was chosen
+   * over a third glyph to avoid.
+   */
+  flex-wrap: wrap;
+}
+
+/*
+ * ══ KEEP THIS CARD YOURS ══
+ * The one piece of chrome in the pond that asks for something. It is a
+ * labelled row rather than a third glyph because a glyph is a reminder of
+ * something you already know how to do, and nobody has heard of this.
+ *
+ * `order: -1` rather than a different append point: the glyph row is
+ * built by `buildCta` in one place and appending the offer first would
+ * mean two code paths deciding the order. One declaration here is easier
+ * to be sure about than a branch there.
+ */
+.p-offer {
+  order: -1;
+  flex-basis: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.p-offer-take {
+  flex: 1;
+  /* It is an invitation, not the task. The wide quiet button is the same
+     weight as "Decorate it" was — no louder, because a person who ignores
+     it has lost nothing. */
+  margin: 0;
+}
+
+/*
+ * The dismiss. Square, so it reads as a close rather than as the second of
+ * two choices — and a full tap target, because the answer "no" deserves
+ * the same 44px the answer "yes" gets.
+ */
+.p-offer-x {
+  all: unset;
+  clip-path: var(--px-corner);
+  cursor: pointer;
+  box-sizing: border-box;
+  width: var(--tap);
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 1rem;
+  color: var(--p-faint);
+  background: var(--p-surface);
+}
+
+.p-offer-x:focus-visible {
+  outline: 2px solid var(--p-ink);
+  outline-offset: 2px;
+}
+
+/*
+ * The offer is a second row, so the zoom column has further to climb.
+ * Declared here, beside the thing that causes it, rather than as a number
+ * in the zoom's own rule that nobody would think to revisit.
+ */
+#pond:has(.p-offer) .p-zoom {
+  --cta-rows: 2;
 }
 
 .p-glyph {

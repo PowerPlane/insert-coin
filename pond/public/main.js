@@ -75,6 +75,33 @@ var api = {
     method: "POST",
     body: JSON.stringify({ card, counter, token })
   }),
+  /**
+   * Keep the card you just used.
+   *
+   * No arguments, and that is the design rather than an omission: the
+   * session cookie IS the claim. Anything the browser could send would be
+   * something the server has to check rather than something it can trust,
+   * and the server already knows which card this session came from and
+   * which duck it released.
+   *
+   * A 409 means somebody else got there first, which is not a failure —
+   * it is a reason to take the offer down rather than to retry it.
+   */
+  claimFirst: () => request("/claim/first", {
+    method: "POST"
+  }),
+  /**
+   * Hand the card on.
+   *
+   * Ends the tenure and nothing else: every duck stays in the pond and
+   * keeps the `via` it had, because it WAS from that card. The private
+   * link is accepted as well as the cookie, since the cookie lasts an
+   * hour and a decision like this is usually made later than that.
+   */
+  keeperEnd: (editKey) => request("/keeper/end", {
+    method: "POST",
+    body: JSON.stringify(editKey ? { editKey } : {})
+  }),
   /** Idempotent: reporting twice is the same report, and says so. */
   report: (id, reason, note) => request("/report", {
     method: "POST",
@@ -1381,6 +1408,8 @@ var LIVE_STRINGS = {
   // Named, not "invalid": the keeper needs to know it is this word, not
   // their typing, and that the pond is not accusing them of anything.
   "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
+  "live.keeper.taken": "Somebody already keeps this card.",
+  "live.keeper.via": "Ducks from this card will say via {keeper}. You can change it or hand it on later.",
   "live.claim.no": "This card could not be set up.",
   "live.claim.no.card": "Card {serial}",
   // The serial, so it can be named
@@ -1436,8 +1465,41 @@ var KEEPER_STRINGS = {
   // Field label
   "keeper.17": "Save setup",
   // Button
-  "keeper.18": "Not now"
+  "keeper.18": "Not now",
   // Button
+  // ── keeping the card you just used ────────────────────────────────────
+  //
+  // The offer, and the sheet behind it. Every one of these is deliberately
+  // short: this arrives while somebody is watching their duck float, and a
+  // paragraph at that moment is a paragraph nobody reads.
+  "keeper.19": "Keep this card yours",
+  // Button — the offer in the pond bar
+  "keeper.20": "Not now, thanks",
+  // Button — dismisses the offer
+  "keeper.21": "Keep it",
+  // Button — the sheet's primary
+  "keeper.22": "This card is yours",
+  // Field label on your duck's settings
+  "keeper.23": "Card settings",
+  // Button
+  "keeper.24": "Take my name off",
+  // Button
+  "keeper.25": "Someone else keeps it now",
+  // Button
+  "keeper.26": "Your ducks stay in the pond and keep saying via you. The card goes back to being anybody's.",
+  // Body
+  "keeper.27": "Hand it on",
+  // Button — confirms
+  "keeper.28": "Keep it",
+  // Button — cancels handing on
+  /*
+   * Not "Card name". In admin, a card's NAME is its label — "the one I
+   * gave Sam" — which is a different field about a different thing. What
+   * this asks for is a person, and the sentence above it says so: ducks
+   * from this card will read via <this>.
+   */
+  "keeper.29": "Your name"
+  // Field label
 };
 var EN = {
   "arrival.01": "Your fortune",
@@ -1740,6 +1802,8 @@ var ZH_HANT = {
   "live.keeper.hint": "這張卡片放出的鴨子會顯示「來自 {keeper}」。",
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
+  "live.keeper.taken": "這張卡片已經有人保管了。",
+  "live.keeper.via": "這張卡片放出的鴨子會顯示「來自 {keeper}」。之後可以改，也可以交給別人。",
   "live.claim.no": "這張卡片無法設定。",
   "live.claim.no.card": "卡片 {serial}",
   "live.claim.no.body": "這組設定可能已經用過，或是池塘不認得這張卡片。拿著卡片再吹四次，然後再感應一次。",
@@ -1766,6 +1830,18 @@ var ZH_HANT = {
   "keeper.16": "把先前的 12 隻鴨子加進這張卡片",
   "keeper.17": "儲存設定",
   "keeper.18": "現在不要",
+  // ── 把剛剛用的卡片變成自己的 ──────────────────────────────────────────
+  "keeper.19": "把這張卡片留給自己",
+  "keeper.20": "先不用",
+  "keeper.21": "留下來",
+  "keeper.22": "這張卡片是你的",
+  "keeper.23": "卡片設定",
+  "keeper.24": "把我的名字拿掉",
+  "keeper.25": "換別人保管",
+  "keeper.26": "你的鴨子會留在池塘裡，也還是會顯示來自你。卡片則會變回誰都可以拿。",
+  "keeper.27": "交出去",
+  "keeper.28": "還是我保管",
+  "keeper.29": "你的名字",
   // ── the arrival ───────────────────────────────────────────────────────
   "arrival.01": "你的運勢",
   "arrival.02": "大吉",
@@ -2908,17 +2984,20 @@ function project(wx, wy, cam, renderCell, canvasW, canvasH, side) {
 
 // src/client/keeper.ts
 var LINKED_CELL = 3;
-async function get() {
-  const res = await fetch("/api/keeper", { credentials: "same-origin" });
+async function get(editKey) {
+  const url = editKey ? `/api/keeper?editKey=${encodeURIComponent(editKey)}` : "/api/keeper";
+  const res = await fetch(url, { credentials: "same-origin" });
   return res.ok ? await res.json() : null;
 }
 function cardSetup(opts) {
   const { root: root2 } = opts;
-  void get().then((state) => {
+  void get(opts.editKey).then((state) => {
     if (!state) return opts.onDone();
+    if (!state.keeper && opts.suggestName) state.keeper = opts.suggestName;
     render(state);
   });
   function render(state) {
+    if (opts.compact) return renderCompact(state);
     screen(root2, () => {
       root2.replaceChildren();
       const { root: viewRoot, body: wrap2 } = view();
@@ -3053,6 +3132,105 @@ function cardSetup(opts) {
           if (!res.ok) {
             const why = await res.json().catch(() => null);
             status.textContent = why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
+            return;
+          }
+          opts.onDone();
+        } catch {
+          status.textContent = t("live.error");
+        }
+      }
+    });
+  }
+  function renderCompact(state) {
+    screen(root2, () => {
+      root2.replaceChildren();
+      const { root: sheetRoot, body: wrap2 } = sheet();
+      let name = state.keeper;
+      wrap2.append(el("h2", "p-title", t("keeper.19")));
+      const via = el(
+        "p",
+        "p-body",
+        name ? t("live.keeper.via", { keeper: name }) : t("keeper.06")
+      );
+      wrap2.append(via);
+      const nameField = field({
+        label: t("keeper.29"),
+        placeholder: t("keeper.05"),
+        max: 18,
+        value: name,
+        onInput: (v) => {
+          name = v;
+          via.textContent = v ? t("live.keeper.via", { keeper: v }) : t("keeper.06");
+          status.textContent = "";
+        }
+      });
+      wrap2.append(nameField.wrap);
+      let lang = state.lang;
+      wrap2.append(el("p", "p-field-label", t("keeper.12")));
+      const langs = el("div", "p-scopes");
+      langs.setAttribute("role", "group");
+      const choices = [
+        ["en", t("keeper.13")],
+        ["zh-Hant", t("keeper.14")]
+      ];
+      const chips = choices.map(
+        ([value, label]) => button("p-chip", label, () => {
+          lang = value;
+          paint();
+        })
+      );
+      const paint = () => {
+        chips.forEach((b, i) => {
+          const on = choices[i][0] === lang;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-pressed", String(on));
+        });
+      };
+      chips.forEach((b) => langs.append(b));
+      paint();
+      wrap2.append(langs);
+      let adopt = false;
+      if (state.orphans > 0) {
+        const chip = button(
+          "p-chip",
+          t("live.keeper.adopt", { n: String(state.orphans) }),
+          () => {
+            adopt = !adopt;
+            chip.classList.toggle("on", adopt);
+            chip.setAttribute("aria-pressed", String(adopt));
+          }
+        );
+        chip.setAttribute("aria-pressed", "false");
+        const row = el("div", "p-chip-row");
+        row.append(chip);
+        wrap2.append(row);
+      }
+      const status = el("p", "p-note", "");
+      const actions = el("div", "p-actions");
+      actions.append(
+        button("p-btn", t("keeper.21"), () => void save()),
+        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone)
+      );
+      wrap2.append(actions, status);
+      root2.append(sheetRoot);
+      nameField.input.focus();
+      async function save() {
+        try {
+          const res = await fetch("/api/keeper", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "content-type": "application/json" },
+            /*
+             * `editKey` is both the link and, when the cookie has expired,
+             * the credential. Sent every time so a save an hour later is
+             * the same request as a save a minute later.
+             */
+            body: JSON.stringify({ name, lang, adopt, ...opts.editKey ? { editKey: opts.editKey } : {} })
+          });
+          if (!res.ok) {
+            const why = await res.json().catch(() => null);
+            status.textContent = why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
+            if (why?.error === "reserved name") nameField.input.focus();
             return;
           }
           opts.onDone();
@@ -5352,6 +5530,73 @@ async function pondScreen(bootstrap) {
     }
     cta.classList.add("p-cta-glyphs");
     cta.append(sayButton(), settingsButton());
+    if (session2.keeperOffer && !offerDismissed()) cta.append(keeperOfferRow());
+  }
+  const OFFER_KEY = "pond.keeper.offer.dismissed";
+  const offerDismissed = () => {
+    try {
+      return localStorage.getItem(OFFER_KEY) === "1";
+    } catch {
+      return false;
+    }
+  };
+  function keeperOfferRow() {
+    const row = el2("div", "p-offer");
+    const take = el2("button", "p-btn p-btn-quiet p-offer-take", t("keeper.19"));
+    take.type = "button";
+    take.addEventListener("click", () => {
+      take.disabled = true;
+      void api.claimFirst().then(
+        (res) => {
+          if (!res.ok) {
+            row.replaceChildren(el2("p", "p-note", t("live.keeper.taken")));
+            window.setTimeout(() => row.remove(), 2400);
+            return;
+          }
+          pausePolling();
+          const key = hasDuck() ?? void 0;
+          void myDuckName(key).then((suggestName) => {
+            cardSetup({
+              root: overlay,
+              compact: true,
+              editKey: key,
+              suggestName,
+              onDone: () => {
+                overlay.replaceChildren();
+                resumePolling();
+                void syncCta();
+              }
+            });
+          });
+        },
+        () => {
+          take.disabled = false;
+          row.append(el2("p", "p-note", t("live.error")));
+        }
+      );
+    });
+    const no = el2("button", "p-offer-x", "×");
+    no.type = "button";
+    no.setAttribute("aria-label", t("keeper.20"));
+    no.addEventListener("click", () => {
+      try {
+        localStorage.setItem(OFFER_KEY, "1");
+      } catch {
+      }
+      row.remove();
+    });
+    row.append(take, no);
+    return row;
+  }
+  async function myDuckName(key) {
+    if (!key) return void 0;
+    try {
+      const { duck } = await api.mine(key);
+      const name = typeof duck?.name === "string" ? duck.name.trim() : "";
+      return name || void 0;
+    } catch {
+      return void 0;
+    }
   }
   function sayButton() {
     const b = button("p-glyph", "", () => openSay(), t("say.01"));

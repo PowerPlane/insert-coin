@@ -100,6 +100,8 @@ export const LIVE_STRINGS = {
   // Named, not "invalid": the keeper needs to know it is this word, not
   // their typing, and that the pond is not accusing them of anything.
   "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
+  "live.keeper.taken": "Somebody already keeps this card.",
+  "live.keeper.via": "Ducks from this card will say via {keeper}. You can change it or hand it on later.",
   "live.claim.no": "This card could not be set up.",
   "live.claim.no.card": "Card {serial}", // The serial, so it can be named
   "live.claim.no.body": "The setup may already have been used, or this card is not one the pond knows. Hold the card, blow four times again, and tap.",
@@ -146,6 +148,29 @@ export const KEEPER_STRINGS = {
   "keeper.16": "Add the 12 earlier ducks to this card", // Field label
   "keeper.17": "Save setup", // Button
   "keeper.18": "Not now", // Button
+
+  // ── keeping the card you just used ────────────────────────────────────
+  //
+  // The offer, and the sheet behind it. Every one of these is deliberately
+  // short: this arrives while somebody is watching their duck float, and a
+  // paragraph at that moment is a paragraph nobody reads.
+  "keeper.19": "Keep this card yours", // Button — the offer in the pond bar
+  "keeper.20": "Not now, thanks", // Button — dismisses the offer
+  "keeper.21": "Keep it", // Button — the sheet's primary
+  "keeper.22": "This card is yours", // Field label on your duck's settings
+  "keeper.23": "Card settings", // Button
+  "keeper.24": "Take my name off", // Button
+  "keeper.25": "Someone else keeps it now", // Button
+  "keeper.26": "Your ducks stay in the pond and keep saying via you. The card goes back to being anybody's.", // Body
+  "keeper.27": "Hand it on", // Button — confirms
+  "keeper.28": "Keep it", // Button — cancels handing on
+  /*
+   * Not "Card name". In admin, a card's NAME is its label — "the one I
+   * gave Sam" — which is a different field about a different thing. What
+   * this asks for is a person, and the sentence above it says so: ducks
+   * from this card will read via <this>.
+   */
+  "keeper.29": "Your name", // Field label
 } as const;
 
 export const EN = {
@@ -359,6 +384,8 @@ export const ZH_HANT: Record<StringKey, string> = {
   "live.keeper.hint": "這張卡片放出的鴨子會顯示「來自 {keeper}」。",
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
+  "live.keeper.taken": "這張卡片已經有人保管了。",
+  "live.keeper.via": "這張卡片放出的鴨子會顯示「來自 {keeper}」。之後可以改，也可以交給別人。",
   "live.claim.no": "這張卡片無法設定。",
   "live.claim.no.card": "卡片 {serial}",
   "live.claim.no.body": "這組設定可能已經用過，或是池塘不認得這張卡片。拿著卡片再吹四次，然後再感應一次。",
@@ -386,6 +413,19 @@ export const ZH_HANT: Record<StringKey, string> = {
   "keeper.16": "把先前的 12 隻鴨子加進這張卡片",
   "keeper.17": "儲存設定",
   "keeper.18": "現在不要",
+
+  // ── 把剛剛用的卡片變成自己的 ──────────────────────────────────────────
+  "keeper.19": "把這張卡片留給自己",
+  "keeper.20": "先不用",
+  "keeper.21": "留下來",
+  "keeper.22": "這張卡片是你的",
+  "keeper.23": "卡片設定",
+  "keeper.24": "把我的名字拿掉",
+  "keeper.25": "換別人保管",
+  "keeper.26": "你的鴨子會留在池塘裡，也還是會顯示來自你。卡片則會變回誰都可以拿。",
+  "keeper.27": "交出去",
+  "keeper.28": "還是我保管",
+  "keeper.29": "你的名字",
 
   // ── the arrival ───────────────────────────────────────────────────────
   "arrival.01": "你的運勢",

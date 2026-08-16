@@ -70,6 +70,15 @@ export interface SessionState {
   spent?: boolean;
   /** The keeper of the card that was tapped, if they named themselves. */
   keeper?: string | null;
+  /**
+   * Whether this card is going spare.
+   *
+   * Answered by the server, never inferred here from `keeper === null`.
+   * Those are different questions: a keeper who left their name blank has
+   * still claimed the card, and offering it to the next visitor would be
+   * offering something already taken.
+   */
+  keeperOffer?: boolean;
 }
 
 /**
@@ -138,6 +147,35 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ card, counter, token }),
     }),
+
+  /**
+   * Keep the card you just used.
+   *
+   * No arguments, and that is the design rather than an omission: the
+   * session cookie IS the claim. Anything the browser could send would be
+   * something the server has to check rather than something it can trust,
+   * and the server already knows which card this session came from and
+   * which duck it released.
+   *
+   * A 409 means somebody else got there first, which is not a failure —
+   * it is a reason to take the offer down rather than to retry it.
+   */
+  claimFirst: () => request<{ ok: boolean; orphans?: number }>("/claim/first", {
+    method: "POST",
+  }),
+
+  /**
+   * Hand the card on.
+   *
+   * Ends the tenure and nothing else: every duck stays in the pond and
+   * keeps the `via` it had, because it WAS from that card. The private
+   * link is accepted as well as the cookie, since the cookie lasts an
+   * hour and a decision like this is usually made later than that.
+   */
+  keeperEnd: (editKey?: string) => request<{ ok: true }>("/keeper/end", {
+    method: "POST",
+    body: JSON.stringify(editKey ? { editKey } : {}),
+  }),
 
   /** Idempotent: reporting twice is the same report, and says so. */
   report: (id: string, reason: ReportReason, note?: string) =>

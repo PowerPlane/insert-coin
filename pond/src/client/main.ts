@@ -927,6 +927,128 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
      */
     cta.classList.add("p-cta-glyphs");
     cta.append(sayButton(), settingsButton());
+
+    /*
+     * ══ AN INVITATION NEEDS WORDS ══
+     * The card that made this duck has no keeper, and the person holding
+     * it is almost certainly the one who should. So offer it — but as a
+     * labelled row above the glyphs, not as a third glyph beside them.
+     *
+     * A glyph is a REMINDER of something you already know how to do: say
+     * something, open your settings. This is an invitation to something
+     * nobody has heard of, and three unlabelled icons would be the worst
+     * of both — no explanation, and the two familiar ones squeezed to make
+     * room for it.
+     *
+     * It carries a dismiss, because "no, I am just playing with somebody
+     * else's card" is a real answer and a bar that keeps asking is a bar
+     * people stop reading. Dismissal is remembered per card-session and is
+     * NOT final: the offer stays reachable from the duck's own settings
+     * for as long as the card is unclaimed, so a decision made in three
+     * seconds while watching a duck float is never permanent.
+     */
+    if (session.keeperOffer && !offerDismissed()) cta.append(keeperOfferRow());
+  }
+
+  /** Per browser, and only while this card is still going unclaimed. */
+  const OFFER_KEY = "pond.keeper.offer.dismissed";
+  const offerDismissed = (): boolean => {
+    try {
+      return localStorage.getItem(OFFER_KEY) === "1";
+    } catch {
+      // Private mode, or storage turned off. Showing the offer is the
+      // safer failure: it can be dismissed again, and never seeing it is
+      // the thing this whole feature exists to fix.
+      return false;
+    }
+  };
+
+  function keeperOfferRow(): HTMLElement {
+    const row = el("div", "p-offer");
+    const take = el("button", "p-btn p-btn-quiet p-offer-take", t("keeper.19"));
+    take.type = "button";
+    take.addEventListener("click", () => {
+      take.disabled = true;
+      void api.claimFirst().then(
+        (res) => {
+          if (!res.ok) {
+            /*
+             * Somebody else got there first. Not a failure — a fact — so
+             * the offer goes away rather than inviting a retry that will
+             * lose the same race again.
+             */
+            row.replaceChildren(el("p", "p-note", t("live.keeper.taken")));
+            window.setTimeout(() => row.remove(), 2400);
+            return;
+          }
+          pausePolling();
+          // Read now rather than closed over: this button can outlive the
+          // bar that built it.
+          const key = hasDuck() ?? undefined;
+          void myDuckName(key).then((suggestName) => {
+            cardSetup({
+              root: overlay,
+              compact: true,
+              editKey: key,
+              suggestName,
+              onDone: () => {
+                overlay.replaceChildren();
+                resumePolling();
+                void syncCta();
+              },
+            });
+          });
+        },
+        () => {
+          take.disabled = false;
+          row.append(el("p", "p-note", t("live.error")));
+        },
+      );
+    });
+
+    const no = el("button", "p-offer-x", "×");
+    no.type = "button";
+    no.setAttribute("aria-label", t("keeper.20"));
+    no.addEventListener("click", () => {
+      try {
+        localStorage.setItem(OFFER_KEY, "1");
+      } catch {
+        // Nothing to do. It will be offered again next time, which is a
+        // smaller problem than never offering it at all.
+      }
+      row.remove();
+    });
+
+    row.append(take, no);
+    return row;
+  }
+
+  /**
+   * What they signed their duck with, for the name field to start from.
+   *
+   * Asking somebody what to call them twice in two minutes is what makes
+   * software feel like paperwork — and it is the same question both times.
+   * Taken from the pond we already polled, so it costs no request.
+   */
+  async function myDuckName(key?: string): Promise<string | undefined> {
+    if (!key) return undefined;
+    try {
+      const { duck } = await api.mine(key);
+      const name = typeof duck?.name === "string" ? duck.name.trim() : "";
+      return name || undefined;
+    } catch {
+      /*
+       * A prefill is a courtesy. Nothing here is worth blocking the sheet
+       * for, and an empty name field is exactly what the screen looked
+       * like before this existed.
+       *
+       * Asked of the server rather than read off the pond, because the
+       * pond's duck list is the pond's — see the note on the screen-reader
+       * list — and reaching into it for one string would be the first
+       * thing to break the next time it is rearranged.
+       */
+      return undefined;
+    }
   }
 
   /** Say something. Sixty characters, forty-five seconds, once per five minutes. */

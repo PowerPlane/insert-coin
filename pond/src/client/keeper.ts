@@ -15,7 +15,8 @@
 
 import { api, recallEditKey } from "./api.js";
 import {
-  button, el, field, nav as navStrip, screen, spacer, view as fullView,
+  button, el, field, nav as navStrip, screen, sheet as makeSheet, spacer,
+  view as fullView,
 } from "./dom.js";
 import { t } from "./strings.js";
 import { GRID, decodePaint } from "./codec.js";
@@ -35,22 +36,56 @@ interface KeeperState {
 export interface CardSetupOptions {
   root: HTMLElement;
   onDone: () => void;
+  /*
+   * ══ TWO PRESENTATIONS, ONE SCREEN ══
+   * Compact is a sheet with two questions on it. Full is the view above,
+   * with the paste field and the linked-duck thumbnail.
+   *
+   * Which one is right is decided by a single fact: does the pond already
+   * know which duck is theirs. Reached by blowing on a card, it does not —
+   * there may be no session and no duck at all, so the screen has to ask
+   * for a private link and is a screen's worth of work. Reached from the
+   * pond a minute after a duck landed, it knows: the edit key is in this
+   * browser, the name they want is the name they just signed with, and
+   * the language is the one they are reading in. Two questions is a sheet.
+   *
+   * Asking the same person the same thing twice is what makes software
+   * feel like paperwork, so the compact form asks for neither.
+   */
+  compact?: boolean;
+  /** Their duck, when the caller already knows it. Skips the paste field. */
+  editKey?: string;
+  /** Prefill for the name — what they signed their duck with. */
+  suggestName?: string;
 }
 
-async function get(): Promise<KeeperState | null> {
-  const res = await fetch("/api/keeper", { credentials: "same-origin" });
+/**
+ * Card settings, by whichever credential is to hand.
+ *
+ * The cookie is the fresher one and lasts an hour; a keeper's own duck's
+ * private link works for as long as their tenure does. Sent as a query
+ * parameter only when there is one — an empty `?editKey=` would be a
+ * malformed credential rather than an absent one.
+ */
+async function get(editKey?: string): Promise<KeeperState | null> {
+  const url = editKey ? `/api/keeper?editKey=${encodeURIComponent(editKey)}` : "/api/keeper";
+  const res = await fetch(url, { credentials: "same-origin" });
   return res.ok ? ((await res.json()) as KeeperState) : null;
 }
 
 export function cardSetup(opts: CardSetupOptions): void {
   const { root } = opts;
 
-  void get().then((state) => {
+  void get(opts.editKey).then((state) => {
     if (!state) return opts.onDone();
+    // Only offered as a prefill, and only when there is nothing to
+    // overwrite. A keeper who has already chosen a name keeps it.
+    if (!state.keeper && opts.suggestName) state.keeper = opts.suggestName;
     render(state);
   });
 
   function render(state: KeeperState): void {
+    if (opts.compact) return renderCompact(state);
     screen(root, () => {
       root.replaceChildren();
       /*
@@ -258,6 +293,142 @@ export function cardSetup(opts: CardSetupOptions): void {
             const why = (await res.json().catch(() => null)) as { error?: string } | null;
             status.textContent =
               why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
+            return;
+          }
+          opts.onDone();
+        } catch {
+          status.textContent = t("live.error");
+        }
+      }
+    });
+  }
+
+  /**
+   * The same settings, as a sheet, for somebody who already has a duck.
+   *
+   * ══ WHY THIS IS SHORT ══
+   * The card is already claimed by the time this opens — the offer did
+   * that, and it is the part that matters. Everything here is optional,
+   * so the sheet asks the two questions that are actually questions and
+   * infers the rest:
+   *
+   *   the duck    — the edit key is already in this browser,
+   *   the name    — prefilled with what they signed their duck with,
+   *   the language— prefilled with the one they are reading in.
+   *
+   * A person who closes it without touching anything has still kept their
+   * card. That is the whole reason it can be a sheet: nothing on it is
+   * load-bearing.
+   */
+  function renderCompact(state: KeeperState): void {
+    screen(root, () => {
+      root.replaceChildren();
+      const { root: sheetRoot, body: wrap } = makeSheet();
+
+      let name = state.keeper;
+      wrap.append(el("h2", "p-title", t("keeper.19")));
+      const via = el(
+        "p", "p-body",
+        name ? t("live.keeper.via", { keeper: name }) : t("keeper.06"),
+      );
+      wrap.append(via);
+
+      const nameField = field({
+        label: t("keeper.29"), placeholder: t("keeper.05"), max: 18, value: name,
+        onInput: (v) => {
+          name = v;
+          // The sentence above IS the preview. It shows what the name will
+          // do rather than describing what the field is for.
+          via.textContent = v ? t("live.keeper.via", { keeper: v }) : t("keeper.06");
+          status.textContent = "";
+        },
+      });
+      wrap.append(nameField.wrap);
+
+      // Language: a default for this card, never a lock on a visitor.
+      let lang = state.lang;
+      wrap.append(el("p", "p-field-label", t("keeper.12")));
+      const langs = el("div", "p-scopes");
+      langs.setAttribute("role", "group");
+      const choices: [KeeperState["lang"], string][] = [
+        ["en", t("keeper.13")],
+        ["zh-Hant", t("keeper.14")],
+      ];
+      const chips = choices.map(([value, label]) =>
+        button("p-chip", label, () => {
+          lang = value;
+          paint();
+        }),
+      );
+      const paint = (): void => {
+        chips.forEach((b, i) => {
+          const on = choices[i]![0] === lang;
+          b.classList.toggle("on", on);
+          // A chip that shows its state only with a colour shows it to
+          // exactly one kind of person.
+          b.setAttribute("aria-pressed", String(on));
+        });
+      };
+      chips.forEach((b) => langs.append(b));
+      paint();
+      wrap.append(langs);
+
+      /*
+       * The ducks made from this card before it was claimed. Offered,
+       * never assumed — they are somebody else's ducks. Their own duck is
+       * not among them: the server adopted that one when the claim was
+       * made, because it is the duck that proved the claim.
+       */
+      let adopt = false;
+      if (state.orphans > 0) {
+        const chip = button(
+          "p-chip", t("live.keeper.adopt", { n: String(state.orphans) }),
+          () => {
+            adopt = !adopt;
+            chip.classList.toggle("on", adopt);
+            chip.setAttribute("aria-pressed", String(adopt));
+          },
+        );
+        chip.setAttribute("aria-pressed", "false");
+        const row = el("div", "p-chip-row");
+        row.append(chip);
+        wrap.append(row);
+      }
+
+      const status = el("p", "p-note", "");
+      const actions = el("div", "p-actions");
+      actions.append(
+        button("p-btn", t("keeper.21"), () => void save()),
+        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone),
+      );
+      wrap.append(actions, status);
+      root.append(sheetRoot);
+      nameField.input.focus();
+
+      async function save(): Promise<void> {
+        try {
+          const res = await fetch("/api/keeper", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "content-type": "application/json" },
+            /*
+             * `editKey` is both the link and, when the cookie has expired,
+             * the credential. Sent every time so a save an hour later is
+             * the same request as a save a minute later.
+             */
+            body: JSON.stringify({ name, lang, adopt, ...(opts.editKey ? { editKey: opts.editKey } : {}) }),
+          });
+          if (!res.ok) {
+            const why = (await res.json().catch(() => null)) as { error?: string } | null;
+            /*
+             * Rendered against the field rather than swallowed. Prefilling
+             * the name from the duck means a duck signed "David" arrives
+             * here holding a name the server will refuse, so this is a
+             * path an ordinary person reaches by doing nothing wrong.
+             */
+            status.textContent =
+              why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
+            if (why?.error === "reserved name") nameField.input.focus();
             return;
           }
           opts.onDone();
