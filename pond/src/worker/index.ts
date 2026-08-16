@@ -278,7 +278,7 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     if (!duck) return json({ error: "unknown duck" }, { status: 403, headers });
     const result = await say(env, duck.id, body?.text);
     return result.ok
-      ? json({ ok: true, text: result.text, nextAt: result.nextAt }, { headers })
+      ? json({ ok: true, text: result.text, cooldown: result.cooldown }, { headers })
       : json({ ok: false, retryAfter: result.retryAfter }, { status: 429, headers });
   }
 

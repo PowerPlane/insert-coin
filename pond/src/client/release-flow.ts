@@ -18,7 +18,7 @@ import { ApiError, api, clearDraft, loadDraft, rememberEditKey, saveDraft } from
 import type { ContactScope } from "./api.js";
 import { GRID, decodePaint } from "./codec.js";
 import {
-  button, el, field, nav as navStrip, screen, sheet, spacer, view,
+  button, el, field, nav as navStrip, screen, sheet, spacer, view, copyText,
 } from "./dom.js";
 import { drawDuck } from "./render.js";
 import { type StudioState, studioScreen, toPayload } from "./studio.js";
@@ -173,6 +173,28 @@ export function releaseFlow(opts: FlowOptions): void {
     root.append(sheetRoot);
     endArrival = opts.playArrival(opts.fortune, draft.studio.tint, sheetRoot, () => {
       sheetRoot.classList.remove("p-waiting");
+      /*
+       * ══ FOCUS HAS TO COME WITH IT ══
+       * This screen now opens BY ITSELF on a fresh tap, rather than
+       * because somebody pressed a button. Nothing moved focus, so a
+       * screen reader stayed wherever it was — usually the document body,
+       * behind a sheet that had just taken over the page — and a keyboard
+       * had to tab in from the top of the pond to reach "Decorate it".
+       *
+       * The heading takes it rather than the first button: this is
+       * somebody's fortune, and it should be read out before it is acted
+       * on. `tabindex="-1"` makes it focusable without adding a tab stop
+       * of its own.
+       *
+       * Waited for the reveal to finish rather than done on append,
+       * because moving focus into a sheet that is still `p-waiting` —
+       * laid out but invisible — announces a screen nobody can see yet.
+       */
+      const heading = sheetRoot.querySelector<HTMLElement>("h2, .p-title");
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
     });
   }
 
@@ -414,16 +436,18 @@ export function releaseFlow(opts: FlowOptions): void {
      */
     const actions = el("div", "p-actions-row");
     const copy = button("p-btn p-btn-quiet", t("pond.19"), () => {
-      void navigator.clipboard?.writeText(url).then(
-        () => { copy.textContent = t("pond.40"); },
-        () => {
-          // The clipboard can be refused — by permissions, or by any
-          // non-secure origin. Selecting the field always works, and leaves
-          // the person one system gesture from the same result.
-          input.focus();
-          input.select();
-        },
-      );
+      void copyText(url).then((ok) => {
+        if (ok) {
+          copy.textContent = t("pond.40");
+          return;
+        }
+        // The clipboard can be refused — by permissions, by a non-secure
+        // origin, or by there being no clipboard API at all. Selecting the
+        // field always works, and leaves the person one system gesture from
+        // the same result.
+        input.focus();
+        input.select();
+      });
     });
     const sms = el("a", "p-btn p-btn-quiet", t("pond.20"));
     sms.href = `sms:?&body=${encodeURIComponent(url)}`;

@@ -123,7 +123,7 @@ export async function say(
   duckId: string,
   raw: unknown,
 ): Promise<
-  { ok: true; text: string; nextAt: number } | { ok: false; retryAfter: number }
+  { ok: true; text: string; cooldown: number } | { ok: false; retryAfter: number }
 > {
   const text = cleanText(raw, SAY_MAX_CHARS);
   const ts = nowSec();
@@ -150,9 +150,13 @@ export async function say(
    * either, because a say disappears from there after SAY_VISIBLE_SEC and
    * the cooldown outlives it by four minutes.
    *
-   * So the one place that knows says so, in the same breath as the write.
+   * A DURATION, not a moment. An absolute `nextAt` is measured on the
+   * server's clock and compared against the phone's, and phones are wrong:
+   * a skewed clock would either free the button early or hold it shut long
+   * after the pond would accept another message. Seconds-from-now survives
+   * any offset, because both ends only ever count.
    */
-  if (res.meta.changes) return { ok: true, text, nextAt: ts + SAY_COOLDOWN_SEC };
+  if (res.meta.changes) return { ok: true, text, cooldown: SAY_COOLDOWN_SEC };
 
   const last = await env.DB.prepare(
     `SELECT created FROM says WHERE duck_id = ?1 ORDER BY created DESC LIMIT 1`,

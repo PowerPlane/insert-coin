@@ -13,7 +13,7 @@
  * never "scope: 2".
  */
 
-import { button, el, field, screen } from "./dom.js";
+import { button, el, field, screen , copyText} from "./dom.js";
 
 interface AdminDuck {
   id: string;
@@ -328,16 +328,25 @@ function duckRow(d: AdminDuck, show: (card: string | null) => void): HTMLElement
    * shoulder-glance at it. The chip says what it did and says nothing
    * about what it holds.
    */
+  const who = d.name || d.slug;
   const recover = button("p-chip", "Copy link", () => {
-    const link = `${location.origin}/e/${d.editKey}`;
-    void navigator.clipboard?.writeText(link).then(
-      () => {
-        recover.textContent = "Copied";
-        window.setTimeout(() => { recover.textContent = "Copy link"; }, 1400);
-      },
-      () => { recover.textContent = "Copy failed"; },
-    );
-  }, `Copy the private link for ${d.name || d.slug}`);
+    void copyText(`${location.origin}/e/${d.editKey}`).then((ok) => {
+      /*
+       * The label AND the accessible name, together. Changing only the
+       * visible text left a screen reader hearing "Copy the private link
+       * for Mika" after the copy had already happened or failed — the one
+       * moment the control has something new to say.
+       */
+      recover.textContent = ok ? "Copied" : "Copy failed";
+      recover.setAttribute("aria-label", ok
+        ? `Copied the private link for ${who}`
+        : `Could not copy the private link for ${who}`);
+      window.setTimeout(() => {
+        recover.textContent = "Copy link";
+        recover.setAttribute("aria-label", `Copy the private link for ${who}`);
+      }, 1600);
+    });
+  }, `Copy the private link for ${who}`);
   actions.append(recover);
   row.append(actions);
   return row;
@@ -362,7 +371,7 @@ function contactRow(d: AdminDuck, ducks: AdminDuck[], cards: AdminCard[]): HTMLE
       void api("/postcard", { id: d.id, done: !d.postcard }).then(load);
     }),
     button("p-chip", "Copy", () => {
-      void navigator.clipboard?.writeText(d.contact ?? "");
+      void copyText(d.contact ?? "");
     }),
   );
   row.append(actions);

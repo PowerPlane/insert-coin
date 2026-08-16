@@ -15,7 +15,7 @@
 
 import { ApiError, api, clearDraft } from "./api.js";
 import {
-  button, el, field, nav as navStrip, screen, sheet, spacer, view as fullView,
+  button, el, field, nav as navStrip, screen, sheet, spacer, view as fullView, copyText,
 } from "./dom.js";
 import { ORBIT_SIZE, STEP_MS, drawOrbit, type OrbitDuck } from "./orbit.js";
 import { drawDuck } from "./render.js";
@@ -323,15 +323,15 @@ export function mineScreen(opts: MineOptions): void {
       const linkRow = el("div", "p-linkrow");
       const linkText = el("span", "p-linkrow-url", `${location.origin}/e/${editKey}`);
       const copy = button("p-chip", t("manage.21"), () => {
-        void navigator.clipboard?.writeText(`${location.origin}/e/${editKey}`).then(
-          () => {
-            copy.textContent = t("manage.22");
-            window.setTimeout(() => { copy.textContent = t("manage.21"); }, 1400);
-          },
-          // The clipboard can be refused. The link is on screen and can be
-          // selected by hand, so this is a failed convenience, not an error.
-          () => {},
-        );
+        // The clipboard can be refused — insecure origin, an in-app
+        // browser, Safari outside a gesture. The link is on screen and can
+        // be selected by hand, so a refusal is a failed convenience rather
+        // than an error, and the chip simply does not claim to have copied.
+        void copyText(`${location.origin}/e/${editKey}`).then((ok) => {
+          if (!ok) return;
+          copy.textContent = t("manage.22");
+          window.setTimeout(() => { copy.textContent = t("manage.21"); }, 1400);
+        });
       });
       linkRow.append(el("span", "p-field-label", t("manage.05")), linkText, copy);
 

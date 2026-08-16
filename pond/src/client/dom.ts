@@ -252,3 +252,28 @@ export function screen(root: HTMLElement, render: () => void): void {
     root.append(s.root);
   }
 }
+
+/**
+ * Put text on the clipboard, and say whether it went.
+ *
+ * ══ `navigator.clipboard?.writeText(x).then(...)` IS A CRASH ══
+ * The optional chain guards the property, not the call chain: with no
+ * clipboard API the expression becomes `undefined.then(...)` and throws
+ * synchronously, past every rejection handler that was written to catch
+ * exactly this. Three call sites had it, all with a careful failure path
+ * that could never run.
+ *
+ * The clipboard is unavailable more often than it looks — any insecure
+ * origin, some in-app browsers, and Safari outside a user gesture — and
+ * every caller here has something honest to say when it fails, so the
+ * failure has to actually reach them.
+ */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    if (!navigator.clipboard?.writeText) return false;
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}

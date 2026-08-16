@@ -83,6 +83,15 @@ function screen(root2, render) {
     root2.append(s.root);
   }
 }
+async function copyText(text) {
+  try {
+    if (!navigator.clipboard?.writeText) return false;
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // src/client/admin.ts
 var root = document.getElementById("pond");
@@ -245,20 +254,17 @@ function duckRow(d, show) {
   open.target = "_blank";
   open.rel = "noreferrer";
   actions.append(open);
+  const who = d.name || d.slug;
   const recover = button("p-chip", "Copy link", () => {
-    const link = `${location.origin}/e/${d.editKey}`;
-    void navigator.clipboard?.writeText(link).then(
-      () => {
-        recover.textContent = "Copied";
-        window.setTimeout(() => {
-          recover.textContent = "Copy link";
-        }, 1400);
-      },
-      () => {
-        recover.textContent = "Copy failed";
-      }
-    );
-  }, `Copy the private link for ${d.name || d.slug}`);
+    void copyText(`${location.origin}/e/${d.editKey}`).then((ok) => {
+      recover.textContent = ok ? "Copied" : "Copy failed";
+      recover.setAttribute("aria-label", ok ? `Copied the private link for ${who}` : `Could not copy the private link for ${who}`);
+      window.setTimeout(() => {
+        recover.textContent = "Copy link";
+        recover.setAttribute("aria-label", `Copy the private link for ${who}`);
+      }, 1600);
+    });
+  }, `Copy the private link for ${who}`);
   actions.append(recover);
   row.append(actions);
   return row;
@@ -281,7 +287,7 @@ function contactRow(d, ducks, cards) {
       void api("/postcard", { id: d.id, done: !d.postcard }).then(load);
     }),
     button("p-chip", "Copy", () => {
-      void navigator.clipboard?.writeText(d.contact ?? "");
+      void copyText(d.contact ?? "");
     })
   );
   row.append(actions);

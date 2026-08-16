@@ -162,9 +162,9 @@ function clearDraft() {
 }
 var KEY_STORE = "pond.editKey.v1";
 var QUIET_UNTIL = "pond.quietUntil.v1";
-function rememberQuiet(nextAt) {
+function rememberQuiet(seconds) {
   try {
-    localStorage.setItem(QUIET_UNTIL, String(nextAt));
+    localStorage.setItem(QUIET_UNTIL, String(Math.ceil(Date.now() / 1e3) + seconds));
   } catch {
   }
 }
@@ -286,6 +286,15 @@ function screen(root2, render) {
       button("p-btn", "Reload", () => location.reload())
     );
     root2.append(s.root);
+  }
+}
+async function copyText(text) {
+  try {
+    if (!navigator.clipboard?.writeText) return false;
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -2434,18 +2443,13 @@ function mineScreen(opts) {
       const linkRow = el("div", "p-linkrow");
       const linkText = el("span", "p-linkrow-url", `${location.origin}/e/${editKey}`);
       const copy = button("p-chip", t("manage.21"), () => {
-        void navigator.clipboard?.writeText(`${location.origin}/e/${editKey}`).then(
-          () => {
-            copy.textContent = t("manage.22");
-            window.setTimeout(() => {
-              copy.textContent = t("manage.21");
-            }, 1400);
-          },
-          // The clipboard can be refused. The link is on screen and can be
-          // selected by hand, so this is a failed convenience, not an error.
-          () => {
-          }
-        );
+        void copyText(`${location.origin}/e/${editKey}`).then((ok) => {
+          if (!ok) return;
+          copy.textContent = t("manage.22");
+          window.setTimeout(() => {
+            copy.textContent = t("manage.21");
+          }, 1400);
+        });
       });
       linkRow.append(el("span", "p-field-label", t("manage.05")), linkText, copy);
       wrap2.append(nameField.wrap, messageField.wrap, slugField.wrap, contactField.wrap, linkRow);
@@ -3135,6 +3139,11 @@ function releaseFlow(opts) {
     root2.append(sheetRoot);
     endArrival = opts.playArrival(opts.fortune, draft.studio.tint, sheetRoot, () => {
       sheetRoot.classList.remove("p-waiting");
+      const heading = sheetRoot.querySelector("h2, .p-title");
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
     });
   }
   let endArrival = () => {
@@ -3293,15 +3302,14 @@ function releaseFlow(opts) {
     input.classList.add("p-link");
     const actions = el("div", "p-actions-row");
     const copy = button("p-btn p-btn-quiet", t("pond.19"), () => {
-      void navigator.clipboard?.writeText(url).then(
-        () => {
+      void copyText(url).then((ok) => {
+        if (ok) {
           copy.textContent = t("pond.40");
-        },
-        () => {
-          input.focus();
-          input.select();
+          return;
         }
-      );
+        input.focus();
+        input.select();
+      });
     });
     const sms = el("a", "p-btn p-btn-quiet", t("pond.20"));
     sms.href = `sms:?&body=${encodeURIComponent(url)}`;
@@ -5251,7 +5259,10 @@ async function pondScreen(bootstrap) {
     buildCta(session2);
     return session2;
   }
+  let releasing = false;
   function beginRelease(session2) {
+    if (releasing) return;
+    releasing = true;
     pausePolling();
     call(null);
     releaseFlow({
@@ -5265,6 +5276,7 @@ async function pondScreen(bootstrap) {
       // the option to share with a keeper never appeared at all.
       keeper: session2.keeper ?? null,
       onBrowse: () => {
+        releasing = false;
         overlay.replaceChildren();
         resumePolling();
         void syncCta();
@@ -5283,6 +5295,7 @@ async function pondScreen(bootstrap) {
         void arriveWhenItLands(made.id);
       },
       onDone: () => {
+        releasing = false;
         overlay.replaceChildren();
         resumePolling();
         void syncCta();
@@ -5316,6 +5329,8 @@ async function pondScreen(bootstrap) {
   }
   function sayButton() {
     const b = button("p-glyph", "", () => openSay(), t("say.01"));
+    const quiet = el2("span", "p-sr-text");
+    quiet.id = `say-quiet-${Math.random().toString(36).slice(2, 8)}`;
     const tick = () => {
       const left = quietFor();
       b.disabled = left > 0;
@@ -5323,11 +5338,16 @@ async function pondScreen(bootstrap) {
       if (left > 0) {
         const mm = Math.floor(left / 60);
         const ss = String(left % 60).padStart(2, "0");
-        b.replaceChildren(el2("span", "p-glyph-count", `${mm}:${ss}`));
-        b.setAttribute("aria-label", t("live.say.wait", { time: `${mm}:${ss}` }));
+        const count2 = el2("span", "p-glyph-count", `${mm}:${ss}`);
+        count2.setAttribute("aria-hidden", "true");
+        b.replaceChildren(count2, quiet);
+        quiet.textContent = t("live.say.wait", { time: `${mm}:${ss}` });
+        b.setAttribute("aria-label", t("say.01"));
+        b.setAttribute("aria-describedby", quiet.id);
       } else {
         b.replaceChildren(icon("chat", 22));
         b.setAttribute("aria-label", t("say.01"));
+        b.removeAttribute("aria-describedby");
       }
     };
     tick();
@@ -5379,7 +5399,7 @@ async function pondScreen(bootstrap) {
       send.disabled = true;
       void api.say(hasDuck(), text).then(
         (res) => {
-          if (typeof res.nextAt === "number") rememberQuiet(res.nextAt);
+          if (typeof res.cooldown === "number") rememberQuiet(res.cooldown);
           close();
           void refresh();
           void syncCta();
@@ -5389,7 +5409,7 @@ async function pondScreen(bootstrap) {
           note.hidden = false;
           const cooling = err instanceof ApiError && err.status === 429;
           if (cooling && err.retryAfter > 0) {
-            rememberQuiet(Math.ceil(Date.now() / 1e3) + err.retryAfter);
+            rememberQuiet(err.retryAfter);
             void syncCta();
           }
           note.textContent = cooling ? t("say.07", {

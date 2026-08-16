@@ -153,7 +153,7 @@ export const api = {
     }),
 
   say: (editKey: string, text: string) =>
-    request<{ ok: boolean; text?: string; nextAt?: number; retryAfter?: number }>("/say", {
+    request<{ ok: boolean; text?: string; cooldown?: number; retryAfter?: number }>("/say", {
       method: "POST",
       body: JSON.stringify({ editKey, text }),
     }),
@@ -294,16 +294,21 @@ const KEY_STORE = "pond.editKey.v1";
  * outlives it by four minutes, so for most of the quiet period the pond
  * cannot say when it ends.
  *
- * The server supplies the moment; this only carries it across a reload.
+ * The server supplies a DURATION and this turns it into a local deadline,
+ * so the two clocks never have to agree — an absolute time from the server
+ * compared against a phone's clock would free the button early or hold it
+ * shut long after the pond would take another message.
+ *
+ * This only carries the deadline across a reload.
  * It is a convenience, never the enforcement: the cooldown is checked in
  * one atomic INSERT on the server, and a cleared localStorage buys nothing
  * but a refusal a second later.
  */
 const QUIET_UNTIL = "pond.quietUntil.v1";
 
-export function rememberQuiet(nextAt: number): void {
+export function rememberQuiet(seconds: number): void {
   try {
-    localStorage.setItem(QUIET_UNTIL, String(nextAt));
+    localStorage.setItem(QUIET_UNTIL, String(Math.ceil(Date.now() / 1000) + seconds));
   } catch {
     /* The button just stays alive and the server refuses. No harm. */
   }

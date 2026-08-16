@@ -1255,6 +1255,31 @@ a.p-btn {
 /* ── taking a duck out ───────────────────────────────────────────────── */
 
 /*
+ * Text for a screen reader and nothing else. Same clipping idiom as
+ * `.p-sr`, without the focus behaviour — nothing here is ever focused, it
+ * is only ever pointed at by aria-describedby.
+ */
+.p-sr-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A heading focused only so the screen it titles is announced. It is not
+   a control and must not look like one. */
+.p-title:focus-visible,
+h2:focus-visible {
+  outline: none;
+}
+
+/*
  * Off-screen, but not gone.
  *
  * The pond is one canvas, so its ducks exist for a screen reader only

@@ -807,7 +807,19 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    * Its own function because there are two ways in now. The bar is one.
    * The other is simply having tapped a card — see `pondScreen`'s tail.
    */
+  /*
+   * ══ ONE RELEASE AT A TIME ══
+   * Two ways in now — the bar and a fresh tap — and the bar's button can
+   * be double-activated (an impatient tap, a keyboard repeat). Either
+   * would build a second flow over the same overlay and start a second set
+   * of arrival timers on one duck. Cleared when the flow hands back, so a
+   * person who browses away and returns can start again.
+   */
+  let releasing = false;
+
   function beginRelease(session: SessionState): void {
+    if (releasing) return;
+    releasing = true;
       // The pollers stop; the WATER DOES NOT. A pond that freezes the
       // moment you start decorating stops being a place you are making
       // something for.
@@ -831,6 +843,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
         // the option to share with a keeper never appeared at all.
         keeper: session.keeper ?? null,
         onBrowse: () => {
+          releasing = false;
           overlay.replaceChildren();
           resumePolling();
           void syncCta();
@@ -849,6 +862,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
         onDone: () => {
           // Nothing to trigger. The duck went in a moment ago; this is
           // just getting the card out of the way.
+          releasing = false;
           overlay.replaceChildren();
           resumePolling();
           void syncCta();
@@ -934,6 +948,14 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
      * atomic INSERT on the server. Clearing the browser's storage buys an
      * enabled button and a refusal a second later.
      */
+    /*
+     * The description the button points at while it is counting. Its own
+     * element because `aria-describedby` needs an id to aim at, and it is
+     * visually hidden because the digits beside it already say it.
+     */
+    const quiet = el("span", "p-sr-text");
+    quiet.id = `say-quiet-${Math.random().toString(36).slice(2, 8)}`;
+
     const tick = (): void => {
       const left = quietFor();
       b.disabled = left > 0;
@@ -942,11 +964,28 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
         // m:ss, because "273 seconds" is a number and "4:33" is a wait.
         const mm = Math.floor(left / 60);
         const ss = String(left % 60).padStart(2, "0");
-        b.replaceChildren(el("span", "p-glyph-count", `${mm}:${ss}`));
-        b.setAttribute("aria-label", t("live.say.wait", { time: `${mm}:${ss}` }));
+        /*
+         * ══ THE NAME STAYS PUT; THE TIME IS A DESCRIPTION ══
+         * This rewrote the button's accessible NAME every second, which
+         * makes the control appear to become a different control once a
+         * second — some screen readers re-announce it continuously, and a
+         * name that changes under you is the one thing a name must not do.
+         *
+         * The name is now constant. The countdown is a description, and
+         * the digits themselves are hidden from the reader: they are the
+         * same information as the description, and hearing "four colon
+         * one two" between announcements helps nobody.
+         */
+        const count = el("span", "p-glyph-count", `${mm}:${ss}`);
+        count.setAttribute("aria-hidden", "true");
+        b.replaceChildren(count, quiet);
+        quiet.textContent = t("live.say.wait", { time: `${mm}:${ss}` });
+        b.setAttribute("aria-label", t("say.01"));
+        b.setAttribute("aria-describedby", quiet.id);
       } else {
         b.replaceChildren(icon("chat", 22));
         b.setAttribute("aria-label", t("say.01"));
+        b.removeAttribute("aria-describedby");
       }
     };
     tick();
@@ -1018,9 +1057,9 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
       send.disabled = true;
       void api.say(hasDuck()!, text).then(
         (res) => {
-          // The server said when this duck may speak again; the button
+          // The server said how long this duck stays quiet; the button
           // outside is about to start counting it down.
-          if (typeof res.nextAt === "number") rememberQuiet(res.nextAt);
+          if (typeof res.cooldown === "number") rememberQuiet(res.cooldown);
           close();
           void refresh();
           void syncCta();
@@ -1038,7 +1077,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
           // Refused because it is still quiet: take the server's figure,
           // which is authoritative, and let the button show it.
           if (cooling && err.retryAfter > 0) {
-            rememberQuiet(Math.ceil(Date.now() / 1000) + err.retryAfter);
+            rememberQuiet(err.retryAfter);
             void syncCta();
           }
           note.textContent = cooling
