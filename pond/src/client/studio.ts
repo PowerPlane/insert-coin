@@ -594,7 +594,23 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
     hint,
   );
 
-  wrap.append(nav, canvas, utils, tabs, panel, foot);
+  /*
+   * ══ THE DUCK SITS IN A SCREEN, NOT ON A PAGE ══
+   * A frame around the canvas so an inner shadow can be laid OVER it. The
+   * canvas paints its own water edge to edge, so a shadow on the canvas
+   * itself would be underneath that paint and invisible — inset shadows
+   * draw above the background and below the content, and a bitmap is
+   * content.
+   *
+   * The frame carries the size and the pixel corners; the canvas simply
+   * fills it. Nothing here is interactive, so the overlay is
+   * pointer-events: none and the painting and dragging still land on the
+   * canvas exactly as before.
+   */
+  const stage = el("div", "p-edit-frame");
+  stage.append(canvas);
+
+  wrap.append(nav, stage, utils, tabs, panel, foot);
   root.append(viewRoot);
   setTab("colour");
   redraw();

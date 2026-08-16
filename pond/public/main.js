@@ -2207,7 +2207,9 @@ function studioScreen(root2, opts) {
     el("div", "p-actions").appendChild(button("p-btn", opts.forward ?? t("studio.17"), opts.onNext)).parentElement,
     hint
   );
-  wrap2.append(nav2, canvas, utils, tabs, panel, foot);
+  const stage = el("div", "p-edit-frame");
+  stage.append(canvas);
+  wrap2.append(nav2, stage, utils, tabs, panel, foot);
   root2.append(viewRoot);
   setTab("colour");
   redraw();

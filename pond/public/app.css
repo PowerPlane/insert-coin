@@ -669,6 +669,16 @@ html[lang="zh-Hant"] body {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+  /*
+   * Scrolls rather than clipping. It is the flexible child of a column
+   * that always fills the screen exactly, so on a short phone it is the
+   * one asked to give — and `min-height: 0` is what lets a flex item
+   * shrink below its content at all, without which it silently overflows
+   * its parent instead.
+   */
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .p-hint {
@@ -1874,9 +1884,55 @@ a.p-btn {
  * crisp everywhere and never taller than the room left once the nav, the
  * tabs and a panel of swatches have taken theirs.
  */
+/*
+ * ══ THE DUCK MUST NOT STARVE THE TOOLS ══
+ * This was sized by WIDTH alone, so on a short screen it kept its full
+ * 218px while the panel underneath — the swatches, the sticker grid, the
+ * brush — took whatever was left. Measured: the panel gets 300px on a
+ * 844-tall phone, 116px with Safari's URL bar showing, and 63px on an SE.
+ * At 63px the tools are a slot, and that is the "everything is cramped on
+ * an iPhone 12" report.
+ *
+ * The third term bounds it by HEIGHT as well, so on a short screen the
+ * duck gives up size first — it is a preview, and the panel is the work.
+ * The `max(150px, …)` floor stops it shrinking to a thumbnail on the
+ * shortest screens, where a duck you cannot aim at would be its own
+ * problem.
+ *
+ * On a 844-tall phone every term but the width is slack, so nothing there
+ * changes.
+ */
+.p-edit-frame {
+  position: relative;
+  align-self: center;
+  width: min(224px, 56vw, max(150px, 26vh));
+  clip-path: var(--px-corner);
+}
+
 .p-edit {
-  width: min(224px, 56vw);
+  display: block;
+  width: 100%;
   height: auto;
+}
+
+/*
+ * The recess. A soft shadow from the top edge and a thin highlight along
+ * the bottom — the two cues that read as "sunk in" without becoming an
+ * effect. Laid OVER the canvas, because the canvas paints its water to
+ * the edges and anything behind it would never be seen.
+ *
+ * `pointer-events: none` is load-bearing: everything in this square is
+ * dragged or painted on, and an overlay that swallowed those would break
+ * the studio entirely.
+ */
+.p-edit-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 3px 7px rgba(11, 61, 82, 0.26),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.4);
 }
 
 /* ── the pondkeeper ──────────────────────────────────────────────────── */
