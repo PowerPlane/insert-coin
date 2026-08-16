@@ -21,7 +21,7 @@ import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
 import { CAM_UI, CAM_ZOOM, HOME_CELL, easeOutCubic } from "./camera.js";
 import {
-  cardSetup, claimFromUrl, claimIsFresh, isClaimUrl, rememberClaimAttempt,
+  cardSetup, claimFromUrl, claimIsFresh, rememberClaimAttempt,
 } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, SPLASH_TAP, type Placed } from "./pond-view.js";
@@ -1412,12 +1412,25 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    *                    opposed to a reload, a bookmark, or somebody who
    *                    walked here. It is dropped from the URL below so
    *                    the second look at the same page is a pond.
-   *   not a claim    — an ARMED card is going to Card setup instead. This
-   *                    used to test for `?t=` and was wrong: every tag
-   *                    carries a signature, armed or not, so the test was
-   *                    always true and the arrival NEVER played on a real
-   *                    card. Only a counter above zero is a claim. See
-   *                    `isClaimUrl`.
+   *   not a claim    — an ARMED card is going to Card setup instead.
+   *
+   *                    This has been wrong twice, in the same direction.
+   *                    First it tested for `?t=`, which every tag carries
+   *                    armed or not, so it was always true and the
+   *                    arrival never played on real hardware at all.
+   *                    Then it tested `isClaimUrl`, which is a counter
+   *                    above zero — and an armed tag STAYS armed: `&g=`
+   *                    is written once and never cleared, so a card that
+   *                    has ever been blown on reads as claiming for the
+   *                    rest of its life. David set his card up, and from
+   *                    then on every tap landed on the pond with a
+   *                    Decorate it button instead of on his fortune.
+   *
+   *                    What actually suppresses the arrival is a claim
+   *                    this browser is ABOUT TO ACT ON — which is
+   *                    `claimIsFresh`, the same question the claim itself
+   *                    asks a few lines later. A spent claim is not a
+   *                    claim; it is a tap.
    *   no draft       — somebody three screens deep with a half-decorated
    *                    duck is RESUMING. Throwing them back to the
    *                    fortune they already saw would lose their place,
@@ -1427,7 +1440,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const tapped = new URL(location.href);
   if (
     tapped.searchParams.has("d") &&
-    !isClaimUrl(tapped) &&
+    !claimIsFresh(tapped) &&
     session?.active && !session.spent &&
     loadDraft() === null
   ) {

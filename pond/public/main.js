@@ -5943,7 +5943,7 @@ async function pondScreen(bootstrap) {
     if (polling) void refresh();
   }, 2e4);
   const tapped = new URL(location.href);
-  if (tapped.searchParams.has("d") && !isClaimUrl(tapped) && session?.active && !session.spent && loadDraft() === null) {
+  if (tapped.searchParams.has("d") && !claimIsFresh(tapped) && session?.active && !session.spent && loadDraft() === null) {
     tapped.searchParams.delete("d");
     history.replaceState(null, "", tapped.pathname + tapped.search + tapped.hash);
     beginRelease(session);
