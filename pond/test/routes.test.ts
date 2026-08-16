@@ -139,7 +139,16 @@ describe("GET /api/pond", () => {
     const e = await env();
     const { card } = await makeCard(e.DB, { keeper: "Sam" });
     const v = new Visitor(e);
-    await release(v, {}, `?d=2&c=${card}`);
+    /*
+     * The tap is SIGNED. It used to be `?d=2&c=${card}` — a bare serial —
+     * and it worked, because the serial was bound to the session straight
+     * off the query string. It is not any more: a card is only attached to
+     * a session once `&t=` verifies, so a fixture that skips the signature
+     * now produces a duck from no card and no keeper at all. See the
+     * "a serial alone is not a card" suite below.
+     */
+    const secret = testSecret();
+    await release(v, {}, `?d=2&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`);
 
     const raw = await (await handle(new Request(`${ORIGIN}/api/pond`), e)).text();
     expect(raw).toContain('"keeper":"Sam"');
@@ -1051,5 +1060,104 @@ describe("a card introduces itself", () => {
     });
     expect(res.status).toBe(200);
     expect(await count(e.DB, `SELECT claim_counter AS n FROM cards WHERE id = ?1`, serial)).toBe(1);
+  });
+});
+
+/**
+ * A serial alone is not a card.
+ *
+ * ══ WHY THIS SUITE EXISTS ══
+ * `mintFromQuery` called `ensureCard` — which answers "was this a real
+ * card saying hello" — and threw the answer away, then bound the serial to
+ * the session straight off the query string.
+ *
+ * That was survivable while `mintSession` was the only reader: it refuses
+ * a serial absent from `cards`, so the worst outcome was a duck attributed
+ * to a card that at least exists. It stops being survivable the moment a
+ * session can CLAIM a card (docs/pond/KEEPER.md § 6) — keepership would go
+ * to whoever typed a serial they had once seen, which is exactly what the
+ * signature scheme exists to prevent.
+ *
+ * Requiring the signature costs nothing real: `&c=`, `&g=` and `&t=` are
+ * all written at provisioning and only the fortune digit is ever patched,
+ * so there is no such thing as a genuine tap without one.
+ */
+describe("a serial alone is not a card", () => {
+  const signed = (card: string, secret: Uint8Array, digit = 1) =>
+    `?d=${digit}&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`;
+
+  it("attributes a duck to the card only when the tap was signed", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const { card } = await makeCard(e.DB, { keeper: "Sam" });
+
+    const honest = new Visitor(e);
+    const mine = await release(honest, {}, signed(card, secret));
+    expect(
+      await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND card_id = ?2`,
+        mine.id, card),
+      "a signed tap attributes the duck to its card",
+    ).toBe(1);
+
+    // The same serial, typed rather than tapped. The card is real and is
+    // in `cards` — this is somebody who once saw the URL.
+    const liar = new Visitor(e);
+    const theirs = await release(liar, {}, `?d=1&c=${card}`);
+    expect(
+      await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND card_id IS NULL`,
+        theirs.id),
+      "a typed serial attributes nothing",
+    ).toBe(1);
+  });
+
+  it("refuses a signature that is real but for a different card", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const { card } = await makeCard(e.DB, { keeper: "Sam" });
+    const other = "TWNCARD5";
+
+    // A perfectly valid token — for `other` — presented alongside `card`.
+    const v = new Visitor(e);
+    const duck = await release(v, {}, `?d=1&c=${card}&g=0000&t=${cardToken(secret, other, 0)}`);
+    expect(
+      await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND card_id IS NULL`,
+        duck.id),
+    ).toBe(1);
+  });
+
+  it("does not let a typed serial choose the language the page renders in", async () => {
+    /*
+     * `pondPage` read the serial a SECOND time, raw, and handed it to
+     * `keeperLanguage` — not even through `safeToken`. Typing a serial was
+     * enough to pick the language. Small next to the claim, and the same
+     * mistake, so it is closed with it and pinned here.
+     */
+    const e = await env();
+    const secret = testSecret();
+    const { card } = await makeCard(e.DB, { keeper: "Sam", lang: "zh-Hant" });
+
+    const typed = await pondPage(new Request(`${ORIGIN}/?d=1&c=${card}`), e);
+    expect(await typed.text(), "a typed serial gets the fallback").toContain('<html lang="en"');
+
+    const tapped = await pondPage(new Request(`${ORIGIN}/${signed(card, secret)}`), e);
+    expect(await tapped.text(), "a signed tap gets the keeper's default")
+      .toContain('<html lang="zh-Hant"');
+  });
+
+  it("still registers and attributes a card nobody has ever recorded", async () => {
+    // The two changes have to compose: auto-registration happens BEFORE
+    // the session is minted, so a card's very first tap both introduces it
+    // and attributes the duck it produces.
+    const e = await env();
+    const secret = testSecret();
+    const serial = "FRSHCRD6";
+    const v = new Visitor(e);
+
+    const duck = await release(v, {}, signed(serial, secret));
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1`, serial)).toBe(1);
+    expect(
+      await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND card_id = ?2`,
+        duck.id, serial),
+    ).toBe(1);
   });
 });

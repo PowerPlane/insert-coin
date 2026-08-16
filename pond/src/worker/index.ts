@@ -111,7 +111,14 @@ export async function mintFromQuery(
   env: Env,
   url: URL,
   visitor: string,
-): Promise<string | null> {
+  /*
+   * Two answers, because the page needs both and only this function is in
+   * a position to give them. `cookie` is the session, if one was minted.
+   * `card` is the serial ONCE ITS SIGNATURE HAS BEEN CHECKED, and null
+   * otherwise — so a caller cannot accidentally use the unchecked one, as
+   * `pondPage` was doing when it picked the page's language.
+   */
+): Promise<{ cookie: string | null; card: string | null }> {
   /*
    * ══ THE CARD REGISTERS ITSELF ══
    * Before anything else, and regardless of whether there is a fortune to
@@ -122,28 +129,59 @@ export async function mintFromQuery(
    * It runs even for `?d=0`, a card whose fortune window has closed,
    * because the card is no less real for having gone quiet.
    */
-  await ensureCard(
+  const claimed = safeToken(url.searchParams.get("c"), 12);
+  const real = await ensureCard(
     env,
-    safeToken(url.searchParams.get("c"), 12),
+    claimed,
     url.searchParams.get("g"),
     url.searchParams.get("t"),
   );
 
+  // Verified or not, this is the only card this request will admit to.
+  const card = real ? claimed : null;
+
   const digit = intParam(url.searchParams.get("d"), 0, 4);
-  if (!digit || digit < 1) return null;
+  if (!digit || digit < 1) return { cookie: null, card };
 
   // Already holding a live session: leave it alone. Re-tapping a card
   // mid-decoration must not hand out a second fortune and orphan the first.
   const existing = await readSessionCookie(env, req);
-  if (existing && (await loadSession(env, existing))) return null;
+  if (existing && (await loadSession(env, existing))) return { cookie: null, card };
 
   const minted = await mintSession(env, {
     digit,
-    cardId: safeToken(url.searchParams.get("c"), 12),
+    /*
+     * ══ THE SERIAL IS A CLAIM UNTIL THE SIGNATURE AGREES ══
+     * `ensureCard` answers exactly one question — was this a real card
+     * saying hello — and its answer used to be thrown away, while the
+     * serial went into the session straight from the query string. So a
+     * session could be bound to a card nobody had touched, by anybody who
+     * had once seen that card's URL.
+     *
+     * That was survivable while `mintSession` was the only thing reading
+     * it: it refuses a serial absent from `cards`, so the worst outcome
+     * was a duck attributed to a card that does exist. It stops being
+     * survivable the moment a session can CLAIM a card (docs/pond/
+     * KEEPER.md § 6). Keepership would go to whoever typed a serial,
+     * which is the precise thing the signature scheme exists to prevent.
+     *
+     * Requiring the signature costs nothing real, because there is no
+     * such thing as a genuine tap without one: `&c=`, `&g=` and `&t=` are
+     * all written at provisioning and only the fortune digit is ever
+     * patched (firmware config.h, the NDEF layout).
+     *
+     * A card flashed with the placeholder all-zero key therefore never
+     * verifies, and its ducks carry no provenance at all. That is the
+     * intended reading rather than a regression — such a card's token is
+     * forgeable by anyone, so attributing anything to it was always a
+     * fiction — but it does mean the fix is to reflash and erase, never a
+     * row edit. See KEEPER.md § 6.
+     */
+    cardId: card,
     nonce: safeToken(url.searchParams.get("n"), 32),
     visitor,
   });
-  return minted ? minted.cookie : null;
+  return { cookie: minted ? minted.cookie : null, card };
 }
 
 /**

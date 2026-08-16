@@ -47,12 +47,22 @@ export async function pondPage(req: Request, env: Env): Promise<Response> {
   const headers = securityHeaders();
   if (setCookie) headers.append("set-cookie", setCookie);
 
-  const session = await mintFromQuery(req, env, url, visitor);
-  if (session) headers.append("set-cookie", session);
+  const { cookie, card } = await mintFromQuery(req, env, url, visitor);
+  if (cookie) headers.append("set-cookie", cookie);
 
+  /*
+   * The keeper's default language comes from the card that was TAPPED, and
+   * `card` is the serial only once its signature has been checked.
+   *
+   * It used to be `url.searchParams.get("c")` — the raw query string, not
+   * even through `safeToken`. Typing a serial somebody had once seen was
+   * enough to pick the language this page rendered in. Small on its own,
+   * and the same mistake as binding the session to an unchecked serial;
+   * both are fixed by there being one checked value to reach for.
+   */
   const lang = pickLanguage(
     req.headers.get("accept-language"),
-    await keeperLanguage(env, url.searchParams.get("c")),
+    await keeperLanguage(env, card),
   );
   return html(pondShell(lang, {}), headers);
 }
