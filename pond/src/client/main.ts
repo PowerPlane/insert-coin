@@ -1355,27 +1355,40 @@ function openDuckCard(view: PondView, duck: Placed): void {
          * people that taps do not work.
          */
         /*
-         * Resolved when DRAWN only to decide whether the control is live.
-         * The press re-resolves, because a poll between the two replaces
-         * every duck object in the view: acting on the one captured here
-         * would point the card at a duck that is no longer the duck.
+         * ══ EVERY FACE IS LIVE, AND THEY ALL LOOK IT ══
+         * These used to dim when their duck was not in the pond in front
+         * of you, so a row of five could come out bright-dim-bright, which
+         * reads as a rendering fault rather than as information — reported
+         * as exactly that.
+         *
+         * And the information was wrong anyway. A bumper is missing from
+         * the view far more often because the pond payload is CAPPED than
+         * because the duck has gone; dimming it says "this one has left"
+         * when the truth is "not in the slice I am holding".
+         *
+         * So they are all drawn the same and they all work. A duck that is
+         * on screen gets the camera and its card; one that is not gets its
+         * own public page, which is where a duck you cannot see lives.
          */
-        const who = view.findBySlug(b.slug);
         const said = b.count === 1
           ? t("live.bumps.one")
           : t("live.bumps", { n: String(b.count) });
         const box = button(
           "p-bumper", "",
           () => {
+            // Re-resolved on the press, not captured at draw time: a poll
+            // between the two replaces every duck object in the view.
             const now = view.findBySlug(b.slug);
-            if (!now) return;
-            dismiss();
-            view.lookAt(now.id, true);
-            openDuckCard(view, now);
+            if (now) {
+              dismiss();
+              view.lookAt(now.id, true);
+              openDuckCard(view, now);
+              return;
+            }
+            location.href = `/d/${encodeURIComponent(b.slug)}`;
           },
           t("live.sr.bumper", { name: b.name || b.slug, bumps: said }),
         );
-        box.disabled = !who;
         box.title = b.name || b.slug;
         const cv = el("canvas", "");
         // 32 CSS pixels inside a 44px control, at a whole 2x per sprite

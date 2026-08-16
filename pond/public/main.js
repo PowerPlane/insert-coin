@@ -5496,21 +5496,22 @@ function openDuckCard(view2, duck) {
       bumpers.append(el2("p", "p-field-label", t("pond.28")));
       const row = el2("div", "p-bumprow");
       for (const b of res.bumpers) {
-        const who = view2.findBySlug(b.slug);
         const said = b.count === 1 ? t("live.bumps.one") : t("live.bumps", { n: String(b.count) });
         const box = button(
           "p-bumper",
           "",
           () => {
             const now = view2.findBySlug(b.slug);
-            if (!now) return;
-            dismiss();
-            view2.lookAt(now.id, true);
-            openDuckCard(view2, now);
+            if (now) {
+              dismiss();
+              view2.lookAt(now.id, true);
+              openDuckCard(view2, now);
+              return;
+            }
+            location.href = `/d/${encodeURIComponent(b.slug)}`;
           },
           t("live.sr.bumper", { name: b.name || b.slug, bumps: said })
         );
-        box.disabled = !who;
         box.title = b.name || b.slug;
         const cv = el2("canvas", "");
         cv.width = GRID * 2;
