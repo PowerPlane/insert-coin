@@ -1612,3 +1612,158 @@ describe("keeping a card on a later visit", () => {
     expect((await v.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(false);
   });
 });
+
+/**
+ * Admin: making a card new again.
+ *
+ * Three safe operations and one destructive one, separate because
+ * "reset this card" sounds like one thing and is four with very
+ * different consequences.
+ */
+describe("admin card tools", () => {
+  const signed = (card: string, secret: Uint8Array) =>
+    `?d=1&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`;
+
+  const asAdmin = (e: Env, path: string, body: unknown) =>
+    handle(
+      new Request(`${ORIGIN}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: "" },
+        body: JSON.stringify(body),
+      }),
+      e,
+    );
+
+  /** Signed in, since every admin route is behind the password. */
+  async function admin(e: Env) {
+    const v = new Visitor(e);
+    const res = await v.post("/api/admin/in", { password: "test-admin" });
+    expect(res.status).toBe(200);
+    return v;
+  }
+
+  it("tells an unclaimed card apart from a keeper with no name", async () => {
+    const e = await env();
+    const secret = testSecret();
+    // One card kept by somebody who left the name blank...
+    const kept = new Visitor(e);
+    await release(kept, {}, signed("BANKKPR2", secret));
+    await kept.api("/api/claim/first", { method: "POST" });
+    // ...and one nobody has claimed.
+    await release(new Visitor(e), {}, signed("NBDYKPS2", secret));
+
+    const a = await admin(e);
+    const state = await a.json<{ cards: { id: string; keeper: string | null; claimed: boolean }[] }>(
+      "/api/admin");
+    const blank = state.cards.find((c) => c.id === "BANKKPR2")!;
+    const free = state.cards.find((c) => c.id === "NBDYKPS2")!;
+
+    expect(blank.keeper, "no name to show").toBe(null);
+    expect(blank.claimed, "but somebody keeps it").toBe(true);
+    expect(free.keeper).toBe(null);
+    expect(free.claimed, "and this one is going spare").toBe(false);
+  });
+
+  it("resets the keeper without touching a duck", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed("RESETME3", secret));
+    await v.api("/api/claim/first", { method: "POST" });
+
+    const a = await admin(e);
+    expect((await a.post("/api/admin/card/reset", { card: "RESETME3" })).status).toBe(200);
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = 'RESETME3' AND ended IS NULL`,
+    )).toBe(0);
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1`, duck.id)).toBe(1);
+  });
+
+  it("unlinks the ducks so the next keeper can adopt them again", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed("DETACHM4", secret));
+    await v.api("/api/claim/first", { method: "POST" });
+
+    const a = await admin(e);
+    const res = await a.post("/api/admin/card/unlink", { card: "DETACHM4" });
+    expect(await res.json()).toMatchObject({ ok: true, unlinked: 1 });
+    // Still in the pond, still from that card, no longer in any tenure.
+    expect(await count(
+      e.DB,
+      `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND card_id = 'DETACHM4' AND epoch_id IS NULL`,
+      duck.id,
+    )).toBe(1);
+  });
+
+  it("attaches a duck that never got a card", async () => {
+    /*
+     * The two real ducks in the pond that read "from no card". Their rows
+     * were written before cards registered themselves, so nothing
+     * automatic can repair them.
+     */
+    const e = await env();
+    const secret = testSecret();
+    // A registered card, and a duck from a tap that carried no serial.
+    await new Visitor(e).tap(signed("FNDCARD5", secret));
+    const orphan = await release(new Visitor(e));
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND card_id IS NULL`, orphan.id,
+    )).toBe(1);
+
+    const a = await admin(e);
+    const res = await a.post("/api/admin/card/attach", { card: "FNDCARD5", duck: orphan.id });
+    expect(res.status).toBe(200);
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND card_id = 'FNDCARD5'`, orphan.id,
+    )).toBe(1);
+    // And admin does NOT decide which tenure it belongs to. That is a
+    // question about consent, and the keeper answers it by adopting.
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND epoch_id IS NULL`, orphan.id,
+    )).toBe(1);
+  });
+
+  it("refuses to attach to a card that does not exist", async () => {
+    const e = await env();
+    const orphan = await release(new Visitor(e));
+    const a = await admin(e);
+    const res = await a.post("/api/admin/card/attach", { card: "GHOSTCD6", duck: orphan.id });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: "unknown card" });
+  });
+
+  it("takes the contacts with the ducks when a card is emptied", async () => {
+    // THE DELETION PROMISE. A bulk path that reached around the trigger
+    // would be the one way this product breaks a promise it makes in
+    // writing, so the bulk path is the ordinary DELETE.
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, { contact: "sam@example.com" }, signed("EMPTYME7", secret));
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts WHERE duck_id = ?1`, duck.id))
+      .toBe(1);
+
+    const a = await admin(e);
+    const res = await a.post("/api/admin/card/ducks/delete", { card: "EMPTYME7" });
+    expect(await res.json()).toMatchObject({ ok: true, deleted: 1 });
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1`, duck.id)).toBe(0);
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM contacts WHERE duck_id = ?1`, duck.id),
+      "the contact went with it").toBe(0);
+    // The card is a physical object and still exists.
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = 'EMPTYME7'`)).toBe(1);
+  });
+
+  it("says whether CARD_SECRET is even the right shape", async () => {
+    // Without it nothing verifies and NOTHING ERRORS: cards stop being
+    // cards and the pond keeps working. Admin has to say so.
+    const e = await env();
+    testSecret();
+    const a = await admin(e);
+    expect(await a.json<{ cardSecret: boolean }>("/api/admin")).toMatchObject({ cardSecret: true });
+
+    delete process.env.CARD_SECRET;
+    expect(await a.json<{ cardSecret: boolean }>("/api/admin")).toMatchObject({ cardSecret: false });
+  });
+});

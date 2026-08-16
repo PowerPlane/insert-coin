@@ -26,8 +26,9 @@ import {
 } from "./ducks.js";
 import { withdrawContact } from "./contact.js";
 import {
-  adminDucks, adminState, authorised, contactsCsv, deleteCard, markContact,
-  resolveReports, setCardDisabled, setCardLabel, setHidden, setKeeper, signIn,
+  adminDucks, adminState, attachDuck, authorised, contactsCsv, deleteCard,
+  deleteCardDucks, markContact, resetKeeper, resolveReports, setCardDisabled,
+  setCardLabel, setHidden, setKeeper, signIn, unlinkDucks,
 } from "./admin.js";
 import {
   claimCard, claimFromSession, endTenure, ensureCard, epochForEditKey, keeperOffer,
@@ -558,6 +559,39 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
             return json({ ok: false, error: res.error }, { status: 409, headers });
           }
           return json({ ok: true }, { headers });
+        }
+        /*
+         * Making a card new again. Three separate routes because they are
+         * three separate consequences — see the note in admin.ts. Nothing
+         * here deletes a duck; `/ducks/delete` below does, and is the only
+         * one that asks twice.
+         */
+        if (path === "/api/admin/card/reset") {
+          return json({ ok: await resetKeeper(env, card) }, { headers });
+        }
+        if (path === "/api/admin/card/unlink") {
+          return json({ ok: true, unlinked: await unlinkDucks(env, card) }, { headers });
+        }
+        if (path === "/api/admin/card/attach") {
+          const duckId = typeof body?.duck === "string" ? body.duck : "";
+          if (!DUCK_ID.test(duckId)) return badRequest("bad id", headers);
+          const res = await attachDuck(env, duckId, card);
+          return "error" in res
+            ? json({ ok: false, error: res.error }, { status: 409, headers })
+            : json({ ok: true }, { headers });
+        }
+        if (path === "/api/admin/card/ducks/delete") {
+          /*
+           * Every duck from this card, through the ordinary delete so the
+           * ducks_before_delete trigger fires and the contacts go with
+           * them. The confirmation is the admin screen's job — it types
+           * the card's label back — because a server that asks twice is a
+           * server with a state machine in it.
+           */
+          return json(
+            { ok: true, deleted: await deleteCardDucks(env, card) },
+            { headers },
+          );
         }
         if (path === "/api/admin/card/delete") {
           const res = await deleteCard(env, card);

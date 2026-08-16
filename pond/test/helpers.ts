@@ -8,20 +8,41 @@
  * with whatever we assumed.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@libsql/client";
 import { LibsqlDb, connect } from "../src/db/libsql.js";
 import { statements } from "../src/db/schema.js";
 import type { Db } from "../src/db/types.js";
 
-const SCHEMA = readFileSync(
-  join(__dirname, "..", "schema", "0001_init.sql"),
-  "utf8",
-);
+/*
+ * ══ EVERY MIGRATION, NOT JUST THE FIRST ══
+ * This read `0001_init.sql` and stopped. `0002_admin.sql` adds
+ * `contacts.replied` and `contacts.postcard`, which the admin duck query
+ * selects — so every test database was missing two columns production
+ * has, and any test that touched `/api/admin` died on
+ * `no such column: c.replied`.
+ *
+ * Nothing caught it because nothing had ever driven that route: the admin
+ * screens were built against the harness, not against this fixture. The
+ * first test to try it found a fixture that had been wrong since the
+ * migration was written.
+ *
+ * `deploy-shape.test.ts` exists because the test environment was once
+ * more FORGIVING than production. This is the same lesson in the other
+ * direction — stricter is not safe either, it just fails later and looks
+ * like a bug in the test. So the fixture reads the directory and applies
+ * whatever is in it, in order, and a future 0003 arrives here on its own.
+ */
+const MIGRATIONS = readdirSync(join(__dirname, "..", "schema"))
+  .filter((f) => f.endsWith(".sql"))
+  .sort()
+  .map((f) => readFileSync(join(__dirname, "..", "schema", f), "utf8"));
 
 async function applySchema(db: Db): Promise<void> {
-  for (const stmt of statements(SCHEMA)) await db.prepare(stmt).run();
+  for (const sql of MIGRATIONS) {
+    for (const stmt of statements(sql)) await db.prepare(stmt).run();
+  }
 }
 
 /** Fresh in-memory database, foreign keys on, real schema applied. */

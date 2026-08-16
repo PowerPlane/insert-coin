@@ -167,6 +167,7 @@ function signIn() {
   });
 }
 var where = { tab: "ducks", card: null };
+var cardSecretOk = true;
 async function load() {
   let state;
   try {
@@ -174,6 +175,7 @@ async function load() {
   } catch {
     return signIn();
   }
+  cardSecretOk = state.cardSecret !== false;
   view(state.ducks, state.cards, where.tab, where.card);
 }
 function provenance(d) {
@@ -201,6 +203,13 @@ function view(ducks, cards, tab, cardFilter = null) {
       tabs.append(b);
     }
     wrap.append(tabs);
+    if (!cardSecretOk) {
+      wrap.append(el(
+        "p",
+        "a-flag",
+        "CARD_SECRET is missing or malformed. No card can register, be claimed, or attribute a duck until it is set to 32 hex characters."
+      ));
+    }
     if (reported && tab === "ducks") {
       wrap.append(el("p", "a-flag", `${reported} reported`));
     }
@@ -221,7 +230,7 @@ function view(ducks, cards, tab, cardFilter = null) {
     const shown = cardFilter ? ducks.filter((d) => d.card === cardFilter) : ducks;
     const shownContacts = withContacts.filter((d) => !cardFilter || d.card === cardFilter);
     const list = el("div", "a-list");
-    if (tab === "ducks") shown.forEach((d) => list.append(duckRow(d, show)));
+    if (tab === "ducks") shown.forEach((d) => list.append(duckRow(d, show, cards)));
     if (tab === "contacts") shownContacts.forEach((d) => list.append(contactRow(d, ducks, cards)));
     if (tab === "cards") cards.forEach((c) => list.append(cardRow(c, show)));
     if (!list.childElementCount) {
@@ -239,7 +248,7 @@ function view(ducks, cards, tab, cardFilter = null) {
 function meta(d) {
   return [FORTUNES[d.fortune] ?? "", d.keeper ? `via ${d.keeper}` : "", day(d.created)].filter(Boolean).join(" · ");
 }
-function duckRow(d, show) {
+function duckRow(d, show, cardList) {
   const row = el("div", "a-row");
   const head = el("p", "a-row-name", d.name || "(no name)");
   if (d.hidden) head.append(el("span", "a-badge", "hidden"));
@@ -257,6 +266,20 @@ function duckRow(d, show) {
     ));
   } else {
     from.append(el("span", "a-row-meta", provenance(d)));
+    const pick = el("select", "p-input a-attach");
+    const none = el("option", "", "attach to a card…");
+    none.value = "";
+    pick.append(none);
+    for (const c of cardList) {
+      const opt = el("option", "", `${c.id}${c.label ? ` · ${c.label}` : ""}`);
+      opt.value = c.id;
+      pick.append(opt);
+    }
+    pick.addEventListener("change", () => {
+      if (!pick.value) return;
+      void api("/card/attach", { card: pick.value, duck: d.id }).then(load);
+    });
+    from.append(pick);
   }
   row.append(from);
   const actions = el("div", "a-actions");
@@ -318,7 +341,12 @@ function contactRow(d, ducks, cards) {
 }
 function cardRow(c, show) {
   const row = el("div", "a-row");
-  const head = el("p", "a-row-name", c.keeper ?? c.label ?? c.id);
+  const head = el(
+    "p",
+    "a-row-name",
+    c.keeper || c.label || (c.claimed ? "kept · no name" : "not claimed")
+  );
+  if (!c.claimed) head.append(el("span", "a-badge", "free"));
   if (c.disabled) head.append(el("span", "a-badge", "disabled"));
   row.append(head);
   row.append(
@@ -382,6 +410,42 @@ function cardRow(c, show) {
   save.append(button("p-chip", c.disabled ? "Switch back on" : "Switch off", () => {
     void api("/card/disabled", { card: c.id, disabled: !c.disabled }).then(load);
   }));
+  const reset = el("div", "a-actions");
+  if (c.claimed) {
+    reset.append(button("p-chip", "Reset keeper", () => {
+      void api("/card/reset", { card: c.id }).then(load);
+    }));
+  }
+  if (c.ducks > c.orphans) {
+    reset.append(button("p-chip", `Unlink ${c.ducks - c.orphans} duck(s)`, () => {
+      void api("/card/unlink", { card: c.id }).then(load);
+    }));
+  }
+  if (reset.children.length) save.append(...[...reset.children]);
+  if (c.ducks > 0) {
+    const empty = el("div", "a-actions");
+    empty.append(button("p-chip a-chip-danger", `Delete all ${c.ducks} ducks`, () => {
+      const typed = el("input", "p-input");
+      typed.placeholder = c.id;
+      empty.replaceChildren(
+        el(
+          "p",
+          "a-row-meta",
+          `Deletes ${c.ducks} duck(s) and every contact on them. Type ${c.id} to confirm.`
+        ),
+        typed,
+        button("p-chip a-chip-danger", "Delete them", () => {
+          if (typed.value.trim().toUpperCase() !== c.id) {
+            note.textContent = "That is not the serial.";
+            return;
+          }
+          void api("/card/ducks/delete", { card: c.id }).then(load);
+        }),
+        button("p-chip", "Keep them", () => load())
+      );
+    }));
+    edit.append(empty);
+  }
   if (c.ducks === 0) {
     const danger = el("div", "a-actions");
     danger.append(button("p-chip a-chip-danger", "Delete card", () => {

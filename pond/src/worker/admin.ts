@@ -130,13 +130,27 @@ export interface AdminCard {
   keeper: string | null;
   lang: string | null;
   ducks: number;
+  /*
+   * ══ CLAIMED IS NOT THE SAME AS NAMED ══
+   * `keeper` is null both when nobody has claimed the card and when its
+   * keeper left the name blank, and admin could not tell those apart —
+   * which is exactly the distinction David needs when deciding whether to
+   * assign somebody. A keeper with no name has still claimed it, and
+   * offering the card to the next visitor would be offering something
+   * already taken.
+   */
+  claimed: boolean;
+  /** Ducks from this card that no tenure has adopted. */
+  orphans: number;
 }
 
 export async function adminCards(env: Env): Promise<AdminCard[]> {
   const { results } = await env.DB.prepare(
     `SELECT c.id, c.label, c.created, c.disabled,
-            e.keeper_name AS keeper, e.lang,
-            (SELECT COUNT(*) FROM ducks d WHERE d.card_id = c.id) AS ducks
+            e.id AS epoch, e.keeper_name AS keeper, e.lang,
+            (SELECT COUNT(*) FROM ducks d WHERE d.card_id = c.id) AS ducks,
+            (SELECT COUNT(*) FROM ducks d
+              WHERE d.card_id = c.id AND d.epoch_id IS NULL) AS orphans
        FROM cards c
        LEFT JOIN card_epochs e ON e.card_id = c.id AND e.ended IS NULL
       ORDER BY c.created`,
@@ -150,6 +164,8 @@ export async function adminCards(env: Env): Promise<AdminCard[]> {
     keeper: r.keeper ? String(r.keeper) : null,
     lang: r.lang ? String(r.lang) : null,
     ducks: Number(r.ducks ?? 0),
+    claimed: Boolean(r.epoch),
+    orphans: Number(r.orphans ?? 0),
   }));
 }
 
@@ -296,6 +312,93 @@ export async function deleteCard(
   return { ok: true };
 }
 
+/**
+ * Make a card new again — the safe half.
+ *
+ * ══ THREE OPERATIONS, NOT ONE BUTTON ══
+ * "Reset this card" sounds like one thing and is three, with very
+ * different consequences, so they are three:
+ *
+ *   resetKeeper   ends the tenure. The card is claimable again. Every
+ *                 duck stays exactly where it is and keeps its `via`,
+ *                 because it WAS from that keeper's card and rewriting
+ *                 that is a lie about the past rather than a tidy-up.
+ *   unlinkDucks   detaches the ducks from every tenure. They stay in the
+ *                 pond, lose the `via`, and — because `card_id` is kept —
+ *                 become adoptable again by whoever keeps the card next.
+ *   attachDuck    the inverse, for a duck that never got a card at all.
+ *
+ * None of them deletes anything. The destructive one is separate, below,
+ * and goes through the ordinary delete path so the deletion promise
+ * holds.
+ */
+export async function resetKeeper(env: Env, cardId: string): Promise<boolean> {
+  const res = await env.DB.prepare(
+    `UPDATE card_epochs SET ended = ?1 WHERE card_id = ?2 AND ended IS NULL`,
+  )
+    .bind(nowSec(), cardId)
+    .run();
+  return Boolean(res.meta.changes);
+}
+
+export async function unlinkDucks(env: Env, cardId: string): Promise<number> {
+  const res = await env.DB.prepare(
+    `UPDATE ducks SET epoch_id = NULL WHERE card_id = ?1 AND epoch_id IS NOT NULL`,
+  )
+    .bind(cardId)
+    .run();
+  return Number(res.meta.changes ?? 0);
+}
+
+/**
+ * Attach a duck to the card that made it.
+ *
+ * ══ WHY THIS HAS TO EXIST ══
+ * Ducks made before cards registered themselves hold `card_id = NULL` —
+ * `mintSession` stores NULL for a serial it has never heard of, because
+ * `sessions.card_id` is a foreign key and `?c=` is typed text. Two real
+ * ducks in the pond are in that state and auto-registration cannot repair
+ * them, because their rows were written before it existed.
+ *
+ * `epoch_id` is deliberately NOT set here. Which tenure a duck belongs to
+ * is a question about consent, and the keeper answers it by adopting.
+ * Admin only says which card it came off.
+ */
+export async function attachDuck(
+  env: Env,
+  duckId: string,
+  cardId: string,
+): Promise<{ ok: true } | { error: "unknown card" | "unknown duck" }> {
+  const card = await env.DB.prepare(`SELECT id FROM cards WHERE id = ?1`)
+    .bind(cardId)
+    .first<{ id: string }>();
+  if (!card) return { error: "unknown card" };
+
+  const res = await env.DB.prepare(`UPDATE ducks SET card_id = ?1 WHERE id = ?2`)
+    .bind(cardId, duckId)
+    .run();
+  return res.meta.changes ? { ok: true } : { error: "unknown duck" };
+}
+
+/**
+ * Delete every duck from a card. The destructive one.
+ *
+ * ══ THE DELETION PROMISE IS NOT NEGOTIABLE ══
+ * One `DELETE FROM ducks` so the `ducks_before_delete` trigger fires for
+ * every row — contacts, fires, says, reports and bumps go with them, and
+ * the references that would otherwise pin the rows are released. A bulk
+ * path that reached around the trigger would be the one way this product
+ * can break a promise it makes in writing.
+ *
+ * The card row itself survives. It is a physical object and still exists.
+ */
+export async function deleteCardDucks(env: Env, cardId: string): Promise<number> {
+  const res = await env.DB.prepare(`DELETE FROM ducks WHERE card_id = ?1`)
+    .bind(cardId)
+    .run();
+  return Number(res.meta.changes ?? 0);
+}
+
 /** Clear the open reports on a duck once it has been dealt with. */
 export async function resolveReports(env: Env, duckId: string): Promise<number> {
   const res = await env.DB.prepare(
@@ -336,5 +439,23 @@ export function contactsCsv(ducks: AdminDuck[]): string {
 /** Everything the admin screen renders, in one request. */
 export async function adminState(env: Env): Promise<Response> {
   const [ducks, cards] = await Promise.all([adminDucks(env), adminCards(env)]);
-  return json({ ducks, cards, now: nowSec() });
+  /*
+   * ══ A MISSING KEY IS SILENT, AND IT STOPS EVERYTHING ══
+   * Every card identifies itself with an HMAC over its serial and counter,
+   * signed with CARD_SECRET. Without a correctly shaped key on the server
+   * NOTHING verifies: no card registers, no duck gets provenance, no card
+   * can be claimed or kept — and none of it errors. The pond keeps
+   * working, cards simply stop being cards.
+   *
+   * That is the worst shape a misconfiguration can take, so admin says so
+   * rather than leaving David to infer it from an empty Cards tab. Only
+   * whether it is the right SHAPE — the key itself never leaves here.
+   */
+  const secret = process.env.CARD_SECRET ?? "";
+  return json({
+    ducks,
+    cards,
+    cardSecret: /^[0-9a-fA-F]{32}$/.test(secret),
+    now: nowSec(),
+  });
 }

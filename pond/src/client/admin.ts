@@ -41,6 +41,11 @@ interface AdminCard {
   keeper: string | null;
   lang: string | null;
   ducks: number;
+  /* Claimed and unnamed are different states; `keeper` alone conflates
+     them, and the difference is the whole question when deciding whether
+     to assign somebody. */
+  claimed: boolean;
+  orphans: number;
 }
 
 type Tab = "ducks" | "contacts" | "cards";
@@ -133,13 +138,21 @@ function signIn(): void {
  */
 let where: { tab: Tab; card: string | null } = { tab: "ducks", card: null };
 
+/*
+ * Whether the server can verify a card at all. Module scope because it is
+ * a fact about the deployment rather than about a row, and the banner is
+ * drawn on every tab.
+ */
+let cardSecretOk = true;
+
 async function load(): Promise<void> {
-  let state: { ducks: AdminDuck[]; cards: AdminCard[] };
+  let state: { ducks: AdminDuck[]; cards: AdminCard[]; cardSecret?: boolean };
   try {
-    state = await api<{ ducks: AdminDuck[]; cards: AdminCard[] }>("");
+    state = await api<{ ducks: AdminDuck[]; cards: AdminCard[]; cardSecret?: boolean }>("");
   } catch {
     return signIn();
   }
+  cardSecretOk = state.cardSecret !== false;
   view(state.ducks, state.cards, where.tab, where.card);
 }
 
@@ -207,6 +220,22 @@ function view(
     }
     wrap.append(tabs);
 
+    /*
+     * ══ A MISSING KEY IS SILENT AND STOPS EVERYTHING ══
+     * Without a correctly shaped CARD_SECRET nothing verifies: no card
+     * registers, no duck gets provenance, no card can be claimed or kept
+     * — and nothing errors. The pond keeps working and cards simply stop
+     * being cards, which is the hardest kind of breakage to notice. So it
+     * is stated at the top of every tab, not tucked into Cards.
+     */
+    if (!cardSecretOk) {
+      wrap.append(el(
+        "p", "a-flag",
+        "CARD_SECRET is missing or malformed. No card can register, be "
+          + "claimed, or attribute a duck until it is set to 32 hex characters.",
+      ));
+    }
+
     if (reported && tab === "ducks") {
       wrap.append(el("p", "a-flag", `${reported} reported`));
     }
@@ -233,7 +262,7 @@ function view(
     const shownContacts = withContacts.filter((d) => !cardFilter || d.card === cardFilter);
 
     const list = el("div", "a-list");
-    if (tab === "ducks") shown.forEach((d) => list.append(duckRow(d, show)));
+    if (tab === "ducks") shown.forEach((d) => list.append(duckRow(d, show, cards)));
     if (tab === "contacts") shownContacts.forEach((d) => list.append(contactRow(d, ducks, cards)));
     if (tab === "cards") cards.forEach((c) => list.append(cardRow(c, show)));
 
@@ -273,7 +302,13 @@ function meta(d: AdminDuck): string {
     .join(" · ");
 }
 
-function duckRow(d: AdminDuck, show: (card: string | null) => void): HTMLElement {
+function duckRow(
+  d: AdminDuck,
+  show: (card: string | null) => void,
+  // Every registered card, so a duck with none can be pointed at one.
+  // Passed in rather than re-fetched: the caller already has them.
+  cardList: AdminCard[],
+): HTMLElement {
   const row = el("div", "a-row");
   const head = el("p", "a-row-name", d.name || "(no name)");
   if (d.hidden) head.append(el("span", "a-badge", "hidden"));
@@ -295,7 +330,35 @@ function duckRow(d: AdminDuck, show: (card: string | null) => void): HTMLElement
     from.append(button("p-chip", provenance(d), () => show(d.card),
       `Show every duck from card ${d.card}`));
   } else {
+    /*
+     * ══ "FROM NO CARD" IS REPAIRABLE ══
+     * A duck reads this when the card it came off was not in `cards` at
+     * the time — `mintSession` stores NULL for a serial it has never
+     * heard of, because `sessions.card_id` is a foreign key and `?c=` is
+     * typed text. Cards register themselves now, so no NEW duck lands
+     * here; the ones written before that cannot be repaired by anything
+     * automatic, because the fact was never recorded.
+     *
+     * So admin can say where it came from. A picker of known cards rather
+     * than a text field: the serial is on the card in David's hand, and
+     * typing eight Crockford characters from memory is how you attach a
+     * duck to the wrong one.
+     */
     from.append(el("span", "a-row-meta", provenance(d)));
+    const pick = el("select", "p-input a-attach");
+    const none = el("option", "", "attach to a card…");
+    none.value = "";
+    pick.append(none);
+    for (const c of cardList) {
+      const opt = el("option", "", `${c.id}${c.label ? ` · ${c.label}` : ""}`);
+      opt.value = c.id;
+      pick.append(opt);
+    }
+    pick.addEventListener("change", () => {
+      if (!pick.value) return;
+      void api("/card/attach", { card: pick.value, duck: d.id }).then(load);
+    });
+    from.append(pick);
   }
   row.append(from);
 
@@ -382,7 +445,18 @@ function contactRow(d: AdminDuck, ducks: AdminDuck[], cards: AdminCard[]): HTMLE
 
 function cardRow(c: AdminCard, show: (card: string | null) => void): HTMLElement {
   const row = el("div", "a-row");
-  const head = el("p", "a-row-name", c.keeper ?? c.label ?? c.id);
+  /*
+   * ══ THREE STATES, NOT TWO ══
+   * A card with no keeper NAME reads the same as a card nobody has
+   * claimed, and they are not the same thing at all: the first is taken
+   * and the second is going spare. Deciding whether to set somebody up as
+   * keeper is exactly the decision that turns on it.
+   */
+  const head = el(
+    "p", "a-row-name",
+    c.keeper || c.label || (c.claimed ? "kept · no name" : "not claimed"),
+  );
+  if (!c.claimed) head.append(el("span", "a-badge", "free"));
   if (c.disabled) head.append(el("span", "a-badge", "disabled"));
   row.append(head);
   // The serial IS shown here and nowhere else: this is the one reader who
@@ -491,6 +565,59 @@ function cardRow(c: AdminCard, show: (card: string | null) => void): HTMLElement
    * serial back cannot undo it. So the button is only offered for a card
    * that has never been used, and it still asks twice.
    */
+  /*
+   * ══ MAKING A CARD NEW AGAIN ══
+   * "Reset this card" sounds like one thing and is three with very
+   * different consequences, so it is three chips. None of them deletes a
+   * duck; the one that does is below, behind a typed confirmation.
+   *
+   *   Reset keeper  — ends the tenure. Ducks stay, and keep their `via`,
+   *                   because they WERE from that keeper's card.
+   *   Unlink ducks  — detaches them from every tenure. They stay in the
+   *                   pond, lose the `via`, and become adoptable again.
+   *   Empty card    — deletes them, contacts and all.
+   */
+  const reset = el("div", "a-actions");
+  if (c.claimed) {
+    reset.append(button("p-chip", "Reset keeper", () => {
+      void api("/card/reset", { card: c.id }).then(load);
+    }));
+  }
+  if (c.ducks > c.orphans) {
+    reset.append(button("p-chip", `Unlink ${c.ducks - c.orphans} duck(s)`, () => {
+      void api("/card/unlink", { card: c.id }).then(load);
+    }));
+  }
+  if (reset.children.length) save.append(...[...reset.children]);
+
+  if (c.ducks > 0) {
+    /*
+     * The destructive one. Typed rather than tapped: it takes contacts
+     * with it — the trigger sees to that, which is the point — and a
+     * second tap is not enough friction for a thing that cannot be
+     * undone and affects people who are not in the room.
+     */
+    const empty = el("div", "a-actions");
+    empty.append(button("p-chip a-chip-danger", `Delete all ${c.ducks} ducks`, () => {
+      const typed = el("input", "p-input");
+      typed.placeholder = c.id;
+      empty.replaceChildren(
+        el("p", "a-row-meta",
+          `Deletes ${c.ducks} duck(s) and every contact on them. Type ${c.id} to confirm.`),
+        typed,
+        button("p-chip a-chip-danger", "Delete them", () => {
+          if (typed.value.trim().toUpperCase() !== c.id) {
+            note.textContent = "That is not the serial.";
+            return;
+          }
+          void api("/card/ducks/delete", { card: c.id }).then(load);
+        }),
+        button("p-chip", "Keep them", () => load()),
+      );
+    }));
+    edit.append(empty);
+  }
+
   if (c.ducks === 0) {
     const danger = el("div", "a-actions");
     danger.append(button("p-chip a-chip-danger", "Delete card", () => {
