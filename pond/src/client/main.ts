@@ -1499,7 +1499,6 @@ function openDuckCard(view: PondView, duck: Placed): void {
        * different fixtures; the same window exists in production, just
        * narrower.
        */
-      showStats(bumpsToShow(duck.bumps, res.bumpers));
       bumpers.append(el("p", "p-field-label", t("pond.28")));
       const row = el("div", "p-bumprow");
       for (const b of res.bumpers) {
@@ -1571,7 +1570,43 @@ function openDuckCard(view: PondView, duck: Placed): void {
         row.append(box);
       }
       bumpers.append(row);
-      bumpers.hidden = false;
+      /*
+       * ══ NOT WHILE THE CARD IS STILL ARRIVING ══
+       * `p-rise` moves the card by 102% OF ITS OWN HEIGHT, and this row
+       * adds about seventy pixels to that height. Revealed mid-flight, the
+       * card re-measures and jumps FURTHER off-screen before carrying on
+       * up — measured at 390x844 as 259 → 282 → 353px inside the first
+       * 25ms, with the transform tracking each one.
+       *
+       * On the bench the fetch returns instantly so the jump happens
+       * during the first frames; on a real network it lands later and the
+       * card grows after it has already settled. Both are the same defect:
+       * a value derived from something live, captured, and never
+       * reconciled when the live thing moved — the same shape as the water
+       * buffer, and the eighth instance of it in this project.
+       *
+       * So the row waits for the animation to finish. There is nothing to
+       * wait for when reduced motion is on or the card is already home,
+       * and `animationend` would never fire in those cases, so the check
+       * is on whether one is actually running.
+       */
+      const settle = (): void => {
+        if (!bumpers.isConnected) return;
+        /*
+         * The corrected sentence goes with the row, not before it. It can
+         * wrap from one line to two — the other 23px of the measured
+         * 259 → 282 → 353 — and correcting the text while the card is
+         * still rising moves the card for the same reason the row does.
+         */
+        showStats(bumpsToShow(duck.bumps, res.bumpers));
+        bumpers.hidden = false;
+      };
+      const running = panel.getAnimations?.().filter((a) => a.playState === "running") ?? [];
+      if (running.length) {
+        void Promise.all(running.map((a) => a.finished.catch(() => {}))).then(settle);
+      } else {
+        settle();
+      }
     },
     // A card that opens without this row is still a card.
     () => {},

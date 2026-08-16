@@ -5839,7 +5839,6 @@ function openDuckCard(view2, duck) {
   void api.bumpers(duck.id).then(
     (res) => {
       if (!res.bumpers.length || !panel.isConnected) return;
-      showStats(bumpsToShow(duck.bumps, res.bumpers));
       bumpers.append(el2("p", "p-field-label", t("pond.28")));
       const row = el2("div", "p-bumprow");
       for (const b of res.bumpers) {
@@ -5872,7 +5871,18 @@ function openDuckCard(view2, duck) {
         row.append(box);
       }
       bumpers.append(row);
-      bumpers.hidden = false;
+      const settle = () => {
+        if (!bumpers.isConnected) return;
+        showStats(bumpsToShow(duck.bumps, res.bumpers));
+        bumpers.hidden = false;
+      };
+      const running = panel.getAnimations?.().filter((a) => a.playState === "running") ?? [];
+      if (running.length) {
+        void Promise.all(running.map((a) => a.finished.catch(() => {
+        }))).then(settle);
+      } else {
+        settle();
+      }
     },
     // A card that opens without this row is still a card.
     () => {
