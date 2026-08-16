@@ -415,21 +415,58 @@ export async function saveKeeper(
   }
   const lang = s.lang === "zh-Hant" ? "zh-Hant" : "en";
 
-  // The keeper's own duck, resolved from the edit key they pasted. Only
-  // they have it, which is what makes this an authorisation rather than a
-  // claim about somebody else's duck.
-  let keeperDuck: string | null = null;
-  if (typeof s.editKey === "string" && /^[A-Za-z0-9]{16,64}$/.test(s.editKey)) {
-    const duck = await env.DB.prepare(`SELECT id FROM ducks WHERE edit_key = ?1`)
-      .bind(s.editKey)
+  /*
+   * The keeper's own duck, resolved from the edit key. Only they have it,
+   * which is what makes this an authorisation rather than a claim about
+   * somebody else's duck.
+   *
+   * ══ AND IT MUST BE A DUCK THIS CARD MADE ══
+   * This used to accept ANY duck whose edit key was submitted, with no
+   * card or epoch constraint at all. That was survivable while
+   * `keeper_duck` was decoration. It stopped being survivable when the
+   * duck's edit key became a durable credential for this very screen
+   * (docs/pond/KEEPER.md § 4.4): a keeper holding a one-hour cookie could
+   * point `keeper_duck` at a duck they control and convert an expiring
+   * cookie into permanent authority over somebody's card, and any
+   * unrelated private link became card-settings authority the moment it
+   * was saved. Codex found the loop.
+   *
+   * `card_id` comes from the EPOCH, never from the request. The
+   * constraint is true by construction in every honest case — a keeper's
+   * duck came from the card they keep — and it closes the loop, because
+   * the credential now names a duck the card itself produced.
+   *
+   * ══ ABSENT IS NOT EMPTY ══
+   * Omitting the field leaves the link alone; sending an empty string
+   * breaks it deliberately. They used to be the same thing, so any save
+   * that did not repost the key silently unlinked the duck — which, now
+   * that the link is a credential, would lock a keeper out of their own
+   * card for saving their language.
+   */
+  let keeperDuck: string | null | undefined;
+  if (s.editKey === "" || s.editKey === null) {
+    keeperDuck = null;
+  } else if (typeof s.editKey === "string") {
+    if (!/^[A-Za-z0-9]{16,64}$/.test(s.editKey)) return { error: "not your duck" };
+    const duck = await env.DB.prepare(
+      `SELECT id FROM ducks WHERE edit_key = ?1 AND card_id = ?2`,
+    )
+      .bind(s.editKey, epoch.card_id)
       .first<{ id: string }>();
-    keeperDuck = duck ? String(duck.id) : null;
+    // Silently storing NULL here is how a mistyped key used to read as
+    // "unlink". Say so instead — the sheet renders it against the field.
+    if (!duck) return { error: "not your duck" };
+    keeperDuck = String(duck.id);
   }
 
   const writes = [
-    env.DB.prepare(
-      `UPDATE card_epochs SET keeper_name = ?1, lang = ?2, keeper_duck = ?3 WHERE id = ?4`,
-    ).bind(name, lang, keeperDuck, epochId),
+    keeperDuck === undefined
+      ? env.DB.prepare(
+          `UPDATE card_epochs SET keeper_name = ?1, lang = ?2 WHERE id = ?3`,
+        ).bind(name, lang, epochId)
+      : env.DB.prepare(
+          `UPDATE card_epochs SET keeper_name = ?1, lang = ?2, keeper_duck = ?3 WHERE id = ?4`,
+        ).bind(name, lang, keeperDuck, epochId),
   ];
 
   if (s.adopt) {
@@ -445,6 +482,41 @@ export async function saveKeeper(
 
   const results = await env.DB.batch(writes);
   return { ok: true, adopted: s.adopt ? (results[1]?.meta.changes ?? 0) : 0 };
+}
+
+/**
+ * The other way into card settings: the keeper's own duck.
+ *
+ * ══ AN HOUR IS A BOOTSTRAP, NOT A KEY ══
+ * `pond_keeper` lasts 3600 seconds. That is right for the thing it is —
+ * the moment after a claim — and hopeless as the only way back: after an
+ * hour a keeper could reach their card again only by blowing on it four
+ * times, which is the gesture this whole feature exists because nobody
+ * knows about.
+ *
+ * So the durable credential is one they already have and are already
+ * told to keep: their duck's private link. `keeper_duck` names that duck,
+ * and `saveKeeper` will only accept a duck THIS CARD MINTED — without
+ * that constraint this would be circular, and any private link would open
+ * any card's settings.
+ *
+ * The tenure must be current. A keeper whose epoch ended keeps their
+ * duck and loses the card, which is the entire point of epochs.
+ */
+export async function epochForEditKey(
+  env: Env,
+  editKey: string | null,
+): Promise<string | null> {
+  if (!editKey || !/^[A-Za-z0-9]{16,64}$/.test(editKey)) return null;
+  const row = await env.DB.prepare(
+    `SELECT e.id
+       FROM card_epochs e
+       JOIN ducks d ON d.id = e.keeper_duck
+      WHERE d.edit_key = ?1 AND e.ended IS NULL`,
+  )
+    .bind(editKey)
+    .first<{ id: string }>();
+  return row ? String(row.id) : null;
 }
 
 /** What Card setup needs to render. */

@@ -1313,3 +1313,98 @@ describe("claiming a card from the tap that made a duck", () => {
     expect((await v.api("/api/claim/first", { method: "POST" })).status).toBe(403);
   });
 });
+
+/**
+ * The private link is the durable way back into card settings.
+ *
+ * `pond_keeper` lasts an hour — right for the moment after a claim,
+ * hopeless as the only key, since after that a keeper could reach their
+ * own card only by blowing on it four times, which is the gesture this
+ * whole feature exists because nobody knows about.
+ */
+describe("a keeper's own duck lets them back in", () => {
+  const signed = (card: string, secret: Uint8Array, digit = 1) =>
+    `?d=${digit}&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`;
+
+  /** Claim a fresh card by session and link the duck that did it. */
+  async function keptCard(e: Env, serial: string) {
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed(serial, secret));
+    expect((await v.api("/api/claim/first", { method: "POST" })).status).toBe(200);
+    await v.post("/api/keeper", { name: "Sam", lang: "en", editKey: duck.editKey });
+    return { v, duck };
+  }
+
+  it("reads card settings with the edit key alone, no cookie", async () => {
+    const e = await env();
+    const { duck } = await keptCard(e, "MYCARD11");
+
+    // A brand new browser: no pond_keeper, nothing but the private link.
+    const cold = await handle(
+      new Request(`${ORIGIN}/api/keeper?editKey=${duck.editKey}`),
+      e,
+    );
+    expect(cold.status).toBe(200);
+    expect(await cold.json()).toMatchObject({ keeper: "Sam" });
+  });
+
+  it("saves with the edit key alone", async () => {
+    const e = await env();
+    const { duck } = await keptCard(e, "MYCARD12");
+
+    const res = await handle(
+      new Request(`${ORIGIN}/api/keeper`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Mika", lang: "zh-Hant", editKey: duck.editKey }),
+      }),
+      e,
+    );
+    expect(res.status).toBe(200);
+    const back = await handle(new Request(`${ORIGIN}/api/keeper?editKey=${duck.editKey}`), e);
+    expect(await back.json()).toMatchObject({ keeper: "Mika", lang: "zh-Hant" });
+  });
+
+  it("refuses a private link that is not any card's keeper duck", async () => {
+    // The premise of the attack: holding SOME duck's private link. It has
+    // to be worth nothing here.
+    const e = await env();
+    await keptCard(e, "MYCARD13");
+    const stranger = await release(new Visitor(e));
+
+    const res = await handle(
+      new Request(`${ORIGIN}/api/keeper?editKey=${stranger.editKey}`),
+      e,
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("stops working the moment the tenure ends", async () => {
+    /*
+     * A keeper keeps their duck and loses the card — that is what epochs
+     * are for. Four blows from the next owner must shut this door.
+     */
+    const e = await env();
+    const secret = testSecret();
+    const serial = "MYCARD14";
+    const { duck } = await keptCard(e, serial);
+    expect((await handle(new Request(`${ORIGIN}/api/keeper?editKey=${duck.editKey}`), e)).status)
+      .toBe(200);
+
+    await new Visitor(e).post("/api/claim", {
+      card: serial, counter: 1, token: cardToken(secret, serial, 1),
+    });
+
+    expect((await handle(new Request(`${ORIGIN}/api/keeper?editKey=${duck.editKey}`), e)).status)
+      .toBe(404);
+  });
+
+  it("refuses a malformed key without touching the database", async () => {
+    const e = await env();
+    await keptCard(e, "MYCARD15");
+    expect((await handle(new Request(`${ORIGIN}/api/keeper?editKey=../../etc`), e)).status)
+      .toBe(404);
+    expect((await handle(new Request(`${ORIGIN}/api/keeper`), e)).status).toBe(404);
+  });
+});

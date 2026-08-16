@@ -88,15 +88,25 @@ export function editKeyFor(id: string): string {
 export async function makeDuck(
   db: Db,
   id: string,
-  opts: { contact?: string; epoch?: string; fortune?: number } = {},
+  opts: { contact?: string; epoch?: string; fortune?: number; card?: string } = {},
 ): Promise<void> {
   await db
     .prepare(
-      `INSERT INTO ducks (id, slug, edit_key, epoch_id, fortune, tint, stickers,
+      `INSERT INTO ducks (id, slug, edit_key, card_id, epoch_id, fortune, tint, stickers,
                           paint, name, message, created, updated)
-       VALUES (?1, ?2, ?3, ?4, ?5, 0, '[]', '', 'Sam', 'hello', 1, 1)`,
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, '[]', '', 'Sam', 'hello', 1, 1)`,
     )
-    .bind(id, `slug-${id}`, editKeyFor(id), opts.epoch ?? null, opts.fortune ?? 0)
+    .bind(
+      id,
+      `slug-${id}`,
+      editKeyFor(id),
+      // Which card minted it. Needed since `keeper_duck` may only name a
+      // duck the card itself produced — a fixture duck from nowhere is
+      // exactly what that constraint refuses.
+      opts.card ?? null,
+      opts.epoch ?? null,
+      opts.fortune ?? 0,
+    )
     .run();
 
   if (opts.contact) {

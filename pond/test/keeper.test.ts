@@ -14,7 +14,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cardToken } from "../src/card/identity.js";
 import {
-  claimCard, isReservedKeeperName, keeperNameOfCard, keeperState, saveKeeper,
+  claimCard, epochForEditKey, isReservedKeeperName, keeperNameOfCard, keeperState,
+  saveKeeper,
 } from "../src/worker/keeper.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/worker/types.js";
@@ -173,7 +174,8 @@ describe("card setup", () => {
     const e = await env();
     const claim = await claimCard(e, CARD, 1, sign(1));
     if ("error" in claim) throw new Error("claim failed");
-    await makeDuck(e.DB, "mine");
+    // From THIS card: `keeper_duck` may only name a duck the card made.
+    await makeDuck(e.DB, "mine", { card: CARD });
 
     await saveKeeper(e, claim.epochId, {
       name: "Sam", lang: "zh-Hant", editKey: editKeyFor("mine"),
@@ -337,5 +339,139 @@ describe("card setup", () => {
       expect(await saveKeeper(e, claim.epochId, { name: "Sam", lang: "zh-Hant" }))
         .toEqual({ ok: true, adopted: 0 });
     });
+  });
+});
+
+/**
+ * `keeper_duck` is a credential, so it needs an invariant.
+ *
+ * ══ THE LOOP CODEX FOUND ══
+ * Card setup accepted ANY duck whose edit key was submitted, with no card
+ * or epoch constraint. Harmless while the link was decoration. Not
+ * harmless once that duck's edit key became a durable way back into card
+ * settings: a keeper holding the one-hour cookie could point keeper_duck
+ * at a duck they control and convert an expiring cookie into permanent
+ * authority, and any unrelated private link became card-settings
+ * authority the moment it was saved.
+ */
+describe("the keeper's duck must be a duck this card made", () => {
+  it("takes a duck minted by this card", async () => {
+    const e = await env();
+    const claim = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in claim) throw new Error("claim failed");
+    await makeDuck(e.DB, "ours", { card: CARD });
+
+    expect(await saveKeeper(e, claim.epochId, { editKey: editKeyFor("ours") }))
+      .toMatchObject({ ok: true });
+    expect(await keeperState(e, claim.epochId)).toMatchObject({ duckSlug: "slug-ours" });
+  });
+
+  it("refuses a duck from somewhere else, and says so", async () => {
+    const e = await env();
+    const claim = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in claim) throw new Error("claim failed");
+    // A stranger's duck. The attacker has its private link; that is the
+    // whole premise, and it must still not become this card's credential.
+    await makeDuck(e.DB, "theirs");
+
+    expect(await saveKeeper(e, claim.epochId, { editKey: editKeyFor("theirs") }))
+      .toEqual({ error: "not your duck" });
+    expect(await keeperState(e, claim.epochId)).toMatchObject({ duckSlug: null });
+  });
+
+  it("leaves the link alone when the field is not sent at all", async () => {
+    /*
+     * ══ ABSENT IS NOT EMPTY ══
+     * Omitting the key used to be indistinguishable from clearing it, so
+     * any save that did not repost it silently unlinked the duck. Now
+     * that the link is a credential, that would lock a keeper out of
+     * their own card for the crime of changing their language.
+     */
+    const e = await env();
+    const claim = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in claim) throw new Error("claim failed");
+    await makeDuck(e.DB, "kept", { card: CARD });
+    await saveKeeper(e, claim.epochId, { editKey: editKeyFor("kept") });
+
+    await saveKeeper(e, claim.epochId, { name: "Sam", lang: "zh-Hant" });
+    expect(await keeperState(e, claim.epochId))
+      .toMatchObject({ keeper: "Sam", lang: "zh-Hant", duckSlug: "slug-kept" });
+  });
+
+  it("breaks the link when the field is sent empty", async () => {
+    // Deliberate unlinking still has to be possible, and an empty string
+    // is how the form says it.
+    const e = await env();
+    const claim = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in claim) throw new Error("claim failed");
+    await makeDuck(e.DB, "letgo", { card: CARD });
+    await saveKeeper(e, claim.epochId, { editKey: editKeyFor("letgo") });
+
+    expect(await saveKeeper(e, claim.epochId, { editKey: "" })).toMatchObject({ ok: true });
+    expect(await keeperState(e, claim.epochId)).toMatchObject({ duckSlug: null });
+  });
+
+  it("refuses a malformed key rather than reading it as a clearance", async () => {
+    const e = await env();
+    const claim = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in claim) throw new Error("claim failed");
+    await makeDuck(e.DB, "safe", { card: CARD });
+    await saveKeeper(e, claim.epochId, { editKey: editKeyFor("safe") });
+
+    expect(await saveKeeper(e, claim.epochId, { editKey: "nope" }))
+      .toEqual({ error: "not your duck" });
+    expect(await keeperState(e, claim.epochId), "the good link survives")
+      .toMatchObject({ duckSlug: "slug-safe" });
+  });
+});
+
+/**
+ * `epochForEditKey` on its own.
+ *
+ * Tested at this level deliberately. Through the route its two guards are
+ * invisible, because `keeperState` and `saveKeeper` BOTH re-check
+ * `ended IS NULL` downstream — so removing it here changes no HTTP
+ * response and a route test cannot tell. That makes it defence in depth
+ * rather than dead code, and defence in depth still has to be checked, or
+ * it rots into a comment.
+ */
+describe("resolving a keeper from their duck's private link", () => {
+  it("finds the current tenure", async () => {
+    const e = await env();
+    const claim = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in claim) throw new Error("claim failed");
+    await makeDuck(e.DB, "key", { card: CARD });
+    await saveKeeper(e, claim.epochId, { editKey: editKeyFor("key") });
+
+    expect(await epochForEditKey(e, editKeyFor("key"))).toBe(claim.epochId);
+  });
+
+  it("does not find a tenure that has ended", async () => {
+    // The keeper keeps their duck and loses the card. That is what epochs
+    // are for, and it must be true at every layer rather than only at the
+    // one that happens to be checked last.
+    const e = await env();
+    const first = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in first) throw new Error("claim failed");
+    await makeDuck(e.DB, "was", { card: CARD });
+    await saveKeeper(e, first.epochId, { editKey: editKeyFor("was") });
+
+    await claimCard(e, CARD, 2, sign(2));
+    expect(await epochForEditKey(e, editKeyFor("was"))).toBe(null);
+  });
+
+  it("refuses a duck that is nobody's keeper duck", async () => {
+    const e = await env();
+    await claimCard(e, CARD, 1, sign(1));
+    await makeDuck(e.DB, "other", { card: CARD });
+    expect(await epochForEditKey(e, editKeyFor("other"))).toBe(null);
+  });
+
+  it("refuses nothing, and rubbish, without asking the database", async () => {
+    const e = await env();
+    expect(await epochForEditKey(e, null)).toBe(null);
+    expect(await epochForEditKey(e, "")).toBe(null);
+    expect(await epochForEditKey(e, "short")).toBe(null);
+    expect(await epochForEditKey(e, "../../../etc/passwd")).toBe(null);
   });
 });

@@ -30,7 +30,8 @@ import {
   resolveReports, setCardDisabled, setCardLabel, setHidden, setKeeper, signIn,
 } from "./admin.js";
 import {
-  claimCard, claimFromSession, ensureCard, keeperOffer, keeperState, saveKeeper,
+  claimCard, claimFromSession, ensureCard, epochForEditKey, keeperOffer,
+  keeperState, saveKeeper,
 } from "./keeper.js";
 import { createDuck, setContact } from "./release.js";
 import { normaliseSlug, slugTaken } from "./slug.js";
@@ -435,9 +436,25 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
   }
 
   if (path === "/api/keeper") {
-    const epochId = (req.headers.get("cookie") ?? "").match(
+    const cookie = (req.headers.get("cookie") ?? "").match(
       /(?:^|;\s*)pond_keeper=([A-Za-z0-9]{8,32})/,
     )?.[1];
+
+    /*
+     * Two credentials, and the cookie is only the fresher one. It lasts an
+     * hour — right for the moment after a claim, hopeless as the only way
+     * back — so a keeper may also present their own duck's private link,
+     * which `epochForEditKey` resolves only while their tenure is current
+     * and only for a duck the card itself minted.
+     *
+     * The body is read once and reused: a Request body is a stream and
+     * consuming it twice yields nothing the second time.
+     */
+    const body = req.method === "POST" ? await readJson(req) : null;
+    const key = req.method === "POST"
+      ? (typeof body?.editKey === "string" ? body.editKey : null)
+      : url.searchParams.get("editKey");
+    const epochId = cookie ?? (await epochForEditKey(env, key));
     if (!epochId) return notFound(headers);
 
     if (req.method === "GET") {
@@ -446,7 +463,6 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     }
 
     if (req.method === "POST") {
-      const body = await readJson(req);
       const saved = await saveKeeper(env, epochId, body ?? {});
       return "error" in saved
         ? json(saved, { status: 403, headers })
