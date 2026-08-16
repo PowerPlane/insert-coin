@@ -20,7 +20,7 @@ import { icon } from "./icons.js";
 import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
 import { CAM_UI, CAM_ZOOM, HOME_CELL, easeOutCubic } from "./camera.js";
-import { cardSetup, claimFromUrl } from "./keeper.js";
+import { cardSetup, claimFromUrl, isClaimUrl } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, SPLASH_TAP, type Placed } from "./pond-view.js";
 import { GRID } from "./codec.js";
@@ -1305,9 +1305,12 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    *                    opposed to a reload, a bookmark, or somebody who
    *                    walked here. It is dropped from the URL below so
    *                    the second look at the same page is a pond.
-   *   no `?t=`       — an ARMED card is going to Card setup instead, and
-   *                    with the new firmware it deals no fortune at all.
-   *                    Belt and braces; the two cannot both be true.
+   *   not a claim    — an ARMED card is going to Card setup instead. This
+   *                    used to test for `?t=` and was wrong: every tag
+   *                    carries a signature, armed or not, so the test was
+   *                    always true and the arrival NEVER played on a real
+   *                    card. Only a counter above zero is a claim. See
+   *                    `isClaimUrl`.
    *   no draft       — somebody three screens deep with a half-decorated
    *                    duck is RESUMING. Throwing them back to the
    *                    fortune they already saw would lose their place,
@@ -1317,7 +1320,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const tapped = new URL(location.href);
   if (
     tapped.searchParams.has("d") &&
-    !tapped.searchParams.has("t") &&
+    !isClaimUrl(tapped) &&
     session?.active && !session.spent &&
     loadDraft() === null
   ) {
@@ -1803,11 +1806,19 @@ async function main(): Promise<void> {
    */
   const url = new URL(location.href);
   if (url.searchParams.has("t")) {
-    const claimed = await claimFromUrl(url);
-    // Take the claim out of the URL either way: spent if it worked, and
-    // useless if it did not. A shared or bookmarked link should not carry
-    // a credential around in either case.
+    /*
+     * The credential comes out of the URL on EVERY tap that carries one,
+     * claim or not — a shared or bookmarked link should never carry a
+     * signature around. That part was always right.
+     *
+     * What was wrong was treating every such tap as a claim ATTEMPT, so
+     * an ordinary tap of an un-armed card was reported as a claim that
+     * failed. Only a counter above zero is a claim; see `isClaimUrl`.
+     */
+    const claiming = isClaimUrl(url);
+    const claimed = claiming && (await claimFromUrl(url));
     history.replaceState(null, "", url.pathname);
+    if (!claiming) return;
     const root = document.querySelector<HTMLElement>(".p-overlay")!;
 
     if (claimed) {

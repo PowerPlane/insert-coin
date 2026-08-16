@@ -448,17 +448,52 @@ export function cardSetup(opts: CardSetupOptions): void {
  * the server, so the credential does not sit in a Referer or in history any
  * longer than the first request.
  */
-export async function claimFromUrl(url: URL): Promise<boolean> {
+/**
+ * Is this URL a CLAIM, or just a tap?
+ *
+ * ══ `&t=` IS ON EVERY TAG, NOT ONLY ON ARMED ONES ══
+ * Two places used "has `?t=`" to mean "this card arrived armed", and one
+ * of them wrote the belief down: "an ARMED card is going to Card setup
+ * instead... the two cannot both be true."
+ *
+ * They are ALWAYS both true. `config.h` writes `&c=`, `&g=` and `&t=` once
+ * at provisioning and only the fortune digit is ever patched, so every
+ * ordinary tap carries a signature. Two things followed, and David hit
+ * both on the first real card:
+ *
+ *   Every ordinary tap showed "This card could not be set up." — the
+ *   claim was "refused" because there was no claim, and the client could
+ *   not tell those apart.
+ *
+ *   The arrival never played on a real card. `beginRelease` was gated
+ *   behind "no `?t=`", so tapping a card landed on the pond with a
+ *   button instead of on the fortune. It only ever worked from a typed
+ *   URL or `?debug=1` — which is exactly what every bench run used, so
+ *   nothing caught it.
+ *
+ * What actually marks a claim is the COUNTER. Cards ship at `g=0000` and
+ * the server requires a counter above the high-water mark, so a zero is
+ * not a failed claim — it is not a claim at all.
+ *
+ * Defined once, here, because the belief it replaces was duplicated and
+ * both copies were wrong.
+ */
+export function isClaimUrl(url: URL): boolean {
   const card = url.searchParams.get("c");
   const g = url.searchParams.get("g");
   const token = url.searchParams.get("t");
   if (!card || !g || !token) return false;
-
   const counter = parseInt(g, 16);
-  // Counter 0 is what every card ships with and is never claimable — the
-  // server requires a counter ABOVE the high-water mark, and cards start
-  // at 0. Not worth a round trip.
-  if (!Number.isInteger(counter) || counter <= 0) return false;
+  return Number.isInteger(counter) && counter > 0;
+}
+
+export async function claimFromUrl(url: URL): Promise<boolean> {
+  const card = url.searchParams.get("c");
+  const g = url.searchParams.get("g");
+  const token = url.searchParams.get("t");
+  // Not worth a round trip: a card at counter 0 is not making a claim.
+  if (!isClaimUrl(url) || !card || !g || !token) return false;
+  const counter = parseInt(g, 16);
 
   try {
     const res = await api.claim(card, counter, token);

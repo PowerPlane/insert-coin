@@ -2274,13 +2274,20 @@ function cardSetup(opts) {
     });
   }
 }
-async function claimFromUrl(url) {
+function isClaimUrl(url) {
   const card = url.searchParams.get("c");
   const g = url.searchParams.get("g");
   const token = url.searchParams.get("t");
   if (!card || !g || !token) return false;
   const counter = parseInt(g, 16);
-  if (!Number.isInteger(counter) || counter <= 0) return false;
+  return Number.isInteger(counter) && counter > 0;
+}
+async function claimFromUrl(url) {
+  const card = url.searchParams.get("c");
+  const g = url.searchParams.get("g");
+  const token = url.searchParams.get("t");
+  if (!isClaimUrl(url) || !card || !g || !token) return false;
+  const counter = parseInt(g, 16);
   try {
     const res = await api.claim(card, counter, token);
     return res.ok;
@@ -5771,7 +5778,7 @@ async function pondScreen(bootstrap) {
     if (polling) void refresh();
   }, 2e4);
   const tapped = new URL(location.href);
-  if (tapped.searchParams.has("d") && !tapped.searchParams.has("t") && session?.active && !session.spent && loadDraft() === null) {
+  if (tapped.searchParams.has("d") && !isClaimUrl(tapped) && session?.active && !session.spent && loadDraft() === null) {
     tapped.searchParams.delete("d");
     history.replaceState(null, "", tapped.pathname + tapped.search + tapped.hash);
     beginRelease(session);
@@ -5990,8 +5997,10 @@ async function main() {
   await pondScreen(b);
   const url = new URL(location.href);
   if (url.searchParams.has("t")) {
-    const claimed = await claimFromUrl(url);
+    const claiming = isClaimUrl(url);
+    const claimed = claiming && await claimFromUrl(url);
     history.replaceState(null, "", url.pathname);
+    if (!claiming) return;
     const root2 = document.querySelector(".p-overlay");
     if (claimed) {
       cardSetup({ root: root2, onDone: () => root2.replaceChildren() });
