@@ -101,6 +101,7 @@ export const LIVE_STRINGS = {
   // their typing, and that the pond is not accusing them of anything.
   "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
   "live.keeper.taken": "Somebody already keeps this card.",
+  "live.keeper.expired": "That tap has expired. Tap your card again to keep it.",
   "live.claim.held": "This card is {keeper}\u2019s",
   "live.keeper.via": "Ducks from this card will say via {keeper}. You can change it or hand it on later.",
   "live.claim.no": "This card could not be set up.",
@@ -423,6 +424,7 @@ export const ZH_HANT: Record<StringKey, string> = {
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
   "live.keeper.taken": "這張卡片已經有人保管了。",
+  "live.keeper.expired": "這次感應已經過期了。再感應一次卡片就可以留下它。",
   "live.claim.held": "這張卡片是 {keeper} 的",
   "live.keeper.via": "這張卡片放出的鴨子會顯示「來自 {keeper}」。之後可以改，也可以交給別人。",
   "live.claim.no": "這張卡片無法設定。",

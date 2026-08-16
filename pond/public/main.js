@@ -1476,6 +1476,7 @@ var LIVE_STRINGS = {
   // their typing, and that the pond is not accusing them of anything.
   "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
   "live.keeper.taken": "Somebody already keeps this card.",
+  "live.keeper.expired": "That tap has expired. Tap your card again to keep it.",
   "live.claim.held": "This card is {keeper}’s",
   "live.keeper.via": "Ducks from this card will say via {keeper}. You can change it or hand it on later.",
   "live.claim.no": "This card could not be set up.",
@@ -1915,6 +1916,7 @@ var ZH_HANT = {
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
   "live.keeper.taken": "這張卡片已經有人保管了。",
+  "live.keeper.expired": "這次感應已經過期了。再感應一次卡片就可以留下它。",
   "live.claim.held": "這張卡片是 {keeper} 的",
   "live.keeper.via": "這張卡片放出的鴨子會顯示「來自 {keeper}」。之後可以改，也可以交給別人。",
   "live.claim.no": "這張卡片無法設定。",
@@ -2378,8 +2380,8 @@ function cardSetup(opts) {
         try {
           if (opts.offer && opts.onClaim) {
             const took = await opts.onClaim();
-            if (!took) {
-              status.textContent = t("live.keeper.taken");
+            if (took !== "ok") {
+              status.textContent = took === "kept" ? t("live.keeper.taken") : took === "expired" ? t("live.keeper.expired") : t("live.error");
               return;
             }
           }
@@ -5832,7 +5834,21 @@ async function pondScreen(bootstrap) {
           offer: true,
           editKey: key,
           suggestName,
-          onClaim: () => api.claimFirst(key).then((r) => r.ok, () => false),
+          /*
+           * Mapped from the status, not from a boolean. 409 is the only
+           * one that means somebody else has it; 401 means this tap's
+           * session has expired, which is a different sentence and a
+           * different thing to do about it.
+           */
+          onClaim: () => api.claimFirst(key).then(
+            (r) => r.ok ? "ok" : "kept",
+            (err) => {
+              if (!(err instanceof ApiError)) return "error";
+              if (err.status === 409) return "kept";
+              if (err.status === 401) return "expired";
+              return "error";
+            }
+          ),
           onDecline: () => {
             try {
               localStorage.setItem(offerKeyFor(), "1");
@@ -5971,7 +5987,7 @@ async function pondScreen(bootstrap) {
     if (polling) void refresh();
   }, 2e4);
   const tapped = new URL(location.href);
-  if (tapped.searchParams.has("d") && !claimIsFresh(tapped) && session?.active && !session.spent && loadDraft() === null) {
+  if (tapped.searchParams.has("d") && bootstrap.arrive !== false && session?.active && !session.spent && loadDraft() === null) {
     tapped.searchParams.delete("d");
     history.replaceState(null, "", tapped.pathname + tapped.search + tapped.hash);
     beginRelease(session);
@@ -5983,6 +5999,13 @@ async function pondScreen(bootstrap) {
     unwatchSize();
     view2.stop();
     teardown = null;
+  };
+  return {
+    startRelease() {
+      if (session?.active && !session.spent && loadDraft() === null) {
+        beginRelease(session);
+      }
+    }
   };
 }
 var BUMP_READ_MS = 520;
@@ -6189,7 +6212,10 @@ async function main() {
     rememberClaimAttempt(url);
     outcome = await resolveClaim(url);
   }
-  await pondScreen(b);
+  const pond = await pondScreen({
+    ...b,
+    arrive: outcome.kind === "none" || outcome.kind === "refused"
+  });
   if (url.searchParams.has("t")) {
     history.replaceState(null, "", url.pathname);
   }
@@ -6212,10 +6238,15 @@ async function main() {
           root2.replaceChildren();
           if (r.kind === "claimed") {
             cardSetup({ root: root2, onDone: () => root2.replaceChildren() });
+            return;
           }
+          pond.startRelease();
         });
       }),
-      button("p-btn p-btn-quiet", t("keeper.34"), () => root2.replaceChildren())
+      button("p-btn p-btn-quiet", t("keeper.34"), () => {
+        root2.replaceChildren();
+        pond.startRelease();
+      })
     );
     body.append(actions);
     root2.append(sheetRoot);

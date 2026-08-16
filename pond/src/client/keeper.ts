@@ -71,8 +71,17 @@ export interface CardSetupOptions {
   offer?: boolean;
   /** Taken when they decline. The caller decides what that remembers. */
   onDecline?: () => void;
-  /** Claims the card. Resolves false if somebody else got there first. */
-  onClaim?: () => Promise<boolean>;
+  /*
+   * Claims the card, and says WHY if it could not.
+   *
+   * This returned a boolean, and the sheet turned every false into
+   * "somebody already keeps this card" — true for exactly one of the
+   * three ways it can fail, and a lie for the other two. A session that
+   * had quietly expired reported a rival keeper who did not exist, which
+   * is the worst kind of error message: confidently wrong, and it sends
+   * somebody looking for a person instead of tapping their card again.
+   */
+  onClaim?: () => Promise<"ok" | "kept" | "expired" | "error">;
 }
 
 /**
@@ -457,8 +466,11 @@ export function cardSetup(opts: CardSetupOptions): void {
            */
           if (opts.offer && opts.onClaim) {
             const took = await opts.onClaim();
-            if (!took) {
-              status.textContent = t("live.keeper.taken");
+            if (took !== "ok") {
+              status.textContent =
+                took === "kept" ? t("live.keeper.taken")
+                  : took === "expired" ? t("live.keeper.expired")
+                    : t("live.error");
               return;
             }
           }

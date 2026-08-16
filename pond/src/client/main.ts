@@ -34,6 +34,12 @@ import { fortuneTitle, setLang, t, type Lang } from "./strings.js";
 import { watchSize } from "./viewport.js";
 import type { PondDuck } from "./types.js";
 
+/** What a pond screen hands back to whoever opened it. */
+interface PondHandle {
+  /** Start the release flow, if this tap has a fortune waiting. */
+  startRelease(): void;
+}
+
 interface Bootstrap {
   view?: "pond" | "duck" | "edit";
   duck?: PondDuck;
@@ -45,6 +51,13 @@ interface Bootstrap {
    * handed in so the pond can mark and frame it.
    */
   mine?: string;
+  /*
+   * Whether a tap with a live fortune should go straight into the flow.
+   * False when a claim screen is about to open over the water — the
+   * caller has resolved the tap and knows; the pond should not have to
+   * guess from what happens to be in localStorage.
+   */
+  arrive?: boolean;
 }
 
 function boot(): Bootstrap {
@@ -90,7 +103,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
  */
 let teardown: (() => void) | null = null;
 
-async function pondScreen(bootstrap: Bootstrap): Promise<void> {
+async function pondScreen(bootstrap: Bootstrap): Promise<PondHandle> {
   teardown?.();
   root.replaceChildren();
 
@@ -1141,7 +1154,21 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
           offer: true,
           editKey: key,
           suggestName,
-          onClaim: () => api.claimFirst(key).then((r) => r.ok, () => false),
+          /*
+           * Mapped from the status, not from a boolean. 409 is the only
+           * one that means somebody else has it; 401 means this tap's
+           * session has expired, which is a different sentence and a
+           * different thing to do about it.
+           */
+          onClaim: () => api.claimFirst(key).then(
+            (r) => (r.ok ? "ok" as const : "kept" as const),
+            (err: unknown) => {
+              if (!(err instanceof ApiError)) return "error" as const;
+              if (err.status === 409) return "kept" as const;
+              if (err.status === 401) return "expired" as const;
+              return "error" as const;
+            },
+          ),
           onDecline: () => {
             try {
               localStorage.setItem(offerKeyFor(), "1");
@@ -1427,11 +1454,18 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    *                    then on every tap landed on the pond with a
    *                    Decorate it button instead of on his fortune.
    *
-   *                    What actually suppresses the arrival is a claim
-   *                    this browser is ABOUT TO ACT ON — which is
-   *                    `claimIsFresh`, the same question the claim itself
-   *                    asks a few lines later. A spent claim is not a
-   *                    claim; it is a tap.
+   *                    Then it tested `claimIsFresh`, which is storage —
+   *                    "has this browser tried this counter" — and storage
+   *                    is a record of what happened, not a statement of
+   *                    what this tap IS. It is also written a few lines
+   *                    before it is read, which made the answer depend on
+   *                    the order two things happened in.
+   *
+   *                    So the caller decides. It has already resolved the
+   *                    tap by the time this runs and knows exactly which
+   *                    of the four things it was; `arrive` is that answer,
+   *                    said out loud, and the only remaining question here
+   *                    is whether there is a fortune to arrive with.
    *   no draft       — somebody three screens deep with a half-decorated
    *                    duck is RESUMING. Throwing them back to the
    *                    fortune they already saw would lose their place,
@@ -1441,7 +1475,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const tapped = new URL(location.href);
   if (
     tapped.searchParams.has("d") &&
-    !claimIsFresh(tapped) &&
+    bootstrap.arrive !== false &&
     session?.active && !session.spent &&
     loadDraft() === null
   ) {
@@ -1460,6 +1494,26 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     unwatchSize();
     view.stop();
     teardown = null;
+  };
+
+  /*
+   * ══ A DECLINED TAKEOVER STILL HAS A COIN IN IT ══
+   * Somebody taps a card that is already somebody else's, says "leave it
+   * as it is", and is left holding an unspent fortune with nothing
+   * happening. The arrival was suppressed because a claim screen was
+   * about to open; once they decline, this tap turns out to have been an
+   * ordinary one after all.
+   *
+   * Handed back rather than triggered from outside, because starting the
+   * flow needs the session this screen already fetched and the guards
+   * that stop two flows opening over one duck.
+   */
+  return {
+    startRelease(): void {
+      if (session?.active && !session.spent && loadDraft() === null) {
+        beginRelease(session);
+      }
+    },
   };
 }
 
@@ -1960,7 +2014,15 @@ async function main(): Promise<void> {
     outcome = await resolveClaim(url);
   }
 
-  await pondScreen(b);
+  /*
+   * The tap has been resolved, so the pond is told what it was rather
+   * than left to work it out. A claim screen about to open means the
+   * arrival waits; a declined takeover starts it afterwards.
+   */
+  const pond = await pondScreen({
+    ...b,
+    arrive: outcome.kind === "none" || outcome.kind === "refused",
+  });
 
   if (url.searchParams.has("t")) {
     // The credential comes out of the URL on every tap that carries one,
@@ -2001,10 +2063,19 @@ async function main(): Promise<void> {
           root.replaceChildren();
           if (r.kind === "claimed") {
             cardSetup({ root, onDone: () => root.replaceChildren() });
+            return;
           }
+          // Somebody got there first, or the gesture went stale between
+          // the question and the answer. The tap is still a tap.
+          pond.startRelease();
         });
       }),
-      button("p-btn p-btn-quiet", t("keeper.34"), () => root.replaceChildren()),
+      button("p-btn p-btn-quiet", t("keeper.34"), () => {
+        root.replaceChildren();
+        // It was an ordinary tap after all. If it dealt a coin, that is
+        // what they came for.
+        pond.startRelease();
+      }),
     );
     body.append(actions);
     root.append(sheetRoot);
