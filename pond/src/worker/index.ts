@@ -29,7 +29,9 @@ import {
   adminDucks, adminState, authorised, contactsCsv, deleteCard, markContact,
   resolveReports, setCardDisabled, setCardLabel, setHidden, setKeeper, signIn,
 } from "./admin.js";
-import { claimCard, ensureCard, keeperState, saveKeeper } from "./keeper.js";
+import {
+  claimCard, claimFromSession, ensureCard, keeperOffer, keeperState, saveKeeper,
+} from "./keeper.js";
 import { createDuck, setContact } from "./release.js";
 import { normaliseSlug, slugTaken } from "./slug.js";
 import { bump, extinguish, maybeIgnite, report, say } from "./social.js";
@@ -236,6 +238,14 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
             // Decides whether the contact screen may offer to share with
             // the keeper. It must name them, so it needs the name.
             keeper: await keeperNameOfCard(env, s.cardId),
+            /*
+             * Whether to offer this person the card. Answered here rather
+             * than inferred by the client from `keeper === null`, because
+             * those are different questions: a keeper who left their name
+             * blank has still claimed the card, and offering it to the
+             * next visitor would be offering something already taken.
+             */
+            keeperOffer: await keeperOffer(env, s),
           }
         : { active: false },
       { headers },
@@ -384,6 +394,39 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     // The epoch id IS the credential for Card setup, the same way an edit
     // key is for a duck. It goes in a cookie rather than the URL so it does
     // not end up in history or a Referer.
+    headers.append("set-cookie", [
+      `pond_keeper=${claim.epochId}`,
+      "Path=/", "HttpOnly", "Secure", "SameSite=Lax", "Max-Age=3600",
+    ].join("; "));
+    return json({ ok: true, orphans: claim.orphans }, { headers });
+  }
+
+  /*
+   * The other way to become a keeper: having just made a duck from a card
+   * nobody keeps. No gesture, no instructions — see `claimFromSession` for
+   * what is actually being proved and why `sessions.spent_duck` is the
+   * thing that proves it.
+   *
+   * A POST with no body, because the request carries no information: the
+   * session cookie IS the argument, and anything the client could send
+   * would only be something to check rather than something to trust.
+   */
+  if (path === "/api/claim/first" && req.method === "POST") {
+    const id = await readSessionCookie(env, req);
+    const s = id ? await loadSession(env, id) : null;
+    if (!s) return json({ ok: false }, { status: 401, headers });
+
+    const claim = await claimFromSession(env, s);
+    if ("error" in claim) {
+      // "already kept" is the one refusal worth distinguishing: it is not
+      // a failure, it is somebody else having got there, and the client
+      // should take the offer down rather than retry it.
+      const kept = claim.error === "already kept";
+      return json({ ok: false, kept }, { status: kept ? 409 : 403, headers });
+    }
+
+    // Same credential as a four-blow claim, same shape, same reasons: a
+    // cookie rather than a URL, so it stays out of history and Referer.
     headers.append("set-cookie", [
       `pond_keeper=${claim.epochId}`,
       "Path=/", "HttpOnly", "Secure", "SameSite=Lax", "Max-Age=3600",

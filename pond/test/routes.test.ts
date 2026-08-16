@@ -1161,3 +1161,155 @@ describe("a serial alone is not a card", () => {
     ).toBe(1);
   });
 });
+
+/**
+ * Keeping a card by having opened it.
+ *
+ * ══ THE GESTURE NOBODY IS TOLD ABOUT ══
+ * Keepership was reachable only by blowing on a card four times during
+ * its boot window. A good proof and a useless only-route: a friend handed
+ * a card never discovers it, so every card given away stayed unclaimed
+ * and every duck from it read `via` nobody.
+ *
+ * The offer is now made to whoever put a duck in the water from a card
+ * nobody keeps. What has to be proved is that somebody is holding the
+ * card NOW — which is `sessions.spent_duck`, not `ducks.card_id`. The
+ * second is durable provenance that never expires, and accepting it would
+ * let a months-old private link claim a card nobody has touched.
+ */
+describe("claiming a card from the tap that made a duck", () => {
+  const signed = (card: string, secret: Uint8Array, digit = 1) =>
+    `?d=${digit}&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`;
+
+  it("offers, and gives, the card to whoever opened it", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const serial = "NEWGFT27";
+    const v = new Visitor(e);
+
+    // Nothing exists yet: no card row, no keeper, nobody registered it.
+    await release(v, {}, signed(serial, secret));
+
+    const before = await v.json<{ keeperOffer: boolean }>("/api/session");
+    expect(before.keeperOffer, "a card nobody keeps is on offer").toBe(true);
+
+    const res = await v.api("/api/claim/first", { method: "POST" });
+    expect(res.status).toBe(200);
+    expect(await count(
+      e.DB,
+      `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = ?1 AND ended IS NULL`,
+      serial,
+    )).toBe(1);
+
+    // And the offer goes away, because it has been taken.
+    const after = await v.json<{ keeperOffer: boolean }>("/api/session");
+    expect(after.keeperOffer).toBe(false);
+  });
+
+  it("does not spend the claim counter, so four blows still take it back", async () => {
+    /*
+     * `claimCard` demands a counter strictly ABOVE the stored mark.
+     * Advancing it here would retire the next real claim to pay for this
+     * one — a card could be kept by a session and then never taken over
+     * by its actual owner.
+     */
+    const e = await env();
+    const secret = testSecret();
+    const serial = "HANDVER8";
+    const v = new Visitor(e);
+
+    await release(v, {}, signed(serial, secret));
+    await v.api("/api/claim/first", { method: "POST" });
+    expect(await count(e.DB, `SELECT claim_counter AS n FROM cards WHERE id = ?1`, serial)).toBe(0);
+
+    // The real owner blows four times and takes it.
+    const owner = new Visitor(e);
+    const res = await owner.post("/api/claim", {
+      card: serial, counter: 1, token: cardToken(secret, serial, 1),
+    });
+    expect(res.status).toBe(200);
+    expect(await count(
+      e.DB,
+      `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = ?1 AND ended IS NULL`,
+      serial,
+    )).toBe(1);
+  });
+
+  it("refuses a card somebody already keeps, and says so distinctly", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const { card } = await makeCard(e.DB, { keeper: "Sam" });
+    const v = new Visitor(e);
+
+    await release(v, {}, signed(card, secret));
+    expect((await v.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(false);
+
+    const res = await v.api("/api/claim/first", { method: "POST" });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ ok: false, kept: true });
+  });
+
+  it("refuses a keeper who left their name blank — claimed is not unnamed", async () => {
+    // The distinction the client must never try to infer from `keeper`.
+    const e = await env();
+    const secret = testSecret();
+    const { card } = await makeCard(e.DB, { keeper: "" });
+    const v = new Visitor(e);
+
+    await release(v, {}, signed(card, secret));
+    const s = await v.json<{ keeper: string | null; keeperOffer: boolean }>("/api/session");
+    expect(s.keeper, "no name to show").toBe(null);
+    expect(s.keeperOffer, "but the card is taken").toBe(false);
+  });
+
+  it("refuses a session whose tap was not signed", async () => {
+    // The whole point of the previous commit, reaching this route: a
+    // typed serial binds no card, so there is no card to claim.
+    const e = await env();
+    testSecret();
+    const { card } = await makeCard(e.DB, { keeper: "" });
+    await e.DB.prepare(`UPDATE card_epochs SET ended = 1 WHERE card_id = ?1`).bind(card).run();
+
+    const v = new Visitor(e);
+    await release(v, {}, `?d=1&c=${card}`);
+    expect((await v.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(false);
+
+    const res = await v.api("/api/claim/first", { method: "POST" });
+    expect(res.status).toBe(403);
+  });
+
+  it("refuses a session that has not released a duck", async () => {
+    // Tapping is not keeping. The duck is the deliberate act.
+    const e = await env();
+    const secret = testSecret();
+    const serial = "NTAPYET9";
+    const v = new Visitor(e);
+    await v.tap(signed(serial, secret));
+
+    expect((await v.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(false);
+    expect((await v.api("/api/claim/first", { method: "POST" })).status).toBe(403);
+  });
+
+  it("refuses with no session at all", async () => {
+    const e = await env();
+    const res = await handle(
+      new Request(`${ORIGIN}/api/claim/first`, { method: "POST" }),
+      e,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("refuses a disabled card", async () => {
+    // The kill switch for a lost card has to cover this route too, or
+    // switching a card off would still let the finder keep it.
+    const e = await env();
+    const secret = testSecret();
+    const serial = "DEADCRD2";
+    const v = new Visitor(e);
+    await release(v, {}, signed(serial, secret));
+    await e.DB.prepare(`UPDATE cards SET disabled = 1 WHERE id = ?1`).bind(serial).run();
+
+    expect((await v.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(false);
+    expect((await v.api("/api/claim/first", { method: "POST" })).status).toBe(403);
+  });
+});

@@ -167,6 +167,133 @@ export async function claimCard(
 }
 
 /**
+ * Claim a card from the tap that just made a duck from it.
+ *
+ * ══ THE GESTURE NOBODY IS TOLD ABOUT ══
+ * Keepership used to be reachable only by blowing on a card four times
+ * during its boot window. That is a good proof — a card on a bar gets
+ * tapped by accident and does not get blown on four times — and it is
+ * useless as the ONLY route, because a friend handed a card will never
+ * discover it. In practice every card given away stayed unclaimed and
+ * every duck from it read `via` nobody.
+ *
+ * So the offer is made in the moment instead, to the person who has just
+ * put a duck in the water from a card that nobody keeps. Blowing four
+ * times remains the way to TAKE OVER a card that already has a keeper;
+ * this is only ever about a card with no current epoch.
+ *
+ * ══ WHAT IS ACTUALLY BEING PROVED ══
+ * That somebody is holding this card NOW. Five things, and the fourth is
+ * the one that is easy to get wrong:
+ *
+ *   1. a live session — the cookie, checked by the caller,
+ *   2. the session is bound to a card, which after the change in
+ *      index.ts means its signature verified on this tap,
+ *   3. the session released a duck,
+ *   4. that duck came from the same card,
+ *   5. the card exists and is not disabled.
+ *
+ * Number four has to be checked against `sessions.spent_duck` rather than
+ * against `ducks.card_id` alone. `ducks.card_id` is DURABLE provenance —
+ * it says which card minted a duck, months ago, and never expires — so
+ * "holds the private link of a duck that came from this card" is not the
+ * same claim as "is holding this card now", and accepting it would let an
+ * old link claim a card nobody has touched.
+ *
+ * ══ THE COUNTER IS NOT SPENT ══
+ * `claim_counter` stays exactly where it is. A four-blow claim must still
+ * be able to take the card afterwards, and `claimCard` demands a counter
+ * strictly ABOVE the stored mark — advancing it here would retire the
+ * next real claim to pay for this one. The epoch records the counter it
+ * opened at, which for a session claim is simply the current mark.
+ *
+ * The race is left to the database: the partial unique index on
+ * `(card_id) WHERE ended IS NULL` means two simultaneous claims cannot
+ * both open an epoch, and the loser is told somebody already keeps it
+ * rather than getting a 500.
+ */
+export type SessionClaimRefusal =
+  | "no session"
+  | "no card"
+  | "no duck"
+  | "unknown card"
+  | "already kept";
+
+export async function claimFromSession(
+  env: Env,
+  session: { cardId: string | null; spentDuck: string | null },
+): Promise<{ epochId: string; orphans: number } | { error: SessionClaimRefusal }> {
+  const cardId = session.cardId;
+  if (!cardId) return { error: "no card" };
+  if (!session.spentDuck) return { error: "no duck" };
+
+  // The duck this session released must itself be from this card. Both
+  // halves come from rows the visitor cannot write, so this is a fact
+  // rather than an assertion they made.
+  const duck = await env.DB.prepare(`SELECT card_id FROM ducks WHERE id = ?1`)
+    .bind(session.spentDuck)
+    .first<{ card_id: string | null }>();
+  if (!duck || duck.card_id !== cardId) return { error: "no duck" };
+
+  // `card_epochs.card_id` is a foreign key and `counter` is NOT NULL, so
+  // both are established before the insert rather than left to a
+  // constraint violation.
+  const card = await env.DB.prepare(
+    `SELECT id, disabled, claim_counter FROM cards WHERE id = ?1`,
+  )
+    .bind(cardId)
+    .first<{ id: string; disabled: number; claim_counter: number }>();
+  if (!card || card.disabled) return { error: "unknown card" };
+
+  const current = await env.DB.prepare(
+    `SELECT id FROM card_epochs WHERE card_id = ?1 AND ended IS NULL`,
+  )
+    .bind(cardId)
+    .first<{ id: string }>();
+  if (current) return { error: "already kept" };
+
+  const epochId = randomId(16);
+  try {
+    await env.DB.prepare(
+      `INSERT INTO card_epochs (id, card_id, keeper_name, lang, counter, claimed)
+       VALUES (?1, ?2, '', 'en', ?3, ?4)`,
+    )
+      .bind(epochId, cardId, Number(card.claim_counter ?? 0), nowSec())
+      .run();
+  } catch {
+    // The unique index fired: somebody else claimed it between the check
+    // above and this insert. That is the same outcome as losing the race
+    // by a second, and it is not an error worth a 500.
+    return { error: "already kept" };
+  }
+
+  return { epochId, orphans: await orphanCount(env, cardId) };
+}
+
+/**
+ * Is there a card here for the taking?
+ *
+ * What the pond bar asks before it offers. Deliberately the same shape as
+ * the claim's own checks, minus the writes — anything else and the button
+ * appears for a claim that will be refused.
+ */
+export async function keeperOffer(
+  env: Env,
+  session: { cardId: string | null; spentDuck: string | null } | null,
+): Promise<boolean> {
+  if (!session?.cardId || !session.spentDuck) return false;
+  const row = await env.DB.prepare(
+    `SELECT (SELECT COUNT(*) FROM card_epochs e
+              WHERE e.card_id = c.id AND e.ended IS NULL) AS kept,
+            c.disabled
+       FROM cards c WHERE c.id = ?1`,
+  )
+    .bind(session.cardId)
+    .first<{ kept: number; disabled: number }>();
+  return Boolean(row) && !row!.disabled && Number(row!.kept) === 0;
+}
+
+/**
  * Ducks from this card with no epoch — released before anyone claimed it.
  *
  * Offered for adoption rather than adopted automatically: they are somebody
