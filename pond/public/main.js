@@ -2298,6 +2298,33 @@ function isClaimUrl(url) {
   const counter = parseInt(g, 16);
   return Number.isInteger(counter) && counter > 0;
 }
+var CLAIM_SEEN = "pond.claim.seen";
+function claimCounter(url) {
+  if (!isClaimUrl(url)) return null;
+  const card = url.searchParams.get("c") ?? "";
+  const counter = parseInt(url.searchParams.get("g") ?? "", 16);
+  return card && Number.isInteger(counter) ? { card, counter } : null;
+}
+function claimIsFresh(url) {
+  const at = claimCounter(url);
+  if (!at) return false;
+  try {
+    const raw = localStorage.getItem(`${CLAIM_SEEN}.${at.card}`);
+    if (raw === null) return true;
+    const seen = parseInt(raw, 10);
+    return !Number.isInteger(seen) || at.counter > seen;
+  } catch {
+    return true;
+  }
+}
+function rememberClaimAttempt(url) {
+  const at = claimCounter(url);
+  if (!at) return;
+  try {
+    localStorage.setItem(`${CLAIM_SEEN}.${at.card}`, String(at.counter));
+  } catch {
+  }
+}
 async function claimFromUrl(url) {
   const card = url.searchParams.get("c");
   const g = url.searchParams.get("g");
@@ -6059,10 +6086,12 @@ async function main() {
   await pondScreen(b);
   const url = new URL(location.href);
   if (url.searchParams.has("t")) {
-    const claiming = isClaimUrl(url);
+    const claiming = claimIsFresh(url);
+    if (claiming) rememberClaimAttempt(url);
     const claimed = claiming && await claimFromUrl(url);
     history.replaceState(null, "", url.pathname);
     if (!claiming) return;
+    if (!claimed && Number(url.searchParams.get("d") ?? 0) >= 1) return;
     const root2 = document.querySelector(".p-overlay");
     if (claimed) {
       cardSetup({ root: root2, onDone: () => root2.replaceChildren() });

@@ -21,8 +21,8 @@
  * they can state the rule that both bugs broke without a browser.
  */
 
-import { describe, expect, it } from "vitest";
-import { isClaimUrl } from "../src/client/keeper.js";
+import { beforeEach, describe, expect, it } from "vitest";
+import { claimIsFresh, isClaimUrl, rememberClaimAttempt } from "../src/client/keeper.js";
 
 /** A tag, as provisioned. Only the digit changes between taps. */
 const tag = (digit: number, counter = 0) =>
@@ -65,5 +65,70 @@ describe("a tap is not a claim", () => {
     expect(isClaimUrl(new URL("https://x.test/?c=5BKZH69H&g=zzzz&t=abc"))).toBe(false);
     expect(isClaimUrl(new URL("https://x.test/?c=5BKZH69H&g=&t=abc"))).toBe(false);
     expect(isClaimUrl(new URL("https://x.test/?c=5BKZH69H&g=-1&t=abc"))).toBe(false);
+  });
+});
+
+/**
+ * An armed tag stays armed.
+ *
+ * Blowing four times writes `&g=` into the tag and it STAYS there. The
+ * claim is spent the first time it is used; the card goes on serving the
+ * same URL for every tap afterwards. So every ordinary tap of a card that
+ * was ever armed looked like a claim, the server correctly refused it as
+ * already used, and the person got "This card could not be set up" while
+ * trying to make a duck.
+ *
+ * The server cannot help: it returns the same refusal for a spent counter
+ * as for a forged token, on purpose. The client can, because it knows
+ * whether it has spent this counter before.
+ */
+describe("a claim is only fresh once", () => {
+  const armed = (counter: number) =>
+    new URL(`https://ducky.davidyang.work/?d=1&c=5BKZH69H`
+      + `&g=${counter.toString(16).padStart(4, "0")}&t=5d29221795`);
+
+  /*
+   * These tests run in the node environment, which has no localStorage —
+   * and the thing under test is precisely what the client remembers
+   * between taps. A three-line map is a truer stand-in than a mock of the
+   * function itself, which would only assert that the mock was called.
+   */
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+      clear: () => store.clear(),
+    };
+  });
+
+  it("is fresh the first time and stale after", () => {
+    const url = armed(3);
+    expect(claimIsFresh(url), "never seen").toBe(true);
+    rememberClaimAttempt(url);
+    expect(claimIsFresh(url), "the tag will keep offering it").toBe(false);
+  });
+
+  it("is fresh again once the card is blown on anew", () => {
+    rememberClaimAttempt(armed(3));
+    expect(claimIsFresh(armed(4)), "a higher counter is a new gesture").toBe(true);
+  });
+
+  it("treats a counter below the last one as stale", () => {
+    // Out-of-order taps, or a tag read before it finished being written.
+    rememberClaimAttempt(armed(9));
+    expect(claimIsFresh(armed(5))).toBe(false);
+  });
+
+  it("remembers per card, so one card does not silence another", () => {
+    rememberClaimAttempt(armed(3));
+    const other = new URL(
+      "https://ducky.davidyang.work/?d=1&c=SECNDCRD&g=0003&t=5d29221795");
+    expect(claimIsFresh(other)).toBe(true);
+  });
+
+  it("is never fresh for something that is not a claim", () => {
+    expect(claimIsFresh(new URL("https://x.test/?d=1&c=5BKZH69H&g=0000&t=abc"))).toBe(false);
   });
 });

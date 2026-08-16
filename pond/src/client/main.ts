@@ -20,7 +20,9 @@ import { icon } from "./icons.js";
 import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
 import { CAM_UI, CAM_ZOOM, HOME_CELL, easeOutCubic } from "./camera.js";
-import { cardSetup, claimFromUrl, isClaimUrl } from "./keeper.js";
+import {
+  cardSetup, claimFromUrl, claimIsFresh, isClaimUrl, rememberClaimAttempt,
+} from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, SPLASH_TAP, type Placed } from "./pond-view.js";
 import { GRID } from "./codec.js";
@@ -1968,10 +1970,25 @@ async function main(): Promise<void> {
      * an ordinary tap of an un-armed card was reported as a claim that
      * failed. Only a counter above zero is a claim; see `isClaimUrl`.
      */
-    const claiming = isClaimUrl(url);
+    /*
+     * Fresh, not merely present. An armed tag keeps serving the same `&g=`
+     * for every tap after the claim is spent — see `claimIsFresh` — so
+     * "carries a claim" is not the same question as "is claiming".
+     */
+    const claiming = claimIsFresh(url);
+    if (claiming) rememberClaimAttempt(url);
     const claimed = claiming && (await claimFromUrl(url));
     history.replaceState(null, "", url.pathname);
     if (!claiming) return;
+
+    /*
+     * And a refusal never blocks a fortune. If this tap also dealt a
+     * coin, the person came to make a duck and that is what they get —
+     * an apology about card setup on top of the arrival is an error
+     * message in front of the thing they actually came for.
+     */
+    if (!claimed && (Number(url.searchParams.get("d") ?? 0) >= 1)) return;
+
     const root = document.querySelector<HTMLElement>(".p-overlay")!;
 
     if (claimed) {

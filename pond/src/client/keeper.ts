@@ -495,6 +495,67 @@ export function isClaimUrl(url: URL): boolean {
   return Number.isInteger(counter) && counter > 0;
 }
 
+/*
+ * The counter this browser has already tried, per card.
+ *
+ * ══ AN ARMED TAG STAYS ARMED ══
+ * Blowing four times writes `&g=` into the tag, and it STAYS there. The
+ * claim is spent the first time it is used, but the card goes on serving
+ * the same URL for every tap afterwards — so every ordinary tap of a card
+ * that was ever armed looked like a claim, and the server correctly
+ * refused it as already used, and the person got "This card could not be
+ * set up" while trying to make a duck.
+ *
+ * David hit it the moment he used the four-blow setup: the card worked,
+ * and then would not let him make a duck.
+ *
+ * The server cannot help here — it deliberately returns the same refusal
+ * for a spent counter as for a forged token, so that somebody walking the
+ * counter space learns nothing. But the CLIENT knows something the server
+ * does not: whether it has tried this exact counter before. A counter it
+ * has already spent is not a claim attempt at all, and asking again is
+ * how a stale tag turns into an error message.
+ *
+ * The serial is used as the key. It is already in this browser's own
+ * history from the tap that put it there, so storing it locally reveals
+ * nothing that was not already local.
+ */
+const CLAIM_SEEN = "pond.claim.seen";
+
+function claimCounter(url: URL): { card: string; counter: number } | null {
+  if (!isClaimUrl(url)) return null;
+  const card = url.searchParams.get("c") ?? "";
+  const counter = parseInt(url.searchParams.get("g") ?? "", 16);
+  return card && Number.isInteger(counter) ? { card, counter } : null;
+}
+
+/** A claim this browser has not already spent. */
+export function claimIsFresh(url: URL): boolean {
+  const at = claimCounter(url);
+  if (!at) return false;
+  try {
+    const raw = localStorage.getItem(`${CLAIM_SEEN}.${at.card}`);
+    if (raw === null) return true;
+    const seen = parseInt(raw, 10);
+    return !Number.isInteger(seen) || at.counter > seen;
+  } catch {
+    // No storage: every tap looks fresh. The server still refuses a spent
+    // counter, so the worst case is the old behaviour rather than a hole.
+    return true;
+  }
+}
+
+/** Spent, whether it worked or not: the tag will keep offering it. */
+export function rememberClaimAttempt(url: URL): void {
+  const at = claimCounter(url);
+  if (!at) return;
+  try {
+    localStorage.setItem(`${CLAIM_SEEN}.${at.card}`, String(at.counter));
+  } catch {
+    /* nothing to do, and nothing lost that was not already lost */
+  }
+}
+
 export async function claimFromUrl(url: URL): Promise<boolean> {
   const card = url.searchParams.get("c");
   const g = url.searchParams.get("g");
