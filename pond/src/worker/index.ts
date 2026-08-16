@@ -30,7 +30,7 @@ import {
   resolveReports, setCardDisabled, setCardLabel, setHidden, setKeeper, signIn,
 } from "./admin.js";
 import {
-  claimCard, claimFromSession, ensureCard, epochForEditKey, keeperOffer,
+  claimCard, claimFromSession, endTenure, ensureCard, epochForEditKey, keeperOffer,
   keeperState, saveKeeper,
 } from "./keeper.js";
 import { createDuck, setContact } from "./release.js";
@@ -433,6 +433,31 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
       "Path=/", "HttpOnly", "Secure", "SameSite=Lax", "Max-Age=3600",
     ].join("; "));
     return json({ ok: true, orphans: claim.orphans }, { headers });
+  }
+
+  /*
+   * Hand the card on. Same two credentials as `/api/keeper`, because it is
+   * the same authority — and a separate route rather than a flag on the
+   * save, so that "I am no longer keeping this" can never be something a
+   * save does by accident.
+   */
+  if (path === "/api/keeper/end" && req.method === "POST") {
+    const body = await readJson(req);
+    const cookie = (req.headers.get("cookie") ?? "").match(
+      /(?:^|;\s*)pond_keeper=([A-Za-z0-9]{8,32})/,
+    )?.[1];
+    const key = typeof body?.editKey === "string" ? body.editKey : null;
+    const epochId = cookie ?? (await epochForEditKey(env, key));
+    if (!epochId) return notFound(headers);
+
+    const ended = await endTenure(env, epochId);
+    if (!ended) return notFound(headers);
+    // The cookie is spent the moment the tenure is. Leaving it set would
+    // leave a dead credential in the browser that 404s confusingly.
+    headers.append("set-cookie", [
+      "pond_keeper=", "Path=/", "HttpOnly", "Secure", "SameSite=Lax", "Max-Age=0",
+    ].join("; "));
+    return json({ ok: true }, { headers });
   }
 
   if (path === "/api/keeper") {

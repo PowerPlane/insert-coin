@@ -267,6 +267,27 @@ export async function claimFromSession(
     return { error: "already kept" };
   }
 
+  /*
+   * ══ THE DUCK THAT CLAIMED IT BELONGS TO IT ══
+   * Adoption is normally an explicit offer, because the ducks on a card
+   * from before a claim are SOMEBODY ELSE'S and a keeper saying "yes,
+   * those are mine" is a different act from the system deciding it.
+   *
+   * This one duck is not that. It is the duck this very person just made,
+   * and it is the thing that proved the claim — leaving it an orphan
+   * would mean the keeper's own duck was the one duck on the card that
+   * did not read `via Sam`, which was found by a test asserting the
+   * obvious and getting nothing.
+   *
+   * `epoch_id IS NULL` so this can never move a duck out of a previous
+   * tenure, which is the rule the whole epoch design exists to keep.
+   */
+  await env.DB.prepare(
+    `UPDATE ducks SET epoch_id = ?1 WHERE id = ?2 AND epoch_id IS NULL`,
+  )
+    .bind(epochId, session.spentDuck)
+    .run();
+
   return { epochId, orphans: await orphanCount(env, cardId) };
 }
 
@@ -482,6 +503,35 @@ export async function saveKeeper(
 
   const results = await env.DB.batch(writes);
   return { ok: true, adopted: s.adopt ? (results[1]?.meta.changes ?? 0) : 0 };
+}
+
+/**
+ * Hand the card on.
+ *
+ * ══ ENDING A TENURE IS NOT DELETING ANYTHING ══
+ * The epoch is closed, and that is all. Every duck stays exactly where it
+ * is, keeps its `epoch_id`, and keeps reading `via Sam` — because it WAS
+ * from Sam's card, and rewriting that would be a lie about the past
+ * rather than a tidy-up. Contacts stay attached to the tenure they were
+ * given to, which is the entire reason contacts point at an epoch: the
+ * next keeper inherits none of them and does not have to be trusted not
+ * to.
+ *
+ * Afterwards the card is claimable again — by the next person to make a
+ * duck from it, or by four blows.
+ *
+ * This is deliberately NOT the same act as "take my name off", which is
+ * `saveKeeper` with an empty name: that keeps the card and drops the
+ * byline. Two intentions, two actions, because collapsing them into one
+ * button called Delete would make the reversible one look final.
+ */
+export async function endTenure(env: Env, epochId: string): Promise<boolean> {
+  const done = await env.DB.prepare(
+    `UPDATE card_epochs SET ended = ?1 WHERE id = ?2 AND ended IS NULL`,
+  )
+    .bind(nowSec(), epochId)
+    .run();
+  return Boolean(done.meta.changes);
 }
 
 /**

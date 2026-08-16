@@ -1408,3 +1408,112 @@ describe("a keeper's own duck lets them back in", () => {
     expect((await handle(new Request(`${ORIGIN}/api/keeper`), e)).status).toBe(404);
   });
 });
+
+/**
+ * Handing a card on.
+ *
+ * Two intentions, two actions. "Take my name off" keeps the card and
+ * drops the byline; "someone else keeps it now" ends the tenure. One
+ * button called Delete would make the reversible one look final.
+ */
+describe("ending a tenure", () => {
+  const signed = (card: string, secret: Uint8Array) =>
+    `?d=1&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`;
+
+  async function kept(e: Env, serial: string) {
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed(serial, secret));
+    await v.api("/api/claim/first", { method: "POST" });
+    await v.post("/api/keeper", { name: "Sam", editKey: duck.editKey });
+    return { v, duck, secret };
+  }
+
+  it("frees the card without touching a single duck", async () => {
+    const e = await env();
+    const { v, duck } = await kept(e, "PASSEDN3");
+
+    expect((await v.post("/api/keeper/end", {})).status).toBe(200);
+    expect(await count(
+      e.DB,
+      `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = 'PASSEDN3' AND ended IS NULL`,
+    )).toBe(0);
+    // The duck is untouched, and still points at the tenure it was made
+    // under — it WAS from Sam's card, and rewriting that would be a lie
+    // about the past rather than a tidy-up.
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1`, duck.id)).toBe(1);
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND epoch_id IS NOT NULL`, duck.id,
+    )).toBe(1);
+  });
+
+  it("puts the card back on offer to the next person who makes a duck", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const serial = "REGVEN44";
+    const { v } = await kept(e, serial);
+    await v.post("/api/keeper/end", {});
+
+    const next = new Visitor(e);
+    await release(next, {}, signed(serial, secret));
+    expect((await next.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(true);
+    expect((await next.api("/api/claim/first", { method: "POST" })).status).toBe(200);
+  });
+
+  it("spends the cookie, so no dead credential is left in the browser", async () => {
+    const e = await env();
+    const { v } = await kept(e, "SPENTCK5");
+    const res = await v.post("/api/keeper/end", {});
+    expect(res.headers.getSetCookie?.().join(" ")).toMatch(/pond_keeper=;.*Max-Age=0/);
+    // And the same request cannot end it twice.
+    expect((await v.post("/api/keeper/end", {})).status).toBe(404);
+  });
+
+  it("can be done with the private link alone", async () => {
+    const e = await env();
+    const { duck } = await kept(e, "BYKEYNN6");
+    const cold = await handle(
+      new Request(`${ORIGIN}/api/keeper/end`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ editKey: duck.editKey }),
+      }),
+      e,
+    );
+    expect(cold.status).toBe(200);
+  });
+
+  it("refuses a stranger's private link", async () => {
+    const e = await env();
+    await kept(e, "SAFEKPR7");
+    const stranger = await release(new Visitor(e));
+    const res = await handle(
+      new Request(`${ORIGIN}/api/keeper/end`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ editKey: stranger.editKey }),
+      }),
+      e,
+    );
+    expect(res.status).toBe(404);
+    expect(await count(
+      e.DB,
+      `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = 'SAFEKPR7' AND ended IS NULL`,
+    )).toBe(1);
+  });
+
+  it("taking a name off is a different act that keeps the card", async () => {
+    const e = await env();
+    const { v, duck } = await kept(e, "NNAMED28");
+    expect((await v.post("/api/keeper", { name: "", editKey: duck.editKey })).status).toBe(200);
+
+    expect(await count(
+      e.DB,
+      `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = 'NNAMED28' AND ended IS NULL`,
+    ), "still the keeper").toBe(1);
+    // And the card is NOT back on offer — claimed is not unnamed.
+    const other = new Visitor(e);
+    await release(other, {}, signed("NNAMED28", testSecret()));
+    expect((await other.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(false);
+  });
+});
