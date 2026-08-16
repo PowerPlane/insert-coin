@@ -19,6 +19,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { handle } from "../src/worker/index.js";
+import { cardToken } from "../src/card/identity.js";
 import { duckPage, editPage, pondPage } from "../src/worker/pages.js";
 import { MINT_PER_VISITOR } from "../src/worker/limits.js";
 import { BUMP_UNRETURNED_CAP } from "../src/worker/social.js";
@@ -946,5 +947,109 @@ describe("the admin editing cards", () => {
       expect(res.status, path).toBe(404);
     }
     expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1`, "CARD0006")).toBe(1);
+  });
+});
+
+
+
+/**
+ * The key the test server verifies with.
+ *
+ * `secret()` in keeper.ts reads `process.env.CARD_SECRET` and demands
+ * exactly 32 hex characters, so the tests set the same one rather than
+ * guessing at the shape.
+ */
+function testSecret(): Uint8Array {
+  const hex = "0123456789abcdef0123456789abcdef";
+  process.env.CARD_SECRET = hex;
+  return new Uint8Array((hex.match(/../g) ?? []).map((b) => parseInt(b, 16)));
+}
+
+describe("a card introduces itself", () => {
+  /*
+   * ══ NO LIST TO KEEP ══
+   * Cards used to be recorded by hand and the server refused any serial it
+   * had not been told about. But a serial never travels alone: every tag
+   * carries `&t=`, an HMAC over the serial and counter using CARD_SECRET,
+   * written from the very first boot. The list was guarding a door the
+   * signature already locks.
+   */
+  const tapUrl = (card: string, counter: number, token: string, digit = 1) =>
+    `${ORIGIN}/?d=${digit}&c=${card}&g=${counter.toString(16).padStart(4, "0")}&t=${token}`;
+
+  it("registers itself on a tap the signature vouches for", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const serial = "NEWCARD1";
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1`, serial)).toBe(0);
+
+    await pondPage(new Request(tapUrl(serial, 0, cardToken(secret, serial, 0))), e);
+
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1`, serial)).toBe(1);
+    /*
+     * And `claim_counter` starts at 0 rather than being seeded from the
+     * counter on the tag. Seeding it from a card that happened to arrive
+     * armed would retire that claim before anybody could use it.
+     */
+    expect(await count(e.DB, `SELECT claim_counter AS n FROM cards WHERE id = ?1`, serial)).toBe(0);
+  });
+
+  it("registers a card whose fortune window has closed", async () => {
+    // `?d=0` is a card that has gone quiet. It is no less real for that,
+    // and somebody who taps it should still be able to claim it.
+    const e = await env();
+    const secret = testSecret();
+    const serial = "QNETCRD2";
+    await pondPage(new Request(tapUrl(serial, 0, cardToken(secret, serial, 0), 0)), e);
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1`, serial)).toBe(1);
+  });
+
+  it("ignores a serial with no signature to back it", async () => {
+    /*
+     * The phantom-card problem the manual list existed to prevent, tested
+     * directly: anybody can type `&c=` into a browser, and typing it must
+     * create nothing.
+     */
+    const e = await env();
+    await pondPage(new Request(`${ORIGIN}/?d=1&c=MADEUPXX`), e);
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1`, "MADEPXX5")).toBe(0);
+  });
+
+  it("ignores a signature signed with the wrong key", async () => {
+    // NOTE: the serial here is deliberately a VALID Crockford one, so the
+    // test fails for the reason it claims. An invented serial containing
+    // I, L, O or U is rejected on its shape before the signature is even
+    // looked at, and would pass while proving nothing.
+    /*
+     * A card flashed with the all-zero placeholder from secrets.h.example
+     * signs with zeros. It never verifies, so it never registers — which
+     * makes that mistake VISIBLE (the card simply never appears) instead
+     * of leaving a card with a forgeable token quietly in the pond.
+     */
+    const e = await env();
+    const wrong = new Uint8Array(16); // the placeholder, all zeros
+    const serial = "PACEHDX4";
+    await pondPage(new Request(tapUrl(serial, 0, cardToken(wrong, serial, 0))), e);
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM cards WHERE id = ?1`, serial)).toBe(0);
+  });
+
+  it("lets a brand new card be claimed without anybody registering it", async () => {
+    // The whole point, end to end: flash a card, hand it over, blow four
+    // times, tap. Nothing was recorded and nothing was imported.
+    const e = await env();
+    const secret = testSecret();
+    const serial = "GFTCARD3";
+    const v = new Visitor(e);
+
+    // The ordinary tap that introduces it.
+    await pondPage(new Request(tapUrl(serial, 0, cardToken(secret, serial, 0))), e);
+    // And the armed one, after four blows.
+    const res = await v.api("/api/claim", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ card: serial, counter: 1, token: cardToken(secret, serial, 1) }),
+    });
+    expect(res.status).toBe(200);
+    expect(await count(e.DB, `SELECT claim_counter AS n FROM cards WHERE id = ?1`, serial)).toBe(1);
   });
 });

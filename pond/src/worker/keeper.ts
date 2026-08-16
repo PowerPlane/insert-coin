@@ -42,6 +42,72 @@ function secret(): Uint8Array | null {
 }
 
 /**
+ * Register a card the first time one of its own taps proves it exists.
+ *
+ * ══ WHY THERE IS NO LIST TO KEEP ══
+ * Cards used to have to be recorded by hand — `record-card.sh` into
+ * `cards.csv`, then `cards:import` — and the server refused any serial it
+ * had not been told about. The reasoning was sound as far as it went:
+ * `&c=` is typed text, so without a gate anyone could conjure cards that
+ * never existed and the Cards tab would fill with phantoms.
+ *
+ * But that reasoning is about the SERIAL ON ITS OWN, and the serial never
+ * travels alone. Every tag carries `&c=`, `&g=` and `&t=`, and `&t=` is an
+ * HMAC over the serial and the counter using CARD_SECRET — which only the
+ * firmware has. From `provision.cpp`: "the counter starts at 0 and its
+ * signature ships with it". So a card proves who it is on its very first
+ * tap, before it has ever been armed.
+ *
+ * The manual list was therefore guarding a door the cryptography already
+ * locks. A phantom card needs a valid signature, a valid signature needs
+ * the key, and anybody with the key could flash real cards anyway.
+ *
+ * So the gate moves from "is this serial on a list I maintain" to "is this
+ * signature real" — which is a stronger question, asked automatically.
+ *
+ * Two things get BETTER rather than merely easier:
+ *
+ *   A card flashed with the all-zero placeholder key signs with zeros, so
+ *   it never verifies and never registers. The KS0KEKBX class of mistake
+ *   becomes visible — the card simply never appears — instead of sitting
+ *   quietly in the pond with a forgeable token.
+ *
+ *   `cards.csv` stops being a thing that can drift from reality. The
+ *   database learns from the cards themselves.
+ *
+ * Returns whether this tap came from a real card, so callers can tell a
+ * genuine tap from somebody typing `?d=1` into a browser.
+ */
+export async function ensureCard(
+  env: Env,
+  cardId: string | null,
+  counterHex: string | null,
+  token: string | null,
+): Promise<boolean> {
+  if (!cardId || !counterHex || !token) return false;
+  const key = secret();
+  if (!key) return false;
+
+  const counter = parseInt(counterHex, 16);
+  if (!Number.isInteger(counter) || counter < 0 || counter > 0xffff) return false;
+  if (!verifyClaim(key, cardId, counter, token)) return false;
+
+  /*
+   * INSERT OR IGNORE, and `claim_counter` is NOT seeded from the counter
+   * on the tag. It starts at 0 so the first real claim — which must
+   * EXCEED the stored mark — is still accepted. Seeding it from a card
+   * that happened to arrive armed would retire that claim before anybody
+   * could use it.
+   */
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO cards (id, label, created) VALUES (?1, '', ?2)`,
+  )
+    .bind(cardId, nowSec())
+    .run();
+  return true;
+}
+
+/**
  * Turn a signed claim into an epoch.
  *
  * The counter is advanced in the SAME statement that checks it, so two taps

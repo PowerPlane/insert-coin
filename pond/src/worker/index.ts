@@ -29,7 +29,7 @@ import {
   adminDucks, adminState, authorised, contactsCsv, deleteCard, markContact,
   resolveReports, setCardDisabled, setCardLabel, setHidden, setKeeper, signIn,
 } from "./admin.js";
-import { claimCard, keeperState, saveKeeper } from "./keeper.js";
+import { claimCard, ensureCard, keeperState, saveKeeper } from "./keeper.js";
 import { createDuck, setContact } from "./release.js";
 import { normaliseSlug, slugTaken } from "./slug.js";
 import { bump, extinguish, maybeIgnite, report, say } from "./social.js";
@@ -112,6 +112,23 @@ export async function mintFromQuery(
   url: URL,
   visitor: string,
 ): Promise<string | null> {
+  /*
+   * ══ THE CARD REGISTERS ITSELF ══
+   * Before anything else, and regardless of whether there is a fortune to
+   * mint. A tap carrying a valid signature is a real card saying hello,
+   * and that is the only introduction the pond needs — no CSV, no import
+   * step, nothing to keep in step by hand.
+   *
+   * It runs even for `?d=0`, a card whose fortune window has closed,
+   * because the card is no less real for having gone quiet.
+   */
+  await ensureCard(
+    env,
+    safeToken(url.searchParams.get("c"), 12),
+    url.searchParams.get("g"),
+    url.searchParams.get("t"),
+  );
+
   const digit = intParam(url.searchParams.get("d"), 0, 4);
   if (!digit || digit < 1) return null;
 
