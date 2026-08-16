@@ -480,6 +480,12 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     const cookie = (req.headers.get("cookie") ?? "").match(
       /(?:^|;\s*)pond_keeper=([A-Za-z0-9]{8,32})/,
     )?.[1];
+    /*
+     * `null` only when the field is absent. An empty string is a key that
+     * resolves to nothing, and treating it as "no key given" let a live
+     * cookie for another card answer — which is the same wrong-card
+     * hazard the precedence below exists to close.
+     */
     const key = typeof body?.editKey === "string" ? body.editKey : null;
     /*
      * ══ THE EXPLICIT CREDENTIAL WINS ══
@@ -505,7 +511,7 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
      * on CARD A from card B's screen. That is the wrong-card destructive
      * action the previous fix was for, surviving through the other door.
      */
-    const epochId = key ? await epochForEditKey(env, key) : cookie;
+    const epochId = key !== null ? await epochForEditKey(env, key) : cookie;
     if (!epochId) return notFound(headers);
 
     const ended = await endTenure(env, epochId);
@@ -534,14 +540,30 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
      * consuming it twice yields nothing the second time.
      */
     const body = req.method === "POST" ? await readJson(req) : null;
+    /*
+     * ══ editKey MEANS TWO THINGS ON THIS ROUTE ══
+     * On the GET it is purely a credential, so present-and-empty is an
+     * unresolved one and must not fall back on whatever this browser
+     * claimed last.
+     *
+     * On the POST it is ALSO a payload field: an empty string is how the
+     * setup screen says "unlink my duck". Treating that as a failed
+     * credential broke unlinking, which is authorised by the cookie and
+     * always was.
+     *
+     * So the POST authorises on a NON-EMPTY key only. Nobody holds an
+     * empty key, so this cannot be used to borrow another card's cookie:
+     * the full setup screen is reached by claiming, which sets the cookie
+     * for that same card.
+     */
     const key = req.method === "POST"
-      ? (typeof body?.editKey === "string" ? body.editKey : null)
+      ? (typeof body?.editKey === "string" && body.editKey ? body.editKey : null)
       : url.searchParams.get("editKey");
     // Strict, for the reason spelled out on `/api/keeper/end` above: a
     // key that resolves to nothing means this duck keeps no card, and
     // answering with whatever the cookie remembers puts another card's
     // settings on this duck's screen.
-    const epochId = key ? await epochForEditKey(env, key) : cookie;
+    const epochId = key !== null ? await epochForEditKey(env, key) : cookie;
     if (!epochId) return notFound(headers);
 
     if (req.method === "GET") {

@@ -136,7 +136,11 @@ describe("a claim needs a counter above the high-water mark", () => {
 describe("a card has a succession of keepers, not an owner", () => {
   it("closes the previous tenure when a new one opens", async () => {
     const e = await env();
-    await claimCard(e, CARD, 1, sign(1), null, true);
+    const first = opened(await claimCard(e, CARD, 1, sign(1), null, true));
+    // A tenure with a NAME. An empty one — no name, no duck — is resumed
+    // rather than replaced, because there is nothing there to take over
+    // and replacing it is how a keeper gets stranded.
+    await saveKeeper(e, first.epochId, { name: "Sam" });
     await claimCard(e, CARD, 2, sign(2), null, true);
 
     expect(await count(e.DB, `SELECT COUNT(*) AS n FROM card_epochs`)).toBe(2);
@@ -207,6 +211,8 @@ describe("card setup", () => {
   it("refuses a keeper whose tenure has ended", async () => {
     const e = await env();
     const first = opened(await claimCard(e, CARD, 1, sign(1), null, true));
+    // Named, so the next claim is a real succession rather than a resume.
+    await saveKeeper(e, first.epochId, { name: "Sam" });
     await claimCard(e, CARD, 2, sign(2), null, true);
 
     // Sam's cookie still exists; Sam is no longer the keeper.
@@ -612,5 +618,73 @@ describe("taking a card over is a second, deliberate act", () => {
     await saveKeeper(e, first.epochId, { name: "Sam", editKey: editKeyFor("quiet") });
 
     expect(await claimCard(e, CARD, 2, "0000000000")).toEqual({ error: "bad token" });
+  });
+});
+
+/**
+ * What the adversarial read of the state machine turned up.
+ *
+ * Each of these is a sequence Codex found by walking tap/press/decline/
+ * expire orderings against the map in docs/pond/FLOWS.md, and each one
+ * either stranded a card or answered a question it had not earned.
+ */
+describe("state machine holes", () => {
+  it("resumes a tenure with no name and no duck instead of replacing it", async () => {
+    /*
+     * A keeper who claimed and closed the setup screen without saving has
+     * nothing to prove they are themselves. Asked whether they want to
+     * take over their own card and saying yes threw away the tenure they
+     * were already in — and once the one-hour cookie expired, that tenure
+     * could only ever be replaced, never re-entered. There is nothing
+     * there to protect: no byline, and no keeper for a contact to have
+     * been shared WITH.
+     */
+    const e = await env();
+    const first = opened(await claimCard(e, CARD, 1, sign(1)));
+
+    const again = opened(await claimCard(e, CARD, 2, sign(2)));
+    expect(again.epochId, "the same tenure, not a new one").toBe(first.epochId);
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM card_epochs`)).toBe(1);
+  });
+
+  it("still asks once the tenure has a name", async () => {
+    const e = await env();
+    const first = opened(await claimCard(e, CARD, 1, sign(1)));
+    await saveKeeper(e, first.epochId, { name: "Sam" });
+    expect(await claimCard(e, CARD, 2, sign(2))).toEqual({ takeover: true, keeper: "Sam" });
+  });
+
+  it("will not answer the question for a counter that is already spent", async () => {
+    /*
+     * It asked before checking the counter, so ANY signed URL for the
+     * card — an ordinary tap at g=0000, or an armed one spent months ago
+     * — could ask whether the card was kept and be told the keeper's
+     * name. It also let a stale tag raise a question that confirming
+     * would then refuse.
+     */
+    const e = await env();
+    const first = opened(await claimCard(e, CARD, 5, sign(5)));
+    await saveKeeper(e, first.epochId, { name: "Sam" });
+
+    expect(await claimCard(e, CARD, 5, sign(5)), "the counter it was claimed at")
+      .toEqual({ error: "already used" });
+    expect(await claimCard(e, CARD, 2, sign(2)), "an older one").toEqual({ error: "already used" });
+    expect(await claimCard(e, CARD, 0, sign(0)), "an ordinary tap")
+      .toEqual({ error: "already used" });
+    // And a genuinely fresh gesture still gets asked.
+    expect(await claimCard(e, CARD, 6, sign(6))).toEqual({ takeover: true, keeper: "Sam" });
+  });
+
+  it("does not spend the counter merely by asking", async () => {
+    const e = await env();
+    const first = opened(await claimCard(e, CARD, 1, sign(1)));
+    await saveKeeper(e, first.epochId, { name: "Sam" });
+
+    await claimCard(e, CARD, 4, sign(4));
+    expect(await count(e.DB, `SELECT claim_counter AS n FROM cards WHERE id = ?1`, CARD),
+      "still where it was").toBe(1);
+    // So the same gesture can still be confirmed afterwards.
+    const took = opened(await claimCard(e, CARD, 4, sign(4), null, true));
+    expect(took.epochId).not.toBe(first.epochId);
   });
 });

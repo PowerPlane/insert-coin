@@ -2138,3 +2138,60 @@ describe("admin can delete a single duck", () => {
     expect((await a.post("/api/admin/duck/delete", { id: "../../x" })).status).toBe(400);
   });
 });
+
+/**
+ * `editKey` means two different things on `/api/keeper`.
+ *
+ * On the GET it is purely a credential. On the POST it is also a payload
+ * field — an empty string is how the setup screen says "unlink my duck",
+ * which is authorised by the cookie and always was.
+ */
+describe("an empty edit key is not a credential", () => {
+  const signed = (card: string, secret: Uint8Array) =>
+    `?d=1&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`;
+
+  it("does not let an empty key borrow the cookie on a read", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed("EMPTYKY2", secret));
+    await v.api("/api/claim/first", { method: "POST" });
+    await v.post("/api/keeper", { name: "Ayla", editKey: duck.editKey });
+
+    // The cookie is live, but the request named a credential and it
+    // resolved to nothing.
+    expect((await v.api("/api/keeper?editKey=")).status).toBe(404);
+    expect((await v.api("/api/keeper")).status, "no key named, cookie answers").toBe(200);
+  });
+
+  it("does not let an empty key end somebody else's tenure", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed("EMPTYND3", secret));
+    await v.api("/api/claim/first", { method: "POST" });
+    await v.post("/api/keeper", { name: "Ayla", editKey: duck.editKey });
+
+    expect((await v.post("/api/keeper/end", { editKey: "" })).status).toBe(404);
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = 'EMPTYND3' AND ended IS NULL`,
+    ), "untouched").toBe(1);
+  });
+
+  it("still lets the cookie unlink a duck, which is what empty means there", async () => {
+    // The regression this nearly caused: unlinking posts `{editKey: ""}`
+    // and relies on the cookie, because that is the only credential the
+    // full setup screen has.
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed("DETACHD4", secret));
+    await v.api("/api/claim/first", { method: "POST" });
+    await v.post("/api/keeper", { name: "Ayla", editKey: duck.editKey });
+
+    expect((await v.post("/api/keeper", { editKey: "" })).status).toBe(200);
+    const after = await v.json<{ keeper: string; duckSlug: string | null }>("/api/keeper");
+    expect(after.duckSlug, "the link is gone").toBe(null);
+    expect(after.keeper, "and the name is not").toBe("Ayla");
+  });
+});

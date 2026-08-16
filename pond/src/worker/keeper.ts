@@ -202,9 +202,43 @@ export async function claimCard(
     held && editKey && /^[A-Za-z0-9]{16,64}$/.test(editKey) && held.keeper_key === editKey,
   );
 
+  /*
+   * ══ A NAMELESS, DUCKLESS TENURE IS NOT SOMETHING TO TAKE OVER ══
+   * A keeper who claimed a card and closed the setup screen without
+   * saving has no name and no linked duck — so on the next four blows
+   * they cannot prove they are themselves, are asked whether they want to
+   * take over their own card, and taking it over throws away the tenure
+   * they were already in. There is nothing there to protect: no byline to
+   * lose, and no keeper for a contact to have been shared WITH.
+   *
+   * So it is resumed rather than replaced. This is also what rescues the
+   * card from being stranded when the one-hour cookie expires: without
+   * it, such a tenure can only ever be replaced, never re-entered.
+   */
+  const empty = Boolean(held) && !held!.keeper_name && !held!.keeper_key;
+
   // Already kept by somebody else, and nobody has said to take it over.
   // Nothing is decided and nothing is spent.
-  if (held && !mine && !confirm) {
+  if (held && !mine && !empty && !confirm) {
+    /*
+     * ══ ASK ONLY WHAT A FRESH GESTURE HAS EARNED ══
+     * This asked before checking the counter, so any signed URL for the
+     * card — an ordinary tap at g=0000, or an armed one spent months ago
+     * — could ask whether the card was kept and be told the keeper's
+     * name. The name is public on every duck from that card, so this
+     * leaked nothing new; it did let somebody probe a card's state
+     * without holding it, and it let a stale tag raise a question that
+     * confirming would then refuse.
+     *
+     * Checked, not advanced: asking must still not spend the gesture.
+     */
+    const fresh = await env.DB.prepare(
+      `SELECT 1 AS x FROM cards WHERE id = ?1 AND claim_counter < ?2`,
+    )
+      .bind(cardId, counter)
+      .first<{ x: number }>();
+    if (!fresh) return { error: "already used" };
+
     return { takeover: true, keeper: String(held.keeper_name ?? "") };
   }
 
@@ -224,7 +258,7 @@ export async function claimCard(
    * strand their own ducks in a tenure they had just left, and hand them
    * a blank form.
    */
-  if (mine && held) {
+  if ((mine || empty) && held) {
     return {
       epochId: String(held.id),
       card: cardId,

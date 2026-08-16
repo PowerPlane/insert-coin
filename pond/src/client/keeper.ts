@@ -13,7 +13,7 @@
  * moderation surface, for a feature the tag already provides.
  */
 
-import { api, recallEditKey } from "./api.js";
+import { ApiError, api, recallEditKey } from "./api.js";
 import {
   button, el, field, nav as navStrip, screen, sheet as makeSheet, spacer,
   view as fullView,
@@ -495,9 +495,17 @@ export function cardSetup(opts: CardSetupOptions): void {
              * whether it is really theirs and says so with a 404 if it is
              * not. Guessing at it here is what produced the loop.
              */
-            if (took === "ok" || took === "kept") {
+            /*
+             * Latched only on "ok". "Kept" may mean kept by THIS person a
+             * second ago — so the save below is still worth trying, and
+             * the server decides — but it may equally mean somebody else
+             * got there first, and latching that would leave this sheet
+             * unable to ever claim again if the card were freed while it
+             * sat open.
+             */
+            if (took === "ok") {
               claimed = true;
-            } else {
+            } else if (took !== "kept") {
               status.textContent =
                 took === "expired" ? t("live.keeper.expired") : t("live.error");
               return;
@@ -654,6 +662,12 @@ export type ClaimResult =
   | { kind: "claimed" }
   | { kind: "refused" }
   | { kind: "takeover"; keeper: string }
+  /*
+   * Not a claim, or never asked. `none` also covers "the network went
+   * away" — deliberately, because the caller uses it to decide whether
+   * to REMEMBER the attempt, and an attempt that never reached the server
+   * must not be remembered as spent.
+   */
   | { kind: "none" };
 
 export async function claimFromUrl(url: URL): Promise<boolean> {
@@ -689,7 +703,12 @@ export async function resolveClaim(url: URL, confirm = false): Promise<ClaimResu
     if (res.ok) return { kind: "claimed" };
     if (res.takeover) return { kind: "takeover", keeper: res.keeper ?? "" };
     return { kind: "refused" };
-  } catch {
-    return { kind: "refused" };
+  } catch (err) {
+    // A refusal is the server saying no. Anything else — offline, a
+    // tunnel, a tab that went to sleep — is not an answer at all, and
+    // must not be recorded as one.
+    return err instanceof ApiError && err.status > 0
+      ? { kind: "refused" }
+      : { kind: "none" };
   }
 }

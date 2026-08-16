@@ -2010,18 +2010,42 @@ async function main(): Promise<void> {
   const url = new URL(location.href);
   let outcome: ClaimResult = { kind: "none" };
   if (claimIsFresh(url)) {
-    rememberClaimAttempt(url);
     outcome = await resolveClaim(url);
+    /*
+     * ══ REMEMBERED AFTER THE ANSWER, NOT BEFORE THE QUESTION ══
+     * This wrote the counter first, which buried claims that had never
+     * happened: lose the network on the way out, or close the tab
+     * mid-flight, and the browser recorded a counter the server had never
+     * seen. The card was then unclaimable from that browser until its
+     * storage was cleared — for a claim nobody had made.
+     *
+     * `resolveClaim` returns "refused" for a network failure as well as
+     * for a real refusal, so only the answers that prove the server
+     * actually decided something are recorded.
+     */
+    if (outcome.kind !== "none") rememberClaimAttempt(url);
   }
 
   /*
+   * ══ A COIN BEATS A QUESTION ══
    * The tap has been resolved, so the pond is told what it was rather
-   * than left to work it out. A claim screen about to open means the
-   * arrival waits; a declined takeover starts it afterwards.
+   * than left to work it out.
+   *
+   * And a fortune is never interrupted. David inserted a coin, tapped,
+   * and was asked whether he wanted to take over a card — instead of
+   * being given the fortune he had just paid for. The armed tag is why:
+   * `&g=` is never cleared, so a card that was set up months ago still
+   * looks like it is claiming on every single tap.
+   *
+   * An armed tap deals no fortune — the firmware makes sure of it — so a
+   * tap that DID deal one is somebody playing, not somebody setting a
+   * card up. Their coin wins, and the question is simply not asked.
    */
+  const dealt = Number(url.searchParams.get("d") ?? 0) >= 1;
+  const asking = outcome.kind === "takeover" && !dealt;
   const pond = await pondScreen({
     ...b,
-    arrive: outcome.kind === "none" || outcome.kind === "refused",
+    arrive: !(outcome.kind === "claimed" || asking),
   });
 
   if (url.searchParams.has("t")) {
@@ -2049,7 +2073,7 @@ async function main(): Promise<void> {
    * Nothing has been spent. Leaving it alone costs nothing and the card
    * is still armed.
    */
-  if (outcome.kind === "takeover") {
+  if (asking && outcome.kind === "takeover") {
     const who = outcome.keeper;
     const { root: sheetRoot, body } = makeSheet(true);
     body.append(
@@ -2070,12 +2094,13 @@ async function main(): Promise<void> {
           pond.startRelease();
         });
       }),
-      button("p-btn p-btn-quiet", t("keeper.34"), () => {
-        root.replaceChildren();
-        // It was an ordinary tap after all. If it dealt a coin, that is
-        // what they came for.
-        pond.startRelease();
-      }),
+      /*
+       * Back to the pond. The question is only ever asked on a tap that
+       * dealt no fortune, so there is nothing waiting to be decorated —
+       * and somebody who has just declined to take a card over wants to
+       * be put down, not moved on.
+       */
+      button("p-btn p-btn-quiet", t("keeper.34"), () => root.replaceChildren()),
     );
     body.append(actions);
     root.append(sheetRoot);

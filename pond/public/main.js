@@ -2386,9 +2386,9 @@ function cardSetup(opts) {
         try {
           if (opts.offer && opts.onClaim && !claimed) {
             const took = await opts.onClaim();
-            if (took === "ok" || took === "kept") {
+            if (took === "ok") {
               claimed = true;
-            } else {
+            } else if (took !== "kept") {
               status.textContent = took === "expired" ? t("live.keeper.expired") : t("live.error");
               return;
             }
@@ -2466,8 +2466,8 @@ async function resolveClaim(url, confirm = false) {
     if (res.ok) return { kind: "claimed" };
     if (res.takeover) return { kind: "takeover", keeper: res.keeper ?? "" };
     return { kind: "refused" };
-  } catch {
-    return { kind: "refused" };
+  } catch (err) {
+    return err instanceof ApiError && err.status > 0 ? { kind: "refused" } : { kind: "none" };
   }
 }
 
@@ -6220,12 +6220,14 @@ async function main() {
   const url = new URL(location.href);
   let outcome = { kind: "none" };
   if (claimIsFresh(url)) {
-    rememberClaimAttempt(url);
     outcome = await resolveClaim(url);
+    if (outcome.kind !== "none") rememberClaimAttempt(url);
   }
+  const dealt = Number(url.searchParams.get("d") ?? 0) >= 1;
+  const asking = outcome.kind === "takeover" && !dealt;
   const pond = await pondScreen({
     ...b,
-    arrive: outcome.kind === "none" || outcome.kind === "refused"
+    arrive: !(outcome.kind === "claimed" || asking)
   });
   if (url.searchParams.has("t")) {
     history.replaceState(null, "", url.pathname);
@@ -6235,7 +6237,7 @@ async function main() {
     cardSetup({ root: root2, onDone: () => root2.replaceChildren() });
     return;
   }
-  if (outcome.kind === "takeover") {
+  if (asking && outcome.kind === "takeover") {
     const who = outcome.keeper;
     const { root: sheetRoot, body } = sheet(true);
     body.append(
@@ -6254,10 +6256,13 @@ async function main() {
           pond.startRelease();
         });
       }),
-      button("p-btn p-btn-quiet", t("keeper.34"), () => {
-        root2.replaceChildren();
-        pond.startRelease();
-      })
+      /*
+       * Back to the pond. The question is only ever asked on a tap that
+       * dealt no fortune, so there is nothing waiting to be decorated —
+       * and somebody who has just declined to take a card over wants to
+       * be put down, not moved on.
+       */
+      button("p-btn p-btn-quiet", t("keeper.34"), () => root2.replaceChildren())
     );
     body.append(actions);
     root2.append(sheetRoot);
