@@ -104,12 +104,24 @@ export const ICONS = {
     "...........................",
     "...........................",
   ],
+  /*
+   * ══ IT HAD TO POINT THE OTHER WAY ══
+   * The first drawing put the arrowhead at the TOP, apex up, with the tail
+   * curling away to the right and down. Read at 22px that is "up and
+   * over" — a forward motion — and it was reported as looking like REDO,
+   * by somebody who then described the broken button as the redo button.
+   *
+   * An undo arrow has to point BACK. The head is now a left-pointing
+   * triangle, unmistakable at this size because it is the widest thing in
+   * the glyph, and the shaft runs right, turns down and hooks — the
+   * return-arrow shape, which is the one everybody already knows.
+   */
   undo: [
-    "....k....",
-    "...kk....",
-    "..kkkkk..",
-    ".kk...kk.",
-    "kk.....kk",
+    "...k.....",
+    "..kk.....",
+    ".kkkkkkkk",
+    "..kk....k",
+    "...k....k",
     "........k",
     "........k",
     "......kkk",
