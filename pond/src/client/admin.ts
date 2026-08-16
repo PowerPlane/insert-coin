@@ -443,6 +443,10 @@ function contactRow(d: AdminDuck, ducks: AdminDuck[], cards: AdminCard[]): HTMLE
   return row;
 }
 
+/** "1 duck", "3 ducks". Admin is English and read by one person, but a
+ *  screen that says "1 ducks" is a screen that was not looked at. */
+const ducksWord = (n: number): string => `${n} duck${n === 1 ? "" : "s"}`;
+
 function cardRow(c: AdminCard, show: (card: string | null) => void): HTMLElement {
   const row = el("div", "a-row");
   /*
@@ -584,7 +588,7 @@ function cardRow(c: AdminCard, show: (card: string | null) => void): HTMLElement
     }));
   }
   if (c.ducks > c.orphans) {
-    reset.append(button("p-chip", `Unlink ${c.ducks - c.orphans} duck(s)`, () => {
+    reset.append(button("p-chip", `Unlink ${ducksWord(c.ducks - c.orphans)}`, () => {
       void api("/card/unlink", { card: c.id }).then(load);
     }));
   }
@@ -598,12 +602,12 @@ function cardRow(c: AdminCard, show: (card: string | null) => void): HTMLElement
      * undone and affects people who are not in the room.
      */
     const empty = el("div", "a-actions");
-    empty.append(button("p-chip a-chip-danger", `Delete all ${c.ducks} ducks`, () => {
+    empty.append(button("p-chip a-chip-danger", `Delete all ${ducksWord(c.ducks)}`, () => {
       const typed = el("input", "p-input");
       typed.placeholder = c.id;
       empty.replaceChildren(
         el("p", "a-row-meta",
-          `Deletes ${c.ducks} duck(s) and every contact on them. Type ${c.id} to confirm.`),
+          `Deletes ${ducksWord(c.ducks)} and every contact on them. Type ${c.id} to confirm.`),
         typed,
         button("p-chip a-chip-danger", "Delete them", () => {
           if (typed.value.trim().toUpperCase() !== c.id) {

@@ -339,6 +339,7 @@ function contactRow(d, ducks, cards) {
   void cards;
   return row;
 }
+var ducksWord = (n) => `${n} duck${n === 1 ? "" : "s"}`;
 function cardRow(c, show) {
   const row = el("div", "a-row");
   const head = el(
@@ -417,21 +418,21 @@ function cardRow(c, show) {
     }));
   }
   if (c.ducks > c.orphans) {
-    reset.append(button("p-chip", `Unlink ${c.ducks - c.orphans} duck(s)`, () => {
+    reset.append(button("p-chip", `Unlink ${ducksWord(c.ducks - c.orphans)}`, () => {
       void api("/card/unlink", { card: c.id }).then(load);
     }));
   }
   if (reset.children.length) save.append(...[...reset.children]);
   if (c.ducks > 0) {
     const empty = el("div", "a-actions");
-    empty.append(button("p-chip a-chip-danger", `Delete all ${c.ducks} ducks`, () => {
+    empty.append(button("p-chip a-chip-danger", `Delete all ${ducksWord(c.ducks)}`, () => {
       const typed = el("input", "p-input");
       typed.placeholder = c.id;
       empty.replaceChildren(
         el(
           "p",
           "a-row-meta",
-          `Deletes ${c.ducks} duck(s) and every contact on them. Type ${c.id} to confirm.`
+          `Deletes ${ducksWord(c.ducks)} and every contact on them. Type ${c.id} to confirm.`
         ),
         typed,
         button("p-chip a-chip-danger", "Delete them", () => {
