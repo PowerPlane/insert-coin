@@ -4750,10 +4750,23 @@ var PondView = class {
     const frameH = rect.height / OVERSCAN * this.dpr() / cell;
     const wantCss = waterCss / 2;
     const wantFrac = wantCss / (rect.height / OVERSCAN);
-    this.camera.glide(
-      { x: d.wx, y: d.wy + frameH * (0.5 - wantFrac) + offsetCells, cell },
-      ms
-    );
+    const to = { x: d.wx, y: d.wy + frameH * (0.5 - wantFrac) + offsetCells, cell };
+    if (ms <= 0) this.camera.snap(to);
+    else this.camera.glide(to, ms);
+  }
+  /**
+   * Pull back out to the pond, leaving the duck where it is on screen.
+   *
+   * The counterpart to `focusClear`. After a landing the camera is close
+   * in on one duck behind a card; when the card goes, the view has to
+   * become a pond again — but `home()` is the wrong tool, because it also
+   * travels to the middle of the world, so your duck would slide away at
+   * the same moment you were finally free to look at it.
+   */
+  pullBackTo(id, ms = CAM_UI) {
+    const d = this.find(id);
+    if (!d) return this.home();
+    this.camera.glide({ x: d.wx, y: d.wy, cell: HOME_CELL }, ms);
   }
   /**
    * Move each duck toward wherever the whistle put it.
@@ -5457,8 +5470,8 @@ async function pondScreen(bootstrap) {
       view2.removeLocal(id);
     };
   }
-  function closeCell(coveredCss) {
-    const water = Math.max(0, view2.stageHeight() - coveredCss);
+  function closeCell(coveredCss2) {
+    const water = Math.max(0, view2.stageHeight() - coveredCss2);
     const BLOCK_CELLS = GRID + -TAG.Y;
     for (const cell of [ARRIVAL_CLOSE_CELL, 6, 4, 3, 2]) {
       if (cell < ARRIVAL_MIN_CELL) break;
@@ -5467,18 +5480,10 @@ async function pondScreen(bootstrap) {
     return ARRIVAL_MIN_CELL;
   }
   let gone = false;
-  function framedOn(duck) {
-    const aim = { x: duck.wx, y: duck.wy };
+  function coveredCss() {
     const cover = overlay.querySelector(".p-screen, .p-view");
-    if (!cover) return aim;
-    const hidden = window.innerHeight - cover.getBoundingClientRect().top;
-    if (hidden <= 0) return aim;
-    const box = canvas.getBoundingClientRect();
-    if (!box.height) return aim;
-    const pxPerCss = canvas.height / box.height;
-    const cell = view2.camera.cam.cell;
-    if (!cell) return aim;
-    return { x: aim.x, y: aim.y + hidden / 2 * pxPerCss / cell };
+    if (!cover) return 0;
+    return Math.max(0, window.innerHeight - cover.getBoundingClientRect().top);
   }
   async function arriveWhenItLands(id) {
     for (let attempt = 0; attempt < ARRIVAL_TRIES; attempt++) {
@@ -5486,7 +5491,11 @@ async function pondScreen(bootstrap) {
       if (gone) return;
       const duck = view2.find(id);
       if (duck) {
-        view2.camera.snap(framedOn(duck));
+        const covered = coveredCss();
+        mineId = duck.id;
+        duck.mine = true;
+        view2.camera.snap({ x: duck.wx, y: duck.wy });
+        view2.focusClear(duck.id, closeCell(covered), covered, 0);
         view2.arrive(duck);
         return;
       }
@@ -5609,6 +5618,7 @@ async function pondScreen(bootstrap) {
       onDone: () => {
         releasing = false;
         overlay.replaceChildren();
+        if (mineId) view2.pullBackTo(mineId);
         resumePolling();
         void syncCta();
       }

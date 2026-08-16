@@ -1325,10 +1325,30 @@ export class PondView {
     const frameH = ((rect.height / OVERSCAN) * this.dpr()) / cell;
     const wantCss = waterCss / 2;
     const wantFrac = wantCss / (rect.height / OVERSCAN);
-    this.camera.glide(
-      { x: d.wx, y: d.wy + frameH * (0.5 - wantFrac) + offsetCells, cell },
-      ms,
-    );
+    const to = { x: d.wx, y: d.wy + frameH * (0.5 - wantFrac) + offsetCells, cell };
+    /*
+     * `ms = 0` snaps. The arrival wants the spot FRAMED before the duck
+     * falls, with no camera animation at all — you cannot watch something
+     * come down while the ground slides underneath it — and a zero-length
+     * glide is a division waiting to happen rather than a jump.
+     */
+    if (ms <= 0) this.camera.snap(to);
+    else this.camera.glide(to, ms);
+  }
+
+  /**
+   * Pull back out to the pond, leaving the duck where it is on screen.
+   *
+   * The counterpart to `focusClear`. After a landing the camera is close
+   * in on one duck behind a card; when the card goes, the view has to
+   * become a pond again — but `home()` is the wrong tool, because it also
+   * travels to the middle of the world, so your duck would slide away at
+   * the same moment you were finally free to look at it.
+   */
+  pullBackTo(id: string, ms = CAM_UI): void {
+    const d = this.find(id);
+    if (!d) return this.home();
+    this.camera.glide({ x: d.wx, y: d.wy, cell: HOME_CELL }, ms);
   }
 
   /**

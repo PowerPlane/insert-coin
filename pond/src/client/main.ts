@@ -674,49 +674,11 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    */
   let gone = false;
 
-  /**
-   * Where to aim so the landing can actually be watched.
-   *
-   * ══ CENTRED IS NOT VISIBLE ══
-   * The camera centred on the duck, which puts it in the middle of the
-   * SCREEN — and the keep card covers the bottom half of the screen while
-   * somebody reads their private link. So the duck fell to a point at or
-   * just behind the card's top edge, and the one moment the whole flow
-   * builds to happened on the waterline where it could barely be seen.
-   * Reported as exactly that: "the drop is not really centre upper above
-   * keep this link, so it's really hard to see my own duck dropping in."
-   *
-   * The note above about framing the spot BEFORE the drop was right; it
-   * framed the wrong spot. The middle of what is visible is not the middle
-   * of the screen when something is covering half of it.
-   *
-   * So the aim moves DOWN in the world by half of what the card hides,
-   * which moves the duck UP the screen by the same amount and lands it in
-   * the middle of the clear water — with the whole fall above it.
-   *
-   * The conversion asks the canvas rather than assuming a device pixel
-   * ratio: `canvas.height / rect.height` is device pixels per CSS pixel
-   * including whatever clamping the viewport applied, and `cam.cell` is
-   * device pixels per sprite pixel. Nothing here needs to know about
-   * OVERSCAN — the canvas is centred on the viewport, so its middle and
-   * the screen's middle are the same point, which is the only fact this
-   * arithmetic rests on.
-   */
-  function framedOn(duck: { wx: number; wy: number }): { x: number; y: number } {
-    const aim = { x: duck.wx, y: duck.wy };
+  /** How much of the screen a card in the overlay is covering, in CSS px. */
+  function coveredCss(): number {
     const cover = overlay.querySelector<HTMLElement>(".p-screen, .p-view");
-    if (!cover) return aim;
-
-    const hidden = window.innerHeight - cover.getBoundingClientRect().top;
-    if (hidden <= 0) return aim;
-
-    const box = canvas.getBoundingClientRect();
-    if (!box.height) return aim;
-    const pxPerCss = canvas.height / box.height;
-    const cell = view.camera.cam.cell;
-    if (!cell) return aim;
-
-    return { x: aim.x, y: aim.y + ((hidden / 2) * pxPerCss) / cell };
+    if (!cover) return 0;
+    return Math.max(0, window.innerHeight - cover.getBoundingClientRect().top);
   }
 
   async function arriveWhenItLands(id: string): Promise<void> {
@@ -743,7 +705,30 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
          * closing over the water in the same instant, so there is nothing
          * on screen to jump.
          */
-        view.camera.snap(framedOn(duck));
+        /*
+         * ══ FRAME THE CLEAR WATER, NOT THE SCREEN ══
+         * `snap({x: duck.wx, y: duck.wy})` centred the duck on the SCREEN,
+         * and the keep card covers the bottom half of the screen — so the
+         * one moment the whole flow builds to happened on the card's top
+         * edge, where it could barely be seen.
+         *
+         * `focusClear` already knew how to do this: it is what the fortune
+         * arrival uses to close in on the water a sheet is about to leave.
+         * It also accounts for the tag above a duck and picks the closest
+         * zoom rung that still leaves room to look — both of which the
+         * hand-rolled version here did not. Reusing it, rather than owning
+         * a second copy of the same arithmetic, is the whole lesson of the
+         * `?t=` bug two commits ago.
+         *
+         * Zero milliseconds, deliberately: frame the spot BEFORE the duck
+         * falls. You cannot watch something come down while the ground
+         * slides underneath it.
+         */
+        const covered = coveredCss();
+        mineId = duck.id;
+        duck.mine = true;
+        view.camera.snap({ x: duck.wx, y: duck.wy });
+        view.focusClear(duck.id, closeCell(covered), covered, 0);
         view.arrive(duck);
         return;
       }
@@ -967,10 +952,21 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
          */
         onReleased: (made) => { void arriveWhenItLands(made.id); },
         onDone: () => {
-          // Nothing to trigger. The duck went in a moment ago; this is
-          // just getting the card out of the way.
+          /*
+           * ══ THE PULL-BACK BELONGS TO "DONE" ══
+           * The camera is close in on one duck behind a card. Widening
+           * while the card is still up would zoom out from a landing
+           * somebody is in the middle of watching; widening never would
+           * leave them staring at one duck with no pond around it.
+           *
+           * So it happens here, on the tap that says they have finished
+           * reading. `pullBackTo` rather than `home`, because home also
+           * travels to the middle of the world — the duck would slide
+           * away at the exact moment they were free to look at it.
+           */
           releasing = false;
           overlay.replaceChildren();
+          if (mineId) view.pullBackTo(mineId);
           resumePolling();
           void syncCta();
         },
