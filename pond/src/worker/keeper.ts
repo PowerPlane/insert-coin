@@ -222,17 +222,38 @@ export type SessionClaimRefusal =
 export async function claimFromSession(
   env: Env,
   session: { cardId: string | null; spentDuck: string | null },
+  /*
+   * ══ COMING BACK TO IT LATER ══
+   * Somebody taps "Not now", thinks about it, and picks the card up again
+   * the next day. The tap gives them a fresh session — so they are
+   * demonstrably holding the card — but that session has released no
+   * duck, and requiring `spent_duck` would tell them to make a second
+   * duck to keep a card they already have one duck from.
+   *
+   * So a private link is accepted INSTEAD of `spent_duck`, and only ever
+   * alongside a live session for the same card. The session is still what
+   * proves present possession; the key only answers "and which duck here
+   * is yours". Neither alone is enough, which is the property that
+   * matters: an old private link on its own claims nothing, because
+   * `ducks.card_id` is durable provenance and never expires.
+   */
+  editKey?: string | null,
 ): Promise<{ epochId: string; orphans: number } | { error: SessionClaimRefusal }> {
   const cardId = session.cardId;
   if (!cardId) return { error: "no card" };
-  if (!session.spentDuck) return { error: "no duck" };
 
-  // The duck this session released must itself be from this card. Both
-  // halves come from rows the visitor cannot write, so this is a fact
-  // rather than an assertion they made.
-  const duck = await env.DB.prepare(`SELECT card_id FROM ducks WHERE id = ?1`)
-    .bind(session.spentDuck)
-    .first<{ card_id: string | null }>();
+  // The duck this session released, or — for somebody returning later —
+  // one they can prove is theirs. Either way it must be from THIS card,
+  // and that fact comes from a row the visitor cannot write.
+  const duck = session.spentDuck
+    ? await env.DB.prepare(`SELECT id, card_id FROM ducks WHERE id = ?1`)
+        .bind(session.spentDuck)
+        .first<{ id: string; card_id: string | null }>()
+    : editKey && /^[A-Za-z0-9]{16,64}$/.test(editKey)
+      ? await env.DB.prepare(`SELECT id, card_id FROM ducks WHERE edit_key = ?1`)
+          .bind(editKey)
+          .first<{ id: string; card_id: string | null }>()
+      : null;
   if (!duck || duck.card_id !== cardId) return { error: "no duck" };
 
   // `card_epochs.card_id` is a foreign key and `counter` is NOT NULL, so
@@ -285,7 +306,7 @@ export async function claimFromSession(
   await env.DB.prepare(
     `UPDATE ducks SET epoch_id = ?1 WHERE id = ?2 AND epoch_id IS NULL`,
   )
-    .bind(epochId, session.spentDuck)
+    .bind(epochId, duck.id)
     .run();
 
   return { epochId, orphans: await orphanCount(env, cardId) };
@@ -301,8 +322,23 @@ export async function claimFromSession(
 export async function keeperOffer(
   env: Env,
   session: { cardId: string | null; spentDuck: string | null } | null,
+  editKey?: string | null,
 ): Promise<boolean> {
-  if (!session?.cardId || !session.spentDuck) return false;
+  if (!session?.cardId) return false;
+  /*
+   * Exactly the claim's own precondition, or the button appears for a
+   * claim that will be refused. Either this session released a duck, or
+   * the caller holds the private link of a duck from the same card.
+   */
+  if (!session.spentDuck) {
+    if (!editKey || !/^[A-Za-z0-9]{16,64}$/.test(editKey)) return false;
+    const mine = await env.DB.prepare(
+      `SELECT 1 AS x FROM ducks WHERE edit_key = ?1 AND card_id = ?2`,
+    )
+      .bind(editKey, session.cardId)
+      .first<{ x: number }>();
+    if (!mine) return false;
+  }
   const row = await env.DB.prepare(
     `SELECT (SELECT COUNT(*) FROM card_epochs e
               WHERE e.card_id = c.id AND e.ended IS NULL) AS kept,

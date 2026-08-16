@@ -1517,3 +1517,98 @@ describe("ending a tenure", () => {
     expect((await other.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(false);
   });
 });
+
+/**
+ * Coming back to it later.
+ *
+ * Somebody taps "Not now", thinks about it, and picks the card up again
+ * the next day. The tap gives them a fresh session — so they are
+ * demonstrably holding the card — but that session has released no duck,
+ * and requiring `spent_duck` would tell them to make a SECOND duck to
+ * keep a card they already have one duck from.
+ *
+ * A private link is accepted instead, and only ever alongside a live
+ * session for the same card. The session is still what proves present
+ * possession; the key only answers "and which duck here is yours".
+ */
+describe("keeping a card on a later visit", () => {
+  const signed = (card: string, secret: Uint8Array) =>
+    `?d=1&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`;
+
+  it("takes the card when the tap is fresh and the duck is theirs", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const serial = "SECNDVST";
+    const first = new Visitor(e);
+    const duck = await release(first, {}, signed(serial, secret));
+
+    // A different browser, tapping the same card: a new session with no
+    // duck of its own, plus the private link they kept.
+    const later = new Visitor(e);
+    await later.tap(signed(serial, secret));
+    expect((await later.json<{ spent: boolean }>("/api/session")).spent).toBe(false);
+
+    const off = await later.json<{ keeperOffer: boolean }>(
+      `/api/session?editKey=${duck.editKey}`);
+    expect(off.keeperOffer, "offered once the key names a duck from this card").toBe(true);
+
+    const res = await later.post("/api/claim/first", { editKey: duck.editKey });
+    expect(res.status).toBe(200);
+    expect(await count(
+      e.DB,
+      `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = ?1 AND ended IS NULL`,
+      serial,
+    )).toBe(1);
+    // And that duck is adopted, exactly as it would be on the same visit.
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND epoch_id IS NOT NULL`, duck.id,
+    )).toBe(1);
+  });
+
+  it("refuses a private link with no live tap behind it", async () => {
+    /*
+     * The property that matters. `ducks.card_id` is durable provenance
+     * and never expires, so an old link alone must claim nothing — it
+     * says where a duck came from, not that anybody is holding the card.
+     */
+    const e = await env();
+    const secret = testSecret();
+    const serial = "NOTAPYET";
+    const owner = new Visitor(e);
+    const duck = await release(owner, {}, signed(serial, secret));
+
+    // No session at all, just the key.
+    const cold = await handle(
+      new Request(`${ORIGIN}/api/claim/first`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ editKey: duck.editKey }),
+      }),
+      e,
+    );
+    expect(cold.status).toBe(401);
+  });
+
+  it("refuses a private link for a duck from a different card", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const mine = new Visitor(e);
+    const elsewhere = await release(mine, {}, signed("CARDAAA2", secret));
+
+    const here = new Visitor(e);
+    await here.tap(signed("CARDBBB3", secret));
+    const res = await here.post("/api/claim/first", { editKey: elsewhere.editKey });
+    expect(res.status).toBe(403);
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = 'CARDBBB3'`,
+    )).toBe(0);
+  });
+
+  it("does not offer on a fresh tap with no key and no duck", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    await v.tap(signed("BARETAP4", secret));
+    expect((await v.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(false);
+  });
+});

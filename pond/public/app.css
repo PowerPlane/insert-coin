@@ -2781,3 +2781,27 @@ a.p-chip {
 .p-orbit-compact .p-orbit-art {
   max-width: 176px;
 }
+
+/*
+ * ══ YOUR DUCK'S SETTINGS ARE YOUR CARD'S SETTINGS ══
+ * For a keeper, this row is the durable way back: `pond_keeper` lasts an
+ * hour, and the private link that reached this screen lasts as long as
+ * their tenure does. It only appears when the server agrees this duck is
+ * some card's `keeper_duck`, so it is absent for almost everybody.
+ *
+ * Below "Redecorate" and above "Take my duck out": it is a heavier thing
+ * than changing a colour and a lighter thing than deleting a duck, and
+ * that is exactly the order the column reads in.
+ */
+.p-cardrow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--p-rule, rgba(11, 61, 82, 0.15));
+}
+
+.p-cardrow[hidden] {
+  display: none;
+}

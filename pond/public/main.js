@@ -2002,6 +2002,280 @@ function fortuneTitle(fortune) {
   return current === "zh-Hant" ? f.jp : `${f.jp} · ${f.en}`;
 }
 
+// src/client/keeper.ts
+var LINKED_CELL = 3;
+async function get(editKey) {
+  const url = editKey ? `/api/keeper?editKey=${encodeURIComponent(editKey)}` : "/api/keeper";
+  const res = await fetch(url, { credentials: "same-origin" });
+  return res.ok ? await res.json() : null;
+}
+function cardSetup(opts) {
+  const { root: root2 } = opts;
+  void get(opts.editKey).then((state) => {
+    if (!state) return opts.onDone();
+    if (!state.keeper && opts.suggestName) state.keeper = opts.suggestName;
+    render(state);
+  });
+  function render(state) {
+    if (opts.compact) return renderCompact(state);
+    screen(root2, () => {
+      root2.replaceChildren();
+      const { root: viewRoot, body: wrap2 } = view();
+      wrap2.append(nav({ label: t("keeper.18"), onClick: opts.onDone }, t("keeper.02")));
+      wrap2.append(el("p", "p-note", t("keeper.03")));
+      let name = state.keeper;
+      const nameField = field({
+        label: t("keeper.04"),
+        placeholder: t("keeper.05"),
+        max: 18,
+        value: name,
+        onInput: (v) => {
+          name = v;
+          hint.textContent = v ? t("live.keeper.hint", { keeper: v }) : t("keeper.06");
+        }
+      });
+      const hint = el(
+        "p",
+        "p-hint-block",
+        name ? t("live.keeper.hint", { keeper: name }) : t("keeper.06")
+      );
+      wrap2.append(nameField.wrap, hint);
+      let editKey = recallEditKey() ?? "";
+      wrap2.append(el("p", "p-field-label", t("keeper.07")));
+      if (state.duckSlug) {
+        const linked = el("div", "p-linked");
+        const art = el("canvas", "p-linked-art");
+        art.width = GRID * LINKED_CELL;
+        art.height = GRID * LINKED_CELL;
+        art.setAttribute("role", "img");
+        const who = el("div", "p-linked-who");
+        const name2 = el("b", "", "");
+        who.append(name2, el("small", "", `/d/${state.duckSlug}`));
+        linked.append(art, who, button("p-chip", t("keeper.08"), () => {
+          editKey = "";
+          void save({ editKey: "" });
+        }));
+        wrap2.append(linked);
+        void api.bySlug(state.duckSlug).then(
+          ({ duck }) => {
+            if (!art.isConnected) return;
+            const ctx = art.getContext("2d");
+            if (!ctx) return;
+            ctx.imageSmoothingEnabled = false;
+            drawDuck(
+              ctx,
+              {
+                fortune: duck.fortune,
+                tint: duck.tint,
+                paint: decodePaint(duck.paint),
+                stickers: duck.stickers
+              },
+              0,
+              0,
+              LINKED_CELL
+            );
+            art.setAttribute("aria-label", duck.name || `/d/${duck.slug}`);
+            if (duck.name) name2.textContent = duck.name;
+          },
+          // The link is a fact the server already gave us. A picture that
+          // will not load does not make it less true.
+          () => {
+          }
+        );
+      } else {
+        const paste = field({
+          placeholder: t("keeper.10"),
+          max: 200,
+          value: editKey,
+          onInput: (v) => {
+            editKey = v.trim().replace(/^.*\/e\//, "");
+          }
+        });
+        wrap2.append(paste.wrap, el("p", "p-hint-block", t("keeper.11")));
+      }
+      let lang = state.lang;
+      wrap2.append(el("p", "p-field-label", t("keeper.12")));
+      const langs = el("div", "p-scopes");
+      const langButtons = [
+        ["en", t("keeper.13")],
+        ["zh-Hant", t("keeper.14")]
+      ];
+      const paintLang = () => {
+        buttons.forEach((b, i) => {
+          const on = langButtons[i][0] === lang;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-pressed", String(on));
+        });
+      };
+      const buttons = langButtons.map(
+        ([value, label]) => button("p-chip", label, () => {
+          lang = value;
+          paintLang();
+        })
+      );
+      buttons.forEach((b) => langs.append(b));
+      paintLang();
+      langs.setAttribute("role", "group");
+      wrap2.append(langs, el("p", "p-hint-block", t("keeper.15")));
+      let adopt = false;
+      if (state.orphans > 0) {
+        const adoptBtn = button(
+          "p-chip",
+          t("live.keeper.adopt", { n: String(state.orphans) }),
+          () => {
+            adopt = !adopt;
+            adoptBtn.classList.toggle("on", adopt);
+            adoptBtn.setAttribute("aria-pressed", String(adopt));
+          }
+        );
+        adoptBtn.setAttribute("aria-pressed", "false");
+        const adoptRow = el("div", "p-chip-row");
+        adoptRow.append(adoptBtn);
+        wrap2.append(adoptRow);
+      }
+      const status = el("p", "p-note", "");
+      const actions = el("div", "p-actions");
+      actions.append(
+        button("p-btn", t("keeper.17"), () => void save({ name, lang, editKey, adopt })),
+        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone)
+      );
+      wrap2.append(spacer(), actions, status);
+      root2.append(viewRoot);
+      async function save(body) {
+        try {
+          const res = await fetch("/api/keeper", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(body)
+          });
+          if (!res.ok) {
+            const why = await res.json().catch(() => null);
+            status.textContent = why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
+            return;
+          }
+          opts.onDone();
+        } catch {
+          status.textContent = t("live.error");
+        }
+      }
+    });
+  }
+  function renderCompact(state) {
+    screen(root2, () => {
+      root2.replaceChildren();
+      const { root: sheetRoot, body: wrap2 } = sheet();
+      let name = state.keeper;
+      wrap2.append(el("h2", "p-title", t("keeper.19")));
+      const via = el(
+        "p",
+        "p-body",
+        name ? t("live.keeper.via", { keeper: name }) : t("keeper.06")
+      );
+      wrap2.append(via);
+      const nameField = field({
+        label: t("keeper.29"),
+        placeholder: t("keeper.05"),
+        max: 18,
+        value: name,
+        onInput: (v) => {
+          name = v;
+          via.textContent = v ? t("live.keeper.via", { keeper: v }) : t("keeper.06");
+          status.textContent = "";
+        }
+      });
+      wrap2.append(nameField.wrap);
+      let lang = state.lang;
+      wrap2.append(el("p", "p-field-label", t("keeper.12")));
+      const langs = el("div", "p-scopes");
+      langs.setAttribute("role", "group");
+      const choices = [
+        ["en", t("keeper.13")],
+        ["zh-Hant", t("keeper.14")]
+      ];
+      const chips = choices.map(
+        ([value, label]) => button("p-chip", label, () => {
+          lang = value;
+          paint();
+        })
+      );
+      const paint = () => {
+        chips.forEach((b, i) => {
+          const on = choices[i][0] === lang;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-pressed", String(on));
+        });
+      };
+      chips.forEach((b) => langs.append(b));
+      paint();
+      wrap2.append(langs);
+      let adopt = false;
+      if (state.orphans > 0) {
+        const chip = button(
+          "p-chip",
+          t("live.keeper.adopt", { n: String(state.orphans) }),
+          () => {
+            adopt = !adopt;
+            chip.classList.toggle("on", adopt);
+            chip.setAttribute("aria-pressed", String(adopt));
+          }
+        );
+        chip.setAttribute("aria-pressed", "false");
+        const row = el("div", "p-chip-row");
+        row.append(chip);
+        wrap2.append(row);
+      }
+      const status = el("p", "p-note", "");
+      const actions = el("div", "p-actions");
+      actions.append(
+        button("p-btn", t("keeper.21"), () => void save()),
+        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone)
+      );
+      wrap2.append(actions, status);
+      root2.append(sheetRoot);
+      nameField.input.focus();
+      async function save() {
+        try {
+          const res = await fetch("/api/keeper", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "content-type": "application/json" },
+            /*
+             * `editKey` is both the link and, when the cookie has expired,
+             * the credential. Sent every time so a save an hour later is
+             * the same request as a save a minute later.
+             */
+            body: JSON.stringify({ name, lang, adopt, ...opts.editKey ? { editKey: opts.editKey } : {} })
+          });
+          if (!res.ok) {
+            const why = await res.json().catch(() => null);
+            status.textContent = why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
+            if (why?.error === "reserved name") nameField.input.focus();
+            return;
+          }
+          opts.onDone();
+        } catch {
+          status.textContent = t("live.error");
+        }
+      }
+    });
+  }
+}
+async function claimFromUrl(url) {
+  const card = url.searchParams.get("c");
+  const g = url.searchParams.get("g");
+  const token = url.searchParams.get("t");
+  if (!card || !g || !token) return false;
+  const counter = parseInt(g, 16);
+  if (!Number.isInteger(counter) || counter <= 0) return false;
+  try {
+    const res = await api.claim(card, counter, token);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // src/client/studio.ts
 var EDIT_CELL = 12;
 var SELECT_INK = "#0b3d52";
@@ -2586,6 +2860,53 @@ function mineScreen(opts) {
       const actions = el("div", "p-actions");
       actions.append(button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)));
       wrap2.append(actions);
+      const card = el("div", "p-cardrow");
+      card.hidden = true;
+      wrap2.append(card);
+      void fetch(`/api/keeper?editKey=${encodeURIComponent(editKey)}`, {
+        credentials: "same-origin"
+      }).then(
+        async (res) => {
+          if (!res.ok || !card.isConnected) return;
+          const state = await res.json();
+          card.hidden = false;
+          const who = state.keeper ? t("live.keeper.hint", { keeper: state.keeper }) : t("keeper.06");
+          card.append(
+            el("span", "p-field-label", t("keeper.22")),
+            el("p", "p-hint-block", who),
+            button("p-btn p-btn-quiet", t("keeper.23"), () => {
+              cardSetup({
+                root: root2,
+                compact: true,
+                editKey,
+                onDone: () => mineScreen(opts)
+              });
+            }),
+            handOnButton()
+          );
+        },
+        // Not keeping a card is the ordinary case, and a failed question
+        // about it should look exactly like the answer "no".
+        () => {
+        }
+      );
+      function handOnButton() {
+        const box = el("div", "p-danger");
+        const start = button("p-btn p-btn-danger", t("keeper.25"), () => {
+          box.replaceChildren(
+            el("p", "p-note", t("keeper.26")),
+            button("p-btn p-btn-danger", t("keeper.27"), () => {
+              void api.keeperEnd(editKey).then(
+                () => mineScreen(opts),
+                () => box.append(el("p", "p-note", t("live.error")))
+              );
+            }),
+            button("p-btn p-btn-quiet", t("keeper.28"), () => box.replaceChildren(start))
+          );
+        });
+        box.append(start);
+        return box;
+      }
       const danger = el("div", "p-danger");
       const remove = button("p-btn p-btn-danger", t("manage.09"), () => {
         danger.replaceChildren(
@@ -2980,280 +3301,6 @@ function project(wx, wy, cam, renderCell, canvasW, canvasH, side) {
     x: Math.round(canvasW / 2 + dx * renderCell),
     y: Math.round(canvasH / 2 + dy * renderCell)
   };
-}
-
-// src/client/keeper.ts
-var LINKED_CELL = 3;
-async function get(editKey) {
-  const url = editKey ? `/api/keeper?editKey=${encodeURIComponent(editKey)}` : "/api/keeper";
-  const res = await fetch(url, { credentials: "same-origin" });
-  return res.ok ? await res.json() : null;
-}
-function cardSetup(opts) {
-  const { root: root2 } = opts;
-  void get(opts.editKey).then((state) => {
-    if (!state) return opts.onDone();
-    if (!state.keeper && opts.suggestName) state.keeper = opts.suggestName;
-    render(state);
-  });
-  function render(state) {
-    if (opts.compact) return renderCompact(state);
-    screen(root2, () => {
-      root2.replaceChildren();
-      const { root: viewRoot, body: wrap2 } = view();
-      wrap2.append(nav({ label: t("keeper.18"), onClick: opts.onDone }, t("keeper.02")));
-      wrap2.append(el("p", "p-note", t("keeper.03")));
-      let name = state.keeper;
-      const nameField = field({
-        label: t("keeper.04"),
-        placeholder: t("keeper.05"),
-        max: 18,
-        value: name,
-        onInput: (v) => {
-          name = v;
-          hint.textContent = v ? t("live.keeper.hint", { keeper: v }) : t("keeper.06");
-        }
-      });
-      const hint = el(
-        "p",
-        "p-hint-block",
-        name ? t("live.keeper.hint", { keeper: name }) : t("keeper.06")
-      );
-      wrap2.append(nameField.wrap, hint);
-      let editKey = recallEditKey() ?? "";
-      wrap2.append(el("p", "p-field-label", t("keeper.07")));
-      if (state.duckSlug) {
-        const linked = el("div", "p-linked");
-        const art = el("canvas", "p-linked-art");
-        art.width = GRID * LINKED_CELL;
-        art.height = GRID * LINKED_CELL;
-        art.setAttribute("role", "img");
-        const who = el("div", "p-linked-who");
-        const name2 = el("b", "", "");
-        who.append(name2, el("small", "", `/d/${state.duckSlug}`));
-        linked.append(art, who, button("p-chip", t("keeper.08"), () => {
-          editKey = "";
-          void save({ editKey: "" });
-        }));
-        wrap2.append(linked);
-        void api.bySlug(state.duckSlug).then(
-          ({ duck }) => {
-            if (!art.isConnected) return;
-            const ctx = art.getContext("2d");
-            if (!ctx) return;
-            ctx.imageSmoothingEnabled = false;
-            drawDuck(
-              ctx,
-              {
-                fortune: duck.fortune,
-                tint: duck.tint,
-                paint: decodePaint(duck.paint),
-                stickers: duck.stickers
-              },
-              0,
-              0,
-              LINKED_CELL
-            );
-            art.setAttribute("aria-label", duck.name || `/d/${duck.slug}`);
-            if (duck.name) name2.textContent = duck.name;
-          },
-          // The link is a fact the server already gave us. A picture that
-          // will not load does not make it less true.
-          () => {
-          }
-        );
-      } else {
-        const paste = field({
-          placeholder: t("keeper.10"),
-          max: 200,
-          value: editKey,
-          onInput: (v) => {
-            editKey = v.trim().replace(/^.*\/e\//, "");
-          }
-        });
-        wrap2.append(paste.wrap, el("p", "p-hint-block", t("keeper.11")));
-      }
-      let lang = state.lang;
-      wrap2.append(el("p", "p-field-label", t("keeper.12")));
-      const langs = el("div", "p-scopes");
-      const langButtons = [
-        ["en", t("keeper.13")],
-        ["zh-Hant", t("keeper.14")]
-      ];
-      const paintLang = () => {
-        buttons.forEach((b, i) => {
-          const on = langButtons[i][0] === lang;
-          b.classList.toggle("on", on);
-          b.setAttribute("aria-pressed", String(on));
-        });
-      };
-      const buttons = langButtons.map(
-        ([value, label]) => button("p-chip", label, () => {
-          lang = value;
-          paintLang();
-        })
-      );
-      buttons.forEach((b) => langs.append(b));
-      paintLang();
-      langs.setAttribute("role", "group");
-      wrap2.append(langs, el("p", "p-hint-block", t("keeper.15")));
-      let adopt = false;
-      if (state.orphans > 0) {
-        const adoptBtn = button(
-          "p-chip",
-          t("live.keeper.adopt", { n: String(state.orphans) }),
-          () => {
-            adopt = !adopt;
-            adoptBtn.classList.toggle("on", adopt);
-            adoptBtn.setAttribute("aria-pressed", String(adopt));
-          }
-        );
-        adoptBtn.setAttribute("aria-pressed", "false");
-        const adoptRow = el("div", "p-chip-row");
-        adoptRow.append(adoptBtn);
-        wrap2.append(adoptRow);
-      }
-      const status = el("p", "p-note", "");
-      const actions = el("div", "p-actions");
-      actions.append(
-        button("p-btn", t("keeper.17"), () => void save({ name, lang, editKey, adopt })),
-        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone)
-      );
-      wrap2.append(spacer(), actions, status);
-      root2.append(viewRoot);
-      async function save(body) {
-        try {
-          const res = await fetch("/api/keeper", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(body)
-          });
-          if (!res.ok) {
-            const why = await res.json().catch(() => null);
-            status.textContent = why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
-            return;
-          }
-          opts.onDone();
-        } catch {
-          status.textContent = t("live.error");
-        }
-      }
-    });
-  }
-  function renderCompact(state) {
-    screen(root2, () => {
-      root2.replaceChildren();
-      const { root: sheetRoot, body: wrap2 } = sheet();
-      let name = state.keeper;
-      wrap2.append(el("h2", "p-title", t("keeper.19")));
-      const via = el(
-        "p",
-        "p-body",
-        name ? t("live.keeper.via", { keeper: name }) : t("keeper.06")
-      );
-      wrap2.append(via);
-      const nameField = field({
-        label: t("keeper.29"),
-        placeholder: t("keeper.05"),
-        max: 18,
-        value: name,
-        onInput: (v) => {
-          name = v;
-          via.textContent = v ? t("live.keeper.via", { keeper: v }) : t("keeper.06");
-          status.textContent = "";
-        }
-      });
-      wrap2.append(nameField.wrap);
-      let lang = state.lang;
-      wrap2.append(el("p", "p-field-label", t("keeper.12")));
-      const langs = el("div", "p-scopes");
-      langs.setAttribute("role", "group");
-      const choices = [
-        ["en", t("keeper.13")],
-        ["zh-Hant", t("keeper.14")]
-      ];
-      const chips = choices.map(
-        ([value, label]) => button("p-chip", label, () => {
-          lang = value;
-          paint();
-        })
-      );
-      const paint = () => {
-        chips.forEach((b, i) => {
-          const on = choices[i][0] === lang;
-          b.classList.toggle("on", on);
-          b.setAttribute("aria-pressed", String(on));
-        });
-      };
-      chips.forEach((b) => langs.append(b));
-      paint();
-      wrap2.append(langs);
-      let adopt = false;
-      if (state.orphans > 0) {
-        const chip = button(
-          "p-chip",
-          t("live.keeper.adopt", { n: String(state.orphans) }),
-          () => {
-            adopt = !adopt;
-            chip.classList.toggle("on", adopt);
-            chip.setAttribute("aria-pressed", String(adopt));
-          }
-        );
-        chip.setAttribute("aria-pressed", "false");
-        const row = el("div", "p-chip-row");
-        row.append(chip);
-        wrap2.append(row);
-      }
-      const status = el("p", "p-note", "");
-      const actions = el("div", "p-actions");
-      actions.append(
-        button("p-btn", t("keeper.21"), () => void save()),
-        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone)
-      );
-      wrap2.append(actions, status);
-      root2.append(sheetRoot);
-      nameField.input.focus();
-      async function save() {
-        try {
-          const res = await fetch("/api/keeper", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: { "content-type": "application/json" },
-            /*
-             * `editKey` is both the link and, when the cookie has expired,
-             * the credential. Sent every time so a save an hour later is
-             * the same request as a save a minute later.
-             */
-            body: JSON.stringify({ name, lang, adopt, ...opts.editKey ? { editKey: opts.editKey } : {} })
-          });
-          if (!res.ok) {
-            const why = await res.json().catch(() => null);
-            status.textContent = why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
-            if (why?.error === "reserved name") nameField.input.focus();
-            return;
-          }
-          opts.onDone();
-        } catch {
-          status.textContent = t("live.error");
-        }
-      }
-    });
-  }
-}
-async function claimFromUrl(url) {
-  const card = url.searchParams.get("c");
-  const g = url.searchParams.get("g");
-  const token = url.searchParams.get("t");
-  if (!card || !g || !token) return false;
-  const counter = parseInt(g, 16);
-  if (!Number.isInteger(counter) || counter <= 0) return false;
-  try {
-    const res = await api.claim(card, counter, token);
-    return res.ok;
-  } catch {
-    return false;
-  }
 }
 
 // src/client/release-flow.ts

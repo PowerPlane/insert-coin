@@ -21,6 +21,7 @@ import { ORBIT_SIZE, STEP_MS, drawOrbit, type OrbitDuck } from "./orbit.js";
 import { drawDuck } from "./render.js";
 import { GRID, decodePaint } from "./codec.js";
 import { SLUG_MAX, SLUG_MIN } from "./slug-limits.js";
+import { cardSetup } from "./keeper.js";
 import { studioScreen, toPayload } from "./studio.js";
 import { t } from "./strings.js";
 import type { PondDuck } from "./types.js";
@@ -380,6 +381,77 @@ export function mineScreen(opts: MineOptions): void {
       const actions = el("div", "p-actions");
       actions.append(button("p-btn p-btn-quiet", t("mine.06"), () => redecorate(duck)));
       wrap.append(actions);
+
+      /*
+       * ══ THE DURABLE WAY BACK TO THE CARD ══
+       * `pond_keeper` lasts an hour. This screen is reached by a link that
+       * lasts forever, and the server accepts that link as a keeper
+       * credential when this duck is the card's `keeper_duck` — so for a
+       * keeper, their duck's settings ARE their card's settings.
+       *
+       * Appended after the fact, not awaited: whether somebody keeps a
+       * card is a second question about a different table, and a settings
+       * screen that will not paint until it is answered is a screen that
+       * breaks when the answer is slow.
+       */
+      const card = el("div", "p-cardrow");
+      card.hidden = true;
+      wrap.append(card);
+      void fetch(`/api/keeper?editKey=${encodeURIComponent(editKey)}`, {
+        credentials: "same-origin",
+      }).then(
+        async (res) => {
+          if (!res.ok || !card.isConnected) return;
+          const state = (await res.json()) as { keeper?: string; lang?: string };
+          card.hidden = false;
+          const who = state.keeper
+            ? t("live.keeper.hint", { keeper: state.keeper })
+            : t("keeper.06");
+          card.append(
+            el("span", "p-field-label", t("keeper.22")),
+            el("p", "p-hint-block", who),
+            button("p-btn p-btn-quiet", t("keeper.23"), () => {
+              cardSetup({
+                root,
+                compact: true,
+                editKey,
+                onDone: () => mineScreen(opts),
+              });
+            }),
+            handOnButton(),
+          );
+        },
+        // Not keeping a card is the ordinary case, and a failed question
+        // about it should look exactly like the answer "no".
+        () => {},
+      );
+
+      /**
+       * Handing the card on, behind its own confirmation.
+       *
+       * Separated from "take my name off" — which is just saving an empty
+       * name in the sheet above — because they are different intentions,
+       * and one button called Delete would make the reversible one look
+       * final. The confirmation states what survives, since the fear here
+       * is "will this take my ducks with it".
+       */
+      function handOnButton(): HTMLElement {
+        const box = el("div", "p-danger");
+        const start = button("p-btn p-btn-danger", t("keeper.25"), () => {
+          box.replaceChildren(
+            el("p", "p-note", t("keeper.26")),
+            button("p-btn p-btn-danger", t("keeper.27"), () => {
+              void api.keeperEnd(editKey).then(
+                () => mineScreen(opts),
+                () => box.append(el("p", "p-note", t("live.error"))),
+              );
+            }),
+            button("p-btn p-btn-quiet", t("keeper.28"), () => box.replaceChildren(start)),
+          );
+        });
+        box.append(start);
+        return box;
+      }
 
       /*
        * ══ TAKING IT OUT LIVES BELOW EVERYTHING, BEHIND A RULE ══

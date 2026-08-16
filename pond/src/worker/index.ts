@@ -246,7 +246,7 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
              * blank has still claimed the card, and offering it to the
              * next visitor would be offering something already taken.
              */
-            keeperOffer: await keeperOffer(env, s),
+            keeperOffer: await keeperOffer(env, s, url.searchParams.get("editKey")),
           }
         : { active: false },
       { headers },
@@ -413,11 +413,14 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
    * would only be something to check rather than something to trust.
    */
   if (path === "/api/claim/first" && req.method === "POST") {
+    const body = await readJson(req);
     const id = await readSessionCookie(env, req);
     const s = id ? await loadSession(env, id) : null;
     if (!s) return json({ ok: false }, { status: 401, headers });
 
-    const claim = await claimFromSession(env, s);
+    const claim = await claimFromSession(
+      env, s, typeof body?.editKey === "string" ? body.editKey : null,
+    );
     if ("error" in claim) {
       // "already kept" is the one refusal worth distinguishing: it is not
       // a failure, it is somebody else having got there, and the client
