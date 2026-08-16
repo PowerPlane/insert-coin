@@ -632,9 +632,28 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   function closeCell(coveredCss: number): number {
     const water = Math.max(0, view.stageHeight() - coveredCss);
     const BLOCK_CELLS = GRID + -TAG.Y;
+    /*
+     * ══ DEVICE PIXELS ARE NOT CSS PIXELS ══
+     * `cell` is DEVICE pixels per sprite pixel, so `BLOCK_CELLS * cell` is
+     * a device-pixel height — and it was being compared against `water`,
+     * which `stageHeight` returns in CSS pixels. On any retina screen that
+     * made the block read twice its real size, so every rung failed the
+     * test and this fell through to the minimum almost always.
+     *
+     * Two things followed. The fortune arrival never closed in as far as
+     * it was written to. And the landing after a release was framed at
+     * whatever the pond was already at — which is HOME_CELL — so the
+     * pull-back on Done had nothing to pull back FROM and read as broken.
+     * Reported as exactly that: "the zoom out only after click done is not
+     * working."
+     *
+     * `dpr()` is clamped to 2, so the conversion is the view's own, not
+     * `window.devicePixelRatio`.
+     */
+    const blockCss = (BLOCK_CELLS * 1) / view.pxPerCss();
     for (const cell of [ARRIVAL_CLOSE_CELL, 6, 4, 3, 2]) {
       if (cell < ARRIVAL_MIN_CELL) break;
-      if (BLOCK_CELLS * cell <= water * ARRIVAL_BLOCK_SHARE) return cell;
+      if (blockCss * cell <= water * ARRIVAL_BLOCK_SHARE) return cell;
     }
     return ARRIVAL_MIN_CELL;
   }
@@ -727,6 +746,22 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
         const covered = coveredCss();
         mineId = duck.id;
         duck.mine = true;
+        /*
+         * ══ THIS SCREEN FRAMES IT ITSELF ══
+         * `dropIn` schedules a `lookAt` a beat after any duck lands, and
+         * `lookAt` defaults to HOME_CELL — so it zoomed straight back out
+         * and re-centred on the SCREEN, undoing the framing below and
+         * putting the duck back on the card's edge. Measured: the camera
+         * reached cell 8 and then glided to 4 over 1.1s while the keep
+         * card was still up, which is why the pull-back on Done looked
+         * like it did nothing. There was nothing left to pull back from.
+         *
+         * `selfDirected` is the flag that already exists to say "leave
+         * this one alone, the screen has its own schedule" — the fortune
+         * arrival sets it for the same reason. The released duck needs it
+         * too, and not setting it was the whole bug.
+         */
+        duck.selfDirected = true;
         view.camera.snap({ x: duck.wx, y: duck.wy });
         view.focusClear(duck.id, closeCell(covered), covered, 0);
         view.arrive(duck);

@@ -385,7 +385,10 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     const token = typeof body?.token === "string" ? body.token : "";
     if (!card || !Number.isInteger(counter)) return badRequest("bad claim", headers);
 
-    const claim = await claimCard(env, card, counter, token);
+    const claim = await claimCard(
+      env, card, counter, token,
+      typeof body?.editKey === "string" ? body.editKey : null,
+    );
     if ("error" in claim) {
       // Every refusal looks the same from outside. Distinguishing "bad
       // token" from "already used" would tell somebody walking the counter

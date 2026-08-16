@@ -2166,8 +2166,7 @@ function cardSetup(opts) {
       const status = el("p", "p-note", "");
       const actions = el("div", "p-actions");
       actions.append(
-        button("p-btn", t("keeper.17"), () => void save({ name, lang, editKey, adopt })),
-        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone)
+        button("p-btn", t("keeper.17"), () => void save({ name, lang, editKey, adopt }))
       );
       wrap2.append(spacer(), actions, status);
       root2.append(viewRoot);
@@ -4717,6 +4716,17 @@ var PondView = class {
     this.camera.glide({ x: d.wx, y: d.wy + frameH * (0.5 - yFrac), cell }, ms);
   }
   /** The visible stage in CSS pixels — the canvas box minus its overscan. */
+  /**
+   * Device pixels per CSS pixel, as the VIEW uses it.
+   *
+   * Not `window.devicePixelRatio`: the canvas is drawn at a ratio clamped
+   * to 2, so anything converting between what is drawn and what is
+   * measured has to use the same clamp or it is out by a third on a
+   * three-times screen.
+   */
+  pxPerCss() {
+    return this.dpr();
+  }
   stageHeight() {
     return this.opts.canvas.getBoundingClientRect().height / OVERSCAN;
   }
@@ -5476,9 +5486,10 @@ async function pondScreen(bootstrap) {
   function closeCell(coveredCss2) {
     const water = Math.max(0, view2.stageHeight() - coveredCss2);
     const BLOCK_CELLS = GRID + -TAG.Y;
+    const blockCss = BLOCK_CELLS * 1 / view2.pxPerCss();
     for (const cell of [ARRIVAL_CLOSE_CELL, 6, 4, 3, 2]) {
       if (cell < ARRIVAL_MIN_CELL) break;
-      if (BLOCK_CELLS * cell <= water * ARRIVAL_BLOCK_SHARE) return cell;
+      if (blockCss * cell <= water * ARRIVAL_BLOCK_SHARE) return cell;
     }
     return ARRIVAL_MIN_CELL;
   }
@@ -5497,6 +5508,7 @@ async function pondScreen(bootstrap) {
         const covered = coveredCss();
         mineId = duck.id;
         duck.mine = true;
+        duck.selfDirected = true;
         view2.camera.snap({ x: duck.wx, y: duck.wy });
         view2.focusClear(duck.id, closeCell(covered), covered, 0);
         view2.arrive(duck);

@@ -1273,6 +1273,18 @@ export class PondView {
   }
 
   /** The visible stage in CSS pixels — the canvas box minus its overscan. */
+  /**
+   * Device pixels per CSS pixel, as the VIEW uses it.
+   *
+   * Not `window.devicePixelRatio`: the canvas is drawn at a ratio clamped
+   * to 2, so anything converting between what is drawn and what is
+   * measured has to use the same clamp or it is out by a third on a
+   * three-times screen.
+   */
+  pxPerCss(): number {
+    return this.dpr();
+  }
+
   stageHeight(): number {
     return this.opts.canvas.getBoundingClientRect().height / OVERSCAN;
   }

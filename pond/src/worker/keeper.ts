@@ -119,6 +119,28 @@ export async function claimCard(
   cardId: string,
   counter: number,
   token: string,
+  /*
+   * ══ BLOWING ON YOUR OWN CARD IS NOT HANDING IT OVER ══
+   * Every claim opened a NEW epoch, which is right when a card changes
+   * hands and wrong when it does not. A keeper who blew on their own card
+   * — to check something, or because it is the gesture they know — got a
+   * blank Card setup and had silently lost their name, their language and
+   * their duck link. The old tenure was still there, holding their ducks;
+   * they were simply no longer in it.
+   *
+   * David hit this immediately: "it did jump to setting but what I set was
+   * not there."
+   *
+   * So a claimer who can prove they are ALREADY the current keeper keeps
+   * their tenure. The proof is the private link of the duck this tenure
+   * has as its `keeper_duck` — the same credential `/api/keeper` accepts,
+   * and one only that keeper holds.
+   *
+   * The signature and the counter are still checked and still spent, so
+   * this is not a way around anything: it decides whether the tenure is
+   * REPLACED or resumed, never whether the claim is allowed.
+   */
+  editKey?: string | null,
 ): Promise<Claim | { error: ClaimRefusal }> {
   const key = secret();
   // A server with no CARD_SECRET cannot verify anything, and must not fall
@@ -141,6 +163,32 @@ export async function claimCard(
     .bind(counter, cardId)
     .run();
   if (!advanced.meta.changes) return { error: "already used" };
+
+  /*
+   * Already the keeper? Then this is a keeper getting back into their own
+   * settings, not a succession. Resume the tenure rather than replacing
+   * it — replacing it would strand their own ducks in a tenure they had
+   * just left, and hand them a blank form.
+   */
+  if (editKey && /^[A-Za-z0-9]{16,64}$/.test(editKey)) {
+    const same = await env.DB.prepare(
+      `SELECT e.id, e.keeper_name, e.lang
+         FROM card_epochs e
+         JOIN ducks d ON d.id = e.keeper_duck
+        WHERE e.card_id = ?1 AND e.ended IS NULL AND d.edit_key = ?2`,
+    )
+      .bind(cardId, editKey)
+      .first<{ id: string; keeper_name: string; lang: string }>();
+    if (same) {
+      return {
+        epochId: String(same.id),
+        card: cardId,
+        keeper: String(same.keeper_name ?? ""),
+        lang: String(same.lang ?? "en"),
+        orphans: await orphanCount(env, cardId),
+      };
+    }
+  }
 
   const epochId = randomId(16);
   const ts = nowSec();

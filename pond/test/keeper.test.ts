@@ -475,3 +475,80 @@ describe("resolving a keeper from their duck's private link", () => {
     expect(await epochForEditKey(e, "../../../etc/passwd")).toBe(null);
   });
 });
+
+/**
+ * Blowing on your own card is not handing it over.
+ *
+ * Every claim opened a new epoch — right when a card changes hands, wrong
+ * when it does not. A keeper who blew on their own card got a blank Card
+ * setup and had silently lost their name, their language and their duck
+ * link; the old tenure was still there holding their ducks, and they were
+ * simply no longer in it. David hit it on the first try.
+ */
+describe("a keeper who re-claims their own card keeps their tenure", () => {
+  it("resumes rather than replacing, and their settings are still there", async () => {
+    const e = await env();
+    const first = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in first) throw new Error("claim failed");
+    await makeDuck(e.DB, "theirs", { card: CARD });
+    await saveKeeper(e, first.epochId, {
+      name: "Kariina", lang: "zh-Hant", editKey: editKeyFor("theirs"),
+    });
+
+    // Four blows again, by the same person, holding the same duck.
+    const again = await claimCard(e, CARD, 2, sign(2), editKeyFor("theirs"));
+    if ("error" in again) throw new Error("re-claim failed");
+
+    expect(again.epochId, "the same tenure").toBe(first.epochId);
+    expect(again.keeper, "and the name they set").toBe("Kariina");
+    expect(again.lang).toBe("zh-Hant");
+    expect(await count(e.DB, `SELECT COUNT(*) AS n FROM card_epochs`), "no new epoch").toBe(1);
+  });
+
+  it("still spends the counter, so it is no way around replay", async () => {
+    const e = await env();
+    const first = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in first) throw new Error("claim failed");
+    await makeDuck(e.DB, "same", { card: CARD });
+    await saveKeeper(e, first.epochId, { editKey: editKeyFor("same") });
+
+    await claimCard(e, CARD, 4, sign(4), editKeyFor("same"));
+    // The mark moved to 4, so 4 cannot be replayed and 3 is now stale.
+    expect(await claimCard(e, CARD, 4, sign(4), editKeyFor("same")))
+      .toEqual({ error: "already used" });
+    expect(await claimCard(e, CARD, 3, sign(3), editKeyFor("same")))
+      .toEqual({ error: "already used" });
+  });
+
+  it("hands the card over when the blower is somebody else", async () => {
+    // The gesture's real job. A stranger's key — or none — is a
+    // succession, and the new keeper inherits nothing.
+    const e = await env();
+    const first = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in first) throw new Error("claim failed");
+    await makeDuck(e.DB, "was", { card: CARD });
+    await saveKeeper(e, first.epochId, { name: "Sam", editKey: editKeyFor("was") });
+
+    const next = await claimCard(e, CARD, 2, sign(2), null);
+    if ("error" in next) throw new Error("second claim failed");
+    expect(next.epochId, "a new tenure").not.toBe(first.epochId);
+    expect(next.keeper, "inheriting no name").toBe("");
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM card_epochs WHERE ended IS NULL`,
+    )).toBe(1);
+  });
+
+  it("is not fooled by a stranger's private link", async () => {
+    const e = await env();
+    const first = await claimCard(e, CARD, 1, sign(1));
+    if ("error" in first) throw new Error("claim failed");
+    await makeDuck(e.DB, "mine2", { card: CARD });
+    await saveKeeper(e, first.epochId, { name: "Sam", editKey: editKeyFor("mine2") });
+    // A duck that is not this tenure's keeper duck.
+    await makeDuck(e.DB, "other2", { card: CARD });
+
+    const next = await claimCard(e, CARD, 2, sign(2), editKeyFor("other2"));
+    if ("error" in next) throw new Error("claim failed");
+    expect(next.epochId, "still a succession").not.toBe(first.epochId);
+  });
+});

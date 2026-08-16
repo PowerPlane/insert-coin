@@ -14,6 +14,7 @@
  * one property that makes the privacy claim checkable.
  */
 
+import { SAY_COOLDOWN_SEC } from "./social.js";
 import type { Env, PublicDuck } from "./types.js";
 import { normaliseSlug, slugTaken } from "./slug.js";
 import { cleanText, nowSec } from "./util.js";
@@ -186,8 +187,28 @@ const PUBLIC_COLUMNS = `
   (SELECT e.keeper_name FROM card_epochs e WHERE e.id = d.epoch_id) AS keeper
 `;
 
-/** Speech bubbles live 45 s on screen; older ones are not sent at all. */
-export const SAY_VISIBLE_SEC = 45;
+/**
+ * How long a speech bubble stays up.
+ *
+ * ══ AS LONG AS THE COOLDOWN, AND NOT A SECOND LESS ══
+ * This was 45 seconds against a five-minute cooldown, which left four
+ * minutes and a quarter where a duck had said something recently and was
+ * showing nothing — and no way to say anything else. The person who wrote
+ * it had gone; the pond had forgotten; and the button was still greyed
+ * out with a countdown on it.
+ *
+ * Matching the two makes the rule a sentence anybody can hold: your duck
+ * says one thing at a time, and it says it until you can say the next
+ * one. There is never dead air, and there are never two.
+ *
+ * David asked for exactly this after watching his own message vanish
+ * while the button was still counting down.
+ *
+ * Imported rather than redeclared — `SAY_COOLDOWN_SEC` is the authority,
+ * and two constants that must be equal are one constant with a bug in
+ * waiting.
+ */
+export const SAY_VISIBLE_SEC = SAY_COOLDOWN_SEC;
 
 function toPublicDuck(r: Record<string, unknown>): PublicDuck {
   const keeper = typeof r.keeper === "string" ? r.keeper.trim() : "";

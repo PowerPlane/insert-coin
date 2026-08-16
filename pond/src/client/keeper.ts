@@ -268,10 +268,18 @@ export function cardSetup(opts: CardSetupOptions): void {
 
       // ── save ────────────────────────────────────────────────────────
       const status = el("p", "p-note", "");
+      /*
+       * ══ ONE "NOT NOW", NOT TWO ══
+       * The nav already carries it, top-left, where every screen in this
+       * flow puts the way out — and where it stays reachable with the
+       * keyboard up. A second copy at the foot of the form was the same
+       * words doing the same thing twice on one screen, which is the
+       * third time that has happened here: the duplicate Save, the
+       * redundant "Skip contact", and now this.
+       */
       const actions = el("div", "p-actions");
       actions.append(
         button("p-btn", t("keeper.17"), () => void save({ name, lang, editKey, adopt })),
-        button("p-btn p-btn-quiet", t("keeper.18"), opts.onDone),
       );
       // Eats the space between the last field and the buttons, so the
       // primary sits at the foot on a tall phone and directly under the
