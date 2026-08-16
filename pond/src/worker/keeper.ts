@@ -629,6 +629,56 @@ export async function endTenure(env: Env, epochId: string): Promise<boolean> {
 }
 
 /**
+ * Link the claimer's own duck to the tenure they just opened.
+ *
+ * ══ CLAIMED AND STRANDED ══
+ * `claimFromSession` sets `keeper_duck` as it claims, because it knows
+ * which duck proved the claim. The four-blow path does not: it opens an
+ * epoch from a signature alone, and `saveKeeper` was the only thing that
+ * ever wrote the link.
+ *
+ * So somebody who blew four times, tapped, and then closed Card setup
+ * without filling anything in ended up keeping a card with no name and no
+ * duck attached — and once the one-hour cookie expired, no way back to it
+ * at all except David in admin. That is the exact dead end this whole
+ * feature exists to remove, reached by doing nothing wrong. David reached
+ * it on his own card, and it read as "kept · no name" in the Cards tab.
+ *
+ * So the claim takes the duck the browser is holding, if it has one and if
+ * this card made it. Same invariant `saveKeeper` enforces — a keeper's
+ * duck must be a duck their card minted — checked here rather than
+ * trusted, and `keeper_duck IS NULL` so it can never overwrite a link an
+ * actual keeper chose.
+ */
+export async function linkClaimerDuck(
+  env: Env,
+  epochId: string,
+  cardId: string,
+  editKey: string | null,
+): Promise<void> {
+  if (!editKey || !/^[A-Za-z0-9]{16,64}$/.test(editKey)) return;
+  const duck = await env.DB.prepare(
+    `SELECT id FROM ducks WHERE edit_key = ?1 AND card_id = ?2`,
+  )
+    .bind(editKey, cardId)
+    .first<{ id: string }>();
+  if (!duck) return;
+
+  await env.DB.prepare(
+    `UPDATE card_epochs SET keeper_duck = ?1 WHERE id = ?2 AND keeper_duck IS NULL`,
+  )
+    .bind(duck.id, epochId)
+    .run();
+  // And into the tenure, the same way a session claim adopts the duck that
+  // proved it. `epoch_id IS NULL` so a previous keeper's duck is untouched.
+  await env.DB.prepare(
+    `UPDATE ducks SET epoch_id = ?1 WHERE id = ?2 AND epoch_id IS NULL`,
+  )
+    .bind(epochId, duck.id)
+    .run();
+}
+
+/**
  * The other way into card settings: the keeper's own duck.
  *
  * ══ AN HOUR IS A BOOTSTRAP, NOT A KEY ══

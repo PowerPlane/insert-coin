@@ -1995,3 +1995,89 @@ describe("an unresolved key is a refusal, not a fallback", () => {
     expect(await later.json()).toMatchObject({ keeper: "" });
   });
 });
+
+/**
+ * Claimed and stranded.
+ *
+ * `claimFromSession` links the duck that proved the claim. The four-blow
+ * path opens an epoch from a signature alone, and `saveKeeper` was the
+ * only thing that ever wrote `keeper_duck` — so blowing four times and
+ * then closing Card setup without filling anything in left somebody
+ * keeping a card with no name and no duck, and once the hour was up, no
+ * way back except admin.
+ *
+ * David reached exactly that on his own card. It reads "kept · no name".
+ */
+describe("a four-blow claim takes the duck you already have", () => {
+  const signed = (card: string, secret: Uint8Array) =>
+    `?d=1&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`;
+
+  it("links it, so the private link still opens card settings later", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const serial = "BREWFR22";
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed(serial, secret));
+
+    // Four blows, then a tap. Nothing else filled in.
+    const res = await v.post("/api/claim", {
+      card: serial, counter: 1, token: cardToken(secret, serial, 1),
+      editKey: duck.editKey,
+    });
+    expect(res.status).toBe(200);
+
+    // A cold browser with only the private link can reach card settings.
+    const cold = await handle(new Request(`${ORIGIN}/api/keeper?editKey=${duck.editKey}`), e);
+    expect(cold.status, "there is a way back").toBe(200);
+    expect(await cold.json()).toMatchObject({ keeper: "" });
+    // And the duck joined the tenure it opened.
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM ducks WHERE id = ?1 AND epoch_id IS NOT NULL`, duck.id,
+    )).toBe(1);
+  });
+
+  it("refuses a duck from a different card", async () => {
+    // The same invariant saveKeeper enforces, checked here rather than
+    // trusted: a keeper's duck must be one their card made.
+    const e = await env();
+    const secret = testSecret();
+    const elsewhere = await release(new Visitor(e), {}, signed("FARCARD3", secret));
+
+    const v = new Visitor(e);
+    await v.tap(signed("NEARCRD4", secret));
+    await v.post("/api/claim", {
+      card: "NEARCRD4", counter: 1, token: cardToken(secret, "NEARCRD4", 1),
+      editKey: elsewhere.editKey,
+    });
+
+    const res = await handle(
+      new Request(`${ORIGIN}/api/keeper?editKey=${elsewhere.editKey}`), e);
+    expect(res.status, "a stranger's duck opens nothing").toBe(404);
+  });
+
+  it("never overwrites a link the keeper actually chose", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const serial = "CHSENNN5";
+    const v = new Visitor(e);
+    const first = await release(v, {}, signed(serial, secret));
+    await v.post("/api/claim", {
+      card: serial, counter: 1, token: cardToken(secret, serial, 1), editKey: first.editKey,
+    });
+
+    // A second duck from the same card, offered on a later claim.
+    const other = new Visitor(e);
+    const second = await release(other, {}, signed(serial, secret));
+    await other.post("/api/claim", {
+      card: serial, counter: 2, token: cardToken(secret, serial, 2), editKey: second.editKey,
+    });
+
+    // The SECOND claim opened a new tenure, so it may link its own duck —
+    // what must never happen is the first tenure's link being rewritten.
+    const firstStill = await count(
+      e.DB,
+      `SELECT COUNT(*) AS n FROM card_epochs WHERE keeper_duck = ?1`, first.id,
+    );
+    expect(firstStill, "the first tenure keeps the duck it was given").toBe(1);
+  });
+});

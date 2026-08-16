@@ -496,7 +496,7 @@ export async function claimFromUrl(url: URL): Promise<boolean> {
   const counter = parseInt(g, 16);
 
   try {
-    const res = await api.claim(card, counter, token);
+    const res = await api.claim(card, counter, token, recallEditKey());
     return res.ok;
   } catch {
     return false;

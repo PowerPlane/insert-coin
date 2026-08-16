@@ -31,8 +31,8 @@ import {
   setCardLabel, setHidden, setKeeper, signIn, unlinkDucks,
 } from "./admin.js";
 import {
-  claimCard, claimFromSession, endTenure, ensureCard, epochForEditKey, keeperOffer,
-  keeperState, saveKeeper,
+  claimCard, claimFromSession, endTenure, ensureCard, epochForEditKey,
+  keeperOffer, keeperState, linkClaimerDuck, saveKeeper,
 } from "./keeper.js";
 import { createDuck, setContact } from "./release.js";
 import { normaliseSlug, slugTaken } from "./slug.js";
@@ -392,6 +392,17 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
       // space exactly how close they were.
       return json({ ok: false }, { status: 403, headers });
     }
+
+    /*
+     * If this browser already has a duck from this card, that duck becomes
+     * the keeper's — which is what gives them a durable way back once the
+     * cookie below expires. Checked, not trusted: `linkClaimerDuck` only
+     * accepts a duck THIS CARD minted.
+     */
+    await linkClaimerDuck(
+      env, claim.epochId, card,
+      typeof body?.editKey === "string" ? body.editKey : null,
+    );
 
     // The epoch id IS the credential for Card setup, the same way an edit
     // key is for a duck. It goes in a cookie rather than the URL so it does

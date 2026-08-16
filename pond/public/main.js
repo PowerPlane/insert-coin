@@ -81,9 +81,12 @@ var api = {
    * are indistinguishable from outside, so somebody walking the counter
    * space learns nothing about how close they got.
    */
-  claim: (card, counter, token) => request("/claim", {
+  claim: (card, counter, token, editKey) => request("/claim", {
     method: "POST",
-    body: JSON.stringify({ card, counter, token })
+    // The duck this browser already has, if any. The server links it as
+    // the keeper's own only when this card minted it — which is what
+    // leaves a way back into card settings after the cookie expires.
+    body: JSON.stringify({ card, counter, token, ...editKey ? { editKey } : {} })
   }),
   /**
    * Keep the card you just used.
@@ -2303,7 +2306,7 @@ async function claimFromUrl(url) {
   if (!isClaimUrl(url) || !card || !g || !token) return false;
   const counter = parseInt(g, 16);
   try {
-    const res = await api.claim(card, counter, token);
+    const res = await api.claim(card, counter, token, recallEditKey());
     return res.ok;
   } catch {
     return false;
