@@ -302,10 +302,19 @@ export type StringKey =
  * be indistinguishable from a string nobody has translated yet — and the
  * parity test could no longer tell those two apart.
  *
- * ══ BUMP IS 戳 ══
- * The nudge a stranger gives your duck. 戳 is what Chinese social apps have
- * always called this, so it arrives already understood — which is the whole
- * point of the gesture.
+ * ══ BUMP IS 碰, NOT 戳 ══
+ * It was 戳 on the reasoning that Chinese social apps have always called it
+ * that, so it would arrive already understood. That is exactly the problem:
+ * what arrives understood is FACEBOOK'S POKE — a finger jabbing a person
+ * through a screen.
+ *
+ * What happens here is one duck swimming across a pond and nudging another.
+ * 碰 is that: a light physical bump between two things floating in water.
+ * The apps' word borrowed a gesture that does not exist in this pond, and
+ * being instantly recognisable made it worse rather than better.
+ *
+ * Flagged by a native Taiwanese reader, which is the only review that could
+ * have caught it — every string here was correct.
  *
  * 大吉 · 小吉 · 末吉 · 凶 are left alone. They were already Chinese.
  */
@@ -324,14 +333,14 @@ export const ZH_HANT: Record<StringKey, string> = {
   "live.offline": "沒有訊號",
   "live.error": "池塘沒有回應",
   "live.via": "來自 {keeper}",
-  "live.bumps": "被戳 {n} 次",
-  "live.bumps.one": "被戳 1 次",
-  "live.bumps.none": "還沒有人戳過它",
-  "live.say.wait": "你的鴨子再過 {time} 就能說話了",
+  "live.bumps": "被碰了 {n} 下",
+  "live.bumps.one": "被碰了 1 下",
+  "live.bumps.none": "還沒有人碰過它",
+  "live.say.wait": "還要 {time} 才能再說話",
   "live.sr.duck": "{name} 的鴨子，{fortune}",
-  "live.sr.bumper": "{name}，{bumps} — 打開他們的鴨子",
-  "live.sr.anon": "某人",
-  "live.sr.burning": "{name}，著火了 — 打開可以幫忙滅火",
+  "live.sr.bumper": "{name}，{bumps} — 打開這隻鴨子",
+  "live.sr.anon": "有人",
+  "live.sr.burning": "{name} 燒起來了 — 打開幫它滅火",
   "live.today": "今天來到池塘",
   "live.day": "在池塘裡一天了",
   "live.days": "在池塘裡 {n} 天了",
@@ -343,14 +352,14 @@ export const ZH_HANT: Record<StringKey, string> = {
   "live.remove.yes": "好，帶走",
   "live.removed": "你的鴨子離開了",
   "live.removed.body": "你留下的一切都已經刪除。",
-  "live.capped": "先戳回去",
+  "live.capped": "先碰回去",
   "live.count.of": "{total} 隻中的 {n} 隻",
-  "live.nokeepers": "還沒有卡片取過名字，所以沒有人可以呼喚。",
-  "live.keeper.hint": "這張卡片放出的鴨子會寫「來自 {keeper}」。",
+  "live.nokeepers": "還沒有卡片取名字，所以現在還不能吹哨找人。",
+  "live.keeper.hint": "這張卡片放出的鴨子會顯示「來自 {keeper}」。",
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
   "live.claim.no": "這張卡片無法設定。",
-  "live.claim.no.body": "設定可能已經用過了，或者池塘不認得這張卡片。拿著卡片再吹四次，然後靠近手機。",
+  "live.claim.no.body": "這組設定可能已經用過，或是池塘不認得這張卡片。拿著卡片再吹四次，然後再感應一次。",
   "live.whistling": "{keeper} 的卡片",
   "live.everyone": "全部",
   "live.error.body": "你的鴨子還在，做的東西都沒有不見。等一下再試一次。",
@@ -362,16 +371,16 @@ export const ZH_HANT: Record<StringKey, string> = {
   "keeper.03": "想改的話，拿著卡片再吹一次。",
   "keeper.04": "卡片名稱",
   "keeper.05": "Sam",
-  "keeper.06": "這張卡片放出的鴨子會寫「來自 Sam」。",
+  "keeper.06": "這張卡片放出的鴨子會顯示「來自 Sam」。",
   "keeper.07": "連結你的鴨子",
   "keeper.08": "移除連結",
   "keeper.09": "做一隻鴨子",
   "keeper.10": "貼上鴨子連結",
-  "keeper.11": "別人就可以戳回來。",
+  "keeper.11": "別人就可以碰回來。",
   "keeper.12": "預設語言",
   "keeper.13": "English",
   "keeper.14": "繁體中文",
-  "keeper.15": "訪客的手機還是可以選別的語言。",
+  "keeper.15": "訪客還是可以在手機上選別的語言。",
   "keeper.16": "把先前的 12 隻鴨子加進這張卡片",
   "keeper.17": "儲存設定",
   "keeper.18": "現在不要",
@@ -379,13 +388,13 @@ export const ZH_HANT: Record<StringKey, string> = {
   // ── the arrival ───────────────────────────────────────────────────────
   "arrival.01": "你的運勢",
   "arrival.02": "大吉",
-  "arrival.03": "今天沒有別人拿到這隻鴨子。裝飾它，或就這樣放下水。",
+  "arrival.03": "今天沒有人抽到這隻鴨子。裝飾一下，或直接放進池塘。",
   "arrival.04": "裝飾它",
   "arrival.05": "先看看就好",
 
   // ── the studio ────────────────────────────────────────────────────────
   "studio.01": "返回",
-  "studio.02": "把它變成你的",
+  "studio.02": "做成你的鴨子",
   "studio.03": "略過",
   "studio.04": "你的鴨子。點一下放置，或拖曳貼紙。",
   "studio.05": "復原",
@@ -401,8 +410,8 @@ export const ZH_HANT: Record<StringKey, string> = {
   "studio.15": "擦掉",
   "studio.16": "顏色",
   "studio.17": "下一步",
-  "studio.18": "拖曳貼紙可以移動。什麼都不填也可以。",
-  "studio.19": "這裡什麼都不填也可以。",
+  "studio.18": "拖曳貼紙可以移動。不加也可以。",
+  "studio.19": "這裡什麼都不用改也可以。",
 
   // ── signing it ────────────────────────────────────────────────────────
   "sign.01": "簽名",
@@ -412,26 +421,26 @@ export const ZH_HANT: Record<StringKey, string> = {
   "sign.05": "0",
   "sign.06": "留言",
   "sign.07": "說點什麼",
-  "sign.08": "每個感應這張卡片的人都看得到你的名字和留言。",
+  "sign.08": "每個感應卡片的人都看得到你的名字和留言。",
   "sign.09": "下一步",
 
   // ── the contact, and what it is for ───────────────────────────────────
   "contact.01": "可以不填",
   "contact.02": "想讓 David 回覆你嗎？",
   "contact.03": "跳過也沒關係，鴨子一樣會下水。",
-  "contact.04": "電子郵件、電話、@帳號，或地址",
+  "contact.04": "Email、電話、@帳號或地址",
   "contact.05": "@yourhandle 或 12 Somewhere St, Brooklyn NY 11211",
   "contact.06": "只有 David 看得到。不會出現在池塘裡，你把鴨子帶走時也會一起刪掉。",
   "contact.07": "放我的鴨子下水",
   "contact.08": "略過聯絡方式",
-  "contact.09": "如果想收明信片，可以留下地址。David 不會把它分享出去。",
+  "contact.09": "想收到明信片的話，可以留下地址。David 不會把地址給別人。",
 
   // ── the pond ──────────────────────────────────────────────────────────
   "pond.01": "14 隻鴨子",
   "pond.02": "David's Pond — 這是誰做的。會在新分頁打開 davidyang.work。",
   "pond.41": "David's Pond",
   "pond.03": "重新顯示全部",
-  "pond.04": "呼喚",
+  "pond.04": "吹哨找",
   "pond.05": "回到整個池塘",
   "pond.06": "放大",
   "pond.07": "+",
@@ -465,24 +474,24 @@ export const ZH_HANT: Record<StringKey, string> = {
   "pond.25": "Mika",
   "pond.26": "來自 Sam · 8 月 4 日",
   "pond.27": "在酒吧撿到這張卡片",
-  "pond.28": "戳最多次的是",
-  "pond.29": "它有什麼問題？",
-  "pond.30": "無禮或辱罵",
-  "pond.31": "私人資訊",
+  "pond.28": "碰最多次的是",
+  "pond.29": "哪裡有問題？",
+  "pond.30": "不友善或辱罵",
+  "pond.31": "個人資料",
   "pond.32": "垃圾訊息",
   "pond.33": "其他",
   "pond.34": "想補充什麼",
   "pond.35": "想補充什麼 — 可以不填",
   "pond.36": "送出檢舉",
   "pond.37": "取消",
-  "pond.38": "戳一下 · 6",
+  "pond.38": "碰一下 · 6",
   "pond.39": "檢舉",
 
   // ── coming back to your own duck ──────────────────────────────────────
   "mine.01": "歡迎回來",
   "mine.02": "你的鴨子",
-  "mine.03": "在池塘裡六天了。有四個人戳過你的鴨子。",
-  "mine.04": "{names} 戳過你的鴨子。",
+  "mine.03": "在池塘裡六天了。有四個人碰過你的鴨子。",
+  "mine.04": "{names} 碰過你的鴨子。",
   "mine.05": "回到池塘",
   "mine.06": "重新裝飾",
   "mine.07": "設定",
@@ -491,23 +500,23 @@ export const ZH_HANT: Record<StringKey, string> = {
   "manage.01": "你的鴨子",
   "manage.02": "留言與設定",
   "manage.03": "你的留言",
-  "manage.04": "電子郵件、電話、@帳號，或地址",
+  "manage.04": "Email、電話、@帳號或地址",
   "manage.05": "你的私人連結",
   "manage.06": "ducky.davidyang.work/e/9fQ2xK7pLm",
   "manage.07": "把鴨子帶走時，留言和聯絡方式會一起刪掉。什麼都不會留下。",
-  "manage.10": "它在池塘裡的網址",
-  "manage.11": "字母、數字和連字號",
+  "manage.10": "池塘裡的地址",
+  "manage.11": "英文字母、數字或 -",
   "manage.12": "可以用",
-  "manage.13": "已被使用",
-  "manage.14": "至少三個字",
+  "manage.13": "有人用了",
+  "manage.14": "至少 3 個字元",
   "manage.08": "儲存變更",
   "manage.09": "把我的鴨子帶走",
-  "manage.15": "收回我的聯絡方式",
-  "manage.19": "在這裡填寫，就能設定或更換 David 回覆你的方式。留白則不會有任何改變。",
+  "manage.15": "刪掉聯絡方式",
+  "manage.19": "在這裡填，就能設定或更換 David 回覆你的方式；留白不會改動原本資料。",
   "manage.20": "儲存",
   "manage.21": "複製",
   "manage.22": "已複製",
-  "manage.23": "收回",
+  "manage.23": "刪掉",
   "manage.16": "如果你留了聯絡方式，這會把它刪掉。鴨子會留在池塘裡。",
   "manage.17": "已完成。現在沒有人能回覆你了。",
 
@@ -517,12 +526,12 @@ export const ZH_HANT: Record<StringKey, string> = {
   "shared.03": "重設",
 
   // ── set from code ─────────────────────────────────────────────────────
-  "code.01": "拖曳貼紙可以移動 · 什麼都不填也可以",
+  "code.01": "拖曳貼紙可以移動 · 不加也可以",
   "code.02": "完成我的鴨子",
-  "code.03": "先做一隻鴨子才能戳",
+  "code.03": "先做一隻鴨子才能碰別人",
   "code.04": "已檢舉",
   "code.05": "已檢舉 ✓",
-  "code.06": "投一枚硬幣就能拿到一隻",
+  "code.06": "投幣就能拿到一隻",
 };
 
 const TABLES: Record<Lang, Partial<Record<StringKey, string>>> = {
