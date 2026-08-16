@@ -318,7 +318,11 @@ function contactRow(d, ducks, cards) {
   row.append(
     el("p", "a-row-name", d.name || "(no name)"),
     // The consent, in names, on every row it appears on.
-    el("p", "a-row-meta", `${scopeLabel(d.scope, d.keeper)} · ${day(d.created)}`)
+    el(
+      "p",
+      "a-row-meta",
+      `${scopeLabel(d.scope, d.contactKeeper ?? d.keeper)} · ${day(d.created)}`
+    )
   );
   if (d.message) row.append(el("p", "a-row-msg", `“${d.message}”`));
   row.append(el("p", "a-contact", d.contact ?? ""));

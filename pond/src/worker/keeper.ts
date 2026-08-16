@@ -327,10 +327,20 @@ export async function keeperOffer(
   if (!session?.cardId) return false;
   /*
    * Exactly the claim's own precondition, or the button appears for a
-   * claim that will be refused. Either this session released a duck, or
-   * the caller holds the private link of a duck from the same card.
+   * claim that will be refused.
+   *
+   * "Exactly" includes the spent duck's own card. This used to trust
+   * `spent_duck` on sight while `claimFromSession` went on to check that
+   * the duck still exists and still belongs to this card — so a duck that
+   * had been deleted, or moved by admin, produced an offer that refused
+   * itself. Codex found the pair had drifted by one condition.
    */
-  if (!session.spentDuck) {
+  if (session.spentDuck) {
+    const spent = await env.DB.prepare(`SELECT card_id FROM ducks WHERE id = ?1`)
+      .bind(session.spentDuck)
+      .first<{ card_id: string | null }>();
+    if (!spent || spent.card_id !== session.cardId) return false;
+  } else {
     if (!editKey || !/^[A-Za-z0-9]{16,64}$/.test(editKey)) return false;
     const mine = await env.DB.prepare(
       `SELECT 1 AS x FROM ducks WHERE edit_key = ?1 AND card_id = ?2`,
@@ -457,7 +467,22 @@ export async function saveKeeper(
     .first<{ id: string; card_id: string; keeper_name: string }>();
   if (!epoch) return { error: "not the current keeper" };
 
-  const name = cleanText(s.name, 18);
+  /*
+   * ══ ABSENT IS NOT EMPTY, FOR EVERY FIELD ══
+   * This was true of `editKey` and false of `name` and `lang`: an omitted
+   * name became "" and an omitted language became "en", on every save.
+   *
+   * The full setup screen's unlink button posts `{ editKey: "" }` and
+   * nothing else — so unlinking a duck also wiped the keeper's name off
+   * every duck on the card and quietly reset a Chinese card to English.
+   * Codex found it by reading the one caller that does not repost the
+   * whole form.
+   *
+   * The rule is now the same everywhere: a field that is not sent is not
+   * touched. Which means each one has to be looked at before it is
+   * written, rather than all of them being read into locals first.
+   */
+  const name = s.name === undefined ? undefined : cleanText(s.name, 18);
   /*
    * Only a name that CHANGED can be refused. Card setup reposts every
    * field together, so checking unconditionally would lock a keeper whose
@@ -470,7 +495,9 @@ export async function saveKeeper(
   if (name && name !== epoch.keeper_name && isReservedKeeperName(name)) {
     return { error: "reserved name" };
   }
-  const lang = s.lang === "zh-Hant" ? "zh-Hant" : "en";
+  const lang = s.lang === undefined
+    ? undefined
+    : s.lang === "zh-Hant" ? "zh-Hant" : "en";
 
   /*
    * The keeper's own duck, resolved from the edit key. Only they have it,
@@ -516,29 +543,43 @@ export async function saveKeeper(
     keeperDuck = String(duck.id);
   }
 
-  const writes = [
-    keeperDuck === undefined
-      ? env.DB.prepare(
-          `UPDATE card_epochs SET keeper_name = ?1, lang = ?2 WHERE id = ?3`,
-        ).bind(name, lang, epochId)
-      : env.DB.prepare(
-          `UPDATE card_epochs SET keeper_name = ?1, lang = ?2, keeper_duck = ?3 WHERE id = ?4`,
-        ).bind(name, lang, keeperDuck, epochId),
-  ];
+  /*
+   * Built from what was actually sent. A save that mentions nothing but
+   * `adopt` writes nothing to the epoch at all, which is the correct
+   * amount of damage for a request that asked for nothing.
+   */
+  const sets: string[] = [];
+  const args: unknown[] = [];
+  if (name !== undefined) { sets.push(`keeper_name = ?${sets.length + 1}`); args.push(name); }
+  if (lang !== undefined) { sets.push(`lang = ?${sets.length + 1}`); args.push(lang); }
+  if (keeperDuck !== undefined) {
+    sets.push(`keeper_duck = ?${sets.length + 1}`);
+    args.push(keeperDuck);
+  }
 
+  const writes = sets.length
+    ? [
+        env.DB.prepare(
+          `UPDATE card_epochs SET ${sets.join(", ")} WHERE id = ?${sets.length + 1}`,
+        ).bind(...args, epochId),
+      ]
+    : [];
+
+  // Only the ducks with NO epoch. A duck from a previous keeper's tenure
+  // stays with that tenure — adopting those would hand this keeper the
+  // consent the last one was given.
+  // The adoption's index depends on whether there was an epoch update at
+  // all, which there is not for a save that only adopts.
+  const adoptAt = writes.length;
   if (s.adopt) {
-    // Only the ducks with NO epoch. A duck from a previous keeper's tenure
-    // stays with that tenure — adopting those would hand this keeper the
-    // consent the last one was given.
     writes.push(
       env.DB.prepare(
         `UPDATE ducks SET epoch_id = ?1 WHERE card_id = ?2 AND epoch_id IS NULL`,
       ).bind(epochId, epoch.card_id),
     );
   }
-
-  const results = await env.DB.batch(writes);
-  return { ok: true, adopted: s.adopt ? (results[1]?.meta.changes ?? 0) : 0 };
+  const results = writes.length ? await env.DB.batch(writes) : [];
+  return { ok: true, adopted: s.adopt ? (results[adoptAt]?.meta.changes ?? 0) : 0 };
 }
 
 /**

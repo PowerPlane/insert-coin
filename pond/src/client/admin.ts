@@ -28,6 +28,9 @@ interface AdminDuck {
   reports: number;
   contact: string | null;
   scope: string | null;
+  /* Who the contact was actually shared with — the tenure it was given
+     to, which is not always the duck's current one. */
+  contactKeeper: string | null;
   replied: number | null;
   postcard: number | null;
   editKey: string;
@@ -420,7 +423,8 @@ function contactRow(d: AdminDuck, ducks: AdminDuck[], cards: AdminCard[]): HTMLE
   row.append(
     el("p", "a-row-name", d.name || "(no name)"),
     // The consent, in names, on every row it appears on.
-    el("p", "a-row-meta", `${scopeLabel(d.scope, d.keeper)} · ${day(d.created)}`),
+    el("p", "a-row-meta",
+      `${scopeLabel(d.scope, d.contactKeeper ?? d.keeper)} · ${day(d.created)}`),
   );
   if (d.message) row.append(el("p", "a-row-msg", `“${d.message}”`));
   row.append(el("p", "a-contact", d.contact ?? ""));

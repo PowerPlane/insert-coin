@@ -183,8 +183,19 @@ needs words. Three unlabelled glyphs would be the worst of both: no
 explanation, and the two familiar ones get smaller to make room.
 
 It carries a **dismiss**, because the answer "no, I am just playing with
-someone else's card" is a real answer and the bar must not nag. Dismissal
-is remembered in `localStorage` and is **not final** — see § 5.
+someone else's card" is a real answer and the bar must not nag.
+
+Dismissal is remembered in `localStorage` **keyed on the duck**, which is
+how it is keyed on the CARD without the client ever learning the serial:
+the offer only appears when you have a duck from the card being offered,
+so the duck identifies it. One global flag — which is what shipped first —
+meant shrugging at a friend's card in a bar silenced the offer on every
+card that browser ever met afterwards, including one of your own.
+
+It is durable for that card. Somebody who dismisses and later changes
+their mind needs David, or a cleared site. That is a deliberate trade
+against a bar that keeps asking, and it is stated here rather than
+implied to be softer than it is.
 
 **When it appears.** All three must hold:
 
@@ -298,10 +309,13 @@ or a screenshot. That already happens today.
 
 ### Edges
 
-- **They tap "Not now".** Dismissal is remembered so the bar stops asking.
-  The offer stays reachable from the duck's settings screen for as long as
-  the card is unclaimed — a decision made in three seconds while watching a
-  duck land should not be permanent.
+- **They tap "Not now".** Dismissal is remembered per card, so the bar
+  stops asking about that one and no other. It does NOT stay reachable
+  from the duck's settings screen: that screen shows a card row only when
+  the server agrees this duck is some card's `keeper_duck`, and an
+  unclaimed card has none. So the dismissal is durable and undoing it is
+  David's job. Written down because the first draft of this document
+  claimed otherwise and the code never did it.
 - **They delete their own duck.** The trigger nulls `keeper_duck`. They are
   still the keeper, but the durable credential is gone: the way back is
   four blows, or David in admin. Worth stating in the confirm on *Take my
@@ -452,7 +466,9 @@ Pick a duck, pick a card, set `card_id`. This is what repairs Dog and
 Billyboi. Without it those two are stuck at *from no card* forever.
 
 **7.4 Delete the ducks from this card** *(destructive)* — behind a typed
-confirmation of the card's label, and routed through the same delete path
+confirmation of the card's SERIAL, which is printed on the row and is
+unambiguous where a label may be empty or duplicated, and routed through
+the same delete path
 as everything else so the `ducks_before_delete` trigger fires and the
 contacts go with them. **The deletion promise is not negotiable and no
 bulk path may bypass it.**

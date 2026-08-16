@@ -42,7 +42,17 @@ async function request(path, init = {}) {
   return body;
 }
 var api = {
-  session: () => request("/session"),
+  /*
+   * `editKey` is optional and only ever affects `keeperOffer`. The server
+   * needs it to answer the later-visit case: a fresh tap that has not
+   * released a duck, by somebody who already has one from that card. It
+   * is sent as a query parameter to match the GET, and left off entirely
+   * when there is no duck, so an empty value never reads as a malformed
+   * credential.
+   */
+  session: (editKey) => request(
+    editKey ? `/session?editKey=${encodeURIComponent(editKey)}` : "/session"
+  ),
   pond: () => request("/pond"),
   /** Who keeps bumping this duck. Fetched when its card opens, not before. */
   bumpers: (duck) => request(`/bumpers?duck=${encodeURIComponent(duck)}`),
@@ -78,17 +88,20 @@ var api = {
   /**
    * Keep the card you just used.
    *
-   * No arguments, and that is the design rather than an omission: the
-   * session cookie IS the claim. Anything the browser could send would be
-   * something the server has to check rather than something it can trust,
-   * and the server already knows which card this session came from and
-   * which duck it released.
+   * The session cookie is the claim: it is what proves somebody is holding
+   * this card right now, and the server already knows which card it came
+   * from. `editKey` is only needed on a LATER visit, where the fresh tap
+   * has released no duck of its own and the key answers which duck from
+   * that card is theirs. Neither alone is enough.
    *
    * A 409 means somebody else got there first, which is not a failure —
    * it is a reason to take the offer down rather than to retry it.
    */
-  claimFirst: () => request("/claim/first", {
-    method: "POST"
+  claimFirst: (editKey) => request("/claim/first", {
+    method: "POST",
+    // Only needed when this session has not released a duck of its own.
+    // Harmless when it has: the server prefers `spent_duck`.
+    body: JSON.stringify(editKey ? { editKey } : {})
   }),
   /**
    * Hand the card on.
@@ -5318,7 +5331,7 @@ async function pondScreen(bootstrap) {
   window.__pond = view2;
   const fit = () => view2.resize();
   fit();
-  watchSize(canvas, fit);
+  const unwatchSize = watchSize(canvas, fit);
   view2.start();
   syncZoom();
   const zoomPoll = window.setInterval(syncZoom, 500);
@@ -5506,7 +5519,7 @@ async function pondScreen(bootstrap) {
   const hasDuck = () => recallEditKey();
   async function syncCta() {
     cta.replaceChildren();
-    const session2 = await api.session().catch(() => ({ active: false }));
+    const session2 = await api.session(hasDuck()).catch(() => ({ active: false }));
     buildCta(session2);
     return session2;
   }
@@ -5566,6 +5579,7 @@ async function pondScreen(bootstrap) {
       go.type = "button";
       go.addEventListener("click", () => beginRelease(session2));
       cta.append(go);
+      if (session2.keeperOffer && !offerDismissed()) cta.append(keeperOfferRow());
       return;
     }
     if (!mine) {
@@ -5580,9 +5594,10 @@ async function pondScreen(bootstrap) {
     if (session2.keeperOffer && !offerDismissed()) cta.append(keeperOfferRow());
   }
   const OFFER_KEY = "pond.keeper.offer.dismissed";
+  const offerKeyFor = () => `${OFFER_KEY}.${hasDuck() ?? "none"}`;
   const offerDismissed = () => {
     try {
-      return localStorage.getItem(OFFER_KEY) === "1";
+      return localStorage.getItem(offerKeyFor()) === "1";
     } catch {
       return false;
     }
@@ -5593,7 +5608,7 @@ async function pondScreen(bootstrap) {
     take.type = "button";
     take.addEventListener("click", () => {
       take.disabled = true;
-      void api.claimFirst().then(
+      void api.claimFirst(hasDuck()).then(
         (res) => {
           if (!res.ok) {
             row.replaceChildren(el2("p", "p-note", t("live.keeper.taken")));
@@ -5627,7 +5642,7 @@ async function pondScreen(bootstrap) {
     no.setAttribute("aria-label", t("keeper.20"));
     no.addEventListener("click", () => {
       try {
-        localStorage.setItem(OFFER_KEY, "1");
+        localStorage.setItem(offerKeyFor(), "1");
       } catch {
       }
       row.remove();
@@ -5765,7 +5780,7 @@ async function pondScreen(bootstrap) {
     gone = true;
     clearInterval(zoomPoll);
     clearInterval(poll);
-    window.removeEventListener("resize", fit);
+    unwatchSize();
     view2.stop();
     teardown = null;
   };

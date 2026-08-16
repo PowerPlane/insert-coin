@@ -91,11 +91,31 @@ export interface AdminDuck {
  * screen that wants the join, and doing it here keeps the N+1 out of a
  * page that will one day show a hundred rows on a phone.
  */
+/*
+ * ══ CONSENT NAMES THE TENURE IT WAS GIVEN TO ══
+ * `keeper` below comes from the DUCK's current tenure, which is the right
+ * answer for what the pond shows. It is the wrong answer for a contact.
+ * "Shared with Sam" means SAM — and after an unlink and a re-adoption a
+ * duck's tenure can be somebody else entirely while the consent still
+ * points where it was given. Showing the new keeper's name beside a
+ * stranger's address would be this screen telling David that a person
+ * agreed to something they never agreed to.
+ *
+ * So `contact_keeper` reads `contacts.epoch_id`, which is the row that
+ * recorded the consent, and the two are kept apart.
+ *
+ * This note lives here rather than inside the SQL because that string is
+ * a template literal, and a comment containing a backtick — around `via`,
+ * as the first draft of this one did — ends the string early. That has
+ * cost this project a truncated file once already.
+ */
 export async function adminDucks(env: Env): Promise<AdminDuck[]> {
   const { results } = await env.DB.prepare(
     `SELECT d.id, d.slug, d.name, d.message, d.created, d.hidden, d.fortune,
             d.card_id AS card, d.edit_key AS edit_key,
             (SELECT e.keeper_name FROM card_epochs e WHERE e.id = d.epoch_id) AS keeper,
+            (SELECT e.keeper_name FROM card_epochs e WHERE e.id = c.epoch_id)
+              AS contact_keeper,
             (SELECT COUNT(*) FROM reports r WHERE r.duck_id = d.id AND r.resolved = 0) AS reports,
             c.value AS contact, c.scope, c.replied, c.postcard
        FROM ducks d
@@ -112,6 +132,7 @@ export async function adminDucks(env: Env): Promise<AdminDuck[]> {
     hidden: Number(r.hidden ?? 0),
     fortune: Number(r.fortune),
     keeper: r.keeper ? String(r.keeper) : null,
+    contactKeeper: r.contact_keeper ? String(r.contact_keeper) : null,
     card: r.card ? String(r.card) : null,
     editKey: String(r.edit_key ?? ""),
     reports: Number(r.reports ?? 0),

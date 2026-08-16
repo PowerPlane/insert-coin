@@ -98,7 +98,18 @@ export type ContactScope = "david" | "keeper" | "keeper_and_david";
 export type ReportReason = "rude" | "private" | "spam" | "other";
 
 export const api = {
-  session: () => request<SessionState>("/session"),
+  /*
+   * `editKey` is optional and only ever affects `keeperOffer`. The server
+   * needs it to answer the later-visit case: a fresh tap that has not
+   * released a duck, by somebody who already has one from that card. It
+   * is sent as a query parameter to match the GET, and left off entirely
+   * when there is no duck, so an empty value never reads as a malformed
+   * credential.
+   */
+  session: (editKey?: string | null) =>
+    request<SessionState>(
+      editKey ? `/session?editKey=${encodeURIComponent(editKey)}` : "/session",
+    ),
 
   pond: () => request<{ ducks: PondDuck[]; now: number }>("/pond"),
   /** Who keeps bumping this duck. Fetched when its card opens, not before. */
@@ -151,18 +162,22 @@ export const api = {
   /**
    * Keep the card you just used.
    *
-   * No arguments, and that is the design rather than an omission: the
-   * session cookie IS the claim. Anything the browser could send would be
-   * something the server has to check rather than something it can trust,
-   * and the server already knows which card this session came from and
-   * which duck it released.
+   * The session cookie is the claim: it is what proves somebody is holding
+   * this card right now, and the server already knows which card it came
+   * from. `editKey` is only needed on a LATER visit, where the fresh tap
+   * has released no duck of its own and the key answers which duck from
+   * that card is theirs. Neither alone is enough.
    *
    * A 409 means somebody else got there first, which is not a failure —
    * it is a reason to take the offer down rather than to retry it.
    */
-  claimFirst: () => request<{ ok: boolean; orphans?: number }>("/claim/first", {
-    method: "POST",
-  }),
+  claimFirst: (editKey?: string | null) =>
+    request<{ ok: boolean; orphans?: number }>("/claim/first", {
+      method: "POST",
+      // Only needed when this session has not released a duck of its own.
+      // Harmless when it has: the server prefers `spent_duck`.
+      body: JSON.stringify(editKey ? { editKey } : {}),
+    }),
 
   /**
    * Hand the card on.

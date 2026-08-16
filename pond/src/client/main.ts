@@ -402,7 +402,16 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
 
   const fit = () => view.resize();
   fit();
-  watchSize(canvas, fit);
+  /*
+   * ══ THE TEARDOWN WAS THROWN AWAY ══
+   * `watchSize` returns one, and it was discarded — while the teardown
+   * below removed a plain `resize` listener that had never been added.
+   * So the ResizeObserver, the visualViewport listeners and the DPR
+   * media query all outlived the pond screen, every one of them holding a
+   * closure over a canvas that was gone. Two mistakes cancelling out into
+   * something that looked tidy. Codex found it.
+   */
+  const unwatchSize = watchSize(canvas, fit);
   view.start();
   syncZoom();
   // A pinch changes the zoom without touching a button, so the buttons have
@@ -794,7 +803,11 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
 
   async function syncCta(): Promise<SessionState> {
     cta.replaceChildren();
-    const session = await api.session().catch(() => ({ active: false }) as SessionState);
+    // The key goes with the question: `keeperOffer` cannot be answered for
+    // somebody returning to a card later without knowing which duck is
+    // theirs. Null when they have none, which is most people.
+    const session = await api.session(hasDuck())
+      .catch(() => ({ active: false }) as SessionState);
     buildCta(session);
     // Handed back so the caller can decide whether a tap goes straight to
     // the arrival, rather than asking the server the same question twice.
@@ -890,6 +903,17 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
      * pond is the default screen, so a session with no draft is genuinely
      * a start and says so.
      */
+    /*
+     * ══ AND THE OFFER, EVEN HERE ══
+     * This branch used to `return` before the offer was ever considered,
+     * so somebody coming back to an unclaimed card — a fresh tap, a duck
+     * they already made — saw "Decorate it" and no way to keep the card.
+     * The path existed on the server and nothing could reach it. Codex
+     * traced it from the client wrapper inward.
+     *
+     * Both are true at once and both belong on screen: there is a fortune
+     * waiting, AND this card is going spare.
+     */
     const resuming = loadDraft() !== null;
     const go = el(
       "button",
@@ -899,6 +923,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     go.type = "button";
     go.addEventListener("click", () => beginRelease(session));
     cta.append(go);
+    if (session.keeperOffer && !offerDismissed()) cta.append(keeperOfferRow());
     return;
   }
 
@@ -950,11 +975,23 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     if (session.keeperOffer && !offerDismissed()) cta.append(keeperOfferRow());
   }
 
-  /** Per browser, and only while this card is still going unclaimed. */
+  /*
+   * ══ DISMISSED FOR THIS CARD, NOT FOR EVER ══
+   * One global flag meant shrugging at a friend's card in a bar silenced
+   * the offer on every card this browser ever meets afterwards — including
+   * a card of your own. Codex found it.
+   *
+   * Keyed on the duck instead. The offer only ever appears when you have a
+   * duck FROM the card being offered, so the duck identifies the card
+   * without the client ever learning the serial — which it must not, since
+   * the serial is half of what a claim is keyed on and the server
+   * deliberately never sends it.
+   */
   const OFFER_KEY = "pond.keeper.offer.dismissed";
+  const offerKeyFor = (): string => `${OFFER_KEY}.${hasDuck() ?? "none"}`;
   const offerDismissed = (): boolean => {
     try {
-      return localStorage.getItem(OFFER_KEY) === "1";
+      return localStorage.getItem(offerKeyFor()) === "1";
     } catch {
       // Private mode, or storage turned off. Showing the offer is the
       // safer failure: it can be dismissed again, and never seeing it is
@@ -969,7 +1006,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     take.type = "button";
     take.addEventListener("click", () => {
       take.disabled = true;
-      void api.claimFirst().then(
+      void api.claimFirst(hasDuck()).then(
         (res) => {
           if (!res.ok) {
             /*
@@ -1011,7 +1048,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     no.setAttribute("aria-label", t("keeper.20"));
     no.addEventListener("click", () => {
       try {
-        localStorage.setItem(OFFER_KEY, "1");
+        localStorage.setItem(offerKeyFor(), "1");
       } catch {
         // Nothing to do. It will be offered again next time, which is a
         // smaller problem than never offering it at all.
@@ -1296,7 +1333,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     gone = true;
     clearInterval(zoomPoll);
     clearInterval(poll);
-    window.removeEventListener("resize", fit);
+    unwatchSize();
     view.stop();
     teardown = null;
   };

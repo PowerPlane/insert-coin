@@ -1767,3 +1767,147 @@ describe("admin card tools", () => {
     expect(await a.json<{ cardSecret: boolean }>("/api/admin")).toMatchObject({ cardSecret: false });
   });
 });
+
+/**
+ * What the review of the implementation turned up.
+ *
+ * Each of these is a defect Codex found by reading the code against the
+ * plan, and each is here so it cannot come back quietly.
+ */
+describe("review findings", () => {
+  const signed = (card: string, secret: Uint8Array) =>
+    `?d=1&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`;
+
+  async function kept(e: Env, serial: string, name = "Sam") {
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed(serial, secret));
+    await v.api("/api/claim/first", { method: "POST" });
+    await v.post("/api/keeper", { name, lang: "zh-Hant", editKey: duck.editKey });
+    return { v, duck, secret };
+  }
+
+  it("does not blank the name and language when only the duck is unlinked", async () => {
+    /*
+     * The full setup screen's unlink posts `{ editKey: "" }` and nothing
+     * else. Omitted `name` became "" and omitted `lang` became "en", so
+     * unlinking a duck wiped the keeper's name off every duck on the card
+     * and quietly reset a Chinese card to English.
+     */
+    const e = await env();
+    const { v } = await kept(e, "KEEPNAM2", "Kariina");
+
+    expect((await v.post("/api/keeper", { editKey: "" })).status).toBe(200);
+    const after = await v.json<{ keeper: string; lang: string; duckSlug: string | null }>(
+      "/api/keeper");
+    expect(after.keeper, "the name survives an unlink").toBe("Kariina");
+    expect(after.lang, "and so does the language").toBe("zh-Hant");
+    expect(after.duckSlug, "while the link is genuinely gone").toBe(null);
+  });
+
+  it("writes nothing to the epoch for a save that mentions nothing", async () => {
+    const e = await env();
+    const { v } = await kept(e, "NCHANGE3", "Mika");
+    expect((await v.post("/api/keeper", {})).status).toBe(200);
+    const after = await v.json<{ keeper: string; lang: string }>("/api/keeper");
+    expect(after).toMatchObject({ keeper: "Mika", lang: "zh-Hant" });
+  });
+
+  it("lets an explicit private link beat a stale keeper cookie", async () => {
+    /*
+     * A keeper of card A still holding a live pond_keeper cookie opens the
+     * settings of a duck from card B. The cookie used to win, so they saw
+     * — and could act on — the wrong card.
+     */
+    const e = await env();
+    const secret = testSecret();
+    const a = await kept(e, "CARDAAA4", "Ayla");
+
+    // The same browser now keeps a second card, and holds A's cookie.
+    const other = new Visitor(e);
+    const bDuck = await release(other, {}, signed("CARDBBB5", secret));
+    await other.api("/api/claim/first", { method: "POST" });
+    await other.post("/api/keeper", { name: "Bo", editKey: bDuck.editKey });
+
+    // `a.v` still carries A's cookie. Ask about B's duck explicitly.
+    const seen = await a.v.json<{ keeper: string }>(`/api/keeper?editKey=${bDuck.editKey}`);
+    expect(seen.keeper, "the key names the card, the cookie does not").toBe("Bo");
+  });
+
+  it("ends the tenure the private link names, not the one the cookie remembers", async () => {
+    // The same precedence, on the destructive route.
+    const e = await env();
+    const secret = testSecret();
+    const a = await kept(e, "SAFEAAA6", "Ayla");
+
+    const other = new Visitor(e);
+    const bDuck = await release(other, {}, signed("SAFEBBB7", secret));
+    await other.api("/api/claim/first", { method: "POST" });
+    // The link only resolves to a tenure once it IS that tenure's duck.
+    await other.post("/api/keeper", { name: "Bo", editKey: bDuck.editKey });
+
+    expect((await a.v.post("/api/keeper/end", { editKey: bDuck.editKey })).status).toBe(200);
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = 'SAFEBBB7' AND ended IS NULL`,
+    ), "B ended").toBe(0);
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = 'SAFEAAA6' AND ended IS NULL`,
+    ), "and A, which was not named, did not").toBe(1);
+  });
+
+  it("does not offer a card whose spent duck has been taken out", async () => {
+    // keeperOffer trusted spent_duck on sight while the claim went on to
+    // check it still exists and still belongs to this card, so the button
+    // could appear for a claim that refused itself.
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed("GNEDKCK8", secret));
+    expect((await v.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(true);
+
+    await e.DB.prepare(`DELETE FROM ducks WHERE id = ?1`).bind(duck.id).run();
+    expect((await v.json<{ keeperOffer: boolean }>("/api/session")).keeperOffer).toBe(false);
+    expect((await v.api("/api/claim/first", { method: "POST" })).status).toBe(403);
+  });
+
+  it("names the tenure a contact was actually given to, not the duck's current one", async () => {
+    /*
+     * THE CONSENT PROMISE. Unlink a duck and let a new keeper adopt it,
+     * and the duck's tenure becomes theirs while the contact still points
+     * where it was given. Admin showing the new keeper's name beside a
+     * stranger's address would be telling David a person agreed to
+     * something they never agreed to.
+     *
+     * Sam has to keep the card BEFORE the contact is given, or there is
+     * no keeper for the consent to name — which is itself correct, and
+     * why the order here is the realistic one rather than the short one.
+     */
+    const e = await env();
+    const secret = testSecret();
+    const sam = new Visitor(e);
+    const samsDuck = await release(sam, {}, signed("CNSENTS9", secret));
+    await sam.api("/api/claim/first", { method: "POST" });
+    await sam.post("/api/keeper", { name: "Sam", editKey: samsDuck.editKey });
+
+    // A visitor shares an address with Sam, by name, on Sam's card.
+    const guest = new Visitor(e);
+    const theirs = await release(guest, { contact: "guest@example.com", scope: "keeper" },
+      signed("CNSENTS9", secret));
+
+    // Admin frees the card; Mika takes it and adopts what is there.
+    const a = new Visitor(e);
+    await a.post("/api/admin/in", { password: "test-admin" });
+    await a.post("/api/admin/card/unlink", { card: "CNSENTS9" });
+    await a.post("/api/admin/card/reset", { card: "CNSENTS9" });
+    const mika = new Visitor(e);
+    await mika.tap(signed("CNSENTS9", secret));
+    await mika.post("/api/claim/first", { editKey: samsDuck.editKey });
+    await mika.post("/api/keeper", { name: "Mika", adopt: true, editKey: samsDuck.editKey });
+
+    const state = await a.json<{ ducks: { id: string; keeper: string | null;
+      contactKeeper: string | null }[] }>("/api/admin");
+    const row = state.ducks.find((d) => d.id === theirs.id)!;
+    expect(row.keeper, "the duck sits in Mika's tenure now").toBe("Mika");
+    expect(row.contactKeeper, "but Sam is who the address was shared with").toBe("Sam");
+  });
+});

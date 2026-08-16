@@ -451,7 +451,20 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
       /(?:^|;\s*)pond_keeper=([A-Za-z0-9]{8,32})/,
     )?.[1];
     const key = typeof body?.editKey === "string" ? body.editKey : null;
-    const epochId = cookie ?? (await epochForEditKey(env, key));
+    /*
+     * ══ THE EXPLICIT CREDENTIAL WINS ══
+     * The cookie used to be preferred, which is wrong whenever both are
+     * present and they disagree. A keeper of card A still holding a live
+     * `pond_keeper` cookie who opens the settings of a duck from card B
+     * would post B's edit key and END A'S TENURE — a destructive action
+     * on a card they were not looking at. Codex found the same
+     * precedence on the read route.
+     *
+     * A key names one duck and therefore one card; a cookie is whatever
+     * was claimed most recently in this browser. When the request says
+     * which one it means, that is the answer.
+     */
+    const epochId = (await epochForEditKey(env, key)) ?? cookie;
     if (!epochId) return notFound(headers);
 
     const ended = await endTenure(env, epochId);
@@ -483,7 +496,10 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     const key = req.method === "POST"
       ? (typeof body?.editKey === "string" ? body.editKey : null)
       : url.searchParams.get("editKey");
-    const epochId = cookie ?? (await epochForEditKey(env, key));
+    // Explicit beats ambient, for the reason spelled out on
+    // `/api/keeper/end` above: a cookie is whatever this browser claimed
+    // last, and a key names the card being asked about.
+    const epochId = (await epochForEditKey(env, key)) ?? cookie;
     if (!epochId) return notFound(headers);
 
     if (req.method === "GET") {
