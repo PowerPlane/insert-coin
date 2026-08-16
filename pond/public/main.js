@@ -2360,9 +2360,12 @@ function cardSetup(opts) {
         wrap2.append(row);
       }
       const status = el("p", "p-note", "");
+      let claimed = false;
+      let saving = false;
+      const primary = button("p-btn", t("keeper.21"), () => void save());
       const actions = el("div", "p-actions");
       actions.append(
-        button("p-btn", t("keeper.21"), () => void save()),
+        primary,
         /*
          * "No thanks" only exists while there is something to decline. Once
          * the card is theirs the second action is just a way out, and the
@@ -2377,11 +2380,16 @@ function cardSetup(opts) {
       root2.append(sheetRoot);
       nameField.input.focus();
       async function save() {
+        if (saving) return;
+        saving = true;
+        primary.disabled = true;
         try {
-          if (opts.offer && opts.onClaim) {
+          if (opts.offer && opts.onClaim && !claimed) {
             const took = await opts.onClaim();
-            if (took !== "ok") {
-              status.textContent = took === "kept" ? t("live.keeper.taken") : took === "expired" ? t("live.keeper.expired") : t("live.error");
+            if (took === "ok" || took === "kept") {
+              claimed = true;
+            } else {
+              status.textContent = took === "expired" ? t("live.keeper.expired") : t("live.error");
               return;
             }
           }
@@ -2398,13 +2406,16 @@ function cardSetup(opts) {
           });
           if (!res.ok) {
             const why = await res.json().catch(() => null);
-            status.textContent = why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
+            status.textContent = res.status === 404 ? t("live.keeper.taken") : why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
             if (why?.error === "reserved name") nameField.input.focus();
             return;
           }
           opts.onDone();
         } catch {
           status.textContent = t("live.error");
+        } finally {
+          saving = false;
+          primary.disabled = false;
         }
       }
     });

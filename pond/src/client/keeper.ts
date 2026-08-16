@@ -438,9 +438,26 @@ export function cardSetup(opts: CardSetupOptions): void {
       }
 
       const status = el("p", "p-note", "");
+      /*
+       * ══ THE CLAIM HAPPENS ONCE, NOT ONCE PER PRESS ══
+       * `save` ran `onClaim` unconditionally on every press of the
+       * primary. So the moment anything went wrong AFTER a successful
+       * claim — a refused name, a network blip, or simply a double-tap on
+       * a phone — the next press claimed again, the server said the card
+       * was already kept, and the sheet reported a rival keeper who was
+       * in fact the person reading it. There was no way out of that loop,
+       * and the card was left claimed with no name: exactly the
+       * "kept · no name" state David kept landing in.
+       *
+       * Latched here rather than inferred from a status, because the fact
+       * being remembered is local: THIS sheet has already claimed.
+       */
+      let claimed = false;
+      let saving = false;
+      const primary = button("p-btn", t("keeper.21"), () => void save());
       const actions = el("div", "p-actions");
       actions.append(
-        button("p-btn", t("keeper.21"), () => void save()),
+        primary,
         /*
          * "No thanks" only exists while there is something to decline. Once
          * the card is theirs the second action is just a way out, and the
@@ -458,19 +475,31 @@ export function cardSetup(opts: CardSetupOptions): void {
       nameField.input.focus();
 
       async function save(): Promise<void> {
+        // A phone double-tap is the most likely first domino.
+        if (saving) return;
+        saving = true;
+        primary.disabled = true;
         try {
           /*
            * The claim happens here, on the primary, after they have read
            * what keeping the card means — not on the button that opened
-           * this sheet.
+           * this sheet. Once only: see the latch above.
            */
-          if (opts.offer && opts.onClaim) {
+          if (opts.offer && opts.onClaim && !claimed) {
             const took = await opts.onClaim();
-            if (took !== "ok") {
+            /*
+             * "Kept" is not a refusal here. The likeliest person to be
+             * keeping this card is the one holding the phone — they
+             * claimed it a second ago and something went wrong after. The
+             * save below carries their duck's key, so the SERVER decides
+             * whether it is really theirs and says so with a 404 if it is
+             * not. Guessing at it here is what produced the loop.
+             */
+            if (took === "ok" || took === "kept") {
+              claimed = true;
+            } else {
               status.textContent =
-                took === "kept" ? t("live.keeper.taken")
-                  : took === "expired" ? t("live.keeper.expired")
-                    : t("live.error");
+                took === "expired" ? t("live.keeper.expired") : t("live.error");
               return;
             }
           }
@@ -494,13 +523,18 @@ export function cardSetup(opts: CardSetupOptions): void {
              * path an ordinary person reaches by doing nothing wrong.
              */
             status.textContent =
-              why?.error === "reserved name" ? t("live.keeper.reserved") : t("live.error");
+              res.status === 404 ? t("live.keeper.taken")
+                : why?.error === "reserved name" ? t("live.keeper.reserved")
+                  : t("live.error");
             if (why?.error === "reserved name") nameField.input.focus();
             return;
           }
           opts.onDone();
         } catch {
           status.textContent = t("live.error");
+        } finally {
+          saving = false;
+          primary.disabled = false;
         }
       }
     });
