@@ -472,6 +472,31 @@ describe("the deletion promise, over HTTP", () => {
     expect(body).not.toContain("sam@example.com");
   });
 
+  it("the pond never carries an edit key, now that the admin does", async () => {
+    /*
+     * The admin shows a duck's private link so somebody who lost theirs
+     * can be given it back — a real need, with no account to recover
+     * from. That makes `edit_key` selected in a second place, and the
+     * only thing standing between "the admin can see it" and "everyone
+     * can" is that the public read does not ask for it.
+     *
+     * So this checks the wire, not the intention: the whole pond
+     * response, as bytes, must not contain the key.
+     */
+    const e = await env();
+    const v = new Visitor(e);
+    const { editKey } = await release(v, {});
+    expect(editKey.length).toBeGreaterThan(16);
+
+    const pond = await (await v.api("/api/pond")).text();
+    expect(pond).not.toContain(editKey);
+
+    // Nor the duck's own public page, which is the other unauthenticated
+    // read and the one somebody would think to try.
+    const bySlug = await (await v.api(`/api/duck/by-slug/${(await release(new Visitor(e), {})).slug}`)).text();
+    expect(bySlug).not.toContain(editKey);
+  });
+
   it("stores a contact only when one was given", async () => {
     const e = await env();
     const v = new Visitor(e);

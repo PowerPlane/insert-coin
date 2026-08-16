@@ -1898,7 +1898,14 @@ a.p-btn {
  */
 .a-screen > * {
   width: 100%;
-  max-width: 60rem;
+  /*
+   * Wider than the phone screens and wider than prose, because the thing
+   * being protected here is the per-CARD measure (320px, set on the grid
+   * below) rather than the container. Capping the container at a reading
+   * width just left a large display two-thirds empty while the work — a
+   * hundred rows to go through — stayed in a column down the middle.
+   */
+  max-width: 78rem;
   margin-inline: auto;
   box-sizing: border-box;
 }
@@ -1928,6 +1935,31 @@ a.p-btn {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/*
+ * ══ THE ADMIN IS THE ONE SCREEN READ ON A LAPTOP ══
+ * Everything else here is built for a thumb and merely tolerates a desk.
+ * This one is the opposite: it is where a hundred ducks get gone through,
+ * and a single column of cards down the middle of a 1440px display makes
+ * that a scroll marathon with two thirds of the screen empty.
+ *
+ * So above a tablet's width the rows flow into as many columns as fit at
+ * a readable measure. `auto-fill` rather than a fixed count, because the
+ * right number is whatever the window can hold — one on a phone, two on a
+ * small laptop, three on a large one — and none of those is a breakpoint
+ * anybody has to maintain.
+ *
+ * `align-items: start` so a row with a long message does not stretch its
+ * neighbours to match; each card is as tall as its own content.
+ */
+@media (min-width: 760px) {
+  .a-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    align-items: start;
+    gap: 10px;
+  }
 }
 
 .a-row {

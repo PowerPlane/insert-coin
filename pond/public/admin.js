@@ -136,6 +136,7 @@ function signIn() {
     pw.input.focus();
   });
 }
+var where = { tab: "ducks", card: null };
 async function load() {
   let state;
   try {
@@ -143,13 +144,14 @@ async function load() {
   } catch {
     return signIn();
   }
-  view(state.ducks, state.cards, "ducks");
+  view(state.ducks, state.cards, where.tab, where.card);
 }
 function provenance(d) {
   if (!d.card) return "no card";
   return d.keeper ? `${d.keeper} · ${d.card}` : d.card;
 }
 function view(ducks, cards, tab, cardFilter = null) {
+  where = { tab, card: cardFilter };
   screen(root, () => {
     root.replaceChildren();
     const wrap = el("div", "a-screen");
@@ -243,6 +245,21 @@ function duckRow(d, show) {
   open.target = "_blank";
   open.rel = "noreferrer";
   actions.append(open);
+  const recover = button("p-chip", "Copy link", () => {
+    const link = `${location.origin}/e/${d.editKey}`;
+    void navigator.clipboard?.writeText(link).then(
+      () => {
+        recover.textContent = "Copied";
+        window.setTimeout(() => {
+          recover.textContent = "Copy link";
+        }, 1400);
+      },
+      () => {
+        recover.textContent = "Copy failed";
+      }
+    );
+  }, `Copy the private link for ${d.name || d.slug}`);
+  actions.append(recover);
   row.append(actions);
   return row;
 }

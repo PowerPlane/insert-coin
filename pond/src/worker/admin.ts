@@ -60,6 +60,22 @@ export interface AdminDuck {
   keeper: string | null;
   /** Admin-only, and the one place it is ever selected. */
   card: string | null;
+  /**
+   * The duck's private link, for putting somebody back in touch with their
+   * own duck.
+   *
+   * ══ THIS IS THE CREDENTIAL, NOT AN IDENTIFIER ══
+   * Whoever holds it can edit, redecorate or delete that duck. It is here
+   * for one reason: people lose the link, and without it their duck is
+   * stranded — still in the pond, still being bumped, and no longer
+   * theirs. Recovery is a real need and there is no account to fall back
+   * on.
+   *
+   * It is admin-only, behind the password, on the same screen that already
+   * shows contacts — a stricter secret than this one. It must never reach
+   * `PublicDuck`, and `contacts-isolation.test.ts` fails if it does.
+   */
+  editKey: string;
   reports: number;
   contact: string | null;
   scope: string | null;
@@ -77,7 +93,7 @@ export interface AdminDuck {
 export async function adminDucks(env: Env): Promise<AdminDuck[]> {
   const { results } = await env.DB.prepare(
     `SELECT d.id, d.slug, d.name, d.message, d.created, d.hidden, d.fortune,
-            d.card_id AS card,
+            d.card_id AS card, d.edit_key AS edit_key,
             (SELECT e.keeper_name FROM card_epochs e WHERE e.id = d.epoch_id) AS keeper,
             (SELECT COUNT(*) FROM reports r WHERE r.duck_id = d.id AND r.resolved = 0) AS reports,
             c.value AS contact, c.scope, c.replied, c.postcard
@@ -96,6 +112,7 @@ export async function adminDucks(env: Env): Promise<AdminDuck[]> {
     fortune: Number(r.fortune),
     keeper: r.keeper ? String(r.keeper) : null,
     card: r.card ? String(r.card) : null,
+    editKey: String(r.edit_key ?? ""),
     reports: Number(r.reports ?? 0),
     contact: r.contact ? String(r.contact) : null,
     scope: r.scope ? String(r.scope) : null,

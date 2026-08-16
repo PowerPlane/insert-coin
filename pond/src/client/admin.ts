@@ -30,6 +30,7 @@ interface AdminDuck {
   scope: string | null;
   replied: number | null;
   postcard: number | null;
+  editKey: string;
 }
 
 interface AdminCard {
@@ -114,6 +115,24 @@ function signIn(): void {
   });
 }
 
+/*
+ * ══ WHERE YOU WERE, ACROSS A RELOAD ══
+ * Every action here ends in `load()`, and `load()` re-rendered hard-coded
+ * to the Ducks tab. So marking a postcard sent — an action that only
+ * exists on the Contacts tab — threw you back to Ducks, away from the row
+ * you had just touched.
+ *
+ * Which also made it feel one-way. Both marks have always been toggles,
+ * on the server and in the request the client already sends; you simply
+ * could not get back to the row to tap it again without navigating there
+ * and finding it. Reported as "hard to uncheck if I pressed it
+ * accidentally", and that is exactly what it was.
+ *
+ * So the screen remembers where it was, including which card it was
+ * filtered to.
+ */
+let where: { tab: Tab; card: string | null } = { tab: "ducks", card: null };
+
 async function load(): Promise<void> {
   let state: { ducks: AdminDuck[]; cards: AdminCard[] };
   try {
@@ -121,7 +140,7 @@ async function load(): Promise<void> {
   } catch {
     return signIn();
   }
-  view(state.ducks, state.cards, "ducks");
+  view(state.ducks, state.cards, where.tab, where.card);
 }
 
 /**
@@ -162,6 +181,8 @@ function view(
    */
   cardFilter: string | null = null,
 ): void {
+  // Recorded on every render, so the next `load()` comes back here.
+  where = { tab, card: cardFilter };
   screen(root, () => {
     root.replaceChildren();
     const wrap = el("div", "a-screen");
@@ -294,6 +315,30 @@ function duckRow(d: AdminDuck, show: (card: string | null) => void): HTMLElement
   open.target = "_blank";
   open.rel = "noreferrer";
   actions.append(open);
+
+  /*
+   * ══ GIVING SOMEBODY THEIR DUCK BACK ══
+   * People lose the private link. Without it their duck is stranded —
+   * still in the pond, still being bumped, and no longer theirs to name,
+   * redecorate or take out. There is no account to recover from, so this
+   * screen is the only place it can come from.
+   *
+   * COPIED, never printed. The key is the whole credential, and a row
+   * that displays it puts it in every screenshot of this page and every
+   * shoulder-glance at it. The chip says what it did and says nothing
+   * about what it holds.
+   */
+  const recover = button("p-chip", "Copy link", () => {
+    const link = `${location.origin}/e/${d.editKey}`;
+    void navigator.clipboard?.writeText(link).then(
+      () => {
+        recover.textContent = "Copied";
+        window.setTimeout(() => { recover.textContent = "Copy link"; }, 1400);
+      },
+      () => { recover.textContent = "Copy failed"; },
+    );
+  }, `Copy the private link for ${d.name || d.slug}`);
+  actions.append(recover);
   row.append(actions);
   return row;
 }
