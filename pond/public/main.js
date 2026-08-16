@@ -1321,6 +1321,8 @@ var LIVE_STRINGS = {
   // Named, not "invalid": the keeper needs to know it is this word, not
   // their typing, and that the pond is not accusing them of anything.
   "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
+  "live.claim.no": "This card could not be set up.",
+  "live.claim.no.body": "The setup may already have been used, or this card is not one the pond knows. Hold the card, blow four times again, and tap.",
   // Whose circle you are in. Names the person, never "filter: keeper".
   "live.whistling": "{keeper}'s cards",
   // The row, not the screen-reader label. "Show everyone again" describes
@@ -1673,6 +1675,8 @@ var ZH_HANT = {
   "live.keeper.hint": "這張卡片放出的鴨子會寫「來自 {keeper}」。",
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
+  "live.claim.no": "這張卡片無法設定。",
+  "live.claim.no.body": "設定可能已經用過了，或者池塘不認得這張卡片。拿著卡片再吹四次，然後靠近手機。",
   "live.whistling": "{keeper} 的卡片",
   "live.everyone": "全部",
   "live.error.body": "你的鴨子還在，做的東西都沒有不見。等一下再試一次。",
@@ -1950,12 +1954,14 @@ function studioScreen(root2, opts) {
     if (tab === "stickers") {
       const hit2 = stickerAt(state.stickers, c.x, c.y, STICKER_GRAB_SLACK);
       dragging = hit2 >= 0 ? state.stickers[hit2] : null;
-      if (dragging) redraw();
+      if (dragging) {
+        remember();
+        redraw();
+      }
       return;
     }
     if (tab !== "draw") return;
-    history2.push(state.paint.slice());
-    if (history2.length > 24) history2.shift();
+    remember();
     painting = true;
     paintAt(c);
   };
@@ -1984,6 +1990,24 @@ function studioScreen(root2, opts) {
   };
   canvas.onpointerup = release;
   canvas.onpointercancel = release;
+  const UNDO_DEPTH = 24;
+  const history2 = [];
+  let undoBtn = null;
+  const syncUtils = () => {
+    if (undoBtn) undoBtn.disabled = history2.length === 0;
+  };
+  const remember = () => {
+    history2.push({
+      paint: state.paint.slice(),
+      // Copied, not referenced: a sticker that is about to be DRAGGED is
+      // the same object the step would be holding, so the snapshot would
+      // follow the finger and undo would restore where it ended up.
+      stickers: state.stickers.map((st) => ({ ...st })),
+      tint: state.tint
+    });
+    if (history2.length > UNDO_DEPTH) history2.shift();
+    syncUtils();
+  };
   const utils = el("div", "p-utils");
   const util = (name, label, onClick) => {
     const b = button("p-icon-btn", "", onClick, label);
@@ -1991,24 +2015,32 @@ function studioScreen(root2, opts) {
     return b;
   };
   utils.append(
-    util("undo", t("studio.05"), () => {
+    undoBtn = util("undo", t("studio.05"), () => {
       const last = history2.pop();
       if (!last) return;
-      state.paint = last;
+      state.paint = last.paint;
+      state.stickers = last.stickers;
+      state.tint = last.tint;
       redraw();
+      drawPanel();
+      syncUtils();
     }),
     util("clear", t("studio.06"), () => {
-      history2.push(state.paint.slice());
+      remember();
       state.paint = new Uint8Array(GRID * GRID);
+      state.stickers = [];
       redraw();
+      drawPanel();
     }),
     util("dice", t("studio.07"), () => {
+      remember();
       state.tint = Math.floor(Math.random() * TINTS.length);
       state.stickers = surpriseStickers(opts.fortune);
       redraw();
       drawPanel();
     })
   );
+  syncUtils();
   let tab = "colour";
   const panel = el("div", "p-panel");
   const tabs = el("div", "p-tabs");
@@ -2041,6 +2073,7 @@ function studioScreen(root2, opts) {
     const swatches = el("div", "p-swatches");
     TINTS.forEach((colour2, i) => {
       const b = button("p-swatch", "", () => {
+        remember();
         state.tint = i;
         redraw();
         drawPanel();
@@ -2066,6 +2099,7 @@ function studioScreen(root2, opts) {
       if (def.slot !== slotFilter) continue;
       const already = state.stickers.find((s) => s.id === id);
       const b = button("p-sticker", "", () => {
+        remember();
         if (already) {
           state.stickers = state.stickers.filter((s) => s.id !== id);
         } else {
@@ -2133,7 +2167,6 @@ function studioScreen(root2, opts) {
     });
     panel.append(swatches);
   }
-  const history2 = [];
   const foot = el("div", "p-foot");
   const hint = el("p", "p-hint", "");
   foot.append(
@@ -5171,13 +5204,52 @@ async function pondScreen(bootstrap) {
   const hasDuck = () => recallEditKey();
   async function syncCta() {
     cta.replaceChildren();
-    const session = await api.session().catch(() => ({ active: false }));
-    buildCta(session);
+    const session2 = await api.session().catch(() => ({ active: false }));
+    buildCta(session2);
+    return session2;
   }
-  function buildCta(session) {
+  function beginRelease(session2) {
+    pausePolling();
+    call(null);
+    releaseFlow({
+      root: overlay,
+      fortune: session2.fortune ?? 1,
+      playArrival,
+      // The keeper of the card that was TAPPED — from the session, which
+      // knows the card. It used to be inferred from the ducks on screen,
+      // which quietly stopped working the moment the pond held ducks from
+      // two different keepers: the inference gave up and returned null, so
+      // the option to share with a keeper never appeared at all.
+      keeper: session2.keeper ?? null,
+      onBrowse: () => {
+        overlay.replaceChildren();
+        resumePolling();
+        void syncCta();
+      },
+      /*
+       * The duck is in. It goes into the water NOW, behind the card that
+       * says so — the card covers the bottom and the water above it is
+       * clear, so the whole arrival is watched while somebody is reading
+       * their private link.
+       *
+       * Polling stays paused: a refresh mid-arrival is the one thing
+       * that can replace a duck in mid-air, and there is nothing to poll
+       * for while a card is up anyway.
+       */
+      onReleased: (made) => {
+        void arriveWhenItLands(made.id);
+      },
+      onDone: () => {
+        overlay.replaceChildren();
+        resumePolling();
+        void syncCta();
+      }
+    });
+  }
+  function buildCta(session2) {
     cta.classList.remove("p-cta-glyphs");
     const mine = hasDuck();
-    if (session.active && !session.spent) {
+    if (session2.active && !session2.spent) {
       const resuming = loadDraft() !== null;
       const go = el2(
         "button",
@@ -5185,44 +5257,7 @@ async function pondScreen(bootstrap) {
         resuming ? t("code.02") : t("arrival.04")
       );
       go.type = "button";
-      go.addEventListener("click", () => {
-        pausePolling();
-        call(null);
-        releaseFlow({
-          root: overlay,
-          fortune: session.fortune ?? 1,
-          playArrival,
-          // The keeper of the card that was TAPPED — from the session, which
-          // knows the card. It used to be inferred from the ducks on screen,
-          // which quietly stopped working the moment the pond held ducks from
-          // two different keepers: the inference gave up and returned null, so
-          // the option to share with a keeper never appeared at all.
-          keeper: session.keeper ?? null,
-          onBrowse: () => {
-            overlay.replaceChildren();
-            resumePolling();
-            void syncCta();
-          },
-          /*
-           * The duck is in. It goes into the water NOW, behind the card that
-           * says so — the card covers the bottom and the water above it is
-           * clear, so the whole arrival is watched while somebody is reading
-           * their private link.
-           *
-           * Polling stays paused: a refresh mid-arrival is the one thing
-           * that can replace a duck in mid-air, and there is nothing to poll
-           * for while a card is up anyway.
-           */
-          onReleased: (made) => {
-            void arriveWhenItLands(made.id);
-          },
-          onDone: () => {
-            overlay.replaceChildren();
-            resumePolling();
-            void syncCta();
-          }
-        });
-      });
+      go.addEventListener("click", () => beginRelease(session2));
       cta.append(go);
       return;
     }
@@ -5299,7 +5334,7 @@ async function pondScreen(bootstrap) {
     overlay.replaceChildren(sheetRoot);
     input.input.focus();
   }
-  await syncCta();
+  const session = await syncCta();
   if (bootstrap.duck) view2.lookAt(bootstrap.duck.id, true);
   let polling = true;
   function pausePolling() {
@@ -5312,6 +5347,12 @@ async function pondScreen(bootstrap) {
   const poll = window.setInterval(() => {
     if (polling) void refresh();
   }, 2e4);
+  const tapped = new URL(location.href);
+  if (tapped.searchParams.has("d") && !tapped.searchParams.has("t") && session?.active && !session.spent && loadDraft() === null) {
+    tapped.searchParams.delete("d");
+    history.replaceState(null, "", tapped.pathname + tapped.search + tapped.hash);
+    beginRelease(session);
+  }
   teardown = () => {
     gone = true;
     clearInterval(zoomPoll);
@@ -5514,12 +5555,21 @@ async function main() {
   }
   await pondScreen(b);
   const url = new URL(location.href);
-  if (url.searchParams.has("t") && await claimFromUrl(url)) {
+  if (url.searchParams.has("t")) {
+    const claimed = await claimFromUrl(url);
     history.replaceState(null, "", url.pathname);
-    cardSetup({
-      root: document.querySelector(".p-overlay"),
-      onDone: () => document.querySelector(".p-overlay").replaceChildren()
-    });
+    const root2 = document.querySelector(".p-overlay");
+    if (claimed) {
+      cardSetup({ root: root2, onDone: () => root2.replaceChildren() });
+    } else {
+      const { root: sheetRoot, body } = sheet(true);
+      body.append(
+        el2("p", "p-title", t("live.claim.no")),
+        el2("p", "p-body", t("live.claim.no.body")),
+        button("p-btn", t("mine.05"), () => root2.replaceChildren())
+      );
+      root2.replaceChildren(sheetRoot);
+    }
   }
 }
 void main();

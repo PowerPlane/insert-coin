@@ -783,40 +783,22 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    */
   const hasDuck = (): string | null => recallEditKey();
 
-  async function syncCta(): Promise<void> {
+  async function syncCta(): Promise<SessionState> {
     cta.replaceChildren();
     const session = await api.session().catch(() => ({ active: false }) as SessionState);
     buildCta(session);
+    // Handed back so the caller can decide whether a tap goes straight to
+    // the arrival, rather than asking the server the same question twice.
+    return session;
   }
 
-  function buildCta(session: SessionState): void {
-    // Only the two-glyph state is a row; every other state is a wide button.
-    cta.classList.remove("p-cta-glyphs");
-    const mine = hasDuck();
-    if (session.active && !session.spent) {
-    // A fortune is waiting. This is the only CTA that ever appears, and it
-    // is the whole reason the pond can be the default screen: someone with
-    // nothing to make sees a pond, not a form.
-    /*
-     * ══ THE BAR SAYS WHERE YOU ARE IN THE FLOW ══
-     * The prototype's pond CTA has three states and this had one. It said
-     * "Decorate it" whether you had never started or were three screens
-     * deep with a half-decorated duck saved — so the button that resumed
-     * your work was worded as though it would begin it.
-     *
-     * COPY.md code.02 / code.06. The one adaptation: the prototype reaches
-     * the pond AFTER the arrival, so its CTA is always a resume. Here the
-     * pond is the default screen, so a session with no draft is genuinely
-     * a start and says so.
-     */
-    const resuming = loadDraft() !== null;
-    const go = el(
-      "button",
-      "p-btn p-btn-quiet",
-      resuming ? t("code.02") : t("arrival.04"),
-    );
-    go.type = "button";
-    go.addEventListener("click", () => {
+  /**
+   * Start the release flow: arrival, studio, sign, contact, keep.
+   *
+   * Its own function because there are two ways in now. The bar is one.
+   * The other is simply having tapped a card — see `pondScreen`'s tail.
+   */
+  function beginRelease(session: SessionState): void {
       // The pollers stop; the WATER DOES NOT. A pond that freezes the
       // moment you start decorating stops being a place you are making
       // something for.
@@ -863,10 +845,39 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
           void syncCta();
         },
       });
-    });
-      cta.append(go);
-      return;
-    }
+  }
+
+  function buildCta(session: SessionState): void {
+    // Only the two-glyph state is a row; every other state is a wide button.
+    cta.classList.remove("p-cta-glyphs");
+    const mine = hasDuck();
+    if (session.active && !session.spent) {
+    // A fortune is waiting. This is the only CTA that ever appears, and it
+    // is the whole reason the pond can be the default screen: someone with
+    // nothing to make sees a pond, not a form.
+    /*
+     * ══ THE BAR SAYS WHERE YOU ARE IN THE FLOW ══
+     * The prototype's pond CTA has three states and this had one. It said
+     * "Decorate it" whether you had never started or were three screens
+     * deep with a half-decorated duck saved — so the button that resumed
+     * your work was worded as though it would begin it.
+     *
+     * COPY.md code.02 / code.06. The one adaptation: the prototype reaches
+     * the pond AFTER the arrival, so its CTA is always a resume. Here the
+     * pond is the default screen, so a session with no draft is genuinely
+     * a start and says so.
+     */
+    const resuming = loadDraft() !== null;
+    const go = el(
+      "button",
+      "p-btn p-btn-quiet",
+      resuming ? t("code.02") : t("arrival.04"),
+    );
+    go.type = "button";
+    go.addEventListener("click", () => beginRelease(session));
+    cta.append(go);
+    return;
+  }
 
     /*
      * No fortune waiting, and no duck of your own: the card is the only way
@@ -985,7 +996,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     input.input.focus();
   }
 
-  await syncCta();
+  const session = await syncCta();
 
 
   // Arrival zoom: land at arm's length from your own duck rather than
@@ -1006,6 +1017,57 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
   const poll = window.setInterval(() => {
     if (polling) void refresh();
   }, 20_000);
+
+  /*
+   * Placed after the pollers rather than beside `syncCta`, where it reads
+   * more naturally: `beginRelease` pauses polling, and `polling` is a
+   * `let` declared below. Calling it earlier threw "Cannot access
+   * 'polling' before initialization" on the one path that matters most —
+   * the first tap of a real card — and threw it silently, into the
+   * console, behind a pond that looked fine.
+   */
+  /*
+   * ══ A TAP LANDS ON THE FORTUNE, NOT ON A BUTTON TO SEE IT ══
+   * The card has just spent several seconds revealing a fortune in LEDs.
+   * Landing on the pond with "Decorate it" in the bar puts a decision in
+   * the middle of that moment and asks somebody to opt in to the thing
+   * they already did — the reveal happens twice, once in your hand and
+   * once behind a button.
+   *
+   * The prototype had this right and this file has admitted it all along,
+   * a few hundred lines up: "the prototype reaches the pond AFTER the
+   * arrival, so its CTA is always a resume. Here the pond is the default
+   * screen." The pond is where you end up once your duck is in, which is
+   * exactly where `onDone` already leaves you.
+   *
+   * Three conditions, and all three are the point:
+   *
+   *   a fresh `?d=`  — the signal for "a card was just tapped", as
+   *                    opposed to a reload, a bookmark, or somebody who
+   *                    walked here. It is dropped from the URL below so
+   *                    the second look at the same page is a pond.
+   *   no `?t=`       — an ARMED card is going to Card setup instead, and
+   *                    with the new firmware it deals no fortune at all.
+   *                    Belt and braces; the two cannot both be true.
+   *   no draft       — somebody three screens deep with a half-decorated
+   *                    duck is RESUMING. Throwing them back to the
+   *                    fortune they already saw would lose their place,
+   *                    so they get the pond and a bar that says "keep
+   *                    decorating".
+   */
+  const tapped = new URL(location.href);
+  if (
+    tapped.searchParams.has("d") &&
+    !tapped.searchParams.has("t") &&
+    session?.active && !session.spent &&
+    loadDraft() === null
+  ) {
+    // Spent. Taking it out means a reload is a pond rather than the same
+    // fortune announced a second time.
+    tapped.searchParams.delete("d");
+    history.replaceState(null, "", tapped.pathname + tapped.search + tapped.hash);
+    beginRelease(session);
+  }
 
   teardown = () => {
     // Before anything is stopped, so a loop waking mid-teardown sees it.
@@ -1433,14 +1495,42 @@ async function main(): Promise<void> {
    * opens over the water like every other screen.
    */
   const url = new URL(location.href);
-  if (url.searchParams.has("t") && (await claimFromUrl(url))) {
-    // Take the claim out of the URL: it is spent, and a shared or
-    // bookmarked link should not carry a used credential around.
+  if (url.searchParams.has("t")) {
+    const claimed = await claimFromUrl(url);
+    // Take the claim out of the URL either way: spent if it worked, and
+    // useless if it did not. A shared or bookmarked link should not carry
+    // a credential around in either case.
     history.replaceState(null, "", url.pathname);
-    cardSetup({
-      root: document.querySelector(".p-overlay")!,
-      onDone: () => document.querySelector(".p-overlay")!.replaceChildren(),
-    });
+    const root = document.querySelector<HTMLElement>(".p-overlay")!;
+
+    if (claimed) {
+      cardSetup({ root, onDone: () => root.replaceChildren() });
+    } else {
+      /*
+       * ══ A REFUSED CLAIM USED TO SAY NOTHING AT ALL ══
+       * The server refuses four different ways — no secret, unknown card,
+       * bad token, counter already used — and deliberately returns the
+       * same opaque 403 for all of them, so that somebody walking the
+       * counter space learns nothing. Right.
+       *
+       * But the CLIENT then swallowed that too, and the result was a card
+       * you had just blown into four times opening an ordinary pond, with
+       * no hint that anything had been refused. Indistinguishable from the
+       * gesture not having worked — which is exactly how it was reported.
+       *
+       * So it says so. Still without distinguishing the four, because
+       * that distinction is the thing being protected: the sentence names
+       * the two causes a person can actually act on and tells them the
+       * one thing to try.
+       */
+      const { root: sheetRoot, body } = makeSheet(true);
+      body.append(
+        el("p", "p-title", t("live.claim.no")),
+        el("p", "p-body", t("live.claim.no.body")),
+        button("p-btn", t("mine.05"), () => root.replaceChildren()),
+      );
+      root.replaceChildren(sheetRoot);
+    }
   }
 }
 

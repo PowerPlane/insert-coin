@@ -246,13 +246,14 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
        */
       const hit = stickerAt(state.stickers, c.x, c.y, STICKER_GRAB_SLACK);
       dragging = hit >= 0 ? state.stickers[hit]! : null;
-      if (dragging) redraw();
+      // Picking one up is the start of a change, so the step is taken
+      // before it moves rather than after it lands.
+      if (dragging) { remember(); redraw(); }
       return;
     }
 
     if (tab !== "draw") return;
-    history.push(state.paint.slice());
-    if (history.length > 24) history.shift();
+    remember();
     painting = true;
     paintAt(c);
   };
@@ -292,6 +293,54 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
   canvas.onpointercancel = release;
 
   /*
+   * ══ UNDO HAS TO COVER WHAT PEOPLE ACTUALLY DO ══
+   * This held `Uint8Array` paint snapshots and nothing else, pushed only by
+   * a brush stroke. So undo and clear worked perfectly on the Draw tab and
+   * did NOTHING anywhere else: place six stickers and tap undo, nothing;
+   * pick a colour and tap undo, nothing; tap clear with a duck covered in
+   * stickers and every one of them stayed.
+   *
+   * Reported as "the buttons do not work", which is exactly right — they
+   * were wired to the one of the three things you can do here that most
+   * people never touch. The brush is the specialist tool; stickers are what
+   * a duck is made of.
+   *
+   * So a step is the whole decoration: paint, stickers and tint together,
+   * remembered before anything changes any of them.
+   */
+  /*
+   * Deep enough to cover a change of mind, shallow enough that six paint
+   * snapshots of a 24x24 grid never add up to anything.
+   */
+  const UNDO_DEPTH = 24;
+  const history: Step[] = [];
+  let undoBtn: HTMLButtonElement | null = null;
+
+  /*
+   * ══ A BUTTON THAT DOES NOTHING SHOULD LOOK LIKE IT ══
+   * With nothing to undo, this silently did nothing — and a control that
+   * accepts a tap and produces no result is indistinguishable from a
+   * broken one. That is half of why these were reported as not working.
+   */
+  const syncUtils = (): void => {
+    if (undoBtn) undoBtn.disabled = history.length === 0;
+  };
+
+  /** Remember the duck as it is, before something changes it. */
+  const remember = (): void => {
+    history.push({
+      paint: state.paint.slice(),
+      // Copied, not referenced: a sticker that is about to be DRAGGED is
+      // the same object the step would be holding, so the snapshot would
+      // follow the finger and undo would restore where it ended up.
+      stickers: state.stickers.map((st) => ({ ...st })),
+      tint: state.tint,
+    });
+    if (history.length > UNDO_DEPTH) history.shift();
+    syncUtils();
+  };
+
+  /*
    * ══ UTILITIES SIT WITH THE THING THEY ACT ON ══
    * Undo, clear and surprise all act on the DUCK, so they live directly
    * under it — icon-only, so they stay quiet, and 44px so they stay
@@ -301,30 +350,54 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
    * to undo anything at all.
    */
   const utils = el("div", "p-utils");
-  const util = (name: IconName, label: string, onClick: () => void): HTMLElement => {
+  const util = (name: IconName, label: string, onClick: () => void): HTMLButtonElement => {
     const b = button("p-icon-btn", "", onClick, label);
     b.append(icon(name, 22));
     return b;
   };
   utils.append(
-    util("undo", t("studio.05"), () => {
+    undoBtn = util("undo", t("studio.05"), () => {
       const last = history.pop();
       if (!last) return;
-      state.paint = last;
+      state.paint = last.paint;
+      state.stickers = last.stickers;
+      state.tint = last.tint;
       redraw();
+      // The panel shows which colour and which stickers are on, so it has
+      // to be rebuilt or the duck and its controls disagree.
+      drawPanel();
+      syncUtils();
     }),
     util("clear", t("studio.06"), () => {
-      history.push(state.paint.slice());
+      remember();
       state.paint = new Uint8Array(GRID * GRID);
+      /*
+       * The stickers go too. Leaving them was the whole complaint: a duck
+       * covered in decorations, a button that says clear, and nothing
+       * happens because the only thing it cleared was a brush nobody had
+       * picked up.
+       *
+       * The TINT stays. It is the duck's own colour rather than something
+       * put on top of it, and clearing to a blank white duck reads as
+       * having deleted the duck instead of its decorations. Undo covers
+       * the disagreement either way.
+       */
+      state.stickers = [];
       redraw();
+      drawPanel();
     }),
     util("dice", t("studio.07"), () => {
+      remember();
       state.tint = Math.floor(Math.random() * TINTS.length);
       state.stickers = surpriseStickers(opts.fortune);
       redraw();
       drawPanel();
     }),
   );
+  // Nothing has happened yet, so undo starts off. Without this it opened
+  // enabled and did nothing on the first tap — which is the exact
+  // impression of a broken button this whole change is undoing.
+  syncUtils();
 
   // ── tabs ──────────────────────────────────────────────────────────────
   let tab: Tab = "colour";
@@ -383,6 +456,7 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
     const swatches = el("div", "p-swatches");
     TINTS.forEach((colour, i) => {
       const b = button("p-swatch", "", () => {
+        remember();
         state.tint = i;
         redraw();
         drawPanel();
@@ -422,6 +496,7 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
       if (def.slot !== slotFilter) continue;
       const already = state.stickers.find((s) => s.id === id);
       const b = button("p-sticker", "", () => {
+        remember();
         if (already) {
           state.stickers = state.stickers.filter((s) => s.id !== id);
         } else {
@@ -503,7 +578,7 @@ export function studioScreen(root: HTMLElement, opts: StudioOptions): void {
     panel.append(swatches);
   }
 
-  const history: Uint8Array[] = [];
+
 
   /*
    * The foot. One primary, and the sentence that says nothing here is
@@ -561,6 +636,13 @@ export function surpriseStickers(fortune: number): Sticker[] {
     picked.push({ id, x, y });
   }
   return picked;
+}
+
+/** One undoable step: the whole decoration, not one part of it. */
+interface Step {
+  paint: Uint8Array;
+  stickers: { id: string; x: number; y: number }[];
+  tint: number;
 }
 
 export function toPayload(state: StudioState): {
