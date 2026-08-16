@@ -190,6 +190,12 @@ is remembered in `localStorage` and is **not final** — see § 5.
 - that card has **no current epoch**,
 - you have a duck.
 
+**Decided (David, 16 Aug):** the offer goes to **anyone who makes a duck
+while the card is unclaimed — first to accept wins**, not to the first
+duck alone. In the ordinary case these are the same person; the
+difference only shows when somebody shrugs, and one shrug should not
+leave a card claimable only by a gesture nobody has been told about.
+
 ### 4.3 The sheet
 
 One tap opens a sheet, not a screen. Two questions, both prefilled:
@@ -435,17 +441,25 @@ is a duck whose owner has lost the private link.
 
 ---
 
-## 10. Open questions for David
+## 10. Decisions and what is still open
 
-1. **Who gets offered the card?** The brief says *the first duck only*. But
-   if the first person taps "Not now", nothing can ever offer it again and
-   the card is reachable only by blowing four times. The recommendation is
-   **anyone who makes a duck while the card is unclaimed — first to accept
-   wins**, which behaves identically in the common case and does not brick
-   the card on a shrug. This is § 10's only real fork.
-2. **Should ending a tenure be one action or two?** § 4.5 argues two — *take
-   my name off* and *someone else keeps it now* — because they are
-   genuinely different intentions.
-3. **Does the four-blow gesture still earn its place?** It remains the only
-   way to take over a card that already has a keeper, which seems worth
-   keeping. It could instead be retired in favour of admin-only transfer.
+**Settled, 16 Aug:**
+
+1. **Who gets offered the card** — anyone who makes a duck while the card
+   is unclaimed, first to accept wins. Recorded in § 4.2.
+2. **Where the offer lives** — a labelled, dismissible row *above* the
+   say/settings glyphs, not a third glyph beside them. The brief asked for
+   a third button in that row; the argument that won is that a glyph is a
+   reminder of something you already know how to do, and this is an
+   invitation to something nobody has heard of. Recorded in § 4.2.
+
+**Still open, and neither blocks the work:**
+
+3. **Should ending a tenure be one action or two?** § 4.5 argues two —
+   *take my name off* and *someone else keeps it now* — because they are
+   genuinely different intentions. Building it as two; collapsing them
+   later is cheap, splitting them later is not.
+4. **Does the four-blow gesture still earn its place?** It remains the only
+   way to take over a card that already has a keeper, so it stays. It could
+   later be retired in favour of admin-only transfer, once there is any
+   evidence about whether a real person ever performs it.
