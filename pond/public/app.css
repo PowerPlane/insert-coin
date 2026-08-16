@@ -2387,13 +2387,23 @@ a.p-chip {
  * labelled row rather than a third glyph because a glyph is a reminder of
  * something you already know how to do, and nobody has heard of this.
  *
- * `order: -1` rather than a different append point: the glyph row is
- * built by `buildCta` in one place and appending the offer first would
- * mean two code paths deciding the order. One declaration here is easier
- * to be sure about than a branch there.
+ * ══ AND IT ONLY LEADS WHEN THERE IS NOTHING TO LEAD ══
+ * Above the two glyphs it is the only thing with words, and going first
+ * is right — there is no task in that bar, just two small things you may
+ * do. But the bar has another state where the offer belongs: a fortune
+ * waiting AND a card going spare, which is what somebody returning to an
+ * unclaimed card sees. There "Decorate it" is the task they came for and
+ * the offer is an aside, so it goes UNDER it.
+ *
+ * Expressed as `order: -1` scoped to the glyph row rather than as a
+ * branch in `buildCta`: the offer is appended last in both states, and
+ * the stylesheet decides where last means.
  */
-.p-offer {
+.p-cta-glyphs .p-offer {
   order: -1;
+}
+
+.p-offer {
   flex-basis: 100%;
   display: flex;
   gap: 8px;

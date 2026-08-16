@@ -275,11 +275,28 @@ export async function claimFromSession(
 
   const epochId = randomId(16);
   try {
+    /*
+     * ══ keeper_duck IS SET AT CLAIM TIME, NOT AT SAVE TIME ══
+     * It used to be written only by `saveKeeper`, which left two holes.
+     *
+     * A claimer who taps "Not now" on the sheet had NO keeper duck at
+     * all, so once the one-hour cookie expired their only way back to
+     * their own card was four blows or David — the exact dead end this
+     * whole feature exists to remove.
+     *
+     * And the settings screen asks `/api/keeper?editKey=` for every duck,
+     * so a route that falls back to the cookie when a key does not
+     * resolve will answer with whatever card this browser claimed last.
+     * Setting the link here is what lets that fallback be deleted.
+     *
+     * Safe by construction: `duck` was already checked to be from this
+     * card, which is the invariant `saveKeeper` enforces.
+     */
     await env.DB.prepare(
-      `INSERT INTO card_epochs (id, card_id, keeper_name, lang, counter, claimed)
-       VALUES (?1, ?2, '', 'en', ?3, ?4)`,
+      `INSERT INTO card_epochs (id, card_id, keeper_name, lang, keeper_duck, counter, claimed)
+       VALUES (?1, ?2, '', 'en', ?3, ?4, ?5)`,
     )
-      .bind(epochId, cardId, Number(card.claim_counter ?? 0), nowSec())
+      .bind(epochId, cardId, duck.id, Number(card.claim_counter ?? 0), nowSec())
       .run();
   } catch {
     // The unique index fired: somebody else claimed it between the check

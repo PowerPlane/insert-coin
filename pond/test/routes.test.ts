@@ -1573,7 +1573,7 @@ describe("keeping a card on a later visit", () => {
      */
     const e = await env();
     const secret = testSecret();
-    const serial = "NOTAPYET";
+    const serial = "NTAPHERE";
     const owner = new Visitor(e);
     const duck = await release(owner, {}, signed(serial, secret));
 
@@ -1729,7 +1729,7 @@ describe("admin card tools", () => {
     const e = await env();
     const orphan = await release(new Visitor(e));
     const a = await admin(e);
-    const res = await a.post("/api/admin/card/attach", { card: "GHOSTCD6", duck: orphan.id });
+    const res = await a.post("/api/admin/card/attach", { card: "GHSTCRD6", duck: orphan.id });
     expect(res.status).toBe(409);
     expect(await res.json()).toMatchObject({ error: "unknown card" });
   });
@@ -1909,5 +1909,89 @@ describe("review findings", () => {
     const row = state.ducks.find((d) => d.id === theirs.id)!;
     expect(row.keeper, "the duck sits in Mika's tenure now").toBe("Mika");
     expect(row.contactKeeper, "but Sam is who the address was shared with").toBe("Sam");
+  });
+});
+
+/**
+ * The wrong card, through the other door.
+ *
+ * The first fix made an explicit private link BEAT the cookie. It still
+ * fell back to the cookie when the key resolved to nothing — and the
+ * settings screen sends a key for every duck, most of which are nobody's
+ * keeper duck. So with a live pond_keeper for card A, opening a duck of
+ * card B answered with A, and "hand it on" ended A from B's screen.
+ *
+ * It could not simply be made strict while `keeper_duck` was set only by
+ * saveKeeper: the compact sheet's first read happens before any save, so
+ * it was living on that same fallback. Claiming now sets the link, which
+ * is what lets the fallback go — and it also means somebody who taps
+ * "Not now" still has a way back once the hour is up.
+ */
+describe("an unresolved key is a refusal, not a fallback", () => {
+  const signed = (card: string, secret: Uint8Array) =>
+    `?d=1&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`;
+
+  it("links the claiming duck at claim time, before any save", async () => {
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed("ATCARDS2", secret));
+    await v.api("/api/claim/first", { method: "POST" });
+
+    // No save has happened. The key alone must already open the card, in
+    // a browser with no cookie at all.
+    const cold = await handle(new Request(`${ORIGIN}/api/keeper?editKey=${duck.editKey}`), e);
+    expect(cold.status, "the sheet can read its own state cookie-free").toBe(200);
+  });
+
+  it("refuses a duck that keeps no card, even holding a live keeper cookie", async () => {
+    /*
+     * David's actual workflow: claim a card, then open another duck's
+     * settings within the hour. The cookie must not answer for it.
+     */
+    const e = await env();
+    const secret = testSecret();
+    const keeper = new Visitor(e);
+    const mine = await release(keeper, {}, signed("MYCARDA3", secret));
+    await keeper.api("/api/claim/first", { method: "POST" });
+    await keeper.post("/api/keeper", { name: "Ayla", editKey: mine.editKey });
+
+    // A duck that keeps nothing, asked about from the SAME browser.
+    const stranger = await release(new Visitor(e));
+    const res = await keeper.api(`/api/keeper?editKey=${stranger.editKey}`);
+    expect(res.status, "no card row for a duck that keeps no card").toBe(404);
+
+    // And the destructive route agrees, so nothing is ended by accident.
+    const end = await keeper.post("/api/keeper/end", { editKey: stranger.editKey });
+    expect(end.status).toBe(404);
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM card_epochs WHERE card_id = 'MYCARDA3' AND ended IS NULL`,
+      ), "the keeper's own tenure is untouched").toBe(1);
+  });
+
+  it("still answers the cookie when no key is offered at all", async () => {
+    // The four-blow path has a cookie and no duck, and must keep working.
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    await v.tap(signed("BREATHE4", secret));
+    await v.post("/api/claim", {
+      card: "BREATHE4", counter: 1, token: cardToken(secret, "BREATHE4", 1),
+    });
+    expect((await v.api("/api/keeper")).status).toBe(200);
+  });
+
+  it("leaves a way back for somebody who claimed and saved nothing", async () => {
+    // "Not now" on the sheet used to mean no keeper_duck at all, so once
+    // the one-hour cookie expired the only way back was four blows.
+    const e = await env();
+    const secret = testSecret();
+    const v = new Visitor(e);
+    const duck = await release(v, {}, signed("SKPSAVE5", secret));
+    await v.api("/api/claim/first", { method: "POST" });
+
+    const later = await handle(new Request(`${ORIGIN}/api/keeper?editKey=${duck.editKey}`), e);
+    expect(later.status).toBe(200);
+    expect(await later.json()).toMatchObject({ keeper: "" });
   });
 });

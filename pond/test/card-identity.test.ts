@@ -299,3 +299,45 @@ describe("real cards, from the bench", () => {
     expect(CARDS[1]!.sernum.endsWith("06")).toBe(true);
   });
 });
+
+/**
+ * Test serials have to be serials.
+ *
+ * ══ THE TRAP THAT KEEPS SPRINGING ══
+ * Card serials are Crockford base32, which EXCLUDES I, L, O and U — they
+ * are the characters people misread as 1, 1, 0 and V. A test serial
+ * containing one is rejected on shape before any signature is checked, so
+ * the card never registers and the test goes on to assert something about
+ * a card that does not exist.
+ *
+ * Sometimes that fails loudly. Sometimes it PASSES, because the thing
+ * being asserted was "this is refused" and it was refused for the wrong
+ * reason entirely. Both have happened here, five separate times, across
+ * three sittings.
+ *
+ * So the fixtures are checked rather than remembered. This reads the
+ * route tests looking for eight-character upper-case literals — the shape
+ * of a serial — and fails on any that could never be one.
+ */
+import { readFileSync as readSuite } from "node:fs";
+import { join as joinSuite } from "node:path";
+
+describe("the serials in the tests", () => {
+  it("are all things a real card could be called", () => {
+    const src = readSuite(joinSuite(__dirname, "routes.test.ts"), "utf8");
+    /*
+     * Quoted or interpolated, eight characters, upper-case alphanumeric.
+     * Narrow on purpose: it is looking for the serial shape, not for
+     * every capitalised string in the file.
+     */
+    const looksLikeSerial = /["'`]([A-Z0-9]{8})["'`]/g;
+    const bad: string[] = [];
+    for (const m of src.matchAll(looksLikeSerial)) {
+      const serial = m[1]!;
+      // A run of digits is a hex token or a counter, not a serial.
+      if (/^\d+$/.test(serial)) continue;
+      if (/[ILOU]/.test(serial)) bad.push(serial);
+    }
+    expect(bad, `Crockford base32 excludes I, L, O and U: ${bad.join(", ")}`).toEqual([]);
+  });
+});
