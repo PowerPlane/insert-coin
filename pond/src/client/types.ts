@@ -15,6 +15,13 @@ export interface Sticker {
  */
 export interface PondDuck {
   id: string;
+  /*
+   * Yours, as far as this browser knows. Never sent by the server — the
+   * pond payload is public and says nothing about who anybody is — it is
+   * written on the client once the private link has resolved to an id, so
+   * the tag can be drawn over your own duck.
+   */
+  mine?: boolean;
   slug: string;
   fortune: number;
   tint: number;

@@ -325,15 +325,27 @@ export function releaseFlow(opts: FlowOptions): void {
     // the kind of invisible dependency that made three screens throw.
     syncScope();
 
+    /*
+     * ══ ONE BUTTON, BECAUSE THERE IS ONE ACTION ══
+     * There used to be a "Skip contact" beside this, which cleared the
+     * field and released. With the field empty — which is how almost
+     * everybody arrives at it — the two buttons did exactly the same
+     * thing, and a screen that offers the same outcome twice makes
+     * somebody stop and work out the difference.
+     *
+     * The screen already says four times over that this is optional: the
+     * nav reads OPTIONAL, the body says "Skip this and your duck still
+     * goes in", the placeholder is an example rather than a demand, and
+     * the note underneath explains what happens if you do fill it in.
+     * A second button was the fifth telling, and the only one that could
+     * be misread — it did not say "discard what I typed", which is the
+     * one case where it differed at all.
+     *
+     * Leaving it blank IS skipping. So there is one button, and it says
+     * what happens.
+     */
     const actions = el("div", "p-actions");
-    actions.append(
-      button("p-btn", t("contact.07"), () => void release()),
-      button("p-btn p-btn-quiet", t("contact.08"), () => {
-        draft.contact = "";
-        persist();
-        void release();
-      }),
-    );
+    actions.append(button("p-btn", t("contact.07"), () => void release()));
     wrap.append(spacer(), actions);
     root.append(viewRoot);
     syncScope();

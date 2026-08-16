@@ -226,6 +226,33 @@ export function sheet(centred = false): { root: HTMLElement; body: HTMLElement }
 }
 
 /**
+ * A small panel that floats ON the water, rather than rising out of it.
+ *
+ * ══ WHY THIS IS NOT A SHEET ══
+ * A sheet is anchored to the bottom, so when the keyboard opens the sheet
+ * comes with it and everything above is squeezed into whatever is left —
+ * the pond crushed to a strip, the panel jammed against the keys, and the
+ * whole screen apparently shoved upward. For a screen you are FILLING IN
+ * that is the right trade, which is why the flow uses full views.
+ *
+ * The say composer is neither. It is one short field over a pond you are
+ * meant to still be looking at, opened and closed in a few seconds. So it
+ * is anchored to the TOP: the keyboard slides up underneath it and nothing
+ * moves, because there is nothing below it that has to give way.
+ *
+ * No dithered edge. That edge is a waterline — it belongs where a panel
+ * MEETS the water at the bottom of the screen. A thing floating on the
+ * water has water on all four sides of it, so it gets the same pixel
+ * corners as every other chip in the pond instead.
+ */
+export function floater(): { root: HTMLElement; body: HTMLElement } {
+  const root = el("div", "p-float");
+  const body = el("div", "p-float-body");
+  root.append(body);
+  return { root, body };
+}
+
+/**
  * A full screen — the container almost everything in this flow belongs in.
  *
  * ══ A SHEET IS NOT A SCREEN ══

@@ -12,10 +12,10 @@
  */
 
 import {
-  ApiError, api, loadDraft, quietFor, recallEditKey, rememberQuiet,
+  ApiError, api, loadDraft, quietFor, recallEditKey, rememberEditKey, rememberQuiet,
   type ReportReason, type SessionState,
 } from "./api.js";
-import { button, ditherEdge, field, sheet as makeSheet } from "./dom.js";
+import { button, ditherEdge, field, floater, sheet as makeSheet } from "./dom.js";
 import { icon } from "./icons.js";
 import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
@@ -36,6 +36,12 @@ interface Bootstrap {
   duck?: PondDuck;
   editKey?: string;
   missing?: string;
+  /*
+   * Set by the private-link route, not by the server. The pond payload is
+   * public and cannot say which duck is yours; this is the key that can,
+   * handed in so the pond can mark and frame it.
+   */
+  mine?: string;
 }
 
 function boot(): Bootstrap {
@@ -668,6 +674,51 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    */
   let gone = false;
 
+  /**
+   * Where to aim so the landing can actually be watched.
+   *
+   * ══ CENTRED IS NOT VISIBLE ══
+   * The camera centred on the duck, which puts it in the middle of the
+   * SCREEN — and the keep card covers the bottom half of the screen while
+   * somebody reads their private link. So the duck fell to a point at or
+   * just behind the card's top edge, and the one moment the whole flow
+   * builds to happened on the waterline where it could barely be seen.
+   * Reported as exactly that: "the drop is not really centre upper above
+   * keep this link, so it's really hard to see my own duck dropping in."
+   *
+   * The note above about framing the spot BEFORE the drop was right; it
+   * framed the wrong spot. The middle of what is visible is not the middle
+   * of the screen when something is covering half of it.
+   *
+   * So the aim moves DOWN in the world by half of what the card hides,
+   * which moves the duck UP the screen by the same amount and lands it in
+   * the middle of the clear water — with the whole fall above it.
+   *
+   * The conversion asks the canvas rather than assuming a device pixel
+   * ratio: `canvas.height / rect.height` is device pixels per CSS pixel
+   * including whatever clamping the viewport applied, and `cam.cell` is
+   * device pixels per sprite pixel. Nothing here needs to know about
+   * OVERSCAN — the canvas is centred on the viewport, so its middle and
+   * the screen's middle are the same point, which is the only fact this
+   * arithmetic rests on.
+   */
+  function framedOn(duck: { wx: number; wy: number }): { x: number; y: number } {
+    const aim = { x: duck.wx, y: duck.wy };
+    const cover = overlay.querySelector<HTMLElement>(".p-screen, .p-view");
+    if (!cover) return aim;
+
+    const hidden = window.innerHeight - cover.getBoundingClientRect().top;
+    if (hidden <= 0) return aim;
+
+    const box = canvas.getBoundingClientRect();
+    if (!box.height) return aim;
+    const pxPerCss = canvas.height / box.height;
+    const cell = view.camera.cam.cell;
+    if (!cell) return aim;
+
+    return { x: aim.x, y: aim.y + ((hidden / 2) * pxPerCss) / cell };
+  }
+
   async function arriveWhenItLands(id: string): Promise<void> {
     for (let attempt = 0; attempt < ARRIVAL_TRIES; attempt++) {
       await refresh();
@@ -692,7 +743,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
          * closing over the water in the same instant, so there is nothing
          * on screen to jump.
          */
-        view.camera.snap({ x: duck.wx, y: duck.wy });
+        view.camera.snap(framedOn(duck));
         view.arrive(duck);
         return;
       }
@@ -771,10 +822,26 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     }
   };
 
+  /*
+   * Which duck in the water is this browser's, if any.
+   *
+   * Resolved once, from the private link, and then applied on every
+   * refresh — `setDucks` replaces the list each poll, so a flag written
+   * once would last exactly twenty seconds. The pond payload is public and
+   * cannot say which duck is yours; only the key can, so it is asked once
+   * and remembered here.
+   */
+  let mineId: string | null = null;
+
   const refresh = async (): Promise<void> => {
     try {
       const res = await api.pond();
       ducks = res.ducks;
+      if (mineId) {
+        // The tag over your own duck — drawTag already knows how to draw
+        // it; nothing had ever told it which duck to draw it over.
+        for (const d of ducks) if (d.id === mineId) d.mine = true;
+      }
       view.setDucks(ducks);
       syncSays(ducks);
       syncCount();
@@ -785,6 +852,33 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
     }
   };
   await refresh();
+
+  /*
+   * Arriving by private link: find the duck it belongs to, mark it, and
+   * put the camera on it. "Knowing which duck you are" is the thing the
+   * link is for, and a pond that opens on the same view as everybody
+   * else's does not say it.
+   *
+   * After the first refresh, so there is a pond to find it in, and
+   * deliberately not awaited before the screen is usable — a slow lookup
+   * should delay a camera move, not the water.
+   */
+  if (bootstrap.mine) {
+    void api.mine(bootstrap.mine).then(
+      (res) => {
+        const id = typeof res.duck?.id === "string" ? res.duck.id : null;
+        if (!id || gone) return;
+        mineId = id;
+        for (const d of ducks) if (d.id === id) d.mine = true;
+        view.setDucks(ducks);
+        const found = view.find(id);
+        if (found) view.camera.snap({ x: found.wx, y: found.wy });
+      },
+      // A link that no longer resolves is a duck that was taken out. The
+      // pond is still the right place to be standing.
+      () => {},
+    );
+  }
 
   // ── what this visitor can do ──────────────────────────────────────────
   //
@@ -1191,7 +1285,13 @@ async function pondScreen(bootstrap: Bootstrap): Promise<void> {
    * the real number of minutes left.
    */
   function openSay(): void {
-    const { root: sheetRoot, body: wrap } = makeSheet();
+    /*
+     * Floats rather than rising. Sixty characters over a pond you are
+     * still meant to be watching, and anchored to the top so the keyboard
+     * slides up underneath it instead of shoving the whole screen. See
+     * `floater`.
+     */
+    const { root: sheetRoot, body: wrap } = floater();
     const close = () => overlay.replaceChildren();
     // Heading then body, like every other sheet. It was an eyebrow, which
     // is a kicker ABOVE a heading — so this sheet had a kicker and no
@@ -1783,16 +1883,38 @@ async function main(): Promise<void> {
   const b = boot();
   setLang((document.documentElement.lang as Lang) || "en");
 
-  // `/e/<key>` is the private link — the only credential a duck has, and
-  // the whole reason coming back is worth doing.
+  /*
+   * `/e/<key>` is the private link — the only credential a duck has, and
+   * the whole reason coming back is worth doing.
+   *
+   * ══ REMEMBER IT, AND LAND ON THE POND ══
+   * Two things were wrong here, and they had the same cause: this route
+   * treated the key as an argument to one screen rather than as the answer
+   * to "whose duck is this browser holding".
+   *
+   * `rememberEditKey` was called in exactly ONE place — the release flow,
+   * when a duck is made in this browser. So a private link opened anywhere
+   * else did not tell the pond anything. And anywhere else is the whole
+   * point of the link: you text it to yourself, you open it on a laptop,
+   * you come back after clearing Safari. In all of those the pond had no
+   * idea you owned a duck, so the bar showed "tap a card to begin", there
+   * was no say button, no settings, and bumping was impossible — bump
+   * needs your key to prove the duck doing the bumping is yours.
+   *
+   * Reported exactly that way: "I can't bump other ducks or chat or jump
+   * to settings once I'm at the pond."
+   *
+   * So the key is remembered FIRST, before the pond is built, because the
+   * bar reads it while building.
+   *
+   * And the destination is the pond, not the settings form. The link is
+   * the way back to the PLACE; settings is something you do once you are
+   * there, and it is one tap away on the gear. Landing inside a form was
+   * answering "take me back to my duck" with a page of fields.
+   */
   if (b.view === "edit" && b.editKey) {
-    // The pond renders first, so the water is already there behind it.
-    await pondScreen({});
-    mineScreen({
-      root: document.querySelector(".p-overlay")!,
-      editKey: b.editKey,
-      onPond: () => document.querySelector(".p-overlay")!.replaceChildren(),
-    });
+    rememberEditKey(b.editKey);
+    await pondScreen({ mine: b.editKey });
     return;
   }
 

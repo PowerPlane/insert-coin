@@ -2815,3 +2815,85 @@ a.p-chip {
 .p-cardrow[hidden] {
   display: none;
 }
+
+/*
+ * ══ A PANEL THAT FLOATS, RATHER THAN ONE THAT RISES ══
+ * The say composer used to be a bottom sheet, and a bottom sheet plus a
+ * keyboard is a bad trade for a screen you are not really filling in: the
+ * sheet comes up with the keys, the pond above it is crushed to a strip,
+ * and the whole screen reads as having been shoved upward.
+ *
+ * Anchored to the TOP instead. The keyboard slides up underneath it and
+ * nothing moves, because nothing below it has to give way. It sits just
+ * under the HUD so the count and the mark stay readable, and the water is
+ * still visible all round it — which is the point, since what you are
+ * writing is going to float on that water in a moment.
+ *
+ * No dithered edge: that edge is a waterline and belongs to a panel that
+ * MEETS the water at the bottom of the screen. This one has water on all
+ * four sides, so it gets the pixel corners every other chip in the pond
+ * has.
+ */
+.p-float {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  /* Clear of the HUD, which sits at the same safe-area offset. */
+  top: calc(max(12px, env(safe-area-inset-top)) + var(--tap) + 16px);
+  /* Centred and capped, so it is a panel on a tablet rather than a band. */
+  margin-inline: auto;
+  max-width: 420px;
+  z-index: 40;
+}
+
+.p-float-body {
+  background: var(--p-surface);
+  clip-path: var(--px-corner);
+  padding: 1rem 1.1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/*
+ * It arrives the way the sheet did, and stops moving the way everything
+ * else in the pond stops moving: in steps.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .p-float {
+    animation: p-float-in 0.2s steps(4, end);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-float {
+    animation: p-fade 0.16s steps(3, end);
+  }
+}
+
+@keyframes p-float-in {
+  /* Down and in, a short distance: it is arriving over the water rather
+     than climbing out of it, so it does not travel a screen's height. */
+  from { transform: translateY(-14%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/*
+ * ══ AND IT HAS TO FIT ABOVE A KEYBOARD ON A SMALL PHONE ══
+ * A 320x568 screen keeps about 352px once an iOS keyboard is up, and the
+ * panel at its comfortable size ends at 355 — three pixels of "Say it"
+ * behind the keys, which is the kind of margin that is fine on a bench and
+ * wrong on somebody's phone. Measured, not guessed: the field clears the
+ * keyboard either way; it is the BUTTON that was at risk, and a button you
+ * have to dismiss the keyboard to reach is a button people do not find.
+ */
+@media (max-height: 620px) {
+  .p-float {
+    top: calc(max(8px, env(safe-area-inset-top)) + var(--tap) + 8px);
+  }
+
+  .p-float-body {
+    padding: 0.8rem 0.9rem 0.9rem;
+    gap: 0.45rem;
+  }
+}

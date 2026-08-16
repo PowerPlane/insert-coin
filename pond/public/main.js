@@ -316,6 +316,12 @@ function sheet(centred = false) {
   root2.append(edge, body);
   return { root: root2, body };
 }
+function floater() {
+  const root2 = el("div", "p-float");
+  const body = el("div", "p-float-body");
+  root2.append(body);
+  return { root: root2, body };
+}
 function view() {
   const root2 = el("div", "p-view");
   const body = el("div", "p-view-pad");
@@ -1595,8 +1601,16 @@ var EN = {
   // Privacy note
   "contact.07": "Release my duck",
   // Button
+  /*
+   * ══ RETIRED ══
+   * The contact screen had "Release my duck" and "Skip contact" side by
+   * side. With the field empty — which is how almost everybody arrives —
+   * they did the same thing. Leaving it blank IS skipping, and the
+   * screen says so three other ways. Kept as a key so the numbering of
+   * everything after it does not shift, and so COPY.md stays readable.
+   */
   "contact.08": "Skip contact",
-  // Button
+  // Button — no longer rendered
   "contact.09": "Leave an address if you want a postcard. David will not share it.",
   // Body
   "pond.01": "14 ducks",
@@ -3507,14 +3521,7 @@ function releaseFlow(opts) {
     wrap2.append(input.wrap, scopeLabel, scopes, postcard, el("p", "p-note", t("contact.06")));
     syncScope();
     const actions = el("div", "p-actions");
-    actions.append(
-      button("p-btn", t("contact.07"), () => void release()),
-      button("p-btn p-btn-quiet", t("contact.08"), () => {
-        draft.contact = "";
-        persist();
-        void release();
-      })
-    );
+    actions.append(button("p-btn", t("contact.07"), () => void release()));
     wrap2.append(spacer(), actions);
     root2.append(viewRoot);
     syncScope();
@@ -5460,13 +5467,26 @@ async function pondScreen(bootstrap) {
     return ARRIVAL_MIN_CELL;
   }
   let gone = false;
+  function framedOn(duck) {
+    const aim = { x: duck.wx, y: duck.wy };
+    const cover = overlay.querySelector(".p-screen, .p-view");
+    if (!cover) return aim;
+    const hidden = window.innerHeight - cover.getBoundingClientRect().top;
+    if (hidden <= 0) return aim;
+    const box = canvas.getBoundingClientRect();
+    if (!box.height) return aim;
+    const pxPerCss = canvas.height / box.height;
+    const cell = view2.camera.cam.cell;
+    if (!cell) return aim;
+    return { x: aim.x, y: aim.y + hidden / 2 * pxPerCss / cell };
+  }
   async function arriveWhenItLands(id) {
     for (let attempt = 0; attempt < ARRIVAL_TRIES; attempt++) {
       await refresh();
       if (gone) return;
       const duck = view2.find(id);
       if (duck) {
-        view2.camera.snap({ x: duck.wx, y: duck.wy });
+        view2.camera.snap(framedOn(duck));
         view2.arrive(duck);
         return;
       }
@@ -5510,10 +5530,14 @@ async function pondScreen(bootstrap) {
       }
     }
   };
+  let mineId = null;
   const refresh = async () => {
     try {
       const res = await api.pond();
       ducks = res.ducks;
+      if (mineId) {
+        for (const d of ducks) if (d.id === mineId) d.mine = true;
+      }
       view2.setDucks(ducks);
       syncSays(ducks);
       syncCount();
@@ -5523,6 +5547,23 @@ async function pondScreen(bootstrap) {
     }
   };
   await refresh();
+  if (bootstrap.mine) {
+    void api.mine(bootstrap.mine).then(
+      (res) => {
+        const id = typeof res.duck?.id === "string" ? res.duck.id : null;
+        if (!id || gone) return;
+        mineId = id;
+        for (const d of ducks) if (d.id === id) d.mine = true;
+        view2.setDucks(ducks);
+        const found = view2.find(id);
+        if (found) view2.camera.snap({ x: found.wx, y: found.wy });
+      },
+      // A link that no longer resolves is a duck that was taken out. The
+      // pond is still the right place to be standing.
+      () => {
+      }
+    );
+  }
   const hasDuck = () => recallEditKey();
   async function syncCta() {
     cta.replaceChildren();
@@ -5719,7 +5760,7 @@ async function pondScreen(bootstrap) {
     return b;
   }
   function openSay() {
-    const { root: sheetRoot, body: wrap2 } = sheet();
+    const { root: sheetRoot, body: wrap2 } = floater();
     const close = () => overlay.replaceChildren();
     wrap2.append(
       el2("h2", "p-title", t("say.02")),
@@ -5986,12 +6027,8 @@ async function main() {
   const b = boot();
   setLang(document.documentElement.lang || "en");
   if (b.view === "edit" && b.editKey) {
-    await pondScreen({});
-    mineScreen({
-      root: document.querySelector(".p-overlay"),
-      editKey: b.editKey,
-      onPond: () => document.querySelector(".p-overlay").replaceChildren()
-    });
+    rememberEditKey(b.editKey);
+    await pondScreen({ mine: b.editKey });
     return;
   }
   await pondScreen(b);

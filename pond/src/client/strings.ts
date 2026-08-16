@@ -214,7 +214,15 @@ export const EN = {
   "contact.05": "@yourhandle or 12 Somewhere St, Brooklyn NY 11211", // Placeholder
   "contact.06": "Only David sees this. It is not shown in the pond, and it is deleted when you take your duck out.", // Privacy note
   "contact.07": "Release my duck", // Button
-  "contact.08": "Skip contact", // Button
+  /*
+   * ══ RETIRED ══
+   * The contact screen had "Release my duck" and "Skip contact" side by
+   * side. With the field empty — which is how almost everybody arrives —
+   * they did the same thing. Leaving it blank IS skipping, and the
+   * screen says so three other ways. Kept as a key so the numbering of
+   * everything after it does not shift, and so COPY.md stays readable.
+   */
+  "contact.08": "Skip contact", // Button — no longer rendered
   "contact.09": "Leave an address if you want a postcard. David will not share it.", // Body
   "pond.01": "14 ducks", // Button
   "pond.02": "David's Pond — who made this. Opens davidyang.work in a new tab.", // Screen reader
