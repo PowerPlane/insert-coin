@@ -29,7 +29,13 @@ Two facts that most bugs here came from ignoring:
 
 What claiming actually means: a counter **above the server's high-water
 mark**. The client cannot see that mark, so it keeps its own record per
-card (`claimIsFresh`) and treats anything it has already tried as spent.
+card (`claimIsFresh`) and treats anything it has already tried as spent —
+recorded only once the server has actually answered, so a lost network
+call cannot bury a claim that never happened.
+
+The server checks the mark before it will even answer a question about a
+card, so a stale or ordinary URL cannot be used to ask whether a card is
+kept.
 
 ---
 
@@ -45,10 +51,14 @@ Resolved **before** the pond renders, and the answer is passed in as
 | a claim on a free card | 0 | fresh | `claimed` | Card setup |
 | a claim on a kept card | 0 | fresh | `takeover` | the question |
 
-Plus the case that produced two separate bugs: **a coin AND a fresh
-claim**, which happens because the tag stays armed. The question is shown
-first; declining falls through to the arrival, because the tap turns out
-to have been ordinary after all.
+Plus the case that produced three separate bugs: **a coin AND a fresh
+claim**, which happens on every card that has ever been armed, because
+the tag stays that way.
+
+**The coin wins.** An armed tap deals no fortune — the firmware sees to
+that — so a tap that DID deal one is somebody playing, not somebody
+setting a card up. The question is not asked at all, and declining is
+therefore never something they have to do to reach what they paid for.
 
 ---
 
@@ -65,6 +75,12 @@ because there is still something to decline.
 **b. Four blows.** The takeover path. On a free card it claims outright;
 on a kept card it asks first and spends nothing until answered.
 
+**b2. A tenure with no name and no linked duck is resumed, not replaced.**
+There is nothing there to take over — no byline to lose, and no keeper
+for a contact to have been shared with — and replacing it is how a keeper
+who closed the setup screen without saving got stranded once their cookie
+expired.
+
 **c. Coming back later.** A fresh tap plus the private link of a duck
 from that card. The session proves present possession; the key answers
 which duck is theirs. Neither alone is enough — `ducks.card_id` is
@@ -79,9 +95,14 @@ Four columns of one `card_epochs` row: `keeper_name`, `lang`,
 ### Getting back in
 
 `pond_keeper` lasts an hour. The durable credential is the keeper's own
-duck's private link, which is why `keeper_duck` is set **at claim time**
-by every route — a keeper who closes the sheet without saving still has a
-way back.
+duck's private link, so `keeper_duck` is set **at claim time** wherever a
+duck is known: `claimFromSession` uses the one that proved the claim, and
+a four-blow claim takes whichever duck the browser is holding, if that
+card minted it.
+
+A four-blow claim from a browser with no duck at all can set neither. That
+tenure has no name and no duck, which is exactly the case resumed rather
+than replaced above — so it stays reachable by blowing again.
 
 ---
 
@@ -94,6 +115,7 @@ way back.
 | kept by somebody else | **asks**, spends nothing | fortune | settings, no card row |
 | kept, no name | asks (or resumes with your key) | fortune | as above |
 | tag armed, claim spent | fortune | fortune | — |
+| kept, and a coin in the card | **fortune, never asked** | fortune | — |
 | card disabled | refused | read-only pond | — |
 | no `CARD_SECRET` | refused | fortune, no provenance | — |
 
