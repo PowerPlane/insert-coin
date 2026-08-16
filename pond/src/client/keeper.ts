@@ -603,6 +603,13 @@ export function rememberClaimAttempt(url: URL): void {
   }
 }
 
+/** What a tap on an armed card turned out to be. */
+export type ClaimResult =
+  | { kind: "claimed" }
+  | { kind: "refused" }
+  | { kind: "takeover"; keeper: string }
+  | { kind: "none" };
+
 export async function claimFromUrl(url: URL): Promise<boolean> {
   const card = url.searchParams.get("c");
   const g = url.searchParams.get("g");
@@ -616,5 +623,27 @@ export async function claimFromUrl(url: URL): Promise<boolean> {
     return res.ok;
   } catch {
     return false;
+  }
+}
+
+/**
+ * The same tap, with the third answer kept.
+ *
+ * `claimFromUrl` collapses everything to a boolean, which was fine while
+ * there were two outcomes. There are three now: a card can already be
+ * kept, and that is a question rather than a failure.
+ */
+export async function resolveClaim(url: URL, confirm = false): Promise<ClaimResult> {
+  const card = url.searchParams.get("c");
+  const g = url.searchParams.get("g");
+  const token = url.searchParams.get("t");
+  if (!isClaimUrl(url) || !card || !g || !token) return { kind: "none" };
+  try {
+    const res = await api.claim(card, parseInt(g, 16), token, recallEditKey(), confirm);
+    if (res.ok) return { kind: "claimed" };
+    if (res.takeover) return { kind: "takeover", keeper: res.keeper ?? "" };
+    return { kind: "refused" };
+  } catch {
+    return { kind: "refused" };
   }
 }

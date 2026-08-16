@@ -17,6 +17,7 @@ import {
   claimCard, epochForEditKey, isReservedKeeperName, keeperNameOfCard, keeperState,
   saveKeeper,
 } from "../src/worker/keeper.js";
+import type { Claim, Takeover } from "../src/worker/keeper.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/worker/types.js";
 import { count, editKeyFor, fresh, makeDuck } from "./helpers.js";
@@ -43,10 +44,24 @@ async function env(): Promise<Env> {
 
 const sign = (counter: number) => cardToken(SECRET, CARD, counter);
 
+/**
+ * The tenure a claim opened, or a thrown test failure.
+ *
+ * `claimCard` has three answers now — a tenure, a refusal, and a QUESTION
+ * ("somebody keeps this; take it over?"). Narrowing at every call site
+ * would be three lines of ceremony per test, and the ceremony is where a
+ * test stops saying what it means.
+ */
+function opened(r: Claim | Takeover | { error: string }): Claim {
+  if ("error" in r) throw new Error(`claim refused: ${r.error}`);
+  if ("takeover" in r) throw new Error("claim came back as a takeover question");
+  return r;
+}
+
 describe("a claim needs a signature", () => {
   it("accepts one the card actually signed", async () => {
     const e = await env();
-    const claim = await claimCard(e, CARD, 1, sign(1));
+    const claim = await claimCard(e, CARD, 1, sign(1), null, true);
     expect("error" in claim).toBe(false);
     expect(await count(e.DB, `SELECT COUNT(*) AS n FROM card_epochs WHERE ended IS NULL`)).toBe(1);
   });
@@ -62,7 +77,7 @@ describe("a claim needs a signature", () => {
     // The whole point: the token is over serial AND counter, so a claim
     // seen at counter 1 cannot be replayed at 2.
     const e = await env();
-    expect(await claimCard(e, CARD, 2, sign(1))).toEqual({ error: "bad token" });
+    expect(await claimCard(e, CARD, 2, sign(1), null, true)).toEqual({ error: "bad token" });
   });
 
   it("refuses a signature for a different card", async () => {
@@ -76,34 +91,34 @@ describe("a claim needs a signature", () => {
     // the failure mode where CARD_SECRET is simply never set in production.
     const e = await env();
     delete process.env.CARD_SECRET;
-    expect(await claimCard(e, CARD, 1, sign(1))).toEqual({ error: "no secret" });
+    expect(await claimCard(e, CARD, 1, sign(1), null, true)).toEqual({ error: "no secret" });
   });
 
   it("refuses a card that has been switched off", async () => {
     const e = await env();
     await e.DB.prepare(`UPDATE cards SET disabled = 1 WHERE id = ?1`).bind(CARD).run();
-    expect(await claimCard(e, CARD, 1, sign(1))).toEqual({ error: "unknown card" });
+    expect(await claimCard(e, CARD, 1, sign(1), null, true)).toEqual({ error: "unknown card" });
   });
 });
 
 describe("a claim needs a counter above the high-water mark", () => {
   it("refuses a counter that has already been used", async () => {
     const e = await env();
-    await claimCard(e, CARD, 5, sign(5));
+    await claimCard(e, CARD, 5, sign(5), null, true);
     // Same URL, tapped again — the exact replay this is for.
-    expect(await claimCard(e, CARD, 5, sign(5))).toEqual({ error: "already used" });
+    expect(await claimCard(e, CARD, 5, sign(5), null, true)).toEqual({ error: "already used" });
   });
 
   it("refuses a counter below the mark", async () => {
     const e = await env();
-    await claimCard(e, CARD, 5, sign(5));
-    expect(await claimCard(e, CARD, 4, sign(4))).toEqual({ error: "already used" });
+    await claimCard(e, CARD, 5, sign(5), null, true);
+    expect(await claimCard(e, CARD, 4, sign(4), null, true)).toEqual({ error: "already used" });
   });
 
   it("accepts the next gesture", async () => {
     const e = await env();
-    await claimCard(e, CARD, 5, sign(5));
-    expect("error" in (await claimCard(e, CARD, 6, sign(6)))).toBe(false);
+    await claimCard(e, CARD, 5, sign(5), null, true);
+    expect("error" in (await claimCard(e, CARD, 6, sign(6), null, true))).toBe(false);
   });
 
   it("advances the mark in the same statement that checks it", async () => {
@@ -111,8 +126,8 @@ describe("a claim needs a counter above the high-water mark", () => {
     // write would let both through and open two epochs.
     const e = await env();
     const both = await Promise.all([
-      claimCard(e, CARD, 9, sign(9)),
-      claimCard(e, CARD, 9, sign(9)),
+      claimCard(e, CARD, 9, sign(9), null, true),
+      claimCard(e, CARD, 9, sign(9), null, true),
     ]);
     expect(both.filter((r) => !("error" in r))).toHaveLength(1);
   });
@@ -121,8 +136,8 @@ describe("a claim needs a counter above the high-water mark", () => {
 describe("a card has a succession of keepers, not an owner", () => {
   it("closes the previous tenure when a new one opens", async () => {
     const e = await env();
-    await claimCard(e, CARD, 1, sign(1));
-    await claimCard(e, CARD, 2, sign(2));
+    await claimCard(e, CARD, 1, sign(1), null, true);
+    await claimCard(e, CARD, 2, sign(2), null, true);
 
     expect(await count(e.DB, `SELECT COUNT(*) AS n FROM card_epochs`)).toBe(2);
     // The partial unique index makes more than one current keeper
@@ -134,14 +149,12 @@ describe("a card has a succession of keepers, not an owner", () => {
     // The reason epochs exist. A contact shared with Sam was shared with
     // SAM; Mika picking up the same card later must see none of it.
     const e = await env();
-    const first = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in first) throw new Error("claim failed");
+    const first = opened(await claimCard(e, CARD, 1, sign(1), null, true));
 
     await makeDuck(e.DB, "sams", { epoch: first.epochId, contact: "sam@example.com" });
     await e.DB.prepare(`UPDATE ducks SET card_id = ?1 WHERE id = 'sams'`).bind(CARD).run();
 
-    const second = await claimCard(e, CARD, 2, sign(2));
-    if ("error" in second) throw new Error("second claim failed");
+    const second = opened(await claimCard(e, CARD, 2, sign(2), null, true));
 
     // Even adopting explicitly must not reach a previous tenure's ducks.
     await saveKeeper(e, second.epochId, { name: "Mika", adopt: true });
@@ -156,8 +169,7 @@ describe("a card has a succession of keepers, not an owner", () => {
     await makeDuck(e.DB, "orphan");
     await e.DB.prepare(`UPDATE ducks SET card_id = ?1 WHERE id = 'orphan'`).bind(CARD).run();
 
-    const claim = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in claim) throw new Error("claim failed");
+    const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     expect(claim.orphans).toBe(1);
 
     const saved = await saveKeeper(e, claim.epochId, { name: "Sam", adopt: true });
@@ -172,8 +184,7 @@ describe("a card has a succession of keepers, not an owner", () => {
 describe("card setup", () => {
   it("takes a name, a language and the keeper's own duck", async () => {
     const e = await env();
-    const claim = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in claim) throw new Error("claim failed");
+    const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     // From THIS card: `keeper_duck` may only name a duck the card made.
     await makeDuck(e.DB, "mine", { card: CARD });
 
@@ -188,17 +199,15 @@ describe("card setup", () => {
   it("never returns the card serial", async () => {
     // It is half of what a claim is keyed on, and a keeper does not need it.
     const e = await env();
-    const claim = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in claim) throw new Error("claim failed");
+    const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     const state = await keeperState(e, claim.epochId);
     expect(JSON.stringify(state)).not.toContain(CARD);
   });
 
   it("refuses a keeper whose tenure has ended", async () => {
     const e = await env();
-    const first = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in first) throw new Error("claim failed");
-    await claimCard(e, CARD, 2, sign(2));
+    const first = opened(await claimCard(e, CARD, 1, sign(1), null, true));
+    await claimCard(e, CARD, 2, sign(2), null, true);
 
     // Sam's cookie still exists; Sam is no longer the keeper.
     expect(await saveKeeper(e, first.epochId, { name: "Sam" })).toEqual({
@@ -211,8 +220,7 @@ describe("card setup", () => {
     // Claiming and configuring are different acts. The epoch exists either
     // way; `via` is simply not shown.
     const e = await env();
-    const claim = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in claim) throw new Error("claim failed");
+    const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     expect(await saveKeeper(e, claim.epochId, {})).toEqual({ ok: true, adopted: 0 });
   });
 
@@ -228,8 +236,7 @@ describe("card setup", () => {
   describe("the name offered to a visitor", () => {
     it("is the current keeper's", async () => {
       const e = await env();
-      const claim = await claimCard(e, CARD, 1, sign(1));
-      if ("error" in claim) throw new Error("claim failed");
+      const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
       await saveKeeper(e, claim.epochId, { name: "Sam" });
       expect(await keeperNameOfCard(e, CARD)).toBe("Sam");
     });
@@ -245,16 +252,14 @@ describe("card setup", () => {
       // There is no one to name, so the picker must not offer to share
       // with them — "shared with " is not a sentence anyone can consent to.
       const e = await env();
-      const claim = await claimCard(e, CARD, 1, sign(1));
-      if ("error" in claim) throw new Error("claim failed");
+      const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
       await saveKeeper(e, claim.epochId, { name: "   " });
       expect(await keeperNameOfCard(e, CARD)).toBeNull();
     });
 
     it("changes hands with the card, and never lags behind", async () => {
       const e = await env();
-      const sam = await claimCard(e, CARD, 1, sign(1));
-      if ("error" in sam) throw new Error("claim failed");
+      const sam = opened(await claimCard(e, CARD, 1, sign(1), null, true));
       await saveKeeper(e, sam.epochId, { name: "Sam" });
       expect(await keeperNameOfCard(e, CARD)).toBe("Sam");
 
@@ -262,8 +267,7 @@ describe("card setup", () => {
       // before Mika has chosen a name — a visitor consenting to "share
       // with Sam" when Sam no longer holds the card is the exact harm the
       // epochs exist to prevent.
-      const mika = await claimCard(e, CARD, 2, sign(2));
-      if ("error" in mika) throw new Error("claim failed");
+      const mika = opened(await claimCard(e, CARD, 2, sign(2), null, true));
       expect(await keeperNameOfCard(e, CARD)).toBeNull();
 
       await saveKeeper(e, mika.epochId, { name: "Mika" });
@@ -299,8 +303,7 @@ describe("card setup", () => {
 
     it("refuses the save rather than silently blanking the card", async () => {
       const e = await env();
-      const claim = await claimCard(e, CARD, 1, sign(1));
-      if ("error" in claim) throw new Error("claim failed");
+      const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
 
       expect(await saveKeeper(e, claim.epochId, { name: "David" })).toEqual({
         error: "reserved name",
@@ -317,8 +320,7 @@ describe("card setup", () => {
        * refusal quietly bricks their card.
        */
       const e = await env();
-      const claim = await claimCard(e, CARD, 1, sign(1));
-      if ("error" in claim) throw new Error("claim failed");
+      const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
       await e.DB.prepare(`UPDATE card_epochs SET keeper_name = 'David' WHERE id = ?1`)
         .bind(claim.epochId)
         .run();
@@ -334,8 +336,7 @@ describe("card setup", () => {
 
     it("still lets a keeper save everything else", async () => {
       const e = await env();
-      const claim = await claimCard(e, CARD, 1, sign(1));
-      if ("error" in claim) throw new Error("claim failed");
+      const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
       expect(await saveKeeper(e, claim.epochId, { name: "Sam", lang: "zh-Hant" }))
         .toEqual({ ok: true, adopted: 0 });
     });
@@ -357,8 +358,7 @@ describe("card setup", () => {
 describe("the keeper's duck must be a duck this card made", () => {
   it("takes a duck minted by this card", async () => {
     const e = await env();
-    const claim = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in claim) throw new Error("claim failed");
+    const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     await makeDuck(e.DB, "ours", { card: CARD });
 
     expect(await saveKeeper(e, claim.epochId, { editKey: editKeyFor("ours") }))
@@ -368,8 +368,7 @@ describe("the keeper's duck must be a duck this card made", () => {
 
   it("refuses a duck from somewhere else, and says so", async () => {
     const e = await env();
-    const claim = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in claim) throw new Error("claim failed");
+    const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     // A stranger's duck. The attacker has its private link; that is the
     // whole premise, and it must still not become this card's credential.
     await makeDuck(e.DB, "theirs");
@@ -388,8 +387,7 @@ describe("the keeper's duck must be a duck this card made", () => {
      * their own card for the crime of changing their language.
      */
     const e = await env();
-    const claim = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in claim) throw new Error("claim failed");
+    const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     await makeDuck(e.DB, "kept", { card: CARD });
     await saveKeeper(e, claim.epochId, { editKey: editKeyFor("kept") });
 
@@ -402,8 +400,7 @@ describe("the keeper's duck must be a duck this card made", () => {
     // Deliberate unlinking still has to be possible, and an empty string
     // is how the form says it.
     const e = await env();
-    const claim = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in claim) throw new Error("claim failed");
+    const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     await makeDuck(e.DB, "letgo", { card: CARD });
     await saveKeeper(e, claim.epochId, { editKey: editKeyFor("letgo") });
 
@@ -413,8 +410,7 @@ describe("the keeper's duck must be a duck this card made", () => {
 
   it("refuses a malformed key rather than reading it as a clearance", async () => {
     const e = await env();
-    const claim = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in claim) throw new Error("claim failed");
+    const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     await makeDuck(e.DB, "safe", { card: CARD });
     await saveKeeper(e, claim.epochId, { editKey: editKeyFor("safe") });
 
@@ -438,8 +434,7 @@ describe("the keeper's duck must be a duck this card made", () => {
 describe("resolving a keeper from their duck's private link", () => {
   it("finds the current tenure", async () => {
     const e = await env();
-    const claim = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in claim) throw new Error("claim failed");
+    const claim = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     await makeDuck(e.DB, "key", { card: CARD });
     await saveKeeper(e, claim.epochId, { editKey: editKeyFor("key") });
 
@@ -451,18 +446,17 @@ describe("resolving a keeper from their duck's private link", () => {
     // are for, and it must be true at every layer rather than only at the
     // one that happens to be checked last.
     const e = await env();
-    const first = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in first) throw new Error("claim failed");
+    const first = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     await makeDuck(e.DB, "was", { card: CARD });
     await saveKeeper(e, first.epochId, { editKey: editKeyFor("was") });
 
-    await claimCard(e, CARD, 2, sign(2));
+    await claimCard(e, CARD, 2, sign(2), null, true);
     expect(await epochForEditKey(e, editKeyFor("was"))).toBe(null);
   });
 
   it("refuses a duck that is nobody's keeper duck", async () => {
     const e = await env();
-    await claimCard(e, CARD, 1, sign(1));
+    await claimCard(e, CARD, 1, sign(1), null, true);
     await makeDuck(e.DB, "other", { card: CARD });
     expect(await epochForEditKey(e, editKeyFor("other"))).toBe(null);
   });
@@ -488,16 +482,14 @@ describe("resolving a keeper from their duck's private link", () => {
 describe("a keeper who re-claims their own card keeps their tenure", () => {
   it("resumes rather than replacing, and their settings are still there", async () => {
     const e = await env();
-    const first = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in first) throw new Error("claim failed");
+    const first = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     await makeDuck(e.DB, "theirs", { card: CARD });
     await saveKeeper(e, first.epochId, {
       name: "Kariina", lang: "zh-Hant", editKey: editKeyFor("theirs"),
     });
 
     // Four blows again, by the same person, holding the same duck.
-    const again = await claimCard(e, CARD, 2, sign(2), editKeyFor("theirs"));
-    if ("error" in again) throw new Error("re-claim failed");
+    const again = opened(await claimCard(e, CARD, 2, sign(2), editKeyFor("theirs")));
 
     expect(again.epochId, "the same tenure").toBe(first.epochId);
     expect(again.keeper, "and the name they set").toBe("Kariina");
@@ -507,8 +499,7 @@ describe("a keeper who re-claims their own card keeps their tenure", () => {
 
   it("still spends the counter, so it is no way around replay", async () => {
     const e = await env();
-    const first = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in first) throw new Error("claim failed");
+    const first = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     await makeDuck(e.DB, "same", { card: CARD });
     await saveKeeper(e, first.epochId, { editKey: editKeyFor("same") });
 
@@ -524,13 +515,11 @@ describe("a keeper who re-claims their own card keeps their tenure", () => {
     // The gesture's real job. A stranger's key — or none — is a
     // succession, and the new keeper inherits nothing.
     const e = await env();
-    const first = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in first) throw new Error("claim failed");
+    const first = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     await makeDuck(e.DB, "was", { card: CARD });
     await saveKeeper(e, first.epochId, { name: "Sam", editKey: editKeyFor("was") });
 
-    const next = await claimCard(e, CARD, 2, sign(2), null);
-    if ("error" in next) throw new Error("second claim failed");
+    const next = opened(await claimCard(e, CARD, 2, sign(2), null, true));
     expect(next.epochId, "a new tenure").not.toBe(first.epochId);
     expect(next.keeper, "inheriting no name").toBe("");
     expect(await count(
@@ -540,15 +529,88 @@ describe("a keeper who re-claims their own card keeps their tenure", () => {
 
   it("is not fooled by a stranger's private link", async () => {
     const e = await env();
-    const first = await claimCard(e, CARD, 1, sign(1));
-    if ("error" in first) throw new Error("claim failed");
+    const first = opened(await claimCard(e, CARD, 1, sign(1), null, true));
     await makeDuck(e.DB, "mine2", { card: CARD });
     await saveKeeper(e, first.epochId, { name: "Sam", editKey: editKeyFor("mine2") });
     // A duck that is not this tenure's keeper duck.
     await makeDuck(e.DB, "other2", { card: CARD });
 
-    const next = await claimCard(e, CARD, 2, sign(2), editKeyFor("other2"));
-    if ("error" in next) throw new Error("claim failed");
+    const next = opened(await claimCard(e, CARD, 2, sign(2), editKeyFor("other2"), true));
     expect(next.epochId, "still a succession").not.toBe(first.epochId);
+  });
+});
+
+/**
+ * Four blows on a card somebody already keeps.
+ *
+ * The gesture proves physical possession and nothing else — it cannot say
+ * WHO is holding the card. Replacing the tenure on that basis was a guess,
+ * and it guessed wrong every time a keeper blew on their own card: they
+ * got a blank form and their name was already gone.
+ */
+describe("taking a card over is a second, deliberate act", () => {
+  it("asks instead of replacing, and spends nothing", async () => {
+    const e = await env();
+    const first = opened(await claimCard(e, CARD, 1, sign(1)));
+    await makeDuck(e.DB, "sams", { card: CARD });
+    await saveKeeper(e, first.epochId, { name: "Sam", editKey: editKeyFor("sams") });
+
+    const asked = await claimCard(e, CARD, 2, sign(2));
+    expect(asked).toEqual({ takeover: true, keeper: "Sam" });
+
+    // Nothing decided: Sam still keeps it, with his name.
+    expect(await count(
+      e.DB, `SELECT COUNT(*) AS n FROM card_epochs WHERE ended IS NULL`)).toBe(1);
+    expect((await keeperState(e, first.epochId))?.keeper).toBe("Sam");
+    // And nothing spent: the counter is still where it was, so the card
+    // is still armed and the person can decide in their own time.
+    expect(await count(
+      e.DB, `SELECT claim_counter AS n FROM cards WHERE id = ?1`, CARD)).toBe(1);
+  });
+
+  it("replaces once, and only once, somebody says yes", async () => {
+    const e = await env();
+    const first = opened(await claimCard(e, CARD, 1, sign(1)));
+    await makeDuck(e.DB, "hers", { card: CARD });
+    await saveKeeper(e, first.epochId, { name: "Sam", editKey: editKeyFor("hers") });
+
+    const next = opened(await claimCard(e, CARD, 2, sign(2), null, true));
+    expect(next.epochId).not.toBe(first.epochId);
+    expect(next.keeper, "inheriting nothing").toBe("");
+    expect(await count(
+      e.DB, `SELECT claim_counter AS n FROM cards WHERE id = ?1`, CARD), "now spent").toBe(2);
+  });
+
+  it("never asks the keeper about their own card", async () => {
+    // The case that started this. Sam blows on Sam's card and goes
+    // straight back to his own settings.
+    const e = await env();
+    const first = opened(await claimCard(e, CARD, 1, sign(1)));
+    await makeDuck(e.DB, "his", { card: CARD });
+    await saveKeeper(e, first.epochId, {
+      name: "Sam", lang: "zh-Hant", editKey: editKeyFor("his"),
+    });
+
+    const again = opened(await claimCard(e, CARD, 2, sign(2), editKeyFor("his")));
+    expect(again.epochId).toBe(first.epochId);
+    expect(again.keeper).toBe("Sam");
+    expect(again.lang).toBe("zh-Hant");
+  });
+
+  it("does not ask about a card nobody keeps", async () => {
+    const e = await env();
+    const claim = opened(await claimCard(e, CARD, 1, sign(1)));
+    expect(claim.keeper).toBe("");
+  });
+
+  it("refuses a bad signature before it asks anything", async () => {
+    // The question must never become a way to learn who keeps a card
+    // without holding it.
+    const e = await env();
+    const first = opened(await claimCard(e, CARD, 1, sign(1)));
+    await makeDuck(e.DB, "quiet", { card: CARD });
+    await saveKeeper(e, first.epochId, { name: "Sam", editKey: editKeyFor("quiet") });
+
+    expect(await claimCard(e, CARD, 2, "0000000000")).toEqual({ error: "bad token" });
   });
 });

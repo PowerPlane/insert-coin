@@ -1392,8 +1392,11 @@ describe("a keeper's own duck lets them back in", () => {
     expect((await handle(new Request(`${ORIGIN}/api/keeper?editKey=${duck.editKey}`), e)).status)
       .toBe(200);
 
+    // A DELIBERATE succession. Four blows on a card somebody already keeps
+    // is a question now, not an instruction — the card cannot tell who is
+    // holding it, so taking it over is a second, explicit act.
     await new Visitor(e).post("/api/claim", {
-      card: serial, counter: 1, token: cardToken(secret, serial, 1),
+      card: serial, counter: 1, token: cardToken(secret, serial, 1), confirm: true,
     });
 
     expect((await handle(new Request(`${ORIGIN}/api/keeper?editKey=${duck.editKey}`), e)).status)

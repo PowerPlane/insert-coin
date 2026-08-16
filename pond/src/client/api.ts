@@ -153,13 +153,24 @@ export const api = {
    * are indistinguishable from outside, so somebody walking the counter
    * space learns nothing about how close they got.
    */
-  claim: (card: string, counter: number, token: string, editKey?: string | null) =>
-    request<{ ok: boolean; orphans?: number }>("/claim", {
+  claim: (
+    card: string,
+    counter: number,
+    token: string,
+    editKey?: string | null,
+    // Only after the person has been shown whose card it is and said yes.
+    confirm = false,
+  ) =>
+    request<{ ok: boolean; orphans?: number; takeover?: boolean; keeper?: string }>("/claim", {
       method: "POST",
       // The duck this browser already has, if any. The server links it as
       // the keeper's own only when this card minted it — which is what
       // leaves a way back into card settings after the cookie expires.
-      body: JSON.stringify({ card, counter, token, ...(editKey ? { editKey } : {}) }),
+      body: JSON.stringify({
+        card, counter, token,
+        ...(editKey ? { editKey } : {}),
+        ...(confirm ? { confirm: true } : {}),
+      }),
     }),
 
   /**

@@ -388,12 +388,28 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     const claim = await claimCard(
       env, card, counter, token,
       typeof body?.editKey === "string" ? body.editKey : null,
+      body?.confirm === true,
     );
     if ("error" in claim) {
       // Every refusal looks the same from outside. Distinguishing "bad
       // token" from "already used" would tell somebody walking the counter
       // space exactly how close they were.
       return json({ ok: false }, { status: 403, headers });
+    }
+
+    /*
+     * Not a refusal — a question. Somebody keeps this card and the person
+     * holding it has not proved they are that somebody, so nothing has
+     * been decided and the counter is unspent. 200, because the request
+     * was fine; the answer is simply "ask them first".
+     *
+     * The keeper's name is disclosed, and that is deliberate: it is
+     * already public on every duck from this card, and a takeover screen
+     * that will not say whose card it is cannot be reasoned about by the
+     * person about to take it.
+     */
+    if ("takeover" in claim) {
+      return json({ ok: false, takeover: true, keeper: claim.keeper }, { headers });
     }
 
     /*

@@ -101,6 +101,7 @@ export const LIVE_STRINGS = {
   // their typing, and that the pond is not accusing them of anything.
   "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
   "live.keeper.taken": "Somebody already keeps this card.",
+  "live.claim.held": "This card is {keeper}\u2019s",
   "live.keeper.via": "Ducks from this card will say via {keeper}. You can change it or hand it on later.",
   "live.claim.no": "This card could not be set up.",
   "live.claim.no.card": "Card {serial}", // The serial, so it can be named
@@ -175,6 +176,17 @@ export const KEEPER_STRINGS = {
    * from this card will read via <this>.
    */
   "keeper.29": "Your name", // Field label
+  /*
+   * ══ FOUR BLOWS ON A CARD SOMEBODY ALREADY KEEPS ══
+   * The gesture cannot say who is holding the card, so the pond does not
+   * guess — it names the keeper and asks. This is the screen a keeper
+   * blowing on their OWN card used to never see, while their settings
+   * were quietly replaced.
+   */
+  "keeper.31": "This card is already set up", // Heading, keeper unnamed
+  "keeper.32": "Taking it over makes it yours: new ducks say your name instead, and nothing of theirs comes with it. Their ducks stay in the pond.", // Body
+  "keeper.33": "Take it over", // Button
+  "keeper.34": "Leave it as it is", // Button
 } as const;
 
 export const EN = {
@@ -411,6 +423,7 @@ export const ZH_HANT: Record<StringKey, string> = {
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
   "live.keeper.taken": "這張卡片已經有人保管了。",
+  "live.claim.held": "這張卡片是 {keeper} 的",
   "live.keeper.via": "這張卡片放出的鴨子會顯示「來自 {keeper}」。之後可以改，也可以交給別人。",
   "live.claim.no": "這張卡片無法設定。",
   "live.claim.no.card": "卡片 {serial}",
@@ -452,6 +465,10 @@ export const ZH_HANT: Record<StringKey, string> = {
   "keeper.27": "交出去",
   "keeper.28": "還是我保管",
   "keeper.29": "你的名字",
+  "keeper.31": "這張卡片已經設定過了",
+  "keeper.32": "接手之後就是你的了：之後放出的鴨子會顯示你的名字，也不會拿到對方的任何東西。他們的鴨子會留在池塘裡。",
+  "keeper.33": "我要接手",
+  "keeper.34": "維持原樣",
 
   // ── the arrival ───────────────────────────────────────────────────────
   "arrival.01": "你的運勢",

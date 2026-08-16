@@ -25,6 +25,34 @@ import { cleanText, nowSec, randomId } from "./util.js";
 
 export type ClaimRefusal = "unknown card" | "bad token" | "already used" | "no secret";
 
+/**
+ * Somebody else keeps this card, and the gesture has not been spent.
+ *
+ * ══ FOUR BLOWS IS A QUESTION, NOT AN INSTRUCTION ══
+ * A claim used to replace the tenure the instant it verified. The card
+ * cannot tell who is holding it — that is the whole limitation of the
+ * gesture — so "replace" was a guess, and it guessed wrong every time a
+ * keeper blew on their OWN card: they were handed a blank form and their
+ * name was already gone. David hit it repeatedly and named the shape of
+ * it exactly: it should come back with what he set, and a way to keep or
+ * change it, rather than auto-saving nothing.
+ *
+ * The keeper's own private link resolves this without asking (see the
+ * resume path below), but only once a duck is linked — and a keeper who
+ * closed Card setup without saving has none.
+ *
+ * So when the card is already kept and the claimer has not proved they
+ * are that keeper, nothing is decided yet: the counter is NOT spent, no
+ * epoch is touched, and the answer comes back as a question with the
+ * current keeper's name in it. Taking over is then a deliberate second
+ * act, which is what taking somebody's card should be.
+ */
+export interface Takeover {
+  takeover: true;
+  /** Who has it now, so the question can name them. May be empty. */
+  keeper: string;
+}
+
 export interface Claim {
   epochId: string;
   card: string;
@@ -141,7 +169,9 @@ export async function claimCard(
    * REPLACED or resumed, never whether the claim is allowed.
    */
   editKey?: string | null,
-): Promise<Claim | { error: ClaimRefusal }> {
+  /** Set once the person has been asked and said yes. */
+  confirm = false,
+): Promise<Claim | Takeover | { error: ClaimRefusal }> {
   const key = secret();
   // A server with no CARD_SECRET cannot verify anything, and must not fall
   // back to accepting claims. Phase 5 is the first thing that needs it.
@@ -154,6 +184,30 @@ export async function claimCard(
 
   if (!verifyClaim(key, cardId, counter, token)) return { error: "bad token" };
 
+  /*
+   * Who has it now — asked BEFORE the counter is spent, so that merely
+   * asking the question does not burn the gesture. Somebody who decides
+   * not to take the card over has lost nothing and their card is still
+   * armed.
+   */
+  const held = await env.DB.prepare(
+    `SELECT e.id, e.keeper_name, e.lang,
+            (SELECT d.edit_key FROM ducks d WHERE d.id = e.keeper_duck) AS keeper_key
+       FROM card_epochs e WHERE e.card_id = ?1 AND e.ended IS NULL`,
+  )
+    .bind(cardId)
+    .first<{ id: string; keeper_name: string; lang: string; keeper_key: string | null }>();
+
+  const mine = Boolean(
+    held && editKey && /^[A-Za-z0-9]{16,64}$/.test(editKey) && held.keeper_key === editKey,
+  );
+
+  // Already kept by somebody else, and nobody has said to take it over.
+  // Nothing is decided and nothing is spent.
+  if (held && !mine && !confirm) {
+    return { takeover: true, keeper: String(held.keeper_name ?? "") };
+  }
+
   // The counter check and its advance, in one statement. `>` not `>=`:
   // a counter that has been used is spent, and the firmware increments
   // EEPROM before it writes the tag precisely so this can be strict.
@@ -165,29 +219,19 @@ export async function claimCard(
   if (!advanced.meta.changes) return { error: "already used" };
 
   /*
-   * Already the keeper? Then this is a keeper getting back into their own
-   * settings, not a succession. Resume the tenure rather than replacing
-   * it — replacing it would strand their own ducks in a tenure they had
-   * just left, and hand them a blank form.
+   * A keeper getting back into their own settings, not a succession.
+   * Resume the tenure rather than replacing it — replacing it would
+   * strand their own ducks in a tenure they had just left, and hand them
+   * a blank form.
    */
-  if (editKey && /^[A-Za-z0-9]{16,64}$/.test(editKey)) {
-    const same = await env.DB.prepare(
-      `SELECT e.id, e.keeper_name, e.lang
-         FROM card_epochs e
-         JOIN ducks d ON d.id = e.keeper_duck
-        WHERE e.card_id = ?1 AND e.ended IS NULL AND d.edit_key = ?2`,
-    )
-      .bind(cardId, editKey)
-      .first<{ id: string; keeper_name: string; lang: string }>();
-    if (same) {
-      return {
-        epochId: String(same.id),
-        card: cardId,
-        keeper: String(same.keeper_name ?? ""),
-        lang: String(same.lang ?? "en"),
-        orphans: await orphanCount(env, cardId),
-      };
-    }
+  if (mine && held) {
+    return {
+      epochId: String(held.id),
+      card: cardId,
+      keeper: String(held.keeper_name ?? ""),
+      lang: String(held.lang ?? "en"),
+      orphans: await orphanCount(env, cardId),
+    };
   }
 
   const epochId = randomId(16);

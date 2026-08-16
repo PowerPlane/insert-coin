@@ -81,12 +81,18 @@ var api = {
    * are indistinguishable from outside, so somebody walking the counter
    * space learns nothing about how close they got.
    */
-  claim: (card, counter, token, editKey) => request("/claim", {
+  claim: (card, counter, token, editKey, confirm = false) => request("/claim", {
     method: "POST",
     // The duck this browser already has, if any. The server links it as
     // the keeper's own only when this card minted it — which is what
     // leaves a way back into card settings after the cookie expires.
-    body: JSON.stringify({ card, counter, token, ...editKey ? { editKey } : {} })
+    body: JSON.stringify({
+      card,
+      counter,
+      token,
+      ...editKey ? { editKey } : {},
+      ...confirm ? { confirm: true } : {}
+    })
   }),
   /**
    * Keep the card you just used.
@@ -1470,6 +1476,7 @@ var LIVE_STRINGS = {
   // their typing, and that the pond is not accusing them of anything.
   "live.keeper.reserved": "That name is kept for the pond itself. Try another.",
   "live.keeper.taken": "Somebody already keeps this card.",
+  "live.claim.held": "This card is {keeper}’s",
   "live.keeper.via": "Ducks from this card will say via {keeper}. You can change it or hand it on later.",
   "live.claim.no": "This card could not be set up.",
   "live.claim.no.card": "Card {serial}",
@@ -1563,8 +1570,23 @@ var KEEPER_STRINGS = {
    * this asks for is a person, and the sentence above it says so: ducks
    * from this card will read via <this>.
    */
-  "keeper.29": "Your name"
+  "keeper.29": "Your name",
   // Field label
+  /*
+   * ══ FOUR BLOWS ON A CARD SOMEBODY ALREADY KEEPS ══
+   * The gesture cannot say who is holding the card, so the pond does not
+   * guess — it names the keeper and asks. This is the screen a keeper
+   * blowing on their OWN card used to never see, while their settings
+   * were quietly replaced.
+   */
+  "keeper.31": "This card is already set up",
+  // Heading, keeper unnamed
+  "keeper.32": "Taking it over makes it yours: new ducks say your name instead, and nothing of theirs comes with it. Their ducks stay in the pond.",
+  // Body
+  "keeper.33": "Take it over",
+  // Button
+  "keeper.34": "Leave it as it is"
+  // Button
 };
 var EN = {
   "arrival.01": "Your fortune",
@@ -1893,6 +1915,7 @@ var ZH_HANT = {
   "live.keeper.adopt": "加入先前的 {n} 隻鴨子",
   "live.keeper.reserved": "這個名字是池塘自己保留的，換一個吧。",
   "live.keeper.taken": "這張卡片已經有人保管了。",
+  "live.claim.held": "這張卡片是 {keeper} 的",
   "live.keeper.via": "這張卡片放出的鴨子會顯示「來自 {keeper}」。之後可以改，也可以交給別人。",
   "live.claim.no": "這張卡片無法設定。",
   "live.claim.no.card": "卡片 {serial}",
@@ -1932,6 +1955,10 @@ var ZH_HANT = {
   "keeper.27": "交出去",
   "keeper.28": "還是我保管",
   "keeper.29": "你的名字",
+  "keeper.31": "這張卡片已經設定過了",
+  "keeper.32": "接手之後就是你的了：之後放出的鴨子會顯示你的名字，也不會拿到對方的任何東西。他們的鴨子會留在池塘裡。",
+  "keeper.33": "我要接手",
+  "keeper.34": "維持原樣",
   // ── the arrival ───────────────────────────────────────────────────────
   "arrival.01": "你的運勢",
   "arrival.02": "大吉",
@@ -2416,17 +2443,18 @@ function rememberClaimAttempt(url) {
   } catch {
   }
 }
-async function claimFromUrl(url) {
+async function resolveClaim(url, confirm = false) {
   const card = url.searchParams.get("c");
   const g = url.searchParams.get("g");
   const token = url.searchParams.get("t");
-  if (!isClaimUrl(url) || !card || !g || !token) return false;
-  const counter = parseInt(g, 16);
+  if (!isClaimUrl(url) || !card || !g || !token) return { kind: "none" };
   try {
-    const res = await api.claim(card, counter, token, recallEditKey());
-    return res.ok;
+    const res = await api.claim(card, parseInt(g, 16), token, recallEditKey(), confirm);
+    if (res.ok) return { kind: "claimed" };
+    if (res.takeover) return { kind: "takeover", keeper: res.keeper ?? "" };
+    return { kind: "refused" };
   } catch {
-    return false;
+    return { kind: "refused" };
   }
 }
 
@@ -6155,31 +6183,56 @@ async function main() {
     await pondScreen({ mine: b.editKey });
     return;
   }
-  await pondScreen(b);
   const url = new URL(location.href);
+  let outcome = { kind: "none" };
+  if (claimIsFresh(url)) {
+    rememberClaimAttempt(url);
+    outcome = await resolveClaim(url);
+  }
+  await pondScreen(b);
   if (url.searchParams.has("t")) {
-    const claiming = claimIsFresh(url);
-    if (claiming) rememberClaimAttempt(url);
-    const claimed = claiming && await claimFromUrl(url);
     history.replaceState(null, "", url.pathname);
-    if (!claiming) return;
-    if (!claimed && Number(url.searchParams.get("d") ?? 0) >= 1) return;
-    const root2 = document.querySelector(".p-overlay");
-    if (claimed) {
-      cardSetup({ root: root2, onDone: () => root2.replaceChildren() });
-    } else {
-      const { root: sheetRoot, body } = sheet(true);
-      body.append(
-        el2("p", "p-title", t("live.claim.no")),
-        el2("p", "p-body", t("live.claim.no.body"))
-      );
-      const serial = url.searchParams.get("c");
-      if (serial && /^[A-Za-z0-9]{6,12}$/.test(serial)) {
-        body.append(el2("p", "p-note", t("live.claim.no.card", { serial })));
-      }
-      body.append(button("p-btn", t("mine.05"), () => root2.replaceChildren()));
-      root2.replaceChildren(sheetRoot);
+  }
+  const root2 = document.querySelector(".p-overlay");
+  if (outcome.kind === "claimed") {
+    cardSetup({ root: root2, onDone: () => root2.replaceChildren() });
+    return;
+  }
+  if (outcome.kind === "takeover") {
+    const who = outcome.keeper;
+    const { root: sheetRoot, body } = sheet(true);
+    body.append(
+      el2("p", "p-title", who ? t("live.claim.held", { keeper: who }) : t("keeper.31")),
+      el2("p", "p-body", t("keeper.32"))
+    );
+    const actions = el2("div", "p-actions");
+    actions.append(
+      button("p-btn", t("keeper.33"), () => {
+        void resolveClaim(url, true).then((r) => {
+          root2.replaceChildren();
+          if (r.kind === "claimed") {
+            cardSetup({ root: root2, onDone: () => root2.replaceChildren() });
+          }
+        });
+      }),
+      button("p-btn p-btn-quiet", t("keeper.34"), () => root2.replaceChildren())
+    );
+    body.append(actions);
+    root2.append(sheetRoot);
+    return;
+  }
+  if (outcome.kind === "refused" && Number(url.searchParams.get("d") ?? 0) < 1) {
+    const { root: sheetRoot, body } = sheet(true);
+    body.append(
+      el2("p", "p-title", t("live.claim.no")),
+      el2("p", "p-body", t("live.claim.no.body"))
+    );
+    const serial = url.searchParams.get("c");
+    if (serial && /^[A-Za-z0-9]{6,12}$/.test(serial)) {
+      body.append(el2("p", "p-note", t("live.claim.no.card", { serial })));
     }
+    body.append(button("p-btn", t("mine.05"), () => root2.replaceChildren()));
+    root2.replaceChildren(sheetRoot);
   }
 }
 void main();

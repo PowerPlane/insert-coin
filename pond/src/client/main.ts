@@ -21,8 +21,9 @@ import { mineScreen } from "./mine.js";
 import { FORTUNES } from "./sprites.js";
 import { CAM_UI, CAM_ZOOM, HOME_CELL, easeOutCubic } from "./camera.js";
 import {
-  cardSetup, claimFromUrl, claimIsFresh, rememberClaimAttempt,
+  cardSetup, claimIsFresh, rememberClaimAttempt, resolveClaim,
 } from "./keeper.js";
+import type { ClaimResult } from "./keeper.js";
 import { releaseFlow } from "./release-flow.js";
 import { PondView, SPLASH_TAP, type Placed } from "./pond-view.js";
 import { GRID } from "./codec.js";
@@ -1938,49 +1939,85 @@ async function main(): Promise<void> {
     return;
   }
 
-  await pondScreen(b);
-
   /*
-   * A card that arrived ARMED — four blows during the boot window — carries
-   * a signed claim in its URL. Claimed here, on arrival, so the credential
-   * spends as little time in the address bar as possible; Card setup then
-   * opens over the water like every other screen.
+   * ══ RESOLVE THE TAP BEFORE RENDERING IT ══
+   * This ran AFTER `pondScreen`, and the order was the bug David kept
+   * seeing: the arrival gate asks `claimIsFresh`, and freshness is only
+   * recorded once a claim has been attempted. So the first tap of an
+   * already-spent armed card looked fresh, the arrival was suppressed,
+   * the claim then failed, and he landed on the pond with a Decorate it
+   * button instead of his fortune. Every browser lost its first tap that
+   * way, which is exactly the tap that matters.
+   *
+   * So the network half happens first, and the URL is left intact for
+   * `pondScreen` to read. By the time the arrival gate asks, the answer
+   * is true.
    */
   const url = new URL(location.href);
+  let outcome: ClaimResult = { kind: "none" };
+  if (claimIsFresh(url)) {
+    rememberClaimAttempt(url);
+    outcome = await resolveClaim(url);
+  }
+
+  await pondScreen(b);
+
   if (url.searchParams.has("t")) {
-    /*
-     * The credential comes out of the URL on EVERY tap that carries one,
-     * claim or not — a shared or bookmarked link should never carry a
-     * signature around. That part was always right.
-     *
-     * What was wrong was treating every such tap as a claim ATTEMPT, so
-     * an ordinary tap of an un-armed card was reported as a claim that
-     * failed. Only a counter above zero is a claim; see `isClaimUrl`.
-     */
-    /*
-     * Fresh, not merely present. An armed tag keeps serving the same `&g=`
-     * for every tap after the claim is spent — see `claimIsFresh` — so
-     * "carries a claim" is not the same question as "is claiming".
-     */
-    const claiming = claimIsFresh(url);
-    if (claiming) rememberClaimAttempt(url);
-    const claimed = claiming && (await claimFromUrl(url));
+    // The credential comes out of the URL on every tap that carries one,
+    // claim or not: a shared or bookmarked link should never carry a
+    // signature around.
     history.replaceState(null, "", url.pathname);
-    if (!claiming) return;
+  }
 
-    /*
-     * And a refusal never blocks a fortune. If this tap also dealt a
-     * coin, the person came to make a duck and that is what they get —
-     * an apology about card setup on top of the arrival is an error
-     * message in front of the thing they actually came for.
-     */
-    if (!claimed && (Number(url.searchParams.get("d") ?? 0) >= 1)) return;
+  const root = document.querySelector<HTMLElement>(".p-overlay")!;
 
-    const root = document.querySelector<HTMLElement>(".p-overlay")!;
+  if (outcome.kind === "claimed") {
+    cardSetup({ root, onDone: () => root.replaceChildren() });
+    return;
+  }
 
-    if (claimed) {
-      cardSetup({ root, onDone: () => root.replaceChildren() });
-    } else {
+  /*
+   * ══ SOMEBODY ELSE KEEPS THIS CARD ══
+   * Four blows cannot say who is holding the card, so the server does not
+   * guess: it names the keeper and waits. Taking a card over is a real
+   * thing to want — it is what the gesture is FOR — and it is also what
+   * happens by accident when a keeper blows on their own card, which is
+   * how David lost his own settings twice.
+   *
+   * Nothing has been spent. Leaving it alone costs nothing and the card
+   * is still armed.
+   */
+  if (outcome.kind === "takeover") {
+    const who = outcome.keeper;
+    const { root: sheetRoot, body } = makeSheet(true);
+    body.append(
+      el("p", "p-title", who ? t("live.claim.held", { keeper: who }) : t("keeper.31")),
+      el("p", "p-body", t("keeper.32")),
+    );
+    const actions = el("div", "p-actions");
+    actions.append(
+      button("p-btn", t("keeper.33"), () => {
+        void resolveClaim(url, true).then((r) => {
+          root.replaceChildren();
+          if (r.kind === "claimed") {
+            cardSetup({ root, onDone: () => root.replaceChildren() });
+          }
+        });
+      }),
+      button("p-btn p-btn-quiet", t("keeper.34"), () => root.replaceChildren()),
+    );
+    body.append(actions);
+    root.append(sheetRoot);
+    return;
+  }
+
+  /*
+   * A refusal only speaks up when there is nothing else to do. If this tap
+   * also dealt a coin the person came to make a duck, and an apology about
+   * card setup on top of the arrival is an error message standing in front
+   * of the thing they actually wanted.
+   */
+  if (outcome.kind === "refused" && Number(url.searchParams.get("d") ?? 0) < 1) {
       /*
        * ══ A REFUSED CLAIM USED TO SAY NOTHING AT ALL ══
        * The server refuses four different ways — no secret, unknown card,
@@ -2020,7 +2057,6 @@ async function main(): Promise<void> {
       }
       body.append(button("p-btn", t("mine.05"), () => root.replaceChildren()));
       root.replaceChildren(sheetRoot);
-    }
   }
 }
 
