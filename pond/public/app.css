@@ -1,0 +1,3060 @@
+/*
+ * The pond.
+ *
+ * ══ THE PROTOTYPE IS THE SPEC ══
+ * Every token here is lifted from tools/prototype-flow.html. The first
+ * version of this file was written from UI.md alone and drifted badly:
+ * dark buttons where the prototype has gold, cream paper where it uses a
+ * cool near-white, a one-step corner where it uses a two-step staircase,
+ * sentence case where it uses uppercase mono with wide tracking.
+ *
+ * None of that reads as "slightly off". It reads as a different product.
+ *
+ * Where this and UI.md disagree, UI.md wins — its own rule. Where UI.md is
+ * silent, the prototype decides, because it is what was reviewed.
+ */
+
+@import url("/fonts.css");
+
+:root {
+  --p-water: #8ecae6;
+  --p-ink: #0b3d52;
+  --p-soft: #2d6076;
+  --p-faint: #5b8699;
+  --p-surface: #f2fbfe;
+
+  /* The duck's own yellow is the primary action, its shadow 4px below. */
+  --duck: #ffca00;
+  --duck-shadow: #c08508;
+  --duck-text: #4a3a06;
+
+  --quiet: #dff2fb;
+  --quiet-shadow: #b9d9e6;
+
+  /* Warm, not alarming: it is somebody's own duck, not a system action. */
+  --danger: #ffdcd6;
+  --danger-shadow: #efb0a5;
+  --danger-text: #8f2b20;
+
+  --focus: #3fb5d8;
+
+  --mono: "Zen Kaku Gothic New", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --serif: "Zen Kaku Gothic New", "Young Serif", Georgia, serif;
+  --display: "Dela Gothic One", "Zen Kaku Gothic New", sans-serif;
+  --body: "Zen Kaku Gothic New", system-ui, sans-serif;
+
+  /*
+   * A two-step 3px staircase, not a radius. A 99px pill next to a 24x24
+   * sprite is the one shape in the pond that could not have been drawn on
+   * the grid; the staircase shares the water's edge vocabulary.
+   */
+/*
+   * ══ MOTION IS STEPPED, INCLUDING STATE CHANGES ══
+   * The sheet already rose in steps. Everything else — a chip turning on,
+   * a tab taking over, a button going down — changed instantly, because
+   * this file had no `transition` at all. Instant is not neutral: beside a
+   * duck walking at 12 fps, a chip that snaps reads as a different medium
+   * from one that steps.
+   *
+   * Two scales, from rev E. Nothing here travels far enough to want the
+   * four-frame transform scale — the sheet, which does travel, has its own
+   * `p-rise` keyframe below. Add it back when something needs it.
+   */
+  --step-fade: 0.18s steps(3, end);
+  /* A press is not travel. It lands. */
+  --step-press: 0.08s steps(2, end);
+
+  /* The wordmark's line, and the room the CTA must leave for it. */
+  --wordmark-room: 20px;
+
+  --px-corner: polygon(
+    0 6px, 3px 6px, 3px 3px, 6px 3px, 6px 0,
+    calc(100% - 6px) 0, calc(100% - 6px) 3px, calc(100% - 3px) 3px,
+    calc(100% - 3px) 6px, 100% 6px,
+    100% calc(100% - 6px), calc(100% - 3px) calc(100% - 6px),
+    calc(100% - 3px) calc(100% - 3px), calc(100% - 6px) calc(100% - 3px),
+    calc(100% - 6px) 100%,
+    6px 100%, 6px calc(100% - 3px), 3px calc(100% - 3px),
+    3px calc(100% - 6px), 0 calc(100% - 6px)
+  );
+
+  /* Everything a finger touches. UI.md's audit found six violations by
+     writing this number down. */
+  --tap: 44px;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden; /* the pond pans; the page does not scroll */
+  background: var(--p-water);
+  color: var(--p-ink);
+  font: 16px/1.45 var(--body);
+  font-synthesis: none;
+}
+
+/* UI.md § 8: several characters are drawn differently in Japanese and
+   Traditional Chinese. A Chinese reader with a Japanese face gets the
+   wrong ones. */
+html[lang="zh-Hant"] body {
+  font-family: "PingFang TC", "Noto Sans CJK TC", "Microsoft JhengHei", var(--body);
+}
+
+#pond {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ── the water ────────────────────────────────────────────────────────── */
+
+.p-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* Drawn at 150% and clipped, so a camera translate always has real
+   rendered water to move into. The camera writes the scale. */
+.p-canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150%;
+  height: 150%;
+  transform: translate(-50%, -50%);
+  image-rendering: pixelated;
+  touch-action: none;
+  /*
+   * ══ THE FLICKER DURING A PINCH ══
+   * Reported on mobile Safari: ducks flash at their PREVIOUS size while
+   * pinching. The drawing model was measured and cleared — across a real
+   * zoom the computed scale and the applied CSS scale agree on every
+   * frame, and a duck's radius grows continuously, including through the
+   * render-cell change from 4 to 6 where a seam would show if there were
+   * one.
+   *
+   * What is left is the composite. This canvas is `image-rendering:
+   * pixelated` under a transform whose scale changes every frame, and
+   * Safari rasterizes such a layer at one scale and re-rasterizes it
+   * asynchronously — showing the previous raster in between. That is the
+   * flash, and it is not something the JavaScript can be made to fix.
+   *
+   * `will-change` promotes it to its own compositor layer up front, so the
+   * scale is a GPU transform of an existing texture rather than a repeated
+   * re-rasterization. One element, so the memory cost is a single layer
+   * that was going to be promoted during the gesture anyway.
+   *
+   * NOT VERIFIED HERE — this behaviour does not reproduce in headless
+   * Chrome, and there is no Safari on this machine. It needs a pinch on a
+   * real iPhone to confirm.
+   */
+  will-change: transform;
+}
+
+/* ── shared shapes ────────────────────────────────────────────────────── */
+
+/*
+ * Anything that sits on the water or holds content: the count, chips,
+ * cards, sheets, fields. One rule rather than six copies of a clip-path.
+ */
+.p-count,
+.p-chip,
+.p-tab,
+.p-icon-btn,
+.p-swatch,
+.p-sticker,
+.p-input,
+.p-sheet {
+  clip-path: var(--px-corner);
+}
+
+/*
+ * ══ `all: unset` DESTROYS WHAT THESE RULES SET ══
+ * Both groups below name `.p-count` and `.p-icon-btn`, and both were
+ * silently doing nothing: each of those components later declares
+ * `all: unset` to reset the browser's button styling, and `all` resets
+ * EVERYTHING — including the clip-path and text-transform set here, at
+ * equal specificity but earlier in the file.
+ *
+ * The pond's chips and zoom buttons therefore rendered as plain rectangles
+ * in the browser's own font while the stylesheet read as though they were
+ * styled. Anything a component needs after its own `all: unset` has to be
+ * declared inside that component's block, below the reset.
+ *
+ * Labels, counts, buttons — the uppercase mono voice the prototype uses
+ * for everything that is chrome rather than content.
+ */
+.p-count,
+.p-chip,
+.p-tab,
+.p-btn,
+.p-eyebrow,
+.p-field-label,
+.p-nav-title,
+.p-hint,
+.p-card-via,
+.p-card-stats {
+  font-family: var(--mono);
+  text-transform: uppercase;
+}
+
+/*
+ * ══ WHISTLE FOR ══
+ * Full-width rows, not chips. Each is a whole state the pond can be in
+ * rather than a small action, and a row you can hit anywhere on is the
+ * right target for a list you read down.
+ *
+ * The count sits at the far end, so the list also answers "how big is
+ * each circle" without being asked.
+ */
+.p-glist {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.p-grow {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 46px;
+  padding: 0 0.9rem;
+  background: var(--quiet);
+  color: var(--p-ink);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* The one you are in, inverted — the same treatment as the pill, so the
+   sheet and the pond agree about which state is current. */
+.p-grow.on {
+  background: var(--p-ink);
+  color: var(--p-surface);
+}
+
+.p-grow-n {
+  font-style: normal;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The whistle pill: whose circle you are currently in.
+ *
+ * Ink on light, the inverse of every other chip on the water, because it
+ * is the one piece of chrome reporting a MODE rather than offering an
+ * action — and a mode has to be impossible to mistake for the default.
+ * Sits directly under the count it modifies.
+ */
+.p-whistle {
+  position: absolute;
+  top: calc(max(12px, env(safe-area-inset-top)) + var(--tap) + 8px);
+  left: 16px;
+  z-index: 31;
+  display: flex;
+  align-items: center;
+  clip-path: var(--px-corner);
+  background: var(--p-ink);
+  color: var(--p-surface);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.p-whistle[hidden] {
+  display: none;
+}
+
+.p-whistle-who {
+  padding: 0 0.2rem 0 0.7rem;
+}
+
+.p-whistle-x {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  cursor: pointer;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  color: inherit;
+  font-family: var(--mono);
+}
+
+/* ── the HUD ──────────────────────────────────────────────────────────── */
+
+.p-hud {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 30;
+}
+
+/*
+ * ══ DOUBLED ON PURPOSE, AND THE DOUBLING IS THE FIX ══
+ * The HUD is `pointer-events: none` so taps fall through to the water, and
+ * this turns it back on for the chips sitting on it. Written once as
+ * `.p-hud > *` it is specificity (0,1,0) — exactly equal to a component's
+ * own `.p-mark { all: unset }`, which appears LATER in this file and
+ * therefore wins. And `pointer-events` is INHERITED, so what `all: unset`
+ * resets it to is `none`, straight back from the line above.
+ *
+ * That is not hypothetical twice over. It killed `.p-count` — the whistle,
+ * so the pond's entire filter was unreachable by finger — and it was fixed
+ * there by declaring `pointer-events: auto` inside that component. The
+ * convention was written down and then not carried across to `.p-mark`,
+ * which is the "David's Pond" link: it computed to `none`, a tap at its
+ * centre landed on the canvas, and it silently stopped opening the
+ * portfolio. `.click()` in a test kept passing, because a synthetic click
+ * bypasses hit-testing altogether.
+ *
+ * Repeating the class makes this (0,2,0). It now wins over any component's
+ * reset wherever that component happens to sit in the file, so the next
+ * thing put on the HUD is tappable without anybody having to know this.
+ * The components still declare it themselves — see `.p-count` — because a
+ * component that only works in one parent is a component with a secret.
+ */
+.p-hud.p-hud > * {
+  pointer-events: auto;
+}
+
+/*
+ * The card's mark, opposite the count. Same physical treatment as the
+ * count — this is chrome, and chrome on the water is always a white chip
+ * on the pixel staircase. Declared after its own reset, as everything in
+ * this file now must be.
+ */
+.p-mark {
+  all: unset;
+  /*
+   * Below the reset, and not optional: `all` resets INHERITED properties to
+   * inherit, and the HUD above says `none`. Without this line the only
+   * link that leaves the pond is not a link. Same note as `.p-count`.
+   */
+  pointer-events: auto;
+  clip-path: var(--px-corner);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0 0.8rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--p-ink);
+  background: var(--p-surface);
+}
+
+/*
+ * Where you are, and the only place the address is written down. It sits
+ * under everything and takes no pointers — reading it is the whole job.
+ */
+.p-wordmark {
+  position: absolute;
+  height: var(--wordmark-room);
+  display: grid;
+  place-items: center;
+  left: 0;
+  right: 0;
+  bottom: max(4px, env(safe-area-inset-bottom));
+  margin: 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--p-ink);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* The count IS the whistle — tapping it opens the gather list. */
+.p-count {
+  all: unset;
+  /*
+   * ══ AND pointer-events, WHICH IS INHERITED ══
+   * The HUD is `pointer-events: none` so taps fall through to the water,
+   * and `.p-hud > *` turns it back on for the chips. But `all: unset`
+   * makes INHERITED properties inherit — and pointer-events is one — so
+   * this chip inherited `none` straight back from the HUD and became
+   * untappable. The count is the whistle, so the pond's entire filter was
+   * unreachable by finger while `.click()` in a test still worked, because
+   * that bypasses hit-testing altogether.
+   */
+  pointer-events: auto;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0 0.8rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--p-ink);
+  background: var(--p-surface);
+}
+
+/* ── buttons ──────────────────────────────────────────────────────────── */
+
+/*
+ * A button is a physical thing: face on ::before, 4px shadow on ::after,
+ * and pressing moves the face down onto the shadow.
+ *
+ * The depth is a pseudo-element rather than a box-shadow because clip-path
+ * clips box-shadow too — UI.md § 4 warns about exactly this.
+ */
+.p-btn {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  font-family: var(--mono);
+  text-transform: uppercase;
+  box-sizing: border-box;
+  cursor: pointer;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-height: var(--tap);
+  padding: 0.85rem 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: var(--duck-text);
+}
+
+.p-btn::before,
+.p-btn::after {
+  content: "";
+  position: absolute;
+  clip-path: var(--px-corner);
+}
+
+.p-btn::before {
+  inset: 0;
+  background: var(--duck);
+  z-index: -1;
+}
+
+.p-btn::after {
+  inset: 4px 0 -4px 0;
+  background: var(--duck-shadow);
+  z-index: -2;
+}
+
+.p-btn:active {
+  transform: translateY(3px);
+}
+
+.p-btn:active::after {
+  inset: 1px 0 -1px 0;
+}
+
+.p-btn[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.p-btn-quiet { color: var(--p-ink); }
+.p-btn-quiet::before { background: var(--quiet); }
+.p-btn-quiet::after { background: var(--quiet-shadow); }
+
+.p-btn-danger { color: var(--danger-text); }
+.p-btn-danger::before { background: var(--danger); }
+.p-btn-danger::after { background: var(--danger-shadow); }
+
+/* A chip is a button without the depth: a choice, not a commitment. */
+.p-chip,
+.p-tab {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0 0.85rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.09em;
+  color: var(--p-ink);
+  background: var(--quiet);
+}
+
+.p-tab {
+  flex: 1;
+  font-size: 0.66rem;
+}
+
+.p-chip.on,
+.p-tab.on {
+  background: var(--duck);
+  color: var(--duck-text);
+}
+
+.p-icon-btn {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  cursor: pointer;
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--p-ink);
+  background: var(--p-surface);
+}
+
+.p-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.p-icon-btn:not(:disabled):active {
+  transform: translateY(2px);
+}
+
+.p-zoom {
+  position: absolute;
+  right: 16px;
+  /*
+   * Clear of the CTA and the wordmark below it, not just of the screen
+   * edge. The old 76px assumed nothing was down there; with a call to
+   * action present the minus button sat on top of it.
+   *
+   * ══ AND THE BAR IS NOT ALWAYS ONE ROW TALL ══
+   * That fix then assumed the CTA was exactly one 44px row, which was true
+   * of every state it had at the time. The keeper offer made it two, and
+   * the minus button sat on the dismiss — eight pixels apart, in the same
+   * column, measured rather than noticed. The same bug as the note above,
+   * one state later, which is the argument for counting the rows instead
+   * of writing down today's answer.
+   *
+   * `--cta-rows` is that count. Anything that adds a row to the bar sets
+   * it, and this arithmetic follows: each row is a tap target, and each
+   * row after the first also brings the bar's 8px gap.
+   */
+  --cta-rows: 1;
+  bottom: calc(
+    max(16px, env(safe-area-inset-bottom)) + var(--wordmark-room)
+      + var(--tap) * var(--cta-rows) + (var(--cta-rows) - 1) * 8px + 20px
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 30;
+}
+
+/* ── the making screens ───────────────────────────────────────────────── */
+
+/*
+ * ══ THE SCREENS SIT ON THE WATER, THEY DO NOT REPLACE IT ══
+ * A sheet rises from the bottom and the pond stays visible above it. That
+ * is what makes the duck being decorated feel like it is going somewhere
+ * specific, rather than being configured in a form and posted.
+ *
+ * The first version replaced the whole viewport with a flat panel, which
+ * looked tidy and lost the entire idea.
+ */
+.p-screen {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 88%;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * The dithered edge, verbatim from the prototype: three 4px strips at 25%,
+ * 50% and 75% coverage. The panel does not meet the water on a hard line,
+ * it dissolves into it on the same 4px grid everything else is drawn on.
+ */
+.p-edge {
+  height: 12px;
+  flex: none;
+}
+
+.p-edge > i {
+  display: block;
+  height: 4px;
+}
+
+.p-d25{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='1' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='0' y='2' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
+.p-d50{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='1' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='0' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='3' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='3' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
+.p-d75{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='4' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='1' fill='%23f2fbfe'/><rect width='4' height='1' x='0' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='3' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='3' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
+
+.p-sheet-body {
+  background: var(--p-surface);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* Clears the home indicator on iPhone, zero everywhere else. */
+  padding: 1.15rem 20px calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+/*
+ * ══ CENTRING IS ABOUT THE CONTENT, NOT THE SHEET ══
+ * `align-items: center` on a flex COLUMN does not centre it — it stops its
+ * children stretching. `sheet(true)` puts this class on the sheet's root as
+ * well as its body, so the sheet shrank to whatever text was longest and
+ * sat as a narrow column with the water either side of it.
+ *
+ * It hit the six centred screens, which include the first one anybody sees
+ * and the one that says something went wrong. The rule now says what it
+ * means: text is centred everywhere, and only the BODY centres its
+ * children, so the sheet itself keeps the full width it is given.
+ */
+.p-centre {
+  text-align: center;
+}
+
+.p-sheet-body.p-centre {
+  align-items: center;
+}
+
+.p-eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  color: var(--p-soft);
+}
+
+/*
+ * 1.55rem, not a clamp up to 3rem. The heading shares a sheet with body
+ * copy and two buttons on a 390px screen; the prototype's size is what
+ * makes all four fit without the fortune shouting over the duck it names.
+ */
+.p-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.55rem;
+  line-height: 1.12;
+  color: var(--p-ink);
+}
+
+.p-body {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--p-soft);
+}
+
+/* Said at the point of asking, never in a footer. */
+.p-note {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 0.85rem;
+  color: var(--p-faint);
+}
+
+.p-preview,
+.p-edit {
+  image-rendering: pixelated;
+  align-self: center;
+  touch-action: none;
+}
+
+/* ── nav, tabs, panels ────────────────────────────────────────────────── */
+
+.p-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.p-nav-title {
+  flex: 1;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.p-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.p-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  /*
+   * Scrolls rather than clipping. It is the flexible child of a column
+   * that always fills the screen exactly, so on a short phone it is the
+   * one asked to give — and `min-height: 0` is what lets a flex item
+   * shrink below its content at all, without which it silently overflows
+   * its parent instead.
+   */
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.p-hint {
+  margin: 0;
+  font-size: 0.61rem;
+  letter-spacing: 0.1em;
+  color: var(--p-faint);
+}
+
+/* ── swatches and stickers ────────────────────────────────────────────── */
+
+.p-swatches,
+.p-stickers {
+  display: grid;
+  gap: 8px;
+}
+
+.p-swatches {
+  grid-template-columns: repeat(auto-fill, minmax(var(--tap), 1fr));
+}
+
+.p-stickers {
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+}
+
+.p-swatch,
+.p-sticker {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.p-swatch {
+  aspect-ratio: 1;
+  min-height: var(--tap);
+}
+
+.p-sticker {
+  min-height: 56px;
+  background: #fff;
+}
+
+/*
+ * ══ THE RING GOES INSIDE ══
+ * This was an `outline` with a positive offset — drawn OUTSIDE the box, on
+ * an element that wears `clip-path` for its pixel corners. clip-path
+ * removes everything outside the shape, so the selected swatch had no mark
+ * on it at all and there was no way to tell which colour you were painting
+ * with. The same trap as the focus ring, in a second place.
+ *
+ * Two rings, not one: ink alone disappears against the near-black swatch,
+ * and white alone disappears against the white one. Ink outside, white
+ * inside, and every colour in the palette has something to show it against.
+ */
+.p-swatch.on {
+  box-shadow: inset 0 0 0 3px var(--p-ink), inset 0 0 0 6px #ffffffcc;
+}
+
+.p-sticker.on {
+  background: var(--duck);
+}
+
+.p-sticker-art {
+  image-rendering: pixelated;
+}
+
+/* ── fields ───────────────────────────────────────────────────────────── */
+
+/*
+ * ══ PROXIMITY IS THE GROUPING ══
+ * A label belongs to the box under it, so it sits close. The count belongs
+ * to the box ABOVE it, so it sits closer still. And one field belongs to
+ * the next only loosely, so they sit far apart.
+ *
+ * A flat gap said all three were equally related, and the count ended up
+ * floating almost exactly halfway between the field it counts and the next
+ * field's label — legible, and attached to nothing. The numbers are the
+ * prototype's: 0.45 / 0.3 / 1.2rem, the last made up of this margin plus
+ * the sheet's own 0.75rem gap.
+ */
+.p-field {
+  position: relative;
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.45rem;
+}
+
+.p-field-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: var(--p-soft);
+}
+
+.p-input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.7rem;
+  border: 0;
+  background: #fff;
+  color: var(--p-ink);
+  font-family: var(--body);
+  /* 16px is a hard floor: iOS Safari zooms the page when focusing a
+     smaller input and never zooms back out. */
+  font-size: 16px;
+  resize: none;
+}
+
+textarea.p-input {
+  min-height: calc(var(--tap) * 2);
+}
+
+/*
+ * Under the field, right-aligned — the prototype's own placement.
+ *
+ * Absolutely positioned inside the box, it sat ON the text: at 18
+ * characters a name ran straight under the number, which is worst exactly
+ * when the count starts mattering. A counter is a note ABOUT the field, so
+ * it belongs beside it in the flow rather than floating over the content
+ * it is describing.
+ */
+.p-field-count {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--p-faint);
+  text-align: right;
+  /* Closes the field's 0.45rem gap down to the 0.3rem this one wants. */
+  margin-top: -0.15rem;
+}
+
+.p-field-count.over {
+  color: var(--danger-text);
+}
+
+/* ── layout groups ───────────────────────────────────────────────────── */
+
+/*
+ * Actions stack full-width; choices sit in a row. On a phone that is the
+ * difference between two comfortable targets and two cramped ones.
+ */
+.p-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  /*
+   * An action group is ALWAYS the full width it is given, whatever the
+   * sheet around it is doing. Inside a centred sheet it was being
+   * shrink-wrapped to the longest label, so "Back to the pond" set the
+   * width of every button under it and they sat as a narrow stack.
+   */
+  align-self: stretch;
+}
+
+/*
+ * Siblings, not a stack: three routes to ONE outcome (copy / text / email
+ * the same link). Equal columns are what say "pick whichever suits you" —
+ * stacked full-width they read as three separate commands, and the eye has
+ * to work out that they are alternatives.
+ */
+.p-actions-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+  align-self: stretch;
+}
+
+.p-scopes,
+.p-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.p-scopes[hidden],
+.p-field-label[hidden],
+.p-sheet[hidden] {
+  display: none;
+}
+
+a.p-btn {
+  text-decoration: none;
+}
+
+/* ── the private link ─────────────────────────────────────────────────── */
+
+/*
+ * A readonly field, not a block of text: one tap selects the whole thing.
+ * The 16px floor is inherited from .p-input and matters here too — iOS
+ * zooms the page when a smaller field takes focus, and never zooms back.
+ */
+.p-link {
+  font-family: var(--mono);
+  letter-spacing: 0;
+}
+
+/*
+ * The scrim behind a duck's card. The pond keeps moving underneath — it is
+ * not paused, because a pond that freezes when you read a card stops being
+ * a place — it just stops competing with what you asked to read.
+ */
+.p-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 34;
+  background: #0b3d5233;
+}
+
+/*
+ * "Most bumps from" — the ducks that keep coming back, at 32px in the same
+ * tinted wells the studio uses for stickers. A number is a score; a row of
+ * faces is a relationship.
+ */
+.p-bumpers {
+  margin-top: 0.7rem;
+}
+
+.p-bumpers[hidden] {
+  display: none;
+}
+
+.p-bumprow {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+/*
+ * One person who bumped you. A tappable 44px square, not 38: it is a
+ * control, and every other control here clears the same floor.
+ *
+ * ══ THE TINT IS THE DESIGN; THE BEVEL WAS A REGRESSION ══
+ * These gained an outline when they stopped being `div`s and became real
+ * <button>s — the accessibility fix brought the UA's own border and bevel
+ * with it, and that landed on top of the tinted square the design already
+ * had. Two frames around one duck.
+ *
+ * So the tint and the pixel-corner clip stay exactly as they were, and
+ * only the chrome a button arrives with is stripped.
+ *
+ * Properties are reset one at a time rather than with `all: unset`, for
+ * the reason written at the top of this file: `all: unset` destroys the
+ * clip-path and text-transform that earlier grouped rules set, and it has
+ * already cost this project twice — including the clip-path this very
+ * rule depends on.
+ */
+.p-bumper {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  position: relative;
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  /* The box, unchanged from before it was a button. */
+  background: var(--quiet);
+  clip-path: var(--px-corner);
+}
+
+/*
+ * Focus rings and `clip-path` do not get on — an outset outline is clipped
+ * away entirely, which this project has now been bitten by three times. An
+ * INSET shadow lives inside the clip and survives.
+ */
+.p-bumper:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--field-500);
+}
+
+.p-bumper canvas {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+
+/*
+ * ══ A NUMBER OVER PIXEL ART NEEDS ITS OWN GROUND ══
+ * This was 8.8px of muted grey laid straight over the duck's own pixels,
+ * and was reported, fairly, as unreadable. A duck can be any of twelve
+ * tints, so there is no text colour that works over all of them.
+ *
+ * So it gets a near-white chip and full ink — the prototype's own
+ * treatment. Nearly opaque rather than solid, so it still reads as a mark
+ * ON the duck rather than a label beside it.
+ */
+.p-bumper-n {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  font-family: var(--mono);
+  font-size: 0.52rem;
+  font-style: normal;
+  color: var(--p-ink);
+  background: #ffffffdd;
+  padding: 0 0.15rem;
+}
+
+/* ── a duck's card, and the gather sheet ─────────────────────────────── */
+
+.p-sheet {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  z-index: 35;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--p-surface);
+}
+
+/*
+ * ══ THE CARD IS A PANEL, NOT A FLOATING BOX ══
+ * Full bleed to both edges and sitting on the bottom, so its dithered edge
+ * reads as the waterline rather than as trim on a card hovering over the
+ * pond. Inset 16px with rounded corners it looked like a notification;
+ * the prototype has it rise out of the water and own the bottom of the
+ * screen.
+ */
+.p-card {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 35;
+  display: flex;
+  flex-direction: column;
+  /*
+   * ══ NO BACKGROUND HERE ══
+   * The dither strips paint surface-coloured dots on transparency, so they
+   * only read as a waterline if there is WATER behind them. Giving the
+   * panel a background painted surface dots onto surface and the edge
+   * vanished — the hard line was the panel's own top, not a missing edge.
+   * The prototype splits it the same way: `.panel` is transparent and only
+   * `.panel-body` is opaque.
+   */
+}
+
+.p-card-body {
+  background: var(--p-surface);
+  padding: 0.9rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * The prototype's rhythm. Everything was sitting on top of everything
+ * else because the shared card/sheet rule had a flat 0.5rem gap and this
+ * panel wants the message to breathe away from the head.
+ */
+.p-card .p-card-msg {
+  font-size: 1.02rem;
+  line-height: 1.5;
+  color: var(--p-soft);
+  margin-top: 0.7rem;
+}
+
+.p-card .p-card-via {
+  margin-top: 0.2rem;
+}
+
+.p-card .p-card-name {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.3rem;
+  line-height: 1.1;
+  /*
+   * The serif's ascenders reach high, so at 1.1 line-height the name sat
+   * directly against the pill above it with no air at all. The pill owns
+   * the gap below itself; this owns the gap below the name.
+   */
+  margin: 0.28rem 0 0.12rem;
+  text-transform: none;
+}
+
+.p-card .p-card-stats {
+  margin-top: 0.55rem;
+}
+
+.p-card .p-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.p-sheet {
+  top: calc(max(12px, env(safe-area-inset-top)) + var(--tap) + 8px);
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.p-card p {
+  margin: 0;
+}
+
+/*
+ * ══ THE DUCK'S CARD, TO THE PROTOTYPE ══
+ * Full bleed, not a floating box. It rises out of the water on its
+ * dithered edge and fills the width, which is why the edge reads as the
+ * waterline rather than as a decoration on a panel.
+ *
+ * Two columns in the head: the animal at 72px in a tinted box, and beside
+ * it the fortune as a pill, the name in the serif, and the provenance in
+ * mono. Actions are chips side by side, not stacked slabs — a card is a
+ * glance, and a full-width button makes it look like a form.
+ */
+.p-card-head {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.p-card-duck {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  image-rendering: pixelated;
+  background: var(--quiet);
+  border-radius: 6px;
+}
+
+.p-card-headtext {
+  min-width: 0;
+}
+
+/*
+ * ══ DELA GOTHIC ONE, AT DISPLAY SIZES ONLY ══
+ * The fortune is a stamp on a ticket and is set like one. Dela is heavy and
+ * blocky and suits an arcade fortune far better than a serif — but it is a
+ * DISPLAY face: at 10px its kanji strokes fill in and 大吉 becomes a blob.
+ * So the big arrival heading gets it and the card's small pill does not,
+ * which is the split the prototype makes too.
+ *
+ * It also has to be USED somewhere to exist at all. The face was declared,
+ * subsetted and shipped, and no rule ever asked for it — so the browser
+ * never fetched it and every 大吉 in the product was rendering in the body
+ * face. A webfont nothing references is a file nobody downloads.
+ *
+ * The unicode-range does the rest: it covers only 大吉小末凶 and おみくじ,
+ * so the Latin half of "大吉 · Great luck" keeps the serif with no span
+ * around it.
+ */
+.p-fortune-title {
+  font-family: "Dela Gothic One", var(--serif);
+  /* Japanese has no case, so this only reaches the gloss. */
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+/*
+ * The one rounded thing in the pond, and deliberately so: it is a label
+ * ABOUT the duck rather than a surface the duck sits on, and the pill
+ * shape is what separates the two.
+ */
+.p-card-fortune {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.25rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+  background: var(--quiet);
+  padding: 0.22rem 0.55rem;
+  border-radius: 99px;
+  /* Air under the pill, before the name. */
+  margin: 0 0 0.1rem;
+}
+
+.p-card-fortune b {
+  font-family: var(--body);
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  color: var(--p-ink);
+}
+
+.p-card-fortune i {
+  font-style: normal;
+  opacity: 0.5;
+  margin: 0 0.18rem;
+}
+
+.p-card-fortune span {
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  font-size: 0.72rem;
+}
+
+/* Chips, side by side. `.p-btn`'s pressable slab is for a screen's one
+   real action, not for a glance. */
+.p-card-btn {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  box-sizing: border-box;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 0 0.85rem;
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* "Bumped ✓ · 11" was breaking before the count. */
+  white-space: nowrap;
+  background: var(--quiet);
+  color: var(--p-ink);
+}
+
+.p-card-btn[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.p-card-btn-danger {
+  background: var(--danger);
+  color: var(--danger-text);
+}
+
+.p-card-x {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  background: var(--quiet);
+  position: absolute;
+  top: 20px;
+  right: 16px;
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--p-soft);
+}
+
+.p-card-name {
+  font-family: var(--display);
+  font-size: 1.15rem;
+}
+
+.p-card-via,
+.p-card-stats {
+  font-size: 0.64rem;
+  letter-spacing: 0.09em;
+  color: var(--p-faint);
+}
+
+/* Somebody else's words: let them wrap, never let them break the layout. */
+.p-card-msg {
+  color: var(--p-soft);
+  overflow-wrap: anywhere;
+}
+
+/* ── taking a duck out ───────────────────────────────────────────────── */
+
+/*
+ * Text for a screen reader and nothing else. Same clipping idiom as
+ * `.p-sr`, without the focus behaviour — nothing here is ever focused, it
+ * is only ever pointed at by aria-describedby.
+ */
+.p-sr-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A heading focused only so the screen it titles is announced. It is not
+   a control and must not look like one. */
+.p-title:focus-visible,
+h2:focus-visible {
+  outline: none;
+}
+
+/*
+ * Off-screen, but not gone.
+ *
+ * The pond is one canvas, so its ducks exist for a screen reader only
+ * because this list does. It must therefore be hidden the way that keeps
+ * an element in the accessibility tree and focusable — `display: none`,
+ * `visibility: hidden` and `hidden` all remove it from BOTH, which would
+ * turn the fix into nothing at all.
+ *
+ * The 1px clipped box is the standard shape for this. `white-space: nowrap`
+ * matters: without it a long label wraps inside a 1px box and some readers
+ * announce it a word per line.
+ */
+.p-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  list-style: none;
+}
+
+/*
+ * Except when focused. Somebody tabbing through with sight — a keyboard
+ * user who is not using a reader — must be able to SEE where they are, so
+ * the focused button comes back on screen rather than moving the focus
+ * ring around an invisible list.
+ */
+.p-sr:focus-within {
+  position: absolute;
+  top: max(56px, calc(env(safe-area-inset-top) + 40px));
+  left: 12px;
+  right: 12px;
+  z-index: 60;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+}
+
+.p-sr:focus-within .p-sr-btn:focus-visible {
+  /*
+   * Undoing the hiding, ALL of it. Leaving `position: absolute` and
+   * `height: 1px` from the rule below gave an 18px row — a one-pixel box
+   * with padding round it — so the focused duck was legible only by
+   * accident and sat outside the flow of the list.
+   */
+  position: static;
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  overflow: visible;
+  clip-path: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--p-ink);
+  background: #dff2fb;
+  clip-path: var(--px-corner);
+  box-shadow: inset 0 0 0 3px var(--field-500);
+}
+
+/* Every other button in the list stays out of the way while one is up. */
+.p-sr .p-sr-btn {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+/*
+ * The postcard offer, on the contact screen.
+ *
+ * A tinted card with a stamp rather than another grey line, because it is
+ * the one thing on that screen somebody GETS. Every other sentence there
+ * is about what happens to what they give — set the same way, this reads
+ * as a third clause of the privacy note and nobody notices they were
+ * offered anything.
+ *
+ * The stamp is drawn with insets rather than an image: two rings of colour
+ * making a little perforated square, at 18x14 like a real one.
+ */
+.p-postcard {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  margin: 0 0 0.6rem;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--p-ink);
+  background: #fff8e0;
+  /*
+   * No left rule. The warm fill already separates this from the notes
+   * around it, and the bar was a second, louder way of saying the same
+   * thing — on a screen whose whole job is to make a small ask look
+   * small. The stamp carries the postcard idea on its own.
+   */
+  clip-path: var(--px-corner);
+}
+
+/*
+ * The stamp is an emoji now, not a drawn rectangle. So this sizes a
+ * glyph rather than painting a box: no background, no inset rules, and
+ * a line-height that keeps it on the first line's baseline when the
+ * sentence beside it wraps to two.
+ */
+.p-postcard-stamp {
+  flex: 0 0 auto;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+/*
+ * A row that lets a chip be chip-sized.
+ *
+ * Chips in a flex column stretch to the full width and stop reading as
+ * toggles — an "on/off" control the width of the primary button is a
+ * button, whatever its colour says.
+ */
+.p-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/*
+ * A hint that is a sentence rather than a label.
+ *
+ * `.p-hint` is centred, letterspaced, 0.66rem mono — right for "Free" or
+ * "Taken" under a field, and wrong for "A visitor's phone can still choose
+ * another language." Centred uppercase mono reads as a HEADING, so the
+ * card setup screen had four headings and no explanations, and the longest
+ * one wrapped into a centred two-line block that looked like a title.
+ *
+ * These are prose, and the prototype set them as prose: left-aligned,
+ * sentence case, at a size somebody reads.
+ */
+.p-hint-block {
+  margin: -0.1rem 0 0.5rem;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--p-soft);
+  max-width: 42ch;
+}
+
+/*
+ * The say button, while the duck is quiet.
+ *
+ * Same footprint as the glyph it replaces, so the bar does not resize
+ * under the thumb every five minutes — a control that changes SIZE when
+ * it changes state reads as two different controls.
+ */
+.p-glyph-quiet {
+  color: var(--p-soft);
+  cursor: default;
+}
+
+.p-glyph-count {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  /* Tabular figures, so the digits do not jitter as the seconds tick. */
+}
+
+/*
+ * The card editor, folded away until it is wanted.
+ *
+ * There are a hundred cards and the common act is reading them; naming a
+ * keeper happens once per card. A form on every row would drown the list
+ * it is attached to.
+ */
+.a-fold {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 2px solid var(--quiet-shadow);
+}
+
+.a-fold[hidden] {
+  display: none;
+}
+
+.a-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.a-field-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+}
+
+/*
+ * Destructive, and it looks it — but as a chip rather than the full-width
+ * red button the pond uses, because this one is offered ONLY for a card
+ * nothing hangs off. The weight should match what is actually at stake.
+ */
+.a-chip-danger {
+  background: var(--danger-quiet, #fde8e4);
+  color: #8f2b20;
+}
+
+/*
+ * Showing one card's ducks. Same shape as the pond's whistle bar — what
+ * you are looking at, and the way out of it — because it is the same idea
+ * and the admin should not invent a second vocabulary for it.
+ */
+.a-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--quiet);
+  clip-path: var(--px-corner);
+}
+
+.a-filter-who {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--p-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * ── your duck, on one page ───────────────────────────────────────────── */
+
+/*
+ * Everything below is scoped to this one screen. The fields, counters and
+ * gaps elsewhere in the flow are sized for screens with room; these are
+ * the same components asked to fit a page, and nothing outside the
+ * settings screen should shrink because this one had to.
+ */
+
+/* Two rows of message rather than three. 90 characters wrap to two on a
+   phone; the third row was empty on every duck in the pond. */
+.p-mine-view textarea.p-input {
+  min-height: calc(var(--tap) * 1.35);
+}
+
+/*
+ * The counter joins the label's line instead of taking one of its own.
+ * It reads as "Name … 4", which is what a counter is for, and gives back
+ * about 15px per field across four of them.
+ */
+.p-mine-view .p-field {
+  position: relative;
+}
+
+.p-mine-view .p-field-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+  line-height: 1.1;
+}
+
+/* Closer than the flow screens: this one is a form to work through, not
+   a page to read. */
+.p-mine-view.p-view-pad {
+  gap: 0.45rem;
+  padding-top: max(40px, calc(env(safe-area-inset-top) + 18px));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+/*
+ * The contact's hint and its way out, on one line.
+ *
+ * `align-items: center` rather than baseline: the link is a 44px tap
+ * target and the hint is two lines of small text, and centring them is
+ * the only arrangement where neither looks dropped.
+ */
+.p-contact-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.p-contact-foot .p-hint-tight {
+  flex: 1;
+  min-width: 0;
+}
+
+.p-contact-foot .p-linkish {
+  /* `0 0 auto` let it size to its text and run off the right edge on a
+     390px phone. It may not grow, must not shrink below its own words,
+     and wraps the sentence beside it instead. */
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+
+/* Taking a duck out is still the gravest thing here, but it does not need
+   a rule AND a margin AND a full-height button to say so. */
+.p-mine-view .p-danger {
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+}
+
+/*
+ * The ring and the sentence about it, side by side.
+ *
+ * They were stacked, which spent 176px on the ring and another 37 on a
+ * caption that had nothing beside it. They are one thought — this is your
+ * duck, this is how it has been getting on — so they read as one row, in
+ * about the height the ring alone used to take.
+ */
+.p-mine-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.p-mine-head .p-orbit-compact {
+  flex: 0 0 auto;
+}
+
+/*
+ * Specificity, not source order: `.p-orbit-compact .p-orbit-art` sets 176
+ * further down this file, and an equally-specific rule up here loses to
+ * it. Naming both ancestors wins by one class and says why it needs to.
+ */
+.p-mine-head .p-orbit-compact .p-orbit-art {
+  max-width: 118px;
+}
+
+.p-mine-head .p-orbit-who {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  text-align: left;
+}
+
+/*
+ * The private link as a row, not a field.
+ *
+ * Nobody edits this and nobody reads it character by character — they send
+ * it to themselves. So it gets the one control that matters and none of
+ * the height a text input spends on being editable: 44px against 67.
+ */
+.p-linkrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+.p-linkrow .p-field-label {
+  flex: 0 0 auto;
+}
+
+.p-linkrow-url {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--p-soft);
+  /* It is longer than the row on every phone. Clipped rather than
+     wrapped: a second line here would push the Copy button out of reach,
+     and the whole point of this row is that it is one line high. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * A hint that has to earn its height. Same voice as `.p-hint-block`, half
+ * the space around it, because it sits inside a field's own group rather
+ * than between two of them.
+ */
+.p-hint-tight {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/*
+ * An action that reads as a sentence, not a button.
+ *
+ * Taking a contact back is deliberate but small, and it had a full 44px
+ * quiet button plus a note — 90px for one rare act, on a screen that has
+ * none to spare. As a link under the field it keeps the tap target and
+ * loses the furniture.
+ */
+.p-linkish {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.p-linkish:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--field-500);
+}
+
+/*
+ * Save's answer, directly under the header row that holds Save.
+ *
+ * It used to sit under the button at the foot of the form. With Save in
+ * the nav, its reply has to be where the nav is — a confirmation you have
+ * to scroll to find is not a confirmation.
+ */
+.p-save-note {
+  margin: -0.35rem 0 0;
+  min-height: 0;
+  text-align: right;
+}
+
+.p-save-note:empty {
+  display: none;
+}
+
+/*
+ * The duck a keeper linked to their card.
+ *
+ * A row, because the three things in it answer one question between them:
+ * the picture says WHICH duck, the name and address say which one it is
+ * on the record, and the chip takes it back off. A stack would read as
+ * three separate settings.
+ */
+.p-linked {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.p-linked-art {
+  /* Drawn at 3 sprite pixels and shown at 48: scaled UP by a whole
+     number, which is the only way a pixel sprite may be enlarged. */
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+}
+
+.p-linked-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.p-linked-who small {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--p-soft);
+  /* An address can be longer than the row. Better clipped than wrapped
+     onto a second line that pushes the chip out of reach. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p-danger {
+  margin-top: 1.4rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--quiet-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* ── motion ──────────────────────────────────────────────────────────── */
+
+/*
+ * Stepped, never smooth. Everything in the pond is stop-motion, and a
+ * smoothly easing panel beside a duck that walks at 12 fps is the one
+ * thing on screen that gives away that this is a web page. UI.md § 5.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  /*
+   * ══ A SHEET RISES OUT OF THE WATER ══
+   * It travelled 14%, which is a nudge — the panel appeared and then
+   * shifted slightly, so the motion read as a wobble rather than as
+   * something arriving. The prototype starts it fully off-screen and it
+   * comes up, which is the whole metaphor: these screens rise out of the
+   * pond rather than being switched on over it.
+   *
+   * The card gets its own shorter timing. It is a glance, not a screen,
+   * and it is opened far more often — the sheet's 280ms starts to feel
+   * like waiting when you are tapping ducks one after another.
+   */
+  .p-sheet {
+    animation: p-rise 0.28s steps(5, end);
+  }
+
+  .p-card {
+    animation: p-rise 0.22s steps(4, end);
+  }
+
+  /* The water dims behind it rather than snapping dark. */
+  .p-scrim {
+    animation: p-fade 0.18s steps(3, end);
+  }
+
+  /* Selection: the colour steps across rather than crossfading. */
+  .p-chip,
+  .p-tab,
+  .p-swatch {
+    transition:
+      background-color var(--step-fade),
+      color var(--step-fade);
+  }
+
+  /* The press. Face down onto its shadow, and back. */
+  .p-btn,
+  .p-icon-btn,
+  .p-count,
+  .p-mark {
+    transition: transform var(--step-press);
+  }
+
+  .p-btn::after {
+    transition: height var(--step-press);
+  }
+
+  /* The overlay dimming the water while a screen is up. */
+  .p-overlay {
+    transition: background-color var(--step-fade);
+  }
+
+  /* The scope picker appearing when a contact is typed — it arrives,
+     rather than being there suddenly. */
+  .p-scopes,
+  .p-hint {
+    transition: opacity var(--step-fade);
+  }
+}
+
+@keyframes p-rise {
+  /* All the way off, not a nudge. */
+  from { transform: translateY(102%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes p-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Reduced motion never removes information — it only stops things moving. */
+@media (prefers-reduced-motion: reduce) {
+  .p-btn:active,
+  .p-icon-btn:not(:disabled):active {
+    transform: none;
+  }
+
+  /*
+   * ══ STOP IT MOVING; DO NOT STOP IT HAPPENING ══
+   * The sheet and the duck card rise out of the water, and that rise lives
+   * inside `no-preference`. So with Reduce Motion on there was no
+   * animation at all: a card was simply THERE on the frame after a tap,
+   * with nothing to say it had arrived. Reported as "not really showing,
+   * just popped", which is exactly right — a panel covering the bottom
+   * third of the screen appearing between two frames reads as a glitch,
+   * not as a screen.
+   *
+   * Reduce Motion is a request about MOVEMENT — the vestibular problem is
+   * things travelling across the view — and the accepted answer is to
+   * cross-fade instead of translate, not to cut the transition. So the
+   * information the rise was carrying ("this arrived, from down there")
+   * survives as a fade, and nothing travels.
+   *
+   * Stepped, like everything else here. A smooth 160ms fade beside a duck
+   * that walks at 12fps is the one thing on screen that gives away that
+   * this is a web page — the same argument the rise itself makes. Three
+   * steps, matching the scrim it appears with.
+   */
+  .p-sheet,
+  .p-card,
+  .p-scrim {
+    animation: p-fade 0.16s steps(3, end);
+  }
+}
+
+/*
+ * The overlay the making screens render into. Empty most of the time, and
+ * ignoring pointers when it is, so a tap lands on the water rather than on
+ * an invisible sheet.
+ */
+.p-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.p-overlay:not(:empty) {
+  pointer-events: auto;
+}
+
+/*
+ * The pond's one call to action, when there is one. A fortune waiting is
+ * the only thing that ever puts a button over the water.
+ */
+.p-cta {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  /* Clears the wordmark, which sits below it. `--wordmark-room` is that
+     line's height plus its gap — the two are positioned from the same
+     edge, so one has to know about the other. */
+  bottom: max(calc(16px + var(--wordmark-room)), calc(env(safe-area-inset-bottom) + var(--wordmark-room)));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 30;
+}
+
+.p-cta:empty {
+  display: none;
+}
+
+/*
+ * While a sheet is open, the pond's own controls step out of the way.
+ *
+ * Not just visually: two "Decorate it" buttons existed at once, one on the
+ * sheet and one on the water behind it, and a tap could reach either. The
+ * water keeps moving — that is the point — but nothing on it is operable
+ * while something is being made.
+ */
+#pond:has(.p-overlay:not(:empty)) :is(.p-cta, .p-zoom, .p-hud) {
+  display: none;
+}
+
+/*
+ * The duck being decorated. Rendered at 12x and scaled to fit, so it is
+ * crisp everywhere and never taller than the room left once the nav, the
+ * tabs and a panel of swatches have taken theirs.
+ */
+/*
+ * ══ THE DUCK MUST NOT STARVE THE TOOLS ══
+ * This was sized by WIDTH alone, so on a short screen it kept its full
+ * 218px while the panel underneath — the swatches, the sticker grid, the
+ * brush — took whatever was left. Measured: the panel gets 300px on a
+ * 844-tall phone, 116px with Safari's URL bar showing, and 63px on an SE.
+ * At 63px the tools are a slot, and that is the "everything is cramped on
+ * an iPhone 12" report.
+ *
+ * The third term bounds it by HEIGHT as well, so on a short screen the
+ * duck gives up size first — it is a preview, and the panel is the work.
+ * The `max(150px, …)` floor stops it shrinking to a thumbnail on the
+ * shortest screens, where a duck you cannot aim at would be its own
+ * problem.
+ *
+ * On a 844-tall phone every term but the width is slack, so nothing there
+ * changes.
+ */
+.p-edit-frame {
+  position: relative;
+  align-self: center;
+  width: min(224px, 56vw, max(150px, 26vh));
+  clip-path: var(--px-corner);
+}
+
+.p-edit {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/*
+ * The recess. A soft shadow from the top edge and a thin highlight along
+ * the bottom — the two cues that read as "sunk in" without becoming an
+ * effect. Laid OVER the canvas, because the canvas paints its water to
+ * the edges and anything behind it would never be seen.
+ *
+ * `pointer-events: none` is load-bearing: everything in this square is
+ * dragged or painted on, and an overlay that swallowed those would break
+ * the studio entirely.
+ */
+.p-edit-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 3px 7px rgba(11, 61, 82, 0.26),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* ── the pondkeeper ──────────────────────────────────────────────────── */
+
+/*
+ * The admin is a list, not a pond: no water, no camera, and a plain
+ * scrolling page rather than a sheet. It shares the palette and the
+ * corners so it belongs to the same product, and nothing else.
+ *
+ * It stays English, and it has one reader. COPY.md § 09.
+ */
+.a-screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: max(20px, env(safe-area-inset-top)) 16px
+           calc(20px + env(safe-area-inset-bottom));
+  background: var(--p-surface);
+}
+
+/*
+ * The admin is the one screen read on a laptop, and it was the one screen
+ * with no measure at all: at 1280px a duck's row ran the full width of the
+ * monitor, so reading one meant tracking a line four times longer than
+ * anything else in the product.
+ *
+ * Wider than the phone screens, because this one has columns worth having
+ * — but still a measure, and centred, so it reads as a page rather than a
+ * viewport that happened to be that size.
+ */
+.a-screen > * {
+  width: 100%;
+  /*
+   * Wider than the phone screens and wider than prose, because the thing
+   * being protected here is the per-CARD measure (320px, set on the grid
+   * below) rather than the container. Capping the container at a reading
+   * width just left a large display two-thirds empty while the work — a
+   * hundred rows to go through — stayed in a column down the middle.
+   */
+  max-width: 78rem;
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+.a-centre {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.a-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.a-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.55rem;
+  color: var(--p-ink);
+}
+
+.a-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/*
+ * ══ THE ADMIN IS THE ONE SCREEN READ ON A LAPTOP ══
+ * Everything else here is built for a thumb and merely tolerates a desk.
+ * This one is the opposite: it is where a hundred ducks get gone through,
+ * and a single column of cards down the middle of a 1440px display makes
+ * that a scroll marathon with two thirds of the screen empty.
+ *
+ * So above a tablet's width the rows flow into as many columns as fit at
+ * a readable measure. `auto-fill` rather than a fixed count, because the
+ * right number is whatever the window can hold — one on a phone, two on a
+ * small laptop, three on a large one — and none of those is a breakpoint
+ * anybody has to maintain.
+ *
+ * `align-items: start` so a row with a long message does not stretch its
+ * neighbours to match; each card is as tall as its own content.
+ */
+@media (min-width: 760px) {
+  .a-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    align-items: start;
+    gap: 10px;
+  }
+
+  /*
+   * ══ THE CONTAINER IS WIDE FOR THE GRID, NOT FOR THE CONTROLS ══
+   * The 78rem cap exists so the LIST can hold three columns. Everything
+   * else inherited it: a search field 1600px across and three tabs at
+   * 545px each. Stretching a control to the width of a page does not make
+   * it easier to hit — it stops reading as a control at all.
+   *
+   * But capping them ALONE was worse, and David caught it: `.a-screen > *`
+   * centres each child inside the container, so a narrowed search box got
+   * centred on its own and landed 116px off the edge everything else sat
+   * on. Measured: heading, tabs and cards at 132px, the search at 16px.
+   * Three widths on three left edges.
+   *
+   * So the row is one element. The toolbar is the child that inherits the
+   * container's edge; the tabs and the field sit inside it and can be any
+   * width they like without leaving that edge.
+   */
+  .a-screen .p-tab {
+    flex: 0 1 auto;
+    padding: 0 1.4rem;
+  }
+
+  .a-screen .p-tabs {
+    flex: 0 0 auto;
+  }
+}
+
+.a-row {
+  padding: 0.8rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  clip-path: var(--px-corner);
+}
+
+.a-row p {
+  margin: 0;
+}
+
+.a-row-name {
+  font-family: var(--display);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.a-row-meta {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+}
+
+.a-row-msg,
+.a-row-msg-full {
+  color: var(--p-soft);
+  overflow-wrap: anywhere;
+}
+
+/* The one place a contact is ever shown. Selectable, because the job is
+   to copy it into a mail client. */
+.a-contact {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--p-ink);
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+
+.a-badge {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  background: var(--quiet);
+  color: var(--p-soft);
+}
+
+.a-badge-hot {
+  background: var(--danger);
+  color: var(--danger-text);
+}
+
+.a-flag {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--danger-text);
+}
+
+.a-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0.2rem;
+}
+
+/*
+ * ══ A WORD IS NOT A BUTTON, BUT IT STILL HAS TO LINE UP ══
+ * "no ducks yet" is a bare span in a row of chips. Chips are a tap tall
+ * and the span is one line, so with the default stretch it sat high and
+ * hard against the button beside it and read as broken layout rather than
+ * as an answer. Centred, and given the row's own breathing space.
+ */
+.a-actions > .a-row-meta {
+  align-self: center;
+  padding-right: 0.2rem;
+}
+
+/*
+ * Admin's own controls stay small, but never below the tap floor.
+ *
+ * 38px was a density shortcut for a long moderation list. "Hide" acts on
+ * somebody else's duck and sits right beside "Open" — a thumb that lands
+ * one row off costs more than the four pixels of list it was saving. The
+ * type stays small; only the target grows.
+ */
+.a-actions .p-chip,
+a.p-chip {
+  min-height: var(--tap);
+  font-size: 0.6rem;
+  text-decoration: none;
+}
+
+/*
+ * ══ THE FOCUS RING GOES LAST, AND WITHOUT :where() ══
+ * This lived near the top inside `:where(...)`, which contributes no
+ * specificity at all. Every component below then declared `all: unset`,
+ * matched at the same specificity, came later, and won — so a keyboard
+ * user got no ring on any of the controls this rule names. The one rule
+ * on the page that exists for people who cannot see the pointer was the
+ * one being erased.
+ *
+ * Last in the file and named plainly, so a reset can no longer outrank it.
+ */
+.p-btn:focus-visible,
+.p-chip:focus-visible,
+.p-tab:focus-visible,
+.p-icon-btn:focus-visible,
+.p-swatch:focus-visible,
+.p-sticker:focus-visible,
+.p-count:focus-visible,
+.p-glyph:focus-visible,
+.p-input:focus-visible,
+.p-mark:focus-visible {
+  outline: none;
+  /*
+   * INSET, and not by preference: every one of these wears `clip-path` for
+   * its pixel corners, and clip-path cuts an outset shadow away entirely.
+   * A ring drawn outside these boxes is a ring nobody ever sees.
+   *
+   * A field's padding is wider than the ring, so the text still clears it.
+   */
+  box-shadow: inset 0 0 0 3px var(--focus);
+}
+
+/* ── saying something ─────────────────────────────────────────────────── */
+
+/*
+ * The bubble layer sits over the water and takes no touches: a duck under a
+ * bubble must still be tappable, and a bubble is something to read rather
+ * than something to press.
+ */
+.p-says {
+  position: absolute;
+  inset: 0;
+  z-index: 33;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/*
+ * One bubble. Positioned by transform only — it moves on every frame the
+ * pond draws, and top/left would make the browser reflow the page to do it.
+ *
+ * `max-width` in characters rather than pixels: sixty characters is the
+ * limit, and the bubble should be as wide as its words rather than as wide
+ * as the phone.
+ */
+.p-say {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 22ch;
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  background: var(--p-surface);
+  color: var(--p-ink);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  line-height: 1.5;
+  text-align: center;
+  clip-path: var(--px-corner);
+  /* Steps, like everything else that appears in this pond. */
+  animation: p-say-in 0.18s steps(3, end);
+}
+
+/*
+ * VISIBILITY, not display. A bubble is positioned by measuring its own
+ * height against the chrome it must not cover — and `display: none` reports
+ * a height of zero, so a hidden bubble looked small enough to fit, showed
+ * for one frame, measured itself properly and hid again. It is absolutely
+ * positioned, so staying in the layout costs nothing.
+ */
+.p-say[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+@keyframes p-say-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-say { animation: none; }
+}
+
+/*
+ * A glyph button: the two quiet controls that replace the CTA once your
+ * duck is in the pond. Square, so the icon sits in the middle of a target
+ * a thumb can find without aiming.
+ */
+/*
+ * With only glyphs in it the bar is a centred row, not a stack: two square
+ * controls side by side read as "here are two small things you may do",
+ * where one above the other reads as a list of steps.
+ */
+.p-cta.p-cta-glyphs {
+  flex-direction: row;
+  justify-content: center;
+  gap: 12px;
+  /*
+   * The offer sits ABOVE the glyphs, so the row has to be allowed to
+   * wrap — otherwise a full-width invitation squeezes two 44px controls
+   * into whatever is left, which is the exact failure the row was chosen
+   * over a third glyph to avoid.
+   */
+  flex-wrap: wrap;
+}
+
+/*
+ * ══ THE OFFER IS A GLYPH NOW ══
+ * It was a wide labelled row above the two glyphs, with its own dismiss.
+ * On a phone it dominated a bar whose job is to get out of the way, and
+ * the dismiss competed with the two controls that matter. The words moved
+ * into the sheet, where somebody has actually stopped to read, and the bar
+ * kept a third `.p-glyph` — no rules of its own, because it is the same
+ * control as the other two and should stay that way without being told.
+ *
+ * `--cta-rows` stays on `.p-zoom`. Nothing sets it to 2 today, and that is
+ * the point: the next thing that adds a row to the bar sets it there and
+ * the zoom column moves on its own, instead of landing on top of whatever
+ * arrived.
+ */
+
+
+.p-glyph {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  cursor: pointer;
+  box-sizing: border-box;
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  background: var(--quiet);
+  color: var(--p-ink);
+}
+
+.p-glyph:active {
+  transform: translateY(1px);
+}
+
+/* Authored small and scaled by the box — never resampled. */
+.p-icon {
+  image-rendering: pixelated;
+  display: block;
+}
+
+
+/* ── the admin list, rebuilt ─────────────────────────────────────────────
+ *
+ * See docs/pond/ADMIN.md. Rows are summaries; the rare and dangerous
+ * things unfold. These rules carry the hierarchy that used to be missing:
+ * every control looked the same, so nothing said what it cost.
+ */
+
+/*
+ * ══ A WHITE FIELD ON A WHITE ROW IS NOT A FIELD ══
+ * `.p-input` is `background: #fff` with `border: 0`, which reads fine on
+ * the pond's pale water and disappears completely inside `.a-row`, which
+ * is also #fff. An empty "Label" was a caption above nothing — it only
+ * looked like somewhere to type once it already had text in it.
+ *
+ * An inset ring rather than a border, because every one of these wears
+ * `clip-path` for its pixel corners and clip-path cuts an outset edge away
+ * entirely. Same reason the focus ring is inset.
+ */
+.a-input,
+.a-search {
+  box-shadow: inset 0 0 0 2px var(--quiet-shadow);
+}
+.a-input:focus-visible,
+.a-search:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--focus);
+}
+
+/*
+ * On a phone the toolbar is simply a column: full-width tabs for a thumb,
+ * then the field under them. It becomes a row on a laptop — see the
+ * media query further down.
+ */
+.a-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.a-toolbar .p-tabs {
+  flex: 1 1 auto;
+}
+
+/* The search box sits above the list it filters. */
+.a-search {
+  margin: 0;
+}
+
+/*
+ * ══ BELOW THE BASE, OR IT DOES NOT SURVIVE IT ══
+ * These lived in the earlier `min-width: 760px` block, which sits ABOVE
+ * `.a-toolbar` in this file. Same specificity, so the later base rule won
+ * and `flex-direction: row` never applied — while `align-items: center`
+ * from the same block DID, centring both controls in a column and
+ * overlapping them.
+ *
+ * `.p-tab` has a note about exactly this hazard a thousand lines up. It
+ * is the third time in this file.
+ */
+@media (min-width: 760px) {
+  .a-toolbar {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .a-toolbar .p-tabs {
+    flex: 0 0 auto;
+  }
+
+  /*
+   * Takes the rest of the row up to a readable field width, so the
+   * toolbar reads as one object rather than two adjacent things.
+   */
+  .a-search {
+    flex: 1 1 auto;
+    max-width: 26rem;
+  }
+}
+
+/* The counts, which are also the filters. */
+.a-flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/*
+ * A count that reports a problem carries the warm tone, so "3 reported"
+ * does not look like "12 cards". It is still a chip and still toggles.
+ */
+.a-chip-hot:not(.on) {
+  background: var(--danger);
+  color: var(--danger-text);
+}
+
+/*
+ * ══ THE SERIAL IS THE HEADING ══
+ * Monospace and fixed, so every card row starts with eight characters in
+ * the same shape. That is what makes the column scannable against a card
+ * held in the other hand.
+ */
+.a-row-serial {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  color: var(--p-ink);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/*
+ * ══ A LIST IS FOR SCANNING ══
+ * A long message pushed every other row off the screen. Two lines is
+ * enough to recognise one and to moderate it; the whole thing is one tap
+ * away on the duck itself.
+ *
+ * Only on the duck list. A contact row has no Open and no Manage, so a
+ * clamp there would hide text from the one person allowed to read it,
+ * with nothing to press to get it back. Those rows use
+ * `.a-row-msg-full`, which is this type without the cut.
+ */
+.a-row-msg {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/*
+ * Second-order context: true, useful, and not what you scan for.
+ *
+ * (This was lost for a while — the rule got overwritten by the message
+ * clamp and the class went on being applied to rows that no longer dimmed
+ * for it. Restored, and now it has two callers.)
+ */
+.a-dim {
+  opacity: 0.72;
+}
+
+/*
+ * ══ WHOSE CARD IS THIS ══
+ * The second tier of a card row, under the serial. Body face and near
+ * full size, because it is read as a NAME rather than as data — the mono
+ * uppercase meta style it used to share made "Jack" look like a field
+ * value and cost it every bit of its legibility.
+ */
+.a-row-who {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--p-ink);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * "Kept · no name" and "Not claimed" are states standing where a name
+ * goes. Quieter and italic, so a page of unclaimed cards does not read as
+ * a page of loudly-named ones, and a real name stands out from the
+ * placeholders around it at a glance.
+ */
+.a-row-who-none {
+  color: var(--p-faint);
+  font-style: italic;
+}
+
+/*
+ * A one-line explanation next to the control it explains. These were
+ * written as code comments, where the person deciding which button to
+ * press could not read them.
+ */
+.a-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--p-soft);
+}
+
+.a-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--danger-text);
+}
+
+/* A named group of controls inside an unfolded panel. */
+.a-section,
+.a-danger {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding-top: 0.6rem;
+  border-top: 2px solid var(--quiet-shadow);
+}
+
+/*
+ * ══ ORDERED BY WHAT THEY COST ══
+ * The destructive group is always last and always announces itself. It
+ * used to be a grey chip in a row of grey chips, and "Delete all 12
+ * ducks" sat above "Save card" in reading order.
+ */
+.a-danger {
+  border-top-color: var(--danger-shadow);
+}
+
+.a-section-title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+}
+
+.a-danger .a-section-title {
+  color: var(--danger-text);
+}
+
+/* Save is the one committing action in the panel, so it is the one button. */
+.a-save {
+  align-self: flex-start;
+  min-width: 8rem;
+}
+
+/*
+ * An empty tab. Quiet, but present — the whole point is that the page
+ * looks answered rather than broken.
+ */
+.a-empty {
+  margin: 0;
+  padding: 1.4rem 0.2rem;
+  color: var(--p-soft);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* ── full screens ────────────────────────────────────────────────────── */
+
+/*
+ * A screen, not a sheet. Covers the pond entirely, scrolls when it has to,
+ * and gives a text field the whole viewport to share with the keyboard.
+ */
+.p-view {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--p-surface);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/*
+ * The prototype's own padding, and its own reason: 20px at the sides rather
+ * than 16, because at 16 the text runs to the bezel and every screen reads
+ * as crowded. The top clears the notch; the bottom clears the home
+ * indicator, and adds nothing where there is none.
+ */
+.p-view-pad {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: max(46px, calc(env(safe-area-inset-top) + 22px)) 20px
+    calc(22px + env(safe-area-inset-bottom, 0px));
+  gap: 0.75rem;
+  /*
+   * ══ A PHONE SCREEN STAYS PHONE-SHAPED ══
+   * These are laid out for a thumb, and on a laptop they stretched to
+   * whatever the window was: a name field 760px wide, a nav title
+   * marooned in the middle of a monitor, and a "Save changes" button the
+   * width of a desk. Nothing about that is more usable — it is just
+   * unconstrained.
+   *
+   * The cap is above every phone this is built for, so no phone can
+   * reach it and nothing measured at 320 or 390 moves. It only ever
+   * takes effect on the screens this was never designed for, where
+   * looking deliberate beats filling the space.
+   */
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+}
+
+/* Puts the actions at the foot of the screen rather than under the text. */
+.p-spacer {
+  flex: 1;
+  min-height: 0.4rem;
+}
+
+.p-nav-btn {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  cursor: pointer;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.72rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--p-ink);
+  background: var(--quiet);
+}
+
+.p-nav-btn:active {
+  background: var(--quiet-shadow);
+}
+
+/* ── the studio ───────────────────────────────────────────────────────── */
+
+/*
+ * A workbench, top to bottom: the duck, the things that act on it, the tabs,
+ * the panel, and one way forward. The panel is the only part that scrolls,
+ * so the duck you are decorating never leaves the screen.
+ */
+.p-view > .p-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  justify-content: space-between;
+}
+
+/*
+ * Utilities, right-aligned under the duck. Right rather than left because
+ * they are the LESS common thing on the screen: the eye starts at the duck
+ * and reads down, and the destructive one should not be the first thing
+ * under a thumb resting at the edge.
+ */
+.p-utils {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/*
+ * On a surface, an icon button needs the QUIET background rather than the
+ * surface one — otherwise the chip is the same colour as the screen and
+ * only the glyph shows, which reads as three loose marks rather than three
+ * controls. The zoom buttons keep the surface colour because they sit on
+ * water, where surface-on-blue is the contrast that works.
+ */
+.p-utils .p-icon-btn {
+  background: var(--quiet);
+}
+
+.p-utils .p-icon-btn:active {
+  background: var(--quiet-shadow);
+}
+
+.p-tabs {
+  display: flex;
+  gap: 5px;
+}
+
+/* The panel is what gives; everything else keeps its height. */
+.p-panel {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+
+.p-foot {
+  flex: 0 0 auto;
+}
+
+/* A label for a group of controls. Quiet, close to what it names. */
+.p-mini {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+  margin: 0.85rem 0 0.45rem;
+}
+
+.p-panel > .p-mini:first-child {
+  margin-top: 0;
+}
+
+.p-hint {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  color: var(--p-soft);
+  text-align: center;
+  margin: 0.4rem 0 0;
+}
+
+/*
+ * The slot row: pick a part of the duck, see what goes there.
+ *
+ * Scrolls sideways rather than wrapping — six labels of uneven width wrap
+ * into a ragged two-line block that reads as a paragraph of buttons, and
+ * the row is short enough that a thumb reaching the end is no hardship.
+ */
+.p-slotrow {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+  margin-bottom: 7px;
+}
+
+.p-slot {
+  all: unset;
+  /* Below the reset, or it does not survive it. */
+  clip-path: var(--px-corner);
+  cursor: pointer;
+  box-sizing: border-box;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  min-height: var(--tap);
+  display: inline-grid;
+  place-items: center;
+  padding: 0 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--quiet);
+  color: var(--p-ink);
+}
+
+.p-slot.on {
+  background: var(--p-ink);
+  color: var(--p-surface);
+}
+
+/* ── the bumpers, circling ────────────────────────────────────────────── */
+
+/*
+ * The ring takes whatever height is going. It is the subject of this
+ * screen, so it gets the space between the sentence above it and the
+ * buttons below rather than a fixed size that is wrong on two phones out
+ * of three.
+ */
+.p-orbit {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * Drawn at 620 and shown at up to 290: scaled DOWN, which is the one
+ * direction a pixel sprite survives. `pixelated` keeps the edges hard on
+ * the way.
+ */
+.p-orbit-art {
+  width: 100%;
+  max-width: 290px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+/*
+ * The same people, as a sentence. The ring is something to enjoy; a line of
+ * names is something to READ, and a moving label is neither.
+ */
+.p-orbit-who {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--p-soft);
+  /*
+   * Clear of the ring. The lowest name sits near the bottom edge of the
+   * canvas, so with no gap the sentence reads as a fifth label rather than
+   * as a caption for all four.
+   */
+  margin: 0.35rem 0 0;
+}
+
+.p-orbit-who[hidden] {
+  display: none;
+}
+
+/*
+ * A screen waiting for its moment.
+ *
+ * Laid out but not seen and not touchable: the camera measures how much
+ * water this is about to cover so it can centre the duck in what remains,
+ * and `hidden` would take it out of layout entirely and answer that
+ * question with zero.
+ */
+.p-screen.p-waiting {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/*
+ * A hint that belongs to the field above it — "free", "taken". Sits with
+ * the counter rather than under the whole form, because it is an answer
+ * about THIS box and needs to read as one.
+ */
+.p-hint-inline {
+  margin: 0.15rem 0 0;
+  text-align: left;
+}
+
+.p-hint-good {
+  color: var(--p-ink);
+}
+
+/*
+ * The ring, in a header slot. Smaller than the screen that was only about
+ * the ring: here it sits where every other screen puts a still duck, so it
+ * takes about the space that picture would have taken and leaves the first
+ * field on screen with the keyboard up.
+ */
+.p-orbit-compact {
+  flex: 0 0 auto;
+}
+
+.p-orbit-compact .p-orbit-art {
+  max-width: 176px;
+}
+
+/*
+ * ══ YOUR DUCK'S SETTINGS ARE YOUR CARD'S SETTINGS ══
+ * For a keeper, this row is the durable way back: `pond_keeper` lasts an
+ * hour, and the private link that reached this screen lasts as long as
+ * their tenure does. It only appears when the server agrees this duck is
+ * some card's `keeper_duck`, so it is absent for almost everybody.
+ *
+ * Below "Redecorate" and above "Take my duck out": it is a heavier thing
+ * than changing a colour and a lighter thing than deleting a duck, and
+ * that is exactly the order the column reads in.
+ */
+.p-cardrow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--p-rule, rgba(11, 61, 82, 0.15));
+}
+
+.p-cardrow[hidden] {
+  display: none;
+}
+
+/*
+ * ══ A PANEL THAT FLOATS, RATHER THAN ONE THAT RISES ══
+ * The say composer used to be a bottom sheet, and a bottom sheet plus a
+ * keyboard is a bad trade for a screen you are not really filling in: the
+ * sheet comes up with the keys, the pond above it is crushed to a strip,
+ * and the whole screen reads as having been shoved upward.
+ *
+ * Anchored to the TOP instead. The keyboard slides up underneath it and
+ * nothing moves, because nothing below it has to give way. It sits just
+ * under the HUD so the count and the mark stay readable, and the water is
+ * still visible all round it — which is the point, since what you are
+ * writing is going to float on that water in a moment.
+ *
+ * No dithered edge: that edge is a waterline and belongs to a panel that
+ * MEETS the water at the bottom of the screen. This one has water on all
+ * four sides, so it gets the pixel corners every other chip in the pond
+ * has.
+ */
+.p-float {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  /* Clear of the HUD, which sits at the same safe-area offset. */
+  top: calc(max(12px, env(safe-area-inset-top)) + var(--tap) + 16px);
+  /* Centred and capped, so it is a panel on a tablet rather than a band. */
+  margin-inline: auto;
+  max-width: 420px;
+  z-index: 40;
+}
+
+.p-float-body {
+  background: var(--p-surface);
+  clip-path: var(--px-corner);
+  padding: 1rem 1.1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/*
+ * It arrives the way the sheet did, and stops moving the way everything
+ * else in the pond stops moving: in steps.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .p-float {
+    animation: p-float-in 0.2s steps(4, end);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-float {
+    animation: p-fade 0.16s steps(3, end);
+  }
+}
+
+@keyframes p-float-in {
+  /* Down and in, a short distance: it is arriving over the water rather
+     than climbing out of it, so it does not travel a screen's height. */
+  from { transform: translateY(-14%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/*
+ * ══ AND IT HAS TO FIT ABOVE A KEYBOARD ON A SMALL PHONE ══
+ * A 320x568 screen keeps about 352px once an iOS keyboard is up, and the
+ * panel at its comfortable size ends at 355 — three pixels of "Say it"
+ * behind the keys, which is the kind of margin that is fine on a bench and
+ * wrong on somebody's phone. Measured, not guessed: the field clears the
+ * keyboard either way; it is the BUTTON that was at risk, and a button you
+ * have to dismiss the keyboard to reach is a button people do not find.
+ */
+@media (max-height: 620px) {
+  .p-float {
+    top: calc(max(8px, env(safe-area-inset-top)) + var(--tap) + 8px);
+  }
+
+  .p-float-body {
+    padding: 0.8rem 0.9rem 0.9rem;
+    gap: 0.45rem;
+  }
+}

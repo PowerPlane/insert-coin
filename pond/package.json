@@ -1,0 +1,30 @@
+{
+  "name": "insert-coin-pond",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The pond \u2014 ducky.davidyang.work, the web half of the BY-002 Insert Coin card",
+  "type": "module",
+  "scripts": {
+    "deploy": "vercel --prod",
+    "db:apply": "tsx tools/db-apply.ts",
+    "db:verify": "tsx tools/db-verify.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "cards:check": "tsx tools/check-card.ts",
+    "build:client": "node tools/build-client.mjs",
+    "stickers": "python3 tools/gen-stickers.py",
+    "verify": "npm run typecheck && npm run build:client && npm test",
+    "ship": "npm run verify && vercel deploy --prod --yes"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.28.2",
+    "jsdom": "^29.1.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.4"
+  }
+}

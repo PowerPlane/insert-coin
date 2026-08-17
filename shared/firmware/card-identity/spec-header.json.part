@@ -1,0 +1,63 @@
+{
+  "$comment": [
+    "THE PINNED SPECIFICATION for a card's identity. This file is the",
+    "contract between two independent implementations: card_identity.c,",
+    "which runs on the ATtiny1616 and writes the tag, and the host side in",
+    "pond/src/card/, which records the same card in cards.csv and verifies",
+    "its claims.",
+    "",
+    "If those two disagree by one bit of ordering, EVERY card is unknown to",
+    "the server at once - and it fails quietly, because an unknown serial is",
+    "designed to degrade rather than error. So neither side is tested",
+    "against the other. Both are tested against this file.",
+    "",
+    "Regenerate with: shared/firmware/card-identity/regenerate.sh",
+    "Never edit the vectors by hand - that would make this agree with",
+    "whatever is currently broken."
+  ],
+  "version": 1,
+
+  "serial": {
+    "input": "SIGROW.SERNUM, all ten bytes, in the order the chip presents them",
+    "derivation": "crockford40(SipHash-2-4(SERIAL_KEY, sernum) & 0xFFFFFFFFFF)",
+    "serial_key_ascii": "ducky.serial.v1",
+    "serial_key_ascii_note": "15 characters; the 16th key byte is 0x00 - see serial_key_hex for the exact bytes",
+    "serial_key_hex": "6475636b792e73657269616c2e763100",
+    "serial_key_is_public": true,
+    "alphabet": "0123456789ABCDEFGHJKMNPQRSTVWXYZ",
+    "length": 8,
+    "bit_order": "most significant group first, 5 bits per character",
+    "why_hashed_not_sliced": [
+      "BUILD-PLAN originally said 'the low 40 bits' of SERNUM. SERNUM is lot",
+      "number, wafer number and die coordinates - a hundred cards from one",
+      "reel share a lot, so any fixed 40-bit slice is partly CONSTANT across",
+      "the batch. The '4 in a billion' collision estimate assumes 40 uniform",
+      "bits and would not have been true of the thing it described.",
+      "Hashing all ten bytes uses every bit of entropy the chip has and",
+      "makes that estimate honest. See the 'reel sibling' vectors below:",
+      "two chips one die coordinate apart produce unrelated serials."
+    ]
+  },
+
+  "token": {
+    "purpose": "the card SIGNS its claim - an unseen counter is not a credential",
+    "message": "the 8 ASCII serial characters, then the counter as 2 bytes LITTLE-ENDIAN; 10 bytes, no separator, no NUL",
+    "derivation": "hex(SipHash-2-4(FIRMWARE_SECRET, message) & 0xFFFFFFFFFF)",
+    "length": 10,
+    "case": "lowercase",
+    "bit_order": "most significant nibble first",
+    "test_key_hex": "000102030405060708090a0b0c0d0e0f",
+    "test_key_is_not_the_real_secret": "FIRMWARE_SECRET never enters this repository; see secrets.h.example"
+  },
+
+  "counter": {
+    "width_bits": 16,
+    "url_form": "4 lowercase hex characters",
+    "rule": "increment EEPROM FIRST, then write the NDEF - the other order lets a consumed counter reappear, which is the one outcome that breaks the scheme"
+  },
+
+  "url": {
+    "template": "https://ducky.davidyang.work/?d=<digit>&c=<serial>&g=<counter>&t=<token>",
+    "digit_is_first": "so the one byte the MCU patches per fortune never moves"
+  },
+

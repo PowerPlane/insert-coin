@@ -1,0 +1,79 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "outputDirectory": "public",
+  "crons": [
+    {
+      "path": "/api/sweep",
+      "schedule": "0 4 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/shell"
+    },
+    {
+      "source": "/d/:slug",
+      "destination": "/api/duck-page?slug=:slug"
+    },
+    {
+      "source": "/e/:key",
+      "destination": "/api/duck-edit?key=:key"
+    },
+    {
+      "source": "/pondkeeper",
+      "destination": "/api/pondkeeper"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/router?__path=:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(app\\.js|app\\.css)",
+      "headers": [
+        {
+          "key": "cache-control",
+          "value": "no-cache"
+        },
+        {
+          "key": "x-content-type-options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(png|svg|webp|woff2)",
+      "headers": [
+        {
+          "key": "x-content-type-options",
+          "value": "nosniff"
+        },
+        {
+          "key": "cache-control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/pondkeeper",
+      "headers": [
+        {
+          "key": "x-robots-tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/e/(.*)",
+      "headers": [
+        {
+          "key": "x-robots-tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    }
+  ]
+}
