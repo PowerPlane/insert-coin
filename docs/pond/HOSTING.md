@@ -1,4 +1,4 @@
-# Hosting: Vercel + Cargo DNS
+# The pond — hosting
 
 `ducky.davidyang.work` runs on Vercel. `davidyang.work` stays exactly where it
 is, on Cargo — nothing about the apex changes, and no nameservers move.

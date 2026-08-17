@@ -1,8 +1,12 @@
-# The pond camera
+# The pond — the camera
 
-What was built, and why each part is the way it is. This describes the
-implementation in `pond/tools/prototype-flow.html`; where an older draft of
-this file described something else, the code and this page win.
+How the pond grows past the edge of the screen: zoom, pan, and the whistle
+that finds your own duck.
+
+What was built and why each part is the way it is. The shipped
+implementation is `pond/src/client/pond-view.ts` and `camera.ts`; the
+prototype is where it was worked out. Where this page and the code
+disagree, the code wins.
 
 ---
 

@@ -1,4 +1,4 @@
-# Provisioning: every card is identical
+# The pond — provisioning
 
 **There is no per-card data.** Flash the same binary onto every board, put a
 battery in once, tap once to check. The card gives itself an identity.

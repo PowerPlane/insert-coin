@@ -1,10 +1,12 @@
-# The admin screen
+# The pond — the admin screen
 
 **What this is:** the design record for `/pondkeeper`, the one page David uses
-to run the pond. Written before the rebuild so the reasoning is on paper
-rather than only in the code.
+to run the pond. Written as a plan before the rebuild, and kept as the record
+of why the screen works the way it does.
 
-**Who reads the screen:** one person, on a phone, in English.
+**Built and shipped, 17 Aug 2026.** Everything under *Decisions* is live.
+
+**Who reads the screen:** one person, on a phone and on a laptop, in English.
 
 ---
 
@@ -36,10 +38,12 @@ Six jobs, in the order they come up:
 
 ---
 
-## What is wrong with it now
+## What was wrong
 
-Measured on the real bundle at 393 x 852 (iPhone 15), against a fixture of
-30 cards and 40 ducks — roughly a third of the real batch.
+All of this was measured on the real bundle at 393 x 852 (iPhone 15) against
+a fixture of 30 cards and 40 ducks — roughly a third of the real batch. It is
+written in the present tense because that is how it was found; every item is
+now fixed.
 
 ### It is too long to use
 
@@ -163,7 +167,16 @@ things that cannot be undone  (delete)
 Destructive actions keep their existing confirmations: two taps for a duck,
 typing the serial to empty a card.
 
-### 7. Sort so the newest is first
+### 7. On a laptop, one left edge
+
+Above 760px the rows flow into as many columns as fit, and the tabs and the
+search sit together on a single toolbar row. That last part was learned the
+hard way: capping the controls without giving them a shared parent left each
+one centred independently, so the page ended up with three widths on three
+different left edges and looked worse than before. The toolbar is one
+element so it inherits the container's edge once.
+
+### 8. Sort so the newest is first
 
 Ducks and contacts newest first — you are usually looking at what just
 happened. Cards by serial, so the order matches nothing external and is
@@ -189,9 +202,15 @@ therefore stable and predictable.
 ## How this gets checked
 
 - Screenshots of all three tabs, an unfolded panel and an active search, at
-  393 x 852, against the 30-card fixture — not a handful of rows.
+  393 x 852 and 1512 x 900, against the 30-card fixture — not a handful of
+  rows.
 - `npm run verify` (types, bundle, tests).
 - A Codex review afterwards.
+
+All three were done. The Ducks tab went from 12.5 phone screens to 7.3, and
+the review found four defects — the most serious a stale contact scope that
+could have been shared wider than the screen offered — all fixed before the
+merge.
 
 The bench lives at `pond/tools/admin-harness.html`. Serve the `pond`
 directory and open it:

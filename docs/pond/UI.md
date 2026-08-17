@@ -4,7 +4,7 @@ The rules every screen in `ducky.davidyang.work` follows, and a log of what
 changed. If a new screen disagrees with something here, one of the two is
 wrong — fix it before shipping, don't add a special case.
 
-Canonical implementation: `pond/tools/prototype-flow.html` (review prototype)
+Canonical implementation: `pond/src/client/` and `pond/public/app.css`. `pond/tools/prototype-flow.html` is the signed-off reference the rules came from, kept for comparison
 and `pond/src/client/` (the real thing). Both must agree.
 
 ---

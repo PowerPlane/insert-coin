@@ -1,4 +1,4 @@
-# The Pond — the flow
+# The pond — every screen
 
 Ten screens. Everything from the tap to coming back a month later.
 

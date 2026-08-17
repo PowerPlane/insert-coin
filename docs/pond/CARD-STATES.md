@@ -1,4 +1,4 @@
-# Every way in, and what happens
+# The pond — card and keeper states
 
 A map of the card and keeper state machine, written because it has been
 wrong five separate times in one week and each time the fix was correct
