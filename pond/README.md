@@ -86,8 +86,10 @@ once with foreign keys on, once with them off.
 
 ## Related
 
-- `docs/pond/PROGRESS.md` — the tracker. Start here.
-- `docs/pond/BUILD-PLAN.md` — every decision, and the order to build in
+- `docs/pond/README.md` — **start here.** What the words mean, and which
+  document answers which question.
+- `docs/pond/CARD-STATES.md` — how a card decides who owns it
+- `docs/pond/PROVISIONING.md` — making the cards
 - `docs/pond/HOSTING.md` — Vercel, Turso, and the CNAME at Cargo
 - `docs/pond/SECURITY.md` — threat model
 - `variants/business-card-v1/firmware/production-pond/` — the firmware that

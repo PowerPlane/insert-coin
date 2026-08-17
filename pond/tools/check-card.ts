@@ -7,7 +7,6 @@
  * answers, without a programmer and without unwrapping anything:
  *
  *   * is the serial well-formed,
- *   * has this card been recorded in cards.csv,
  *   * and — the one that cannot be seen by eye — was it flashed with the
  *     REAL signing key, or with the all-zero placeholder from
  *     secrets.h.example?
@@ -21,7 +20,6 @@
  * Set CARD_SECRET to check against the real key as well.
  */
 
-import { readFileSync } from "node:fs";
 import { isSerial, verifyClaim } from "../src/card/identity.js";
 
 const input = process.argv[2];
@@ -84,17 +82,6 @@ if (bad === 0) {
     say(verifyClaim(key, serial, counter, token), "token verifies against CARD_SECRET");
   } else {
     console.log("  --    set CARD_SECRET to also verify against the real key");
-  }
-
-  // ── is it recorded? ─────────────────────────────────────────────────
-  const csv = process.env.CARDS_CSV ?? "../variants/business-card-v1/cards.csv";
-  try {
-    const known = readFileSync(csv, "utf8").includes(`${serial},`);
-    say(known, known
-      ? `recorded in ${csv}`
-      : `NOT in ${csv} — its ducks would be unattributed. Run record-card.sh.`);
-  } catch {
-    console.log(`  --    ${csv} not found; skipping the recorded check`);
   }
 }
 

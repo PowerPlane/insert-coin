@@ -61,7 +61,7 @@ reasoning in them is sometimes still the answer to "why is it like this".
 ```bash
 cd pond
 npm install
-npm run verify      # types, then bundle, then 449 tests
+npm run verify      # types, then the bundle, then the whole test suite
 ```
 
 There is no dev server. Two ways to see the interface:
@@ -91,7 +91,7 @@ pond/
   src/client/   The pond, the studio, the admin. Canvas sprites and rendering.
   public/       Served straight to the world by the CDN. Anything dropped in
                 here is published, so bench pages live in tools/ instead.
-  test/         449 tests. The contact-isolation ones are load-bearing.
+  test/         The suite. The contact-isolation ones are load-bearing.
   tools/        The prototype, the admin bench, the copy extractor and the
                 sprite generators.
 ```

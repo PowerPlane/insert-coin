@@ -1250,11 +1250,6 @@ a.p-btn {
   cursor: default;
 }
 
-.p-card-btn-hot {
-  background: var(--duck);
-  color: var(--duck-text);
-}
-
 .p-card-btn-danger {
   background: var(--danger);
   color: var(--danger-text);
@@ -1552,32 +1547,6 @@ h2:focus-visible {
 }
 
 /*
- * ── the admin's provenance ───────────────────────────────────────────── */
-
-/*
- * "from <keeper> · <serial>", as a control.
- *
- * Set apart from the meta line above it so it does not read as a third
- * comma-separated fact. It is the one thing on a duck row that leads
- * somewhere.
- */
-.a-from {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-top: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.a-from-label {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--p-soft);
-}
-
-/*
  * Showing one card's ducks. Same shape as the pond's whistle bar — what
  * you are looking at, and the way out of it — because it is the same idea
  * and the admin should not invent a second vocabulary for it.
@@ -1838,21 +1807,6 @@ h2:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/*
- * A quiet, undramatic action with its own explanation.
- *
- * Taking back a contact is not the same kind of act as taking a duck out,
- * so it does not get the rule above it or the red on it. No top border on
- * purpose: a second line here would read as a second danger zone, and
- * would make the safe way out look as frightening as the drastic one.
- */
-.p-quiet-act {
-  margin-top: 1.4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
 }
 
 .p-danger {
@@ -2908,20 +2862,6 @@ a.p-chip {
 
 .p-orbit-who[hidden] {
   display: none;
-}
-
-/*
- * Two equal alternatives, side by side. Redecorate and Settings are the
- * same KIND of thing — neither is the way forward — and stacking them
- * full-width under the primary reads as three steps in a sequence.
- */
-.p-actions-pair {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.p-actions-pair > * {
-  flex: 1;
 }
 
 /*

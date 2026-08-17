@@ -44,31 +44,3 @@ export interface PondDuck {
   /** "via Sam", or nothing at all. */
   keeper: string | null;
 }
-
-/** The duck being built or edited locally. */
-export interface DuckDraft {
-  fortune: number;
-  tint: number;
-  stickers: Sticker[];
-  paint: Uint8Array;
-  name: string;
-  message: string;
-  contact: string;
-  /** Only meaningful when `contact` is non-empty. */
-  scope: "david" | "keeper" | "keeper_and_david";
-}
-
-export type ScreenName =
-  | "arrival"
-  | "reveal"
-  | "studio"
-  | "sign"
-  | "contact"
-  | "release"
-  | "keep"
-  | "pond"
-  | "mine"
-  | "manage"
-  | "visitor"
-  | "stale"
-  | "offline";

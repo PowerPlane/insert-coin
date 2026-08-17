@@ -58,8 +58,6 @@ export const SHAPES = {
   cloud: ["...ppp.....", "..ppppppp..", ".ppppppppp.", "ppppppppppp", ".pp.ppp.pp."],
 } as const;
 
-export type ShapeName = keyof typeof SHAPES;
-
 export interface SparklePixel {
   /** World position, already offset from the shape's centre. */
   x: number;

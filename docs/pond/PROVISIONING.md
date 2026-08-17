@@ -44,38 +44,43 @@ merge two rows if it ever happens.
 
 ---
 
-## Why the serials still get recorded
+## Cards add themselves
 
-The obvious version of this is: the card shows up with `&c=<serial>`, the
-server has never seen it, so it registers it. Tempting, and wrong on its own —
-`&c=` is typed text like everything else in the URL, so anyone could conjure
-cards that never existed. Phantom rows are not dangerous (a card with no ducks
-does nothing) but they make the Cards tab useless for the one question it has
-to answer: *is this one of mine?*
+There used to be a list. The flashing script appended each serial to a
+`cards.csv`, that file was imported into the database, and the server
+refused any serial it had not been told about.
 
-So the flashing script appends each serial to `cards.csv` as it goes, and the
-server only accepts serials it already knows. No extra manual work — the
-programmer is reading the chip anyway.
+The reasoning was sound as far as it went: `&c=` is typed text like
+everything else in the URL, so without a gate anyone could invent cards
+that never existed, and the Cards tab would fill with phantoms.
+
+But the serial never travels alone. Every tag also carries `&t=`, which is
+a signature over the serial and the counter made with `CARD_SECRET` — a
+key only the firmware has. So a card proves who it is on its very first
+tap, before it has ever been armed.
+
+The list was guarding a door the signature already locks, so the gate moved
+from *"is this serial on a list I keep"* to *"is this signature real"*.
+That is a stronger question, and it gets asked automatically.
+
+Two things got better rather than merely easier:
+
+- A card flashed with the all-zero placeholder key signs with zeros, never
+  verifies, and so never registers. That mistake now shows up as a card
+  that simply never appears, instead of sitting quietly in the pond with a
+  forgeable token.
+- The database learns from the cards themselves, so there is no file left
+  to drift out of step with reality.
 
 ```bash
 # one card, start to finish
 export PATH="$HOME/.platformio/penv/bin:$PATH"
-pio run -e production-pond -t upload           # same binary every time
-../tools/record-card.sh "the one for Sam"      # reads SIGROW, appends cards.csv
-
-# once the batch is done
-cd ../../../pond && npm run cards:import -- ../variants/business-card-v1/cards.csv
+pio run -e production-pond -t upload   # the same binary every time
+# battery in, tap once — the card registers itself
 ```
 
-`record-card.sh` reads `sernum` with **avrdude**, which ships with
-PlatformIO's atmelmegaavr platform and knows it as a named memory on UPDI
-parts — so there is nothing extra to install. (An earlier draft called
-`pymcuprog`, which is *not* bundled. Corrected after trying it.)
-
-It records the derived serial **and** the raw SERNUM. That redundancy is
-the point: `cards:import` re-derives from the SERNUM column and refuses the
-whole file if any row disagrees, which is the only automatic check that the
-flashing host and the firmware still agree.
+`variants/business-card-v1/cards.csv` is still on disk. It is a record of
+what was flashed and when; nothing reads it any more.
 
 ---
 
@@ -94,10 +99,9 @@ flashing host and the firmware still agree.
    cd pond && npm run cards:check -- "<the URL>"
    ```
 
-   It checks the shape, whether the card is in `cards.csv`, and the one
-   thing no amount of looking will reveal: whether the card was flashed
-   with the real signing key or with the all-zero placeholder from
-   `secrets.h.example`.
+   It checks the shape of every part, and the one thing no amount of
+   looking will reveal: whether the card was flashed with the real signing
+   key or with the all-zero placeholder from `secrets.h.example`.
 
 Roughly two minutes a card once you have a rhythm. A hundred cards is an
 evening.
@@ -163,7 +167,10 @@ predicted this shape; the real chips confirmed it.
 
 ### And the second card immediately earned its keep
 
-`record-card.sh` FAILED on card 2, and the reason is worth writing down:
+(`record-card.sh` no longer exists — it maintained the card list that cards
+now replace by registering themselves. The lesson below outlived it.)
+
+The script FAILED on card 2, and the reason is worth writing down:
 **avrdude does not zero-pad.** A byte below 0x10 prints as `0x6`, not
 `0x06`. The parser stripped `0x` and concatenated, producing nineteen
 characters instead of twenty.
