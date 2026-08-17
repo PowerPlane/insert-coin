@@ -279,8 +279,23 @@ export function releaseFlow(opts: FlowOptions): void {
       options.push(["keeper_and_david", t("scope.04", { keeper: opts.keeper })]);
     }
 
+    /*
+     * ══ ONE OPTION IS NOT A CHOICE ══
+     * A card with no keeper has exactly one scope — "Only David" — and the
+     * picker rendered it anyway: a labelled group, one chip, already on,
+     * and nothing to press. It looked like a control, could not be
+     * operated, and sat directly above a note that said the same thing in
+     * words. That is the COMMON case, not an edge one: every card starts
+     * without a keeper name.
+     *
+     * So the picker appears only when there is something to pick. The
+     * scope still defaults to "david" — the narrowest, and the only one
+     * the screen promises — so nothing about what gets sent changes.
+     */
+    const choosable = options.length > 1;
+
     const syncScope = (): void => {
-      const given = draft.contact.trim().length > 0;
+      const given = draft.contact.trim().length > 0 && choosable;
       // With no contact there is nothing to scope. Hiding it is honest:
       // choosing "nobody" IS leaving this empty.
       scopeLabel.hidden = !given;

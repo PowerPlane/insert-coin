@@ -60,6 +60,7 @@ describe("繁體中文", () => {
       (k) => ENGLISH[k] === ZH_HANT[k as keyof typeof ZH_HANT],
     );
     expect(identical.sort()).toEqual([
+      "contact.05", // you@example.com — an address is an address
       "keeper.05", // Sam — an example name
       "keeper.13", // English — a language names itself
       "keeper.14", // 繁體中文 — likewise

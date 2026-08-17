@@ -225,11 +225,35 @@ export const EN = {
   "sign.08": "Everyone who taps a card can see your name and message.", // Privacy note
   "sign.09": "Next", // Button
   "contact.01": "Optional", // Body
-  "contact.02": "Want David to reply?", // Heading
-  "contact.03": "Skip this and your duck still goes in.", // Body
-  "contact.04": "Email, phone, @handle, or address", // Field label
-  "contact.05": "@yourhandle or 12 Somewhere St, Brooklyn NY 11211", // Placeholder
-  "contact.06": "Only David sees this. It is not shown in the pond, and it is deleted when you take your duck out.", // Privacy note
+  /*
+   * ══ A QUESTION THE SCREEN CANNOT ANSWER ══
+   * The heading was "Want David to reply?" — and there is no yes on this
+   * screen, only a field and a release button. A question with no answer
+   * control makes somebody look for the control. It also promised the
+   * wrong half: David may reply, get in touch, or post a card, and only
+   * one of those is "reply".
+   *
+   * So it says what to do instead of asking whether you want to.
+   */
+  "contact.02": "Leave a way to reach you", // Heading
+  "contact.03": "Your duck goes in either way.", // Body
+  /*
+   * The label named the formats and the placeholder then named them
+   * again — one thought printed twice, and the second printing was inside
+   * the box you were supposed to type in. The label lists what is
+   * accepted; the placeholder shows ONE example of it.
+   */
+  "contact.04": "Email, phone, handle or address", // Field label
+  "contact.05": "you@example.com", // Placeholder
+  /*
+   * ══ ONE PRIVACY SENTENCE, ALL THREE PROMISES ══
+   * This and the postcard line both explained privacy, in different
+   * words, one after the other. Merged — but carefully: the deletion
+   * clause is THE DELETION PROMISE the `ducks_before_delete` trigger
+   * exists to keep, and losing it while tidying would leave the trigger
+   * enforcing something the screen no longer says.
+   */
+  "contact.06": "Only David sees this. It never appears in the pond, and it goes when your duck does.", // Privacy note
   "contact.07": "Release my duck", // Button
   /*
    * ══ RETIRED ══
@@ -240,7 +264,15 @@ export const EN = {
    * everything after it does not shift, and so COPY.md stays readable.
    */
   "contact.08": "Skip contact", // Button — no longer rendered
-  "contact.09": "Leave an address if you want a postcard. David will not share it.", // Body
+  /*
+   * ══ THE OFFER, AND THE HEDGE IN IT ══
+   * The causal link is the whole point: an ADDRESS is what might get you
+   * a postcard, and nothing else on the list will. "If you want a
+   * postcard" read as a guarantee; "might" is what David actually
+   * promises, and over-promising a physical object he posts by hand is
+   * the one thing this line must not do.
+   */
+  "contact.09": "Leave a postal address and David might send a postcard.", // Body
   "pond.01": "14 ducks", // Button
   "pond.02": "David's Pond — who made this. Opens davidyang.work in a new tab.", // Screen reader
   "pond.41": "David's Pond", // The mark on the water
@@ -513,14 +545,14 @@ export const ZH_HANT: Record<StringKey, string> = {
 
   // ── the contact, and what it is for ───────────────────────────────────
   "contact.01": "可以不填",
-  "contact.02": "想讓 David 回覆你嗎？",
-  "contact.03": "跳過也沒關係，鴨子一樣會下水。",
-  "contact.04": "Email、電話、@帳號或地址",
-  "contact.05": "@yourhandle 或 12 Somewhere St, Brooklyn NY 11211",
-  "contact.06": "只有 David 看得到。不會出現在池塘裡，你把鴨子帶走時也會一起刪掉。",
+  "contact.02": "留下聯絡方式",
+  "contact.03": "不留也沒關係，鴨子一樣會下水。",
+  "contact.04": "Email、電話、帳號或地址",
+  "contact.05": "you@example.com",
+  "contact.06": "只有 David 看得到。不會出現在池塘裡，鴨子帶走時也會一起刪掉。",
   "contact.07": "放我的鴨子下水",
   "contact.08": "略過聯絡方式",
-  "contact.09": "想收到明信片的話，可以留下地址。David 不會把地址給別人。",
+  "contact.09": "留下地址的話，David 可能會寄張明信片給你。",
 
   // ── the pond ──────────────────────────────────────────────────────────
   "pond.01": "14 隻鴨子",
