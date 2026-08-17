@@ -3712,7 +3712,7 @@ function releaseFlow(opts) {
       }
     });
     const postcard = el("p", "p-postcard");
-    const stamp = el("span", "p-postcard-stamp");
+    const stamp = el("span", "p-postcard-stamp", "💌");
     stamp.setAttribute("aria-hidden", "true");
     postcard.append(stamp, document.createTextNode(t("contact.09")));
     wrap2.append(input.wrap, scopeLabel, scopes, postcard, el("p", "p-note", t("contact.06")));

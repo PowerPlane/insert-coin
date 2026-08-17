@@ -330,7 +330,16 @@ export function releaseFlow(opts: FlowOptions): void {
      * get, the other what happens to what you give.
      */
     const postcard = el("p", "p-postcard");
-    const stamp = el("span", "p-postcard-stamp");
+    /*
+     * 💌 rather than the drawn stamp square it replaces. The square was a
+     * stamp only if you already knew it was meant to be one; the emoji
+     * says post AND says it warmly, which is the tone of the offer.
+     *
+     * `aria-hidden`, because the sentence beside it already carries the
+     * whole meaning. Without it a screen reader opens the line with "love
+     * letter", which is not what is being offered.
+     */
+    const stamp = el("span", "p-postcard-stamp", "💌");
     stamp.setAttribute("aria-hidden", "true");
     postcard.append(stamp, document.createTextNode(t("contact.09")));
 
