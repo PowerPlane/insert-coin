@@ -700,10 +700,37 @@ function cardRow(c: AdminCard, show: (card: string | null) => void): HTMLElement
    * printing a bare number: it is the mark four blows have to beat, and
    * on its own it is unreadable.
    */
-  const state = c.keeper || (c.claimed ? "kept · no name" : "not claimed");
-  row.append(el("p", "a-row-meta",
+  /*
+   * ══ WHO HAS IT, ON ITS OWN LINE ══
+   * Making the serial the heading was right; flattening everything else
+   * into one uppercase 0.62rem run-on was not. "KEPT · NO NAME · FIRST
+   * TEST CARD · EN · AUG 12 · CLAIM > 0" put the keeper's name — the one
+   * thing you are usually looking for — in the middle of a sentence, in
+   * the same size and colour as the date and a debugging counter, and
+   * wrapped it. David: "make sure it is easier to read the keeper name /
+   * status".
+   *
+   * So there are three tiers now, and they answer three questions in the
+   * order they get asked: WHICH card (the serial), WHOSE it is (this),
+   * and everything incidental (below, dimmed).
+   *
+   * A real name and a stand-in read differently on purpose. "Kept · no
+   * name" and "Not claimed" are STATES, not names, so they stay quiet;
+   * an actual keeper is set solid. Scanning for "who has this card"
+   * should not turn up a row of placeholders shouting as loudly as the
+   * answer.
+   */
+  const named = Boolean(c.keeper);
+  const who = el(
+    "p",
+    named ? "a-row-who" : "a-row-who a-row-who-none",
+    c.keeper || (c.claimed ? "Kept · no name" : "Not claimed"),
+  );
+  row.append(who);
+
+  row.append(el("p", "a-row-meta a-dim",
     [
-      state, c.label, c.lang ?? "", day(c.created),
+      c.label, c.lang ?? "", day(c.created),
       /*
        * The claim mark rides in the meta line rather than taking a line of
        * its own. On its own row it cost a line on all hundred cards to

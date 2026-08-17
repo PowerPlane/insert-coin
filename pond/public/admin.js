@@ -455,12 +455,17 @@ function cardRow(c, show) {
   if (!c.claimed) head.append(el("span", "a-badge", "free"));
   if (c.disabled) head.append(el("span", "a-badge a-badge-hot", "off"));
   row.append(head);
-  const state = c.keeper || (c.claimed ? "kept · no name" : "not claimed");
+  const named = Boolean(c.keeper);
+  const who = el(
+    "p",
+    named ? "a-row-who" : "a-row-who a-row-who-none",
+    c.keeper || (c.claimed ? "Kept · no name" : "Not claimed")
+  );
+  row.append(who);
   row.append(el(
     "p",
-    "a-row-meta",
+    "a-row-meta a-dim",
     [
-      state,
       c.label,
       c.lang ?? "",
       day(c.created),

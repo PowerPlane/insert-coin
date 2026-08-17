@@ -2179,6 +2179,31 @@ h2:focus-visible {
     align-items: start;
     gap: 10px;
   }
+
+  /*
+   * ══ THE CONTAINER IS WIDE FOR THE GRID, NOT FOR THE CONTROLS ══
+   * The 78rem cap exists so the LIST can hold three columns. Everything
+   * else inherited it: a search field 1600px across, and three tabs at
+   * 545px each. Stretching a control to the width of a page does not make
+   * it easier to hit — it stops reading as a control at all. A search box
+   * the width of a billboard reads as a banner.
+   *
+   * So the chrome sizes to its content and the list keeps the width.
+   * Scoped under `.a-screen` because `.p-tabs` and `.p-tab` are shared
+   * with the studio, where filling the row is exactly right.
+   */
+  .a-screen .p-tab {
+    flex: 0 1 auto;
+    padding: 0 1.4rem;
+  }
+
+  .a-screen .p-tabs {
+    justify-content: flex-start;
+  }
+
+  .a-search {
+    max-width: 26rem;
+  }
 }
 
 .a-row {
@@ -2527,6 +2552,43 @@ a.p-chip {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/*
+ * Second-order context: true, useful, and not what you scan for.
+ *
+ * (This was lost for a while — the rule got overwritten by the message
+ * clamp and the class went on being applied to rows that no longer dimmed
+ * for it. Restored, and now it has two callers.)
+ */
+.a-dim {
+  opacity: 0.72;
+}
+
+/*
+ * ══ WHOSE CARD IS THIS ══
+ * The second tier of a card row, under the serial. Body face and near
+ * full size, because it is read as a NAME rather than as data — the mono
+ * uppercase meta style it used to share made "Jack" look like a field
+ * value and cost it every bit of its legibility.
+ */
+.a-row-who {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--p-ink);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * "Kept · no name" and "Not claimed" are states standing where a name
+ * goes. Quieter and italic, so a page of unclaimed cards does not read as
+ * a page of loudly-named ones, and a real name stands out from the
+ * placeholders around it at a glance.
+ */
+.a-row-who-none {
+  color: var(--p-faint);
+  font-style: italic;
 }
 
 /*
