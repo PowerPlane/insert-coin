@@ -4,12 +4,15 @@
  *   npx tsx tools/derive-serial.ts 4132303735310a140700
  *   → 6ZHJ9J0Q
  *
- * Exists so `record-card.sh` can call into the ONE definition rather than
- * reimplementing the derivation in bash and becoming a third thing that
- * could drift. A file rather than a `tsx -e` one-liner because eval'd code
- * resolves as CommonJS, where a `.js` specifier does not map back to the
- * `.ts` file — which fails at exactly the wrong moment, with a card on the
- * programmer.
+ * Cards register themselves now, so nothing calls this automatically. It
+ * stays as a bench tool: given the ten bytes avrdude reads out of a chip,
+ * it says which serial that chip WILL claim — which is how you match a
+ * board on the programmer to a row in admin before it has ever been
+ * tapped, and how you check the host and the firmware still agree.
+ *
+ * A file rather than a `tsx -e` one-liner because eval'd code resolves as
+ * CommonJS, where a `.js` specifier does not map back to the `.ts` file —
+ * which fails at exactly the wrong moment, with a card on the programmer.
  */
 
 import { cardSerial } from "../src/card/identity.js";

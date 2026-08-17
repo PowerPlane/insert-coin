@@ -2137,14 +2137,19 @@ h2:focus-visible {
   /*
    * ══ THE CONTAINER IS WIDE FOR THE GRID, NOT FOR THE CONTROLS ══
    * The 78rem cap exists so the LIST can hold three columns. Everything
-   * else inherited it: a search field 1600px across, and three tabs at
+   * else inherited it: a search field 1600px across and three tabs at
    * 545px each. Stretching a control to the width of a page does not make
-   * it easier to hit — it stops reading as a control at all. A search box
-   * the width of a billboard reads as a banner.
+   * it easier to hit — it stops reading as a control at all.
    *
-   * So the chrome sizes to its content and the list keeps the width.
-   * Scoped under `.a-screen` because `.p-tabs` and `.p-tab` are shared
-   * with the studio, where filling the row is exactly right.
+   * But capping them ALONE was worse, and David caught it: `.a-screen > *`
+   * centres each child inside the container, so a narrowed search box got
+   * centred on its own and landed 116px off the edge everything else sat
+   * on. Measured: heading, tabs and cards at 132px, the search at 16px.
+   * Three widths on three left edges.
+   *
+   * So the row is one element. The toolbar is the child that inherits the
+   * container's edge; the tabs and the field sit inside it and can be any
+   * width they like without leaving that edge.
    */
   .a-screen .p-tab {
     flex: 0 1 auto;
@@ -2152,11 +2157,7 @@ h2:focus-visible {
   }
 
   .a-screen .p-tabs {
-    justify-content: flex-start;
-  }
-
-  .a-search {
-    max-width: 26rem;
+    flex: 0 0 auto;
   }
 }
 
@@ -2450,9 +2451,56 @@ a.p-chip {
   box-shadow: inset 0 0 0 3px var(--focus);
 }
 
-/* The search box sits above the list it filters, full width. */
+/*
+ * On a phone the toolbar is simply a column: full-width tabs for a thumb,
+ * then the field under them. It becomes a row on a laptop — see the
+ * media query further down.
+ */
+.a-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.a-toolbar .p-tabs {
+  flex: 1 1 auto;
+}
+
+/* The search box sits above the list it filters. */
 .a-search {
-  margin: 0.2rem 0 0.1rem;
+  margin: 0;
+}
+
+/*
+ * ══ BELOW THE BASE, OR IT DOES NOT SURVIVE IT ══
+ * These lived in the earlier `min-width: 760px` block, which sits ABOVE
+ * `.a-toolbar` in this file. Same specificity, so the later base rule won
+ * and `flex-direction: row` never applied — while `align-items: center`
+ * from the same block DID, centring both controls in a column and
+ * overlapping them.
+ *
+ * `.p-tab` has a note about exactly this hazard a thousand lines up. It
+ * is the third time in this file.
+ */
+@media (min-width: 760px) {
+  .a-toolbar {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .a-toolbar .p-tabs {
+    flex: 0 0 auto;
+  }
+
+  /*
+   * Takes the rest of the row up to a readable field width, so the
+   * toolbar reads as one object rather than two adjacent things.
+   */
+  .a-search {
+    flex: 1 1 auto;
+    max-width: 26rem;
+  }
 }
 
 /* The counts, which are also the filters. */

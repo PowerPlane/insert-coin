@@ -183,7 +183,7 @@ describe("the committed bundle is in step with its source", () => {
 
     expect(
       after.equals(before),
-      "public/app.js is stale — run `npm run build:client` and commit the result",
+      "public/main.js is stale — run `npm run build:client` and commit the result",
     ).toBe(true);
   });
 

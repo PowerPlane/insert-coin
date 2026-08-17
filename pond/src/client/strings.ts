@@ -375,6 +375,7 @@ export const EN = {
   "code.04": "Reported", // Set from code
   "code.05": "Reported ✓", // Set from code
   "code.06": "Slide a coin in to get one", // Set from code
+  "code.07": "This one is yours", // Set from code
 } as const;
 
 export type StringKey =
@@ -654,6 +655,7 @@ export const ZH_HANT: Record<StringKey, string> = {
   "code.04": "已檢舉",
   "code.05": "已檢舉 ✓",
   "code.06": "投幣就能拿到一隻",
+  "code.07": "這隻是你的",
 };
 
 const TABLES: Record<Lang, Partial<Record<StringKey, string>>> = {

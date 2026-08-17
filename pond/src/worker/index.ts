@@ -333,9 +333,16 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     // the caller's own duck — they just proved they own it — so this
     // discloses nothing they did not already send.
     if (result.ok) return json({ ...result, from: mine.id }, { headers });
+    /*
+     * `error` as well as `reason`, because that is the field `ApiError`
+     * reads to build its message — and 409 covers two different answers
+     * here. Without it the client saw a bare status and mapped BOTH the
+     * ten-unreturned cap and a self-bump to "bump them back first", which
+     * is advice that cannot be taken about a person who is you.
+     */
     return result.reason === "unknown"
       ? notFound()
-      : json(result, { status: 409, headers });
+      : json({ ...result, error: result.reason }, { status: 409, headers });
   }
 
   if (path === "/api/say" && req.method === "POST") {

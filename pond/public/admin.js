@@ -202,6 +202,7 @@ function view(ducks, cards) {
     head.append(el("h1", "a-title", "Admin"), el("span", "p-eyebrow", "ducky.davidyang.work"));
     wrap.append(head);
     const withContacts = ducks.filter((d) => d.contact);
+    const toolbar = el("div", "a-toolbar");
     const tabs = el("div", "p-tabs");
     for (const [key, label] of [
       ["ducks", `Ducks ${ducks.length}`],
@@ -215,20 +216,20 @@ function view(ducks, cards) {
       b.classList.toggle("on", where.tab === key);
       tabs.append(b);
     }
-    wrap.append(tabs);
-    if (!cardSecretOk) {
-      wrap.append(el(
-        "p",
-        "a-flag",
-        "CARD_SECRET is missing or malformed. No card can register, be claimed, or attribute a duck until it is set to 32 hex characters."
-      ));
-    }
+    toolbar.append(tabs);
+    const banner = !cardSecretOk ? el(
+      "p",
+      "a-flag",
+      "CARD_SECRET is missing or malformed. No card can register, be claimed, or attribute a duck until it is set to 32 hex characters."
+    ) : null;
     const search = el("input", "p-input a-search");
     search.type = "search";
     search.value = where.q;
     search.placeholder = where.tab === "cards" ? "Search serial, keeper or label" : where.tab === "contacts" ? "Search name, contact or message" : "Search name, message, serial or link";
     search.setAttribute("aria-label", "Search");
-    wrap.append(search);
+    toolbar.append(search);
+    wrap.append(toolbar);
+    if (banner) wrap.append(banner);
     const reported = ducks.filter((d) => d.reports > 0).length;
     const unanswered = withContacts.filter(waiting).length;
     const free = cards.filter((c) => !c.claimed).length;

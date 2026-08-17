@@ -233,6 +233,22 @@ function view(ducks: AdminDuck[], cards: AdminCard[]): void {
     wrap.append(head);
 
     const withContacts = ducks.filter((d) => d.contact);
+
+    /*
+     * ══ ONE LEFT EDGE ══
+     * The tabs and the search were separate children of the screen, so
+     * each was centred independently inside the 78rem container: the
+     * heading, the tabs and the cards landed on one edge and the search
+     * box on another 116px away. Three widths at three left edges reads
+     * as scattered, and David said so — the laptop looked WORSE than
+     * before the controls were sized down.
+     *
+     * They belong on one row anyway. Choosing a list and searching it are
+     * the same act, and a toolbar is the shape of that. Wrapped together
+     * they inherit the container's edge once, and everything on the page
+     * lines up beneath the title.
+     */
+    const toolbar = el("div", "a-toolbar");
     const tabs = el("div", "p-tabs");
     for (const [key, label] of [
       ["ducks", `Ducks ${ducks.length}`],
@@ -252,7 +268,7 @@ function view(ducks: AdminDuck[], cards: AdminCard[]): void {
       b.classList.toggle("on", where.tab === key);
       tabs.append(b);
     }
-    wrap.append(tabs);
+    toolbar.append(tabs);
 
     /*
      * ══ A MISSING KEY IS SILENT AND STOPS EVERYTHING ══
@@ -262,13 +278,13 @@ function view(ducks: AdminDuck[], cards: AdminCard[]): void {
      * being cards, which is the hardest kind of breakage to notice. So it
      * is stated at the top of every tab, not tucked into Cards.
      */
-    if (!cardSecretOk) {
-      wrap.append(el(
-        "p", "a-flag",
-        "CARD_SECRET is missing or malformed. No card can register, be "
-          + "claimed, or attribute a duck until it is set to 32 hex characters.",
-      ));
-    }
+    const banner = !cardSecretOk
+      ? el(
+          "p", "a-flag",
+          "CARD_SECRET is missing or malformed. No card can register, be "
+            + "claimed, or attribute a duck until it is set to 32 hex characters.",
+        )
+      : null;
 
     // ── the search box ──────────────────────────────────────────────────
     //
@@ -284,7 +300,9 @@ function view(ducks: AdminDuck[], cards: AdminCard[]): void {
         ? "Search name, contact or message"
         : "Search name, message, serial or link";
     search.setAttribute("aria-label", "Search");
-    wrap.append(search);
+    toolbar.append(search);
+    wrap.append(toolbar);
+    if (banner) wrap.append(banner);
 
     // ── the counts, which are also the filters ──────────────────────────
     const reported = ducks.filter((d) => d.reports > 0).length;

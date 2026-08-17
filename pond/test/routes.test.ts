@@ -629,6 +629,31 @@ describe("bumps", () => {
     expect(await res.json()).toMatchObject({ reason: "self" });
   });
 
+  /*
+   * ══ TWO ANSWERS SHARE ONE STATUS ══
+   * The cap and a self-bump are both 409, and the client picks its words
+   * from `error` — that is the field ApiError turns into a message. When
+   * only `reason` was sent, both came back indistinguishable and a
+   * self-bump was reported as "bump them back first": advice that cannot
+   * be taken, about a person who is you.
+   */
+  it("says WHICH refusal it is, in the field the client reads", async () => {
+    const e = await env();
+    const [a, b] = await twoDucks(e);
+    const v = new Visitor(e);
+
+    const self = await v.post("/api/bump", { id: a.id, editKey: a.editKey });
+    expect(await self.json()).toMatchObject({ error: "self", reason: "self" });
+
+    // Ten unreturned bumps, then the eleventh is refused for the other reason.
+    for (let i = 0; i < 10; i++) {
+      await v.post("/api/bump", { id: b.id, editKey: a.editKey });
+    }
+    const capped = await v.post("/api/bump", { id: b.id, editKey: a.editKey });
+    expect(capped.status).toBe(409);
+    expect(await capped.json()).toMatchObject({ error: "capped", reason: "capped" });
+  });
+
   it("ranks who bumped a duck most, for the duck card", async () => {
     const e = await env();
     const [target, one] = await twoDucks(e);

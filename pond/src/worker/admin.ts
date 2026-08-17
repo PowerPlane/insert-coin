@@ -80,6 +80,16 @@ export interface AdminDuck {
   reports: number;
   contact: string | null;
   scope: string | null;
+  /**
+   * Who the contact was actually shared WITH — the tenure it was given to,
+   * which is not always the duck's current one.
+   *
+   * The query has always returned this and the client has always rendered
+   * it; only this interface did not mention it. So the one thing standing
+   * between "the consent shown beside a contact" and a silent server-side
+   * edit that drops it was nobody happening to look. Codex found the gap.
+   */
+  contactKeeper: string | null;
   replied: number | null;
   postcard: number | null;
 }

@@ -1,13 +1,17 @@
 /**
  * The three HTML routes.
  *
- * Kept apart from the API router because they are reached differently:
- * `/api/*` lands on a catch-all by filename, so it sees the real path,
- * while `/`, `/d/<slug>` and `/e/<key>` are rewrites in `vercel.json` that
- * pass what they matched as a query parameter. Nothing here reads
- * `url.pathname` for that reason — a rewrite's destination is not the path
- * the visitor typed, and depending on which it is would be a bug that only
- * shows up in production.
+ * Kept apart from the API router, though both arrive the same way: EVERY
+ * route here is a rewrite in `vercel.json`, and a rewritten request carries
+ * its DESTINATION path rather than the one the visitor typed. So `/`,
+ * `/d/<slug>` and `/e/<key>` pass what they matched as a query parameter,
+ * and nothing in this file reads `url.pathname` — depending on it would be
+ * a bug that only appears in production.
+ *
+ * (This used to claim `/api/*` was a filename catch-all that saw the real
+ * path. It was, once, and it silently swallowed every path with more than
+ * one segment; `api/router.ts` tells that story at length. The comment
+ * outlived the fact by several months.)
  */
 
 import { duckBySlug } from "./ducks.js";

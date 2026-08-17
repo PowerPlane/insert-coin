@@ -29,9 +29,12 @@ PRAGMA foreign_keys = ON;
 --
 -- `id` is the MCU serial: eight Crockford base32 characters derived from
 -- SIGROW.SERNUM, written into the tag as `&c=`. It is a PRIMARY KEY, so a
--- derivation collision would make two physical cards indistinguishable —
--- the import step in Phase 2 rejects a duplicate loudly rather than
--- overwriting.
+-- derivation collision would make two physical cards indistinguishable.
+-- Cards register themselves on their first signed tap, and that INSERT is
+-- OR IGNORE, so a collision shows up as one card's ducks appearing under
+-- the other rather than as an error. Two chips colliding across ten bytes
+-- of SERNUM is not something to plan around, but it is worth knowing which
+-- way it would fail.
 --
 -- THE SERIAL IS SECRET-ADJACENT. It is half of what a card claim is keyed
 -- on, so it must never appear in a public payload. What the pond shows is

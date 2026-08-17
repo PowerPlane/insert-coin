@@ -1837,8 +1837,39 @@ function openDuckCard(view: PondView, duck: Placed): void {
    * server refuses an unauthenticated sender, which is what stops anyone
    * spending a stranger's ten unreturned bumps for them.
    */
+  /*
+   * ══ YOU CANNOT BUMP YOURSELF ══
+   * The guard here was `mine !== duck.id`, comparing an EDIT KEY to a DUCK
+   * ID. Two different namespaces, so it was always true and never once
+   * fired: your own duck's card offered a Bump button like anybody
+   * else's.
+   *
+   * Pressing it made the round trip, and the server correctly refused with
+   * `reason: "self"` — as a 409, which is also the status the ten-bump cap
+   * uses. The client maps every 409 to the cap message, so bumping your
+   * own duck answered "bump them back first". Advice that cannot be taken,
+   * about a person who is you.
+   *
+   * `duck.mine` is the fact rather than a guess at it: the pond sets it
+   * from the edit key when it resolves which duck is yours, and it is the
+   * same flag that puts the YOU tag on the water.
+   */
   const mine = recallEditKey();
-  if (mine && mine !== duck.id) {
+  if (duck.mine) {
+    /*
+     * The bump slot says whose duck this is instead of offering an action
+     * that cannot happen. A spent button rather than a sentence, matching
+     * "Make a duck to bump" below — the same shape for the same idea,
+     * which is a control standing where a control belongs, explaining why
+     * it is not one.
+     *
+     * Everything else on the card stays. Seeing who bumped YOU is the most
+     * interesting thing your own duck's card has to show.
+     */
+    const yours = button("p-card-btn", t("code.07"), () => {});
+    yours.disabled = true;
+    actions.append(yours);
+  } else if (mine) {
     const bump = button("p-btn", t("pond.38").split(" ·")[0]!, () => {
       bump.disabled = true;
       void api.bump(mine, duck.id).then(
@@ -1872,8 +1903,20 @@ function openDuckCard(view: PondView, duck: Placed): void {
         (err: unknown) => {
           // 409 is the ten-unreturned cap, which is a real answer rather
           // than a failure: bump them back to free a slot.
+          /*
+           * 409 covers two different answers — the ten-unreturned cap and
+           * a self-bump — so the reason decides the words, and the server
+           * now sends it as `error` where ApiError picks it up.
+           *
+           * The card no longer offers Bump on your own duck, but this is
+           * still reachable: `duck.mine` arrives from an async lookup, so a
+           * card opened in the first moments after load does not know yet.
+           */
+          const why = err instanceof ApiError && err.status === 409 ? err.message : "";
           bump.textContent =
-            err instanceof ApiError && err.status === 409 ? t("live.capped") : t("live.error");
+            why === "self" ? t("code.07")
+              : why ? t("live.capped")
+                : t("live.error");
         },
       );
     });
@@ -1887,7 +1930,14 @@ function openDuckCard(view: PondView, duck: Placed): void {
     actions.append(needsDuck);
   }
 
-  actions.append(button("p-card-btn p-card-btn-danger", t("pond.39"), () => reportSheet(card, duck)));
+  /*
+   * Reporting is for somebody else's duck. On your own it offered to raise
+   * a complaint about yourself, which is noise at best — and the way to
+   * remove your own duck is your private link, which actually does it.
+   */
+  if (!duck.mine) {
+    actions.append(button("p-card-btn p-card-btn-danger", t("pond.39"), () => reportSheet(card, duck)));
+  }
   card.append(actions);
 
   // A corner ✕ as well as the foot button. Closing a card you opened by

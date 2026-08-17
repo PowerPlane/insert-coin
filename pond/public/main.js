@@ -1905,7 +1905,9 @@ var EN = {
   // Set from code
   "code.05": "Reported ✓",
   // Set from code
-  "code.06": "Slide a coin in to get one"
+  "code.06": "Slide a coin in to get one",
+  // Set from code
+  "code.07": "This one is yours"
   // Set from code
 };
 var ZH_HANT = {
@@ -2134,7 +2136,8 @@ var ZH_HANT = {
   "code.03": "先做一隻鴨子才能碰別人",
   "code.04": "已檢舉",
   "code.05": "已檢舉 ✓",
-  "code.06": "投幣就能拿到一隻"
+  "code.06": "投幣就能拿到一隻",
+  "code.07": "這隻是你的"
 };
 var TABLES = {
   en: { ...EN, ...KEEPER_STRINGS, ...SCOPE_STRINGS, ...LIVE_STRINGS },
@@ -6179,7 +6182,12 @@ function openDuckCard(view2, duck) {
   );
   const actions = el2("div", "p-actions");
   const mine = recallEditKey();
-  if (mine && mine !== duck.id) {
+  if (duck.mine) {
+    const yours = button("p-card-btn", t("code.07"), () => {
+    });
+    yours.disabled = true;
+    actions.append(yours);
+  } else if (mine) {
     const bump = button("p-btn", t("pond.38").split(" ·")[0], () => {
       bump.disabled = true;
       void api.bump(mine, duck.id).then(
@@ -6193,7 +6201,8 @@ function openDuckCard(view2, duck) {
           }, BUMP_READ_MS);
         },
         (err) => {
-          bump.textContent = err instanceof ApiError && err.status === 409 ? t("live.capped") : t("live.error");
+          const why = err instanceof ApiError && err.status === 409 ? err.message : "";
+          bump.textContent = why === "self" ? t("code.07") : why ? t("live.capped") : t("live.error");
         }
       );
     });
@@ -6204,7 +6213,9 @@ function openDuckCard(view2, duck) {
     needsDuck.disabled = true;
     actions.append(needsDuck);
   }
-  actions.append(button("p-card-btn p-card-btn-danger", t("pond.39"), () => reportSheet(card, duck)));
+  if (!duck.mine) {
+    actions.append(button("p-card-btn p-card-btn-danger", t("pond.39"), () => reportSheet(card, duck)));
+  }
   card.append(actions);
   const close = button("p-card-x", "✕", dismiss, t("pond.23"));
   card.append(close);
