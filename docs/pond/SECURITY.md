@@ -1,4 +1,4 @@
-# The Pond — threat model
+# The pond — threat model
 
 Written to be honest rather than reassuring. Most of this is the result of an
 external review; where something is genuinely not defended, it says so.
@@ -28,7 +28,7 @@ about someone typing the URL.
 | Rate limit per card id | 60 mints a day. A card gets passed round a table, so this is generous by design; a scripted card id still cannot mint hundreds overnight | ✅ 1b |
 | Rate limit per visitor | 10 mints a day. Clearing cookies to farm ducks is slow and boring rather than impossible — the honest goal is friction | ✅ 1b |
 | `cards.disabled` | A lost or abused card is switched off without touching any existing duck | ✅ |
-| Admin hide | Anything that gets through is one tap from invisible | Phase 4 |
+| Admin hide | Anything that gets through is one tap from invisible | ✅ |
 
 **The rate limits were written here before they existed**, and that is worth
 naming: a documented control that is not built reads exactly like one that
@@ -71,16 +71,17 @@ game over for a card-based system, so this is noted rather than fixed.
 
 ## 3 · The private link is the account
 
-`/e/<32-char key>` is a bearer credential with no expiry, no rotation and
-no recovery. That is a deliberate trade — accounts would be heavier than the
-thing they protect — but the failure modes are real:
+`/e/<32-char key>` is a bearer credential with no expiry and no rotation.
+There is no automatic recovery either — accounts would be heavier than the
+thing they protect — though admin can hand a link back to somebody who asks.
+The failure modes are real:
 
 | Failure | Handling |
 | --- | --- |
-| Link lost | The duck stays; it just can't be edited. There is no recovery, by design. |
+| Link lost | The duck stays and can no longer be edited by its owner. Admin can copy the link back to them — `/pondkeeper` is the only place that can, and it is the reason the key is in the admin payload at all. Nothing automatic recovers it, because there is no account to recover from. |
 | Link leaked | Whoever has it can edit or delete that duck. Nothing else. The page itself server-renders **nothing** about the duck, so the document in a cache or a screenshot is not the leak. |
 | Leaks via `Referer` | Prevented: `Referrer-Policy: no-referrer` on every response |
-| Leaks via search engines | Prevented: `X-Robots-Tag: noindex, nofollow` on `/e/*`, set both by the function and in `vercel.json` — this is the one header whose absence cannot be noticed until a bearer URL is already indexed. `/pondkeeper` gets the same in Phase 4. `/d/<slug>` is public on purpose and stays indexable. |
+| Leaks via search engines | Prevented: `X-Robots-Tag: noindex, nofollow` on `/e/*`, set both by the function and in `vercel.json` — this is the one header whose absence cannot be noticed until a bearer URL is already indexed. `/pondkeeper` gets the same, set by the function and in `vercel.json`. `/d/<slug>` is public on purpose and stays indexable. |
 | Leaks via server logs | The key is in the path, so **do not log full URLs**. |
 | Shared device / history | Not defended. It is a link in a browser. |
 
@@ -98,9 +99,12 @@ reuse elsewhere, and the contact behind it is deleted with it.
 The one thing here that would genuinely hurt someone if it leaked.
 
 - Separate table, its own access path.
-- The public read module **does not name the table**, and the one module that
-  may write to it (`release.ts`) never reads from it.
-  `test/contacts-isolation.test.ts` fails the build if either changes.
+- The public read module **does not name the table**. `release.ts` may
+  insert one and never reads any. Admin reads them — that is the whole point
+  of the screen — and may also mark one replied or posted; it does not
+  rewrite the contact itself.
+  `test/contacts-isolation.test.ts` fails the build if the public side ever
+  learns the table's name.
 - `PublicDuck` is asserted to contain no contact-shaped field — and no card
   serial, which is half of what a card claim is keyed on.
 - **Deleting a duck deletes the contact, and that does not depend on foreign
@@ -182,6 +186,6 @@ so the path is not treated as a secret.
 In the order it will actually happen:
 
 1. Someone types `/?d=1` and makes a duck without a card. Mitigated, not prevented.
-2. A person loses their private link and wants their duck edited. There is no recovery — answer honestly.
+2. A person loses their private link. Admin can copy it back to them from the duck's row. This is a real power and it lives behind the password: whoever holds the key can edit or delete that duck.
 3. Polling the whole pond gets slow enough to notice. Cache it.
 4. A message or drawing needs hiding. One tap; make sure admin works before handing out the first card.

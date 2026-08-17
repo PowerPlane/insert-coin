@@ -1,4 +1,4 @@
-# Keeping a card
+# The pond — keeping a card
 
 **Built, 16 Aug 2026.** This was written as a plan and is kept as the
 record of why the thing works the way it does. § 9 lists what shipped and

@@ -1,4 +1,4 @@
-# Mobile constraints
+# The pond — mobile constraints
 
 Everyone arrives by tapping a card with a phone. Almost all of them will be
 in **iOS Safari** or **Android Chrome**, often inside an in-app browser

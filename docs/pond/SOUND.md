@@ -1,4 +1,4 @@
-# Sound
+# The pond — sound
 
 A plan, not an implementation. Nothing here is built yet.
 
