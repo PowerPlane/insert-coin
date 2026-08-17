@@ -371,6 +371,14 @@ function view(ducks: AdminDuck[], cards: AdminCard[]): void {
       }
       if (where.tab === "cards") {
         rows = cards
+          /*
+           * The card filter applies here too. It used to be read by Ducks
+           * and Contacts and ignored by Cards — so crossing to Cards while
+           * filtered left the bar on screen, still naming a card, above a
+           * list of every card. A filter that is displayed and not applied
+           * is worse than no filter: it describes the list wrongly.
+           */
+          .filter((c) => !where.card || c.id === where.card)
           .filter((c) => where.flag !== "free" || !c.claimed)
           .filter((c) => where.flag !== "disabled" || c.disabled)
           .filter((c) => hit([c.id, c.keeper, c.label], q))
@@ -624,7 +632,14 @@ function contactRow(d: AdminDuck, show: (card: string | null) => void): HTMLElem
   ].filter(Boolean).join(" · ");
   row.append(who);
 
-  if (d.message) row.append(el("p", "a-row-msg", `“${d.message}”`));
+  /*
+   * NOT `a-row-msg`: that clamps to two lines, which is right in the duck
+   * list — every row there has an Open and a Manage to read the rest with
+   * — and wrong here, where a contact row has neither. A clamped message
+   * with no way to unclamp it is text the screen is hiding from the one
+   * person allowed to see it.
+   */
+  if (d.message) row.append(el("p", "a-row-msg-full", `“${d.message}”`));
 
   /*
    * The worklist actions stay in the open. They are the job of this tab,

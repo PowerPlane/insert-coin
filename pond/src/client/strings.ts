@@ -49,7 +49,7 @@ export const SCOPE_STRINGS = {
  * COPY.md was extracted from a static prototype, so it holds example
  * VALUES — "14 ducks", "via Sam · 4 Aug" — where a running UI needs
  * TEMPLATES. And a prototype has no network, so it has no words for a
- * network that is not there, though FLOW.md's edge-state table has always
+ * network that is not there, though SCREENS.md's edge-state table has always
  * required them.
  *
  * These enter here, in the source, which is the correct direction:

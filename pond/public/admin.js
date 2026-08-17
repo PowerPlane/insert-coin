@@ -287,7 +287,7 @@ function view(ducks, cards) {
         rows = withContacts.filter((d) => !where.card || d.card === where.card).filter((d) => where.flag !== "waiting" || waiting(d)).filter((d) => hit([d.name, d.contact, d.message, d.card, d.keeper], q)).map((d) => contactRow(d, show));
       }
       if (where.tab === "cards") {
-        rows = cards.filter((c) => where.flag !== "free" || !c.claimed).filter((c) => where.flag !== "disabled" || c.disabled).filter((c) => hit([c.id, c.keeper, c.label], q)).map((c) => cardRow(c, show));
+        rows = cards.filter((c) => !where.card || c.id === where.card).filter((c) => where.flag !== "free" || !c.claimed).filter((c) => where.flag !== "disabled" || c.disabled).filter((c) => hit([c.id, c.keeper, c.label], q)).map((c) => cardRow(c, show));
       }
       if (!rows.length) {
         const searching = Boolean(q.trim()) || where.flag || where.card;
@@ -424,7 +424,7 @@ function contactRow(d, show) {
     day(d.created)
   ].filter(Boolean).join(" · ");
   row.append(who);
-  if (d.message) row.append(el("p", "a-row-msg", `“${d.message}”`));
+  if (d.message) row.append(el("p", "a-row-msg-full", `“${d.message}”`));
   const actions = el("div", "a-actions");
   actions.append(
     button("p-chip", d.replied ? `✓ Replied ${day(d.replied)}` : "Mark replied", () => {

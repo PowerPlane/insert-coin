@@ -89,7 +89,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
  * The pond screen.
  *
  * Also the visitor state — someone who tapped a card with no coin in it
- * gets exactly this, minus the CTA. FLOW.md is explicit that a visitor
+ * gets exactly this, minus the CTA. SCREENS.md is explicit that a visitor
  * still has something to do: they can put out fires.
  */
 /**
@@ -678,7 +678,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<PondHandle> {
    * Watch your own duck come down.
    *
    * ══ THE ONE ANIMATION THAT MUST NOT BE MISSED ══
-   * The duck enters with its fortune's own arrival — FLOW.md § 06 — and
+   * The duck enters with its fortune's own arrival — SCREENS.md § 06 — and
    * the camera goes to meet it. This is the moment the whole flow is for.
    *
    * It used to be one refresh and `if (duck) arrive(duck)`, which silently

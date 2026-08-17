@@ -2,7 +2,7 @@
  * Coming back: your duck, and what you can still do to it.
  *
  * Reached by the private link, which is the whole point of that link. There
- * are no accounts and no notifications — FLOW.md is explicit that **you find
+ * are no accounts and no notifications — SCREENS.md is explicit that **you find
  * out someone bumped you by coming back**, and this is the screen that makes
  * that worth doing.
  *

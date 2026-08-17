@@ -625,7 +625,7 @@ describe("taking a card over is a second, deliberate act", () => {
  * What the adversarial read of the state machine turned up.
  *
  * Each of these is a sequence Codex found by walking tap/press/decline/
- * expire orderings against the map in docs/pond/FLOWS.md, and each one
+ * expire orderings against the map in docs/pond/CARD-STATES.md, and each one
  * either stranded a card or answered a question it had not earned.
  */
 describe("state machine holes", () => {

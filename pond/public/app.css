@@ -2211,7 +2211,8 @@ h2:focus-visible {
   color: var(--p-faint);
 }
 
-.a-row-msg {
+.a-row-msg,
+.a-row-msg-full {
   color: var(--p-soft);
   overflow-wrap: anywhere;
 }
@@ -2515,6 +2516,11 @@ a.p-chip {
  * A long message pushed every other row off the screen. Two lines is
  * enough to recognise one and to moderate it; the whole thing is one tap
  * away on the duck itself.
+ *
+ * Only on the duck list. A contact row has no Open and no Manage, so a
+ * clamp there would hide text from the one person allowed to read it,
+ * with nothing to press to get it back. Those rows use
+ * `.a-row-msg-full`, which is this type without the cut.
  */
 .a-row-msg {
   display: -webkit-box;

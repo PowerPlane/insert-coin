@@ -294,6 +294,26 @@ export function releaseFlow(opts: FlowOptions): void {
      */
     const choosable = options.length > 1;
 
+    /*
+     * ══ AND A HIDDEN PICKER MUST NOT LEAVE A STALE ANSWER ══
+     * Drafts persist. Somebody could get to this screen on a card WITH a
+     * keeper, choose "{keeper} and David", then come back later — after
+     * the tenure ended, or on a card whose keeper was reset — to a screen
+     * with no picker on it and `draft.scope` still saying
+     * `keeper_and_david`. The picker was gone; the answer was not, and
+     * release would have sent it.
+     *
+     * That is the worst direction for this particular bug to run in: it
+     * shares a contact wider than the screen offered, with somebody the
+     * person was never shown. So the scope is pulled back to the narrowest
+     * whenever there is no choice on offer — the only one this screen
+     * promises when it shows no picker.
+     */
+    if (!choosable && draft.scope !== "david") {
+      draft.scope = "david";
+      persist();
+    }
+
     const syncScope = (): void => {
       const given = draft.contact.trim().length > 0 && choosable;
       // With no contact there is nothing to scope. Hiding it is honest:

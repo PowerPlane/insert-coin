@@ -86,8 +86,19 @@ describe("the shape Vercel's CDN requires", () => {
      * That nearly happened while rebuilding the admin screen. The harness
      * now lives in tools/, and this keeps it there.
      */
-    const strays = readdirSync(join(root, "public"))
-      .filter((f) => f.endsWith(".html"));
+    /*
+     * Walked, not listed. The first version read only the top level, so
+     * `public/scratch/harness.html` was served by the CDN exactly the same
+     * way and the guard said nothing — which is the failure mode the guard
+     * exists to prevent, one directory deeper.
+     */
+    const walk = (dir: string, prefix = ""): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory()
+          ? walk(join(dir, e.name), `${prefix}${e.name}/`)
+          : e.name.endsWith(".html") ? [`${prefix}${e.name}`] : [],
+      );
+    const strays = walk(join(root, "public"));
     expect(strays, "put bench pages in tools/, not public/").toEqual([]);
   });
 

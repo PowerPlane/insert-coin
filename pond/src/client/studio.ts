@@ -4,7 +4,7 @@
  * ══ WHY DECORATING COMES BEFORE SIGNING ══
  * By the time anyone is asked for their name they have already spent
  * minutes making something, so the ask lands as signing your own work
- * rather than filling in a form. FLOW.md § The happy path.
+ * rather than filling in a form. SCREENS.md § The happy path.
  *
  * Nothing here is required. A duck released untouched is a duck.
  */

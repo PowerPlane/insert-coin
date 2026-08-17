@@ -3686,6 +3686,10 @@ function releaseFlow(opts) {
       options.push(["keeper_and_david", t("scope.04", { keeper: opts.keeper })]);
     }
     const choosable = options.length > 1;
+    if (!choosable && draft.scope !== "david") {
+      draft.scope = "david";
+      persist();
+    }
     const syncScope = () => {
       const given = draft.contact.trim().length > 0 && choosable;
       scopeLabel.hidden = !given;

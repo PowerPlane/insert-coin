@@ -1,7 +1,7 @@
 /**
  * The sparkle engine — moved from byproductlab.com, not reinvented.
  *
- * FLOW.md § 06 is explicit about this: "Not new animation — the sparkle
+ * SCREENS.md § 06 is explicit about this: "Not new animation — the sparkle
  * engine already on byproductlab.com, moved." The shapes, the schedule and
  * the constants come from that site's `Base.astro`, so an arrival in the
  * pond and a sparkle on the shop are recognisably the same hand. Anything

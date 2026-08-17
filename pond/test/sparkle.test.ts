@@ -1,7 +1,7 @@
 /**
  * The sparkle engine's timing and shapes.
  *
- * FLOW.md is unusually specific about this, and says why: the 170 ms hold
+ * SCREENS.md is unusually specific about this, and says why: the 170 ms hold
  * is what makes a shape read as something deliberate appearing rather than
  * as twinkle, and "it is the thing a rewrite would have quietly lost".
  *
