@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin harness</title>
+<link rel="stylesheet" href="/public/fonts.css">
+<link rel="stylesheet" href="/public/app.css">
+</head>
+<body>
+<div id="pond"></div>
+<script>
+/*
+ * A bench for the admin screen, served from tools/ and never from public/ —
+ * everything in public/ is uploaded to the CDN.
+ *
+ * Serve the pond directory and open /tools/admin-harness.html:
+ *   cd pond && python3 -m http.server 8899
+ *
+ * The fixture is deliberately BATCH-SIZED. Five rows look fine under any
+ * layout; the density problem this screen actually has only appears at the
+ * hundred cards David is printing, so judging a redesign against a handful
+ * of rows is judging it against a case that does not exist.
+ */
+
+// Crockford base32 minus I, L, O and U — the same alphabet the firmware
+// derives a serial from, so these read like real cards.
+const B32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+let seed = 12345;
+const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+const pick = (a) => a[Math.floor(rnd() * a.length)];
+const serial = () => Array.from({ length: 8 }, () => pick(B32)).join("");
+
+const NAMES = ["Kariina", "Sam", "Mika", "Billyboi", "Dog", "Noodle", "Pip", "Wren",
+  "Tofu", "Momo", "Bean", "Cricket", "Juniper", "Ash", "Clover", "Fig"];
+const MSGS = ["hope this finds you well", "", "…and do my best, in",
+  "a longer message that runs past one line to see how the row copes with it",
+  "good luck!", "", "see you at the show", ""];
+const KEEPERS = ["David", "Kariina", null, null, "Sam"];
+const DAY = 86400;
+const NOW = 1755600000;
+
+const CARDS = [];
+for (let i = 0; i < 30; i++) {
+  const claimed = i % 4 !== 3;
+  const keeper = claimed ? pick(KEEPERS) : null;
+  const ducks = claimed ? Math.floor(rnd() * 14) : 0;
+  CARDS.push({
+    id: serial(),
+    label: i === 2 ? "bad key — do not ship" : i === 7 ? "batch two" : "",
+    created: NOW - (30 - i) * DAY,
+    disabled: i === 2 ? 1 : 0,
+    keeper,
+    lang: claimed ? (i % 5 === 0 ? "zh-Hant" : "en") : null,
+    ducks,
+    claimed,
+    orphans: ducks > 4 ? Math.floor(rnd() * 3) : 0,
+    claimCounter: claimed ? Math.floor(rnd() * 9) : 0,
+  });
+}
+// A known-good anchor row so screenshots are comparable across runs.
+CARDS[0] = { id: "5BKZH69H", label: "", created: NOW - 20 * DAY, disabled: 0,
+  keeper: "David", lang: "en", ducks: 12, claimed: true, orphans: 3, claimCounter: 7 };
+
+const DUCKS = [];
+for (let i = 0; i < 40; i++) {
+  // Roughly a fifth of ducks predate card registration and have no card —
+  // the "from no card" repair case.
+  const card = i % 5 === 0 ? null : CARDS[Math.floor(rnd() * CARDS.length)];
+  const hasContact = i % 3 === 0;
+  DUCKS.push({
+    id: `d${i}`,
+    slug: `${pick(["tidal", "amber", "quiet", "moss", "pale", "still"])}-${pick(["fern", "reed", "heron", "lantern", "lily", "moth"])}-${i}`,
+    name: i % 9 === 0 ? "" : i === 4 ? "A duck with a really quite long name indeed" : pick(NAMES),
+    message: pick(MSGS),
+    created: NOW - i * DAY,
+    hidden: i % 11 === 0 ? 1 : 0,
+    fortune: Math.floor(rnd() * 4),
+    keeper: card ? card.keeper : null,
+    card: card ? card.id : null,
+    reports: i % 13 === 0 ? 1 + Math.floor(rnd() * 3) : 0,
+    contact: hasContact ? (i % 2 ? `person${i}@example.com` : `+1 555 01${String(i).padStart(2, "0")}`) : null,
+    scope: hasContact ? pick(["david", "keeper", "both"]) : null,
+    contactKeeper: hasContact && card ? card.keeper : null,
+    replied: hasContact && i % 4 === 0 ? NOW - i * DAY + DAY : null,
+    postcard: hasContact && i % 6 === 0 ? NOW - i * DAY + DAY : null,
+    editKey: `key${String(i).padStart(13, "0")}`,
+  });
+}
+
+const STATE = { ducks: DUCKS, cards: CARDS, cardSecret: true };
+const realFetch = window.fetch.bind(window);
+window.fetch = async (url, opts) => {
+  const u = String(url);
+  if (u === "/api/admin" || u.startsWith("/api/admin?")) {
+    return new Response(JSON.stringify(STATE),
+      { status: 200, headers: { "content-type": "application/json" } });
+  }
+  if (u.startsWith("/api/admin")) {
+    return new Response(JSON.stringify({ ok: true }),
+      { status: 200, headers: { "content-type": "application/json" } });
+  }
+  return realFetch(url, opts);
+};
+window.__POND__ = { view: "admin" };
+console.log(`harness: ${CARDS.length} cards, ${DUCKS.length} ducks, `
+  + `${DUCKS.filter((d) => d.contact).length} contacts`);
+</script>
+<script type="module" src="/public/admin.js"></script>
+</body>
+</html>

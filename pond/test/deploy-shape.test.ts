@@ -73,6 +73,24 @@ describe("the shape Vercel's CDN requires", () => {
     expect(existsSync(join(root, "public", "index.html"))).toBe(false);
   });
 
+  it("no stray HTML has wandered into public/", () => {
+    /*
+     * ══ EVERYTHING IN public/ IS PUBLISHED ══
+     * The rule above is about one filename, but the hazard is the whole
+     * directory: the CDN serves this folder verbatim, before any function
+     * runs, to anybody who guesses the path. A scratch page left here ships
+     * — and a bench harness for the ADMIN screen, which is exactly the kind
+     * of thing you want to keep beside the assets it loads, would publish a
+     * stubbed copy of the pondkeeper at a public URL.
+     *
+     * That nearly happened while rebuilding the admin screen. The harness
+     * now lives in tools/, and this keeps it there.
+     */
+    const strays = readdirSync(join(root, "public"))
+      .filter((f) => f.endsWith(".html"));
+    expect(strays, "put bench pages in tools/, not public/").toEqual([]);
+  });
+
   it("every asset the page asks for is actually there", () => {
     // `public/` used to be gitignored, from when Wrangler generated it. On
     // Vercel it is the output directory and nothing generates it, so a

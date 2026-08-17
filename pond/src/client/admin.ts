@@ -11,6 +11,13 @@
  * Here it is read, behind a password, and shown with the scope it was given
  * under stated in NAMES beside it. UI.md § 9: "shared with Sam and you",
  * never "scope: 2".
+ *
+ * ══ READING IS THE COMMON ACT ══
+ * See docs/pond/ADMIN.md for the design record. The short version: every
+ * row used to show every one of its buttons all the time, which made the
+ * Ducks tab twelve phone screens tall at a third of the real batch and put
+ * Delete under the thumb that was only trying to scroll. A row is now a
+ * summary; the rare and dangerous things unfold behind a tap.
  */
 
 import { button, el, field, screen , copyText} from "./dom.js";
@@ -55,13 +62,22 @@ interface AdminCard {
 
 type Tab = "ducks" | "contacts" | "cards";
 
+/**
+ * A saved question about the list, tapped from a count.
+ *
+ * ══ A NUMBER THAT DESCRIBES A PROBLEM SHOULD TAKE YOU TO IT ══
+ * The header said "3 reported" and stopped there. The screen already knew
+ * which three; finding them meant scrolling the whole list reading badges.
+ * Every count on this page is now the control that filters to it.
+ */
+type Flag = "reported" | "waiting" | "free" | "disabled" | null;
+
 const root = document.getElementById("pond")!;
 const FORTUNES = ["大吉", "小吉", "末吉", "凶"];
 
 const day = (t: number | null): string =>
   t ? new Date(t * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "";
 
-/** The scope, said as people. Never as a value. */
 /**
  * What an empty tab says.
  *
@@ -72,9 +88,10 @@ const day = (t: number | null): string =>
 const EMPTY: Record<Tab, string> = {
   ducks: "No ducks yet. They appear here as people release them.",
   contacts: "Nobody has left a contact. They only appear when somebody chooses to share one.",
-  cards: "No cards claimed yet. A card appears here once somebody blows on it four times.",
+  cards: "No cards yet. A card appears here the first time one of its taps reaches the pond.",
 };
 
+/** The scope, said as people. Never as a value. */
 function scopeLabel(scope: string | null, keeper: string | null): string {
   if (!scope) return "";
   if (scope === "david") return "shared with you";
@@ -138,10 +155,14 @@ function signIn(): void {
  * and finding it. Reported as "hard to uncheck if I pressed it
  * accidentally", and that is exactly what it was.
  *
- * So the screen remembers where it was, including which card it was
- * filtered to.
+ * So the screen remembers where it was — and that now has to include the
+ * search text and the active filter, or every action would silently drop
+ * the question you were in the middle of asking. Same bug, two more ways
+ * to have it.
  */
-let where: { tab: Tab; card: string | null } = { tab: "ducks", card: null };
+let where: { tab: Tab; card: string | null; q: string; flag: Flag } = {
+  tab: "ducks", card: null, q: "", flag: null,
+};
 
 /*
  * Whether the server can verify a card at all. Module scope because it is
@@ -158,7 +179,7 @@ async function load(): Promise<void> {
     return signIn();
   }
   cardSecretOk = state.cardSecret !== false;
-  view(state.ducks, state.cards, where.tab, where.card);
+  view(state.ducks, state.cards);
 }
 
 /**
@@ -181,26 +202,28 @@ function provenance(d: AdminDuck): string {
   return d.keeper ? `${d.keeper} · ${d.card}` : d.card;
 }
 
-function view(
-  ducks: AdminDuck[],
-  cards: AdminCard[],
-  tab: Tab,
-  /**
-   * Showing one card's ducks only.
-   *
-   * ══ A RELATIONSHIP YOU CAN FOLLOW, NOT ONE YOU CAN READ ══
-   * Every duck knows its card and every card knows how many ducks it has,
-   * and neither fact was reachable from the other. The question this
-   * screen is actually asked — "what came off the card I handed to
-   * Sam?" — could only be answered by reading every row.
-   *
-   * So the provenance chip on a duck and the count on a card are the same
-   * control from two directions, and both land here.
-   */
-  cardFilter: string | null = null,
-): void {
-  // Recorded on every render, so the next `load()` comes back here.
-  where = { tab, card: cardFilter };
+/**
+ * Does this row answer the search?
+ *
+ * ══ ONE BOX, NOT A FIELD PER COLUMN ══
+ * When you are hunting for something you remember ONE fact about it — a
+ * name, or eight characters off a card, or a phrase from a message — and
+ * usually not which kind of fact it was. Asking which column to search in
+ * is asking a question the searcher cannot answer.
+ *
+ * Everything is already in one request, so this costs no round trip.
+ */
+function hit(haystack: (string | null | undefined)[], q: string): boolean {
+  if (!q) return true;
+  const needle = q.trim().toLowerCase();
+  if (!needle) return true;
+  return haystack.some((h) => (h ?? "").toLowerCase().includes(needle));
+}
+
+/** A duck is "waiting" when somebody left a contact and got no reply. */
+const waiting = (d: AdminDuck): boolean => Boolean(d.contact) && !d.replied;
+
+function view(ducks: AdminDuck[], cards: AdminCard[]): void {
   screen(root, () => {
     root.replaceChildren();
     const wrap = el("div", "a-screen");
@@ -209,18 +232,24 @@ function view(
     head.append(el("h1", "a-title", "Admin"), el("span", "p-eyebrow", "ducky.davidyang.work"));
     wrap.append(head);
 
-    const tabs = el("div", "p-tabs");
     const withContacts = ducks.filter((d) => d.contact);
-    const reported = ducks.filter((d) => d.reports > 0).length;
+    const tabs = el("div", "p-tabs");
     for (const [key, label] of [
       ["ducks", `Ducks ${ducks.length}`],
       ["contacts", `Contacts ${withContacts.length}`],
       ["cards", `Cards ${cards.length}`],
     ] as [Tab, string][]) {
-      // Changing tab keeps the filter: going Ducks -> Cards -> Ducks to
-      // check something should not silently drop what you were looking at.
-      const b = button("p-tab", label, () => view(ducks, cards, key, cardFilter));
-      b.classList.toggle("on", tab === key);
+      const b = button("p-tab", label, () => {
+        /*
+         * Changing tab keeps the card filter — going Ducks → Cards → Ducks
+         * to check something should not silently drop what you were looking
+         * at — but drops the flag, because the flags are per-tab questions
+         * and "reported" means nothing on the Cards list.
+         */
+        where = { ...where, tab: key, flag: null };
+        view(ducks, cards);
+      });
+      b.classList.toggle("on", where.tab === key);
       tabs.append(b);
     }
     wrap.append(tabs);
@@ -241,54 +270,144 @@ function view(
       ));
     }
 
-    if (reported && tab === "ducks") {
-      wrap.append(el("p", "a-flag", `${reported} reported`));
+    // ── the search box ──────────────────────────────────────────────────
+    //
+    // Rendered once and never replaced. The list repaints underneath it on
+    // every keystroke, so re-rendering the whole view here would take the
+    // focus and the caret away mid-word.
+    const search = el("input", "p-input a-search") as HTMLInputElement;
+    search.type = "search";
+    search.value = where.q;
+    search.placeholder = where.tab === "cards"
+      ? "Search serial, keeper or label"
+      : where.tab === "contacts"
+        ? "Search name, contact or message"
+        : "Search name, message, serial or link";
+    search.setAttribute("aria-label", "Search");
+    wrap.append(search);
+
+    // ── the counts, which are also the filters ──────────────────────────
+    const reported = ducks.filter((d) => d.reports > 0).length;
+    const unanswered = withContacts.filter(waiting).length;
+    const free = cards.filter((c) => !c.claimed).length;
+    const off = cards.filter((c) => c.disabled).length;
+
+    const flags = el("div", "a-flags");
+    const flagChip = (key: Exclude<Flag, null>, label: string, tone = ""): void => {
+      const b = button(`p-chip a-flag-chip ${tone}`.trim(), label, () => {
+        where = { ...where, flag: where.flag === key ? null : key };
+        view(ducks, cards);
+      });
+      b.classList.toggle("on", where.flag === key);
+      b.setAttribute("aria-pressed", String(where.flag === key));
+      flags.append(b);
+    };
+    if (where.tab === "ducks" && reported) {
+      flagChip("reported", `${reported} reported`, "a-chip-hot");
     }
+    if (where.tab === "contacts" && unanswered) {
+      flagChip("waiting", `${unanswered} waiting`);
+    }
+    if (where.tab === "cards") {
+      // A card batch is a stock list: the useful summary is what is spare
+      // and what is out of action, and both are things you then want to see.
+      flags.append(el("span", "a-row-meta", `${cards.length} cards`));
+      if (free) flagChip("free", `${free} free`);
+      if (off) flagChip("disabled", `${off} off`);
+    }
+    if (flags.childElementCount) wrap.append(flags);
 
     /*
-     * The filter, when one is on. Shaped like the pond's own whistle bar —
-     * what it is, and an ✕ — because it is the same idea in a different
-     * room, and the admin should not invent a second vocabulary for
-     * "you are looking at a subset".
+     * The card filter, when one is on. Shaped like the pond's own whistle
+     * bar — what it is, and an ✕ — because it is the same idea in a
+     * different room, and the admin should not invent a second vocabulary
+     * for "you are looking at a subset".
      */
-    const show = (next: string | null) => view(ducks, cards, "ducks", next);
-    if (cardFilter) {
-      const named = cards.find((c) => c.id === cardFilter);
+    if (where.card) {
+      const named = cards.find((c) => c.id === where.card);
       const bar = el("div", "a-filter");
       bar.append(
         el("span", "a-filter-who",
-          named?.keeper ? `${named.keeper} · ${cardFilter}` : cardFilter),
-        button("p-chip", "✕", () => show(null), "Show every card again"),
+          named?.keeper ? `${named.keeper} · ${where.card}` : where.card),
+        button("p-chip", "✕", () => {
+          where = { ...where, card: null };
+          view(ducks, cards);
+        }, "Show every card again"),
       );
       wrap.append(bar);
     }
 
-    const shown = cardFilter ? ducks.filter((d) => d.card === cardFilter) : ducks;
-    const shownContacts = withContacts.filter((d) => !cardFilter || d.card === cardFilter);
-
     const list = el("div", "a-list");
-    if (tab === "ducks") shown.forEach((d) => list.append(duckRow(d, show, cards)));
-    if (tab === "contacts") shownContacts.forEach((d) => list.append(contactRow(d, ducks, cards)));
-    if (tab === "cards") cards.forEach((c) => list.append(cardRow(c, show)));
-
-    /*
-     * ══ AN EMPTY LIST STILL HAS TO SAY SOMETHING ══
-     * All three tabs rendered nothing at all when they were empty: a
-     * heading, three counts reading zero, and a blank page. That is
-     * indistinguishable from the page having failed to load, which on the
-     * one screen that reports on a live product is the worst thing it could
-     * be mistaken for.
-     *
-     * Each says what would put something here, so an empty tab reports a
-     * fact about the pond rather than a fact about the request.
-     */
-    if (!list.childElementCount) {
-      list.append(el("p", "a-empty", EMPTY[tab]));
-    }
     wrap.append(list);
 
+    /** Show every duck from one card — reached from either direction. */
+    const show = (card: string | null): void => {
+      where = { ...where, tab: "ducks", card, flag: null };
+      view(ducks, cards);
+    };
+
+    /*
+     * ══ REPAINT THE LIST, NOT THE PAGE ══
+     * Called on every keystroke. Rebuilding the whole view instead would
+     * replace the search input the person is currently typing into.
+     */
+    function paint(): void {
+      const q = where.q;
+      let rows: HTMLElement[] = [];
+
+      if (where.tab === "ducks") {
+        rows = ducks
+          .filter((d) => !where.card || d.card === where.card)
+          .filter((d) => where.flag !== "reported" || d.reports > 0)
+          .filter((d) => hit([d.name, d.message, d.slug, d.card, d.keeper, d.contact], q))
+          .map((d) => duckRow(d, show, cards));
+      }
+      if (where.tab === "contacts") {
+        rows = withContacts
+          .filter((d) => !where.card || d.card === where.card)
+          .filter((d) => where.flag !== "waiting" || waiting(d))
+          .filter((d) => hit([d.name, d.contact, d.message, d.card, d.keeper], q))
+          .map((d) => contactRow(d, show));
+      }
+      if (where.tab === "cards") {
+        rows = cards
+          .filter((c) => where.flag !== "free" || !c.claimed)
+          .filter((c) => where.flag !== "disabled" || c.disabled)
+          .filter((c) => hit([c.id, c.keeper, c.label], q))
+          .map((c) => cardRow(c, show));
+      }
+
+      /*
+       * ══ AN EMPTY LIST STILL HAS TO SAY SOMETHING ══
+       * All three tabs rendered nothing at all when they were empty: a
+       * heading, three counts reading zero, and a blank page. That is
+       * indistinguishable from the page having failed to load, which on
+       * the one screen that reports on a live product is the worst thing
+       * it could be mistaken for.
+       *
+       * "Nothing matched" and "there is nothing here" are different facts
+       * and get different sentences — the first is about the question just
+       * asked, the second about the pond.
+       */
+      if (!rows.length) {
+        const searching = Boolean(q.trim()) || where.flag || where.card;
+        list.replaceChildren(el(
+          "p", "a-empty",
+          searching ? "Nothing matched. Try fewer words." : EMPTY[where.tab],
+        ));
+        return;
+      }
+      list.replaceChildren(...rows);
+    }
+
+    search.addEventListener("input", () => {
+      where = { ...where, q: search.value };
+      paint();
+    });
+    paint();
+
     // Nothing to download when there is nothing to download.
-    if (tab === "contacts" && withContacts.length) {
+    if (where.tab === "contacts" && withContacts.length) {
       const csv = el("a", "p-btn p-btn-quiet", "Download CSV");
       csv.href = "/api/admin/csv";
       // Generated on demand, never synced: a spreadsheet drifts out of step
@@ -299,6 +418,32 @@ function view(
 
     root.append(wrap);
   });
+}
+
+/**
+ * A panel that is not built until it is opened.
+ *
+ * ══ FOLDED AWAY, AND NOT BUILT AT ALL ══
+ * Rare actions hide behind one tap. Lazily, because the alternative is
+ * building six controls for every one of a hundred rows on first paint, to
+ * be looked at approximately never.
+ *
+ * Returns the chip; the caller decides where it sits.
+ */
+function foldout(
+  panel: HTMLElement,
+  label: string,
+  title: string,
+  build: (into: HTMLElement) => void,
+): HTMLButtonElement {
+  panel.hidden = true;
+  const chip = button("p-chip", label, () => {
+    if (!panel.childElementCount) build(panel);
+    panel.hidden = !panel.hidden;
+    chip.setAttribute("aria-expanded", String(!panel.hidden));
+  }, title);
+  chip.setAttribute("aria-expanded", "false");
+  return chip;
 }
 
 function meta(d: AdminDuck): string {
@@ -325,16 +470,77 @@ function duckRow(
    * Where it came from, as a control rather than a caption. Reading a
    * serial tells you which card; tapping it shows you the rest of that
    * card's ducks, which is the question the serial was making you ask.
-   *
-   * A duck with no card cannot lead anywhere, so it says so and stays
-   * inert rather than looking live and doing nothing.
    */
-  const from = el("div", "a-from");
-  from.append(el("span", "a-from-label", "from"));
+  const actions = el("div", "a-actions");
   if (d.card) {
-    from.append(button("p-chip", provenance(d), () => show(d.card),
+    actions.append(button("p-chip", provenance(d), () => show(d.card),
       `Show every duck from card ${d.card}`));
   } else {
+    actions.append(el("span", "a-row-meta", "no card"));
+  }
+
+  // The one thing you do to a duck often enough to keep in reach.
+  const open = el("a", "p-chip", "Open");
+  open.href = `/d/${d.slug}`;
+  open.target = "_blank";
+  open.rel = "noreferrer";
+  actions.append(open);
+
+  /*
+   * ══ EVERYTHING THAT CHANGES SOMETHING, BEHIND ONE TAP ══
+   * Hide, Delete, the attach picker and the private link used to sit open
+   * on every row. Delete in particular was permanently exposed at the
+   * bottom of a scrolling list, which is where a thumb lands when it is
+   * only trying to move the page.
+   */
+  const panel = el("div", "a-fold");
+  actions.append(foldout(panel, "Manage", `Manage ${d.name || "this duck"}`, (into) => {
+    const safe = el("div", "a-actions");
+    safe.append(
+      button("p-chip", d.hidden ? "Unhide" : "Hide", () => {
+        void api("/hide", { id: d.id, hidden: !d.hidden }).then(load);
+      }),
+    );
+    if (d.reports) {
+      safe.append(button("p-chip", "Clear reports", () => {
+        void api("/resolve", { id: d.id }).then(load);
+      }));
+    }
+
+    /*
+     * ══ GIVING SOMEBODY THEIR DUCK BACK ══
+     * People lose the private link. Without it their duck is stranded —
+     * still in the pond, still being bumped, and no longer theirs to name,
+     * redecorate or take out. There is no account to recover from, so this
+     * screen is the only place it can come from.
+     *
+     * COPIED, never printed. The key is the whole credential, and a row
+     * that displays it puts it in every screenshot of this page and every
+     * shoulder-glance at it. The chip says what it did and says nothing
+     * about what it holds.
+     */
+    const who = d.name || d.slug;
+    const recover = button("p-chip", "Copy private link", () => {
+      void copyText(`${location.origin}/e/${d.editKey}`).then((ok) => {
+        /*
+         * The label AND the accessible name, together. Changing only the
+         * visible text left a screen reader hearing "Copy the private link
+         * for Mika" after the copy had already happened or failed — the one
+         * moment the control has something new to say.
+         */
+        recover.textContent = ok ? "Copied" : "Copy failed";
+        recover.setAttribute("aria-label", ok
+          ? `Copied the private link for ${who}`
+          : `Could not copy the private link for ${who}`);
+        window.setTimeout(() => {
+          recover.textContent = "Copy private link";
+          recover.setAttribute("aria-label", `Copy the private link for ${who}`);
+        }, 1600);
+      });
+    }, `Copy the private link for ${who}`);
+    safe.append(recover);
+    into.append(safe);
+
     /*
      * ══ "FROM NO CARD" IS REPAIRABLE ══
      * A duck reads this when the card it came off was not in `cards` at
@@ -349,110 +555,82 @@ function duckRow(
      * typing eight Crockford characters from memory is how you attach a
      * duck to the wrong one.
      */
-    from.append(el("span", "a-row-meta", provenance(d)));
-    const pick = el("select", "p-input a-attach");
-    const none = el("option", "", "attach to a card…");
-    none.value = "";
-    pick.append(none);
-    for (const c of cardList) {
-      const opt = el("option", "", `${c.id}${c.label ? ` · ${c.label}` : ""}`);
-      opt.value = c.id;
-      pick.append(opt);
+    if (!d.card) {
+      into.append(el("p", "a-hint", "This duck predates its card being registered. Point it at the card it came from."));
+      const pick = el("select", "p-input a-attach");
+      const none = el("option", "", "attach to a card…");
+      none.value = "";
+      pick.append(none);
+      for (const c of cardList) {
+        const opt = el("option", "", `${c.id}${c.label ? ` · ${c.label}` : ""}`);
+        opt.value = c.id;
+        pick.append(opt);
+      }
+      pick.addEventListener("change", () => {
+        if (!pick.value) return;
+        void api("/card/attach", { card: pick.value, duck: d.id }).then(load);
+      });
+      into.append(pick);
     }
-    pick.addEventListener("change", () => {
-      if (!pick.value) return;
-      void api("/card/attach", { card: pick.value, duck: d.id }).then(load);
-    });
-    from.append(pick);
-  }
-  row.append(from);
 
-  const actions = el("div", "a-actions");
-  actions.append(
-    button("p-chip", d.hidden ? "Unhide" : "Hide", () => {
-      void api("/hide", { id: d.id, hidden: !d.hidden }).then(load);
-    }),
-  );
-  if (d.reports) {
-    actions.append(button("p-chip", "Clear reports", () => {
-      void api("/resolve", { id: d.id }).then(load);
+    /*
+     * ══ REMOVING ONE DUCK ══
+     * Hide is one tap back and is what almost everything here should be.
+     * This is not: it is for a test duck, a duplicate, or somebody who
+     * asked in a message rather than through their own private link — all
+     * of which Hide leaves in the pond forever, invisible and counted.
+     *
+     * Below a rule, at the bottom, and it still asks twice — the second
+     * time naming the duck, because the row it sits in looks like every
+     * other row and a mis-tap here cannot be undone.
+     */
+    const gone = el("div", "a-danger");
+    gone.append(el("p", "a-hint", "Deleting takes the duck and anything attached to it. There is no undo."));
+    const bar = el("div", "a-actions");
+    bar.append(button("p-chip a-chip-danger", "Delete this duck", () => {
+      bar.replaceChildren(
+        el("p", "a-row-meta",
+          `Delete ${d.name || "this duck"}${d.contact ? " and its contact" : ""}?`),
+        button("p-chip a-chip-danger", "Yes, delete", () => {
+          void api("/duck/delete", { id: d.id }).then(load);
+        }),
+        button("p-chip", "Keep it", () => load()),
+      );
     }));
-  }
-  /*
-   * ══ REMOVING ONE DUCK ══
-   * Hide is one tap back and is what almost everything here should be.
-   * This is not: it is for a test duck, a duplicate, or somebody who
-   * asked in a message rather than through their own private link — all
-   * of which Hide leaves in the pond forever, invisible and counted.
-   *
-   * Two taps, and the second names the duck, because the row it sits in
-   * looks like every other row and a mis-tap here cannot be undone.
-   */
-  const gone = el("div", "a-actions");
-  gone.append(button("p-chip a-chip-danger", "Delete", () => {
-    gone.replaceChildren(
-      el("p", "a-row-meta",
-        `Delete ${d.name || "this duck"}${d.contact ? " and its contact" : ""}? This cannot be undone.`),
-      button("p-chip a-chip-danger", "Yes, delete", () => {
-        void api("/duck/delete", { id: d.id }).then(load);
-      }),
-      button("p-chip", "Keep it", () => load()),
-    );
+    gone.append(bar);
+    into.append(gone);
   }));
 
-  const open = el("a", "p-chip", "Open");
-  open.href = `/d/${d.slug}`;
-  open.target = "_blank";
-  open.rel = "noreferrer";
-  actions.append(open);
-
-  /*
-   * ══ GIVING SOMEBODY THEIR DUCK BACK ══
-   * People lose the private link. Without it their duck is stranded —
-   * still in the pond, still being bumped, and no longer theirs to name,
-   * redecorate or take out. There is no account to recover from, so this
-   * screen is the only place it can come from.
-   *
-   * COPIED, never printed. The key is the whole credential, and a row
-   * that displays it puts it in every screenshot of this page and every
-   * shoulder-glance at it. The chip says what it did and says nothing
-   * about what it holds.
-   */
-  const who = d.name || d.slug;
-  const recover = button("p-chip", "Copy link", () => {
-    void copyText(`${location.origin}/e/${d.editKey}`).then((ok) => {
-      /*
-       * The label AND the accessible name, together. Changing only the
-       * visible text left a screen reader hearing "Copy the private link
-       * for Mika" after the copy had already happened or failed — the one
-       * moment the control has something new to say.
-       */
-      recover.textContent = ok ? "Copied" : "Copy failed";
-      recover.setAttribute("aria-label", ok
-        ? `Copied the private link for ${who}`
-        : `Could not copy the private link for ${who}`);
-      window.setTimeout(() => {
-        recover.textContent = "Copy link";
-        recover.setAttribute("aria-label", `Copy the private link for ${who}`);
-      }, 1600);
-    });
-  }, `Copy the private link for ${who}`);
-  actions.append(recover);
-  row.append(actions, gone);
+  row.append(actions, panel);
   return row;
 }
 
-function contactRow(d: AdminDuck, ducks: AdminDuck[], cards: AdminCard[]): HTMLElement {
+function contactRow(d: AdminDuck, show: (card: string | null) => void): HTMLElement {
   const row = el("div", "a-row");
-  row.append(
-    el("p", "a-row-name", d.name || "(no name)"),
-    // The consent, in names, on every row it appears on.
-    el("p", "a-row-meta",
-      `${scopeLabel(d.scope, d.contactKeeper ?? d.keeper)} · ${day(d.created)}`),
-  );
-  if (d.message) row.append(el("p", "a-row-msg", `“${d.message}”`));
+
+  /*
+   * ══ THE CONTACT IS THE POINT OF THIS TAB ══
+   * It used to be a line of body text below the message, the same size as
+   * everything else. Somebody left an address so they could be written
+   * to; the address is the payload and the rest is context, so it leads.
+   */
   row.append(el("p", "a-contact", d.contact ?? ""));
 
+  const who = el("p", "a-row-meta", "");
+  who.textContent = [
+    d.name || "(no name)",
+    scopeLabel(d.scope, d.contactKeeper ?? d.keeper),
+    day(d.created),
+  ].filter(Boolean).join(" · ");
+  row.append(who);
+
+  if (d.message) row.append(el("p", "a-row-msg", `“${d.message}”`));
+
+  /*
+   * The worklist actions stay in the open. They are the job of this tab,
+   * they are all reversible, and folding them away would put a tap in
+   * front of the only thing anybody comes here to do.
+   */
   const actions = el("div", "a-actions");
   actions.append(
     button("p-chip", d.replied ? `✓ Replied ${day(d.replied)}` : "Mark replied", () => {
@@ -463,11 +641,15 @@ function contactRow(d: AdminDuck, ducks: AdminDuck[], cards: AdminCard[]): HTMLE
     }),
     button("p-chip", "Copy", () => {
       void copyText(d.contact ?? "");
-    }),
+    }, `Copy the contact for ${d.name || "this duck"}`),
   );
+  // Which card this came off, so a contact can be traced without crossing
+  // to another tab and searching for the name again.
+  if (d.card) {
+    actions.append(button("p-chip", d.card, () => show(d.card),
+      `Show every duck from card ${d.card}`));
+  }
   row.append(actions);
-  void ducks;
-  void cards;
   return row;
 }
 
@@ -477,45 +659,48 @@ const ducksWord = (n: number): string => `${n} duck${n === 1 ? "" : "s"}`;
 
 function cardRow(c: AdminCard, show: (card: string | null) => void): HTMLElement {
   const row = el("div", "a-row");
-  /*
-   * ══ THREE STATES, NOT TWO ══
-   * A card with no keeper NAME reads the same as a card nobody has
-   * claimed, and they are not the same thing at all: the first is taken
-   * and the second is going spare. Deciding whether to set somebody up as
-   * keeper is exactly the decision that turns on it.
-   */
-  const head = el(
-    "p", "a-row-name",
-    c.keeper || c.label || (c.claimed ? "kept · no name" : "not claimed"),
-  );
-  if (!c.claimed) head.append(el("span", "a-badge", "free"));
-  if (c.disabled) head.append(el("span", "a-badge", "disabled"));
-  row.append(head);
-  // The serial IS shown here and nowhere else: this is the one reader who
-  // needs to match a row to a card in their hand.
-  /*
-   * The serial, the language, the day — and the claim counter, because it
-   * is the one number that says whether four blows will be accepted. A
-   * card whose tag armed at or below this is a card whose gesture will be
-   * refused, and without it on screen that is indistinguishable from the
-   * gesture not having registered at all.
-   */
-  row.append(
-    el("p", "a-row-meta",
-      [c.id, c.lang ?? "", `claim ${c.claimCounter}`, day(c.created)]
-        .filter(Boolean).join(" · ")),
-  );
 
   /*
-   * The duck count, as the way in. It was a word in a list — the one
-   * number on this screen somebody actually wants to act on, set as
-   * though it were the language code next to it.
+   * ══ THE SERIAL IS THE HEADING ══
+   * The big text used to be the keeper name, OR the label, OR a state
+   * string like "kept · no name" — three different kinds of thing in one
+   * slot, depending on the row. A column that means something different
+   * on every line cannot be scanned, so the list had to be read.
    *
-   * A card with none is not a link to an empty list; it says so plainly.
+   * The serial is the only identity a card cannot lose or have renamed,
+   * and it is the thing printed on the card in your hand. Every row now
+   * starts with eight characters in the same monospace slot, which is
+   * exactly the shape of the question "which row is this card".
    */
+  const head = el("p", "a-row-serial", c.id);
+  if (!c.claimed) head.append(el("span", "a-badge", "free"));
+  if (c.disabled) head.append(el("span", "a-badge a-badge-hot", "off"));
+  row.append(head);
+
+  /*
+   * Who has it and what state it is in — demoted to context, because it
+   * is what you read AFTER you have found the row.
+   *
+   * `claim N` is a diagnostic, so it says what it is for rather than
+   * printing a bare number: it is the mark four blows have to beat, and
+   * on its own it is unreadable.
+   */
+  const state = c.keeper || (c.claimed ? "kept · no name" : "not claimed");
+  row.append(el("p", "a-row-meta",
+    [
+      state, c.label, c.lang ?? "", day(c.created),
+      /*
+       * The claim mark rides in the meta line rather than taking a line of
+       * its own. On its own row it cost a line on all hundred cards to
+       * answer a question asked while debugging one — the tab got TALLER.
+       * `> 7` is the whole fact: a claim is accepted only above it.
+       */
+      `claim > ${c.claimCounter}`,
+    ].filter(Boolean).join(" · ")));
+
   const actions = el("div", "a-actions");
   if (c.ducks > 0) {
-    actions.append(button("p-chip", `${c.ducks} ${c.ducks === 1 ? "duck" : "ducks"}`,
+    actions.append(button("p-chip", ducksWord(c.ducks),
       () => show(c.id), `Show every duck from card ${c.id}`));
   } else {
     actions.append(el("span", "a-row-meta", "no ducks yet"));
@@ -528,156 +713,181 @@ function cardRow(c: AdminCard, show: (card: string | null) => void): HTMLElement
    * keeper happens once per card, and a form on every row would drown the
    * list it is attached to.
    */
-  const edit = el("div", "a-edit");
-  edit.hidden = true;
-  actions.append(button("p-chip", "Edit", () => {
-    edit.hidden = !edit.hidden;
-  }, `Edit card ${c.id}`));
-  row.append(actions);
+  const edit = el("div", "a-fold");
+  actions.append(foldout(edit, "Edit", `Edit card ${c.id}`, (into) => {
+    const note = el("p", "a-note", "");
+    const mkField = (label: string, value: string, max: number, hint = ""): HTMLInputElement => {
+      const wrap = el("label", "a-field");
+      const input = el("input", "p-input a-input") as HTMLInputElement;
+      input.type = "text";
+      input.value = value;
+      input.maxLength = max;
+      wrap.append(el("span", "a-field-label", label), input);
+      if (hint) wrap.append(el("span", "a-hint", hint));
+      into.append(wrap);
+      return input;
+    };
 
-  const note = el("p", "a-row-meta", "");
-  const field = (label: string, value: string, max: number): HTMLInputElement => {
-    const wrap = el("label", "a-field");
-    const input = el("input", "p-input");
-    input.type = "text";
-    input.value = value;
-    input.maxLength = max;
-    wrap.append(el("span", "a-field-label", label), input);
-    edit.append(wrap);
-    return input;
-  };
+    const label = mkField("Label", c.label ?? "", 40, "A note to yourself. Nobody else sees it.");
+    const keeper = mkField("Keeper name", c.keeper ?? "", 18,
+      "Shown on every duck from this card as “via …”. Leave blank for none.");
 
-  const label = field("Label — admin only", c.label ?? "", 40);
-  const keeper = field("Keeper name — shown as “via …”", c.keeper ?? "", 18);
-
-  /*
-   * The keeper's default language. A pair of chips rather than a select,
-   * because there are two and a native select on this screen would be the
-   * only one in the product.
-   */
-  let lang = c.lang === "zh-Hant" ? "zh-Hant" : "en";
-  const langs = el("div", "p-chip-row");
-  const langBtns: [string, string][] = [["en", "English"], ["zh-Hant", "繁體中文"]];
-  const paintLangs = () => {
-    [...langs.children].forEach((b, i) => {
-      const on = langBtns[i]![0] === lang;
-      b.classList.toggle("on", on);
-      b.setAttribute("aria-pressed", String(on));
-    });
-  };
-  langBtns.forEach(([value, text]) => {
-    langs.append(button("p-chip", text, () => { lang = value; paintLangs(); }));
-  });
-  paintLangs();
-  edit.append(el("span", "a-field-label", "Language this card opens in"), langs);
-
-  const save = el("div", "a-actions");
-  save.append(button("p-chip", "Save card", () => {
-    note.textContent = "";
-    void api("/card/label", { card: c.id, label: label.value })
-      .then(() => api("/card/keeper", { card: c.id, name: keeper.value, lang }))
-      .then(load, async (err: unknown) => {
-        /*
-         * The one refusal somebody can act on gets its own sentence. A
-         * keeper called "admin" or "pond" would be quoting the pond
-         * itself on every duck from this card, which is why the
-         * four-blow path refuses it too.
-         */
-        note.textContent = String(err).includes("409")
-          ? "That keeper name is kept for the pond itself. Try another."
-          : "Could not save.";
-      });
-  }));
-
-  /*
-   * Disabled, not deleted. `mintSession` refuses a disabled card, so this
-   * stops new fortunes and claims dead while every duck that came off it
-   * keeps its keeper — and it is one tap back, which delete never is.
-   */
-  save.append(button("p-chip", c.disabled ? "Switch back on" : "Switch off", () => {
-    void api("/card/disabled", { card: c.id, disabled: !c.disabled }).then(load);
-  }));
-
-  /*
-   * ══ DELETE ONLY WHEN IT COSTS NOTHING ══
-   * The server refuses a card with any ducks or any epochs, because
-   * deleting one cascades its epochs away and strips every duck that came
-   * off it of its keeper — for people who never asked — and adding the
-   * serial back cannot undo it. So the button is only offered for a card
-   * that has never been used, and it still asks twice.
-   */
-  /*
-   * ══ MAKING A CARD NEW AGAIN ══
-   * "Reset this card" sounds like one thing and is three with very
-   * different consequences, so it is three chips. None of them deletes a
-   * duck; the one that does is below, behind a typed confirmation.
-   *
-   *   Reset keeper  — ends the tenure. Ducks stay, and keep their `via`,
-   *                   because they WERE from that keeper's card.
-   *   Unlink ducks  — detaches them from every tenure. They stay in the
-   *                   pond, lose the `via`, and become adoptable again.
-   *   Empty card    — deletes them, contacts and all.
-   */
-  const reset = el("div", "a-actions");
-  if (c.claimed) {
-    reset.append(button("p-chip", "Reset keeper", () => {
-      void api("/card/reset", { card: c.id }).then(load);
-    }));
-  }
-  if (c.ducks > c.orphans) {
-    reset.append(button("p-chip", `Unlink ${ducksWord(c.ducks - c.orphans)}`, () => {
-      void api("/card/unlink", { card: c.id }).then(load);
-    }));
-  }
-  if (reset.children.length) save.append(...[...reset.children]);
-
-  if (c.ducks > 0) {
     /*
-     * The destructive one. Typed rather than tapped: it takes contacts
-     * with it — the trigger sees to that, which is the point — and a
-     * second tap is not enough friction for a thing that cannot be
-     * undone and affects people who are not in the room.
+     * The keeper's default language. A pair of chips rather than a select,
+     * because there are two and a native select on this screen would be
+     * the only one in the product.
      */
-    const empty = el("div", "a-actions");
-    empty.append(button("p-chip a-chip-danger", `Delete all ${ducksWord(c.ducks)}`, () => {
-      const typed = el("input", "p-input");
-      typed.placeholder = c.id;
-      empty.replaceChildren(
-        el("p", "a-row-meta",
-          `Deletes ${ducksWord(c.ducks)} and every contact on them. Type ${c.id} to confirm.`),
-        typed,
-        button("p-chip a-chip-danger", "Delete them", () => {
-          if (typed.value.trim().toUpperCase() !== c.id) {
-            note.textContent = "That is not the serial.";
-            return;
-          }
-          void api("/card/ducks/delete", { card: c.id }).then(load);
-        }),
-        button("p-chip", "Keep them", () => load()),
-      );
-    }));
-    edit.append(empty);
-  }
+    let lang = c.lang === "zh-Hant" ? "zh-Hant" : "en";
+    const langs = el("div", "p-chip-row");
+    const langBtns: [string, string][] = [["en", "English"], ["zh-Hant", "繁體中文"]];
+    const paintLangs = () => {
+      [...langs.children].forEach((b, i) => {
+        const on = langBtns[i]![0] === lang;
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", String(on));
+      });
+    };
+    langBtns.forEach(([value, text]) => {
+      langs.append(button("p-chip", text, () => { lang = value; paintLangs(); }));
+    });
+    paintLangs();
+    into.append(el("span", "a-field-label", "Language this card opens in"), langs);
+    into.append(el("p", "a-hint",
+      "A default, not a lock. A visitor whose phone asks for the other language gets it."));
 
-  if (c.ducks === 0) {
-    const danger = el("div", "a-actions");
-    danger.append(button("p-chip a-chip-danger", "Delete card", () => {
-      danger.replaceChildren(
-        el("p", "a-row-meta", `Delete ${c.id}? Only possible because nothing hangs off it.`),
-        button("p-chip a-chip-danger", "Yes, delete", () => {
-          void api("/card/delete", { card: c.id }).then(load, () => {
-            note.textContent = "That card is in use. Switch it off instead.";
-          });
-        }),
-        button("p-chip", "Keep it", () => load()),
-      );
+    // ── save, on its own, directly under what it saves ──────────────────
+    const saveRow = el("div", "a-actions");
+    saveRow.append(button("p-btn a-save", "Save card", () => {
+      note.textContent = "";
+      void api("/card/label", { card: c.id, label: label.value })
+        .then(() => api("/card/keeper", { card: c.id, name: keeper.value, lang }))
+        .then(load, (err: unknown) => {
+          /*
+           * The one refusal somebody can act on gets its own sentence. A
+           * keeper called "admin" or "pond" would be quoting the pond
+           * itself on every duck from this card, which is why the
+           * four-blow path refuses it too.
+           */
+          note.textContent = String(err).includes("409")
+            ? "That keeper name is kept for the pond itself. Try another."
+            : "Could not save.";
+        });
     }));
-    edit.append(save, danger, note);
-  } else {
-    edit.append(save, note);
-  }
+    into.append(saveRow, note);
 
-  row.append(edit);
+    /*
+     * ══ ORDERED BY WHAT THEY COST ══
+     * Everything below this rule changes who owns what, rather than what
+     * a field says. It used to be mixed in with Save on one undifferen-
+     * tiated row of grey chips — and "Delete all 12 ducks" sat ABOVE Save
+     * in reading order, so the most destructive control on the page came
+     * before the most ordinary one.
+     *
+     * The explanations were written in the comments here, where the
+     * person choosing between these buttons could not read them. They are
+     * captions now.
+     */
+    const stateOps = el("div", "a-section");
+    stateOps.append(el("p", "a-section-title", "Change this card"));
+
+    const ops = el("div", "a-actions");
+    /*
+     * Disabled, not deleted. `mintSession` refuses a disabled card, so this
+     * stops new fortunes and claims dead while every duck that came off it
+     * keeps its keeper — and it is one tap back, which delete never is.
+     */
+    ops.append(button("p-chip", c.disabled ? "Switch back on" : "Switch off", () => {
+      void api("/card/disabled", { card: c.id, disabled: !c.disabled }).then(load);
+    }));
+    if (c.claimed) {
+      ops.append(button("p-chip", "Reset keeper", () => {
+        void api("/card/reset", { card: c.id }).then(load);
+      }));
+    }
+    if (c.ducks > c.orphans) {
+      ops.append(button("p-chip", `Unlink ${ducksWord(c.ducks - c.orphans)}`, () => {
+        void api("/card/unlink", { card: c.id }).then(load);
+      }));
+    }
+    stateOps.append(ops);
+    stateOps.append(el("p", "a-hint",
+      c.disabled
+        ? "Switch back on — lets this card deal fortunes again."
+        : "Switch off — stops this card dealing fortunes. Ducks it already made are untouched."));
+    if (c.claimed) {
+      stateOps.append(el("p", "a-hint",
+        "Reset keeper — ends this keeper's turn so somebody else can claim it. "
+          + "Ducks stay in the pond and keep their “via”."));
+    }
+    if (c.ducks > c.orphans) {
+      stateOps.append(el("p", "a-hint",
+        "Unlink — detaches ducks from every keeper's turn. They stay in the pond, "
+          + "lose the “via”, and can be adopted again."));
+    }
+    into.append(stateOps);
+
+    // ── the things that cannot be undone ────────────────────────────────
+    const danger = el("div", "a-danger");
+    danger.append(el("p", "a-section-title", "Cannot be undone"));
+
+    if (c.ducks > 0) {
+      /*
+       * Typed rather than tapped: it takes contacts with it — the trigger
+       * sees to that, which is the point — and a second tap is not enough
+       * friction for a thing that cannot be undone and affects people who
+       * are not in the room.
+       */
+      danger.append(el("p", "a-hint",
+        `Empty card — deletes all ${ducksWord(c.ducks)} from this card and every contact on them.`));
+      const empty = el("div", "a-actions");
+      empty.append(button("p-chip a-chip-danger", `Delete all ${ducksWord(c.ducks)}`, () => {
+        const typed = el("input", "p-input a-input") as HTMLInputElement;
+        typed.placeholder = c.id;
+        typed.setAttribute("aria-label", `Type ${c.id} to confirm`);
+        empty.replaceChildren(
+          el("p", "a-row-meta", `Type ${c.id} to confirm.`),
+          typed,
+          button("p-chip a-chip-danger", "Delete them", () => {
+            if (typed.value.trim().toUpperCase() !== c.id) {
+              note.textContent = "That is not the serial.";
+              return;
+            }
+            void api("/card/ducks/delete", { card: c.id }).then(load);
+          }),
+          button("p-chip", "Keep them", () => load()),
+        );
+      }));
+      danger.append(empty);
+    } else {
+      /*
+       * ══ DELETE ONLY WHEN IT COSTS NOTHING ══
+       * The server refuses a card with any ducks or any epochs, because
+       * deleting one cascades its epochs away and strips every duck that
+       * came off it of its keeper — for people who never asked — and
+       * adding the serial back cannot undo it. So the button is only
+       * offered for a card that has never been used, and it still asks
+       * twice.
+       */
+      danger.append(el("p", "a-hint",
+        "Delete card — removes the serial entirely. Only possible because nothing hangs off it."));
+      const gone = el("div", "a-actions");
+      gone.append(button("p-chip a-chip-danger", "Delete card", () => {
+        gone.replaceChildren(
+          el("p", "a-row-meta", `Delete ${c.id}?`),
+          button("p-chip a-chip-danger", "Yes, delete", () => {
+            void api("/card/delete", { card: c.id }).then(load, () => {
+              note.textContent = "That card is in use. Switch it off instead.";
+            });
+          }),
+          button("p-chip", "Keep it", () => load()),
+        );
+      }));
+      danger.append(gone);
+    }
+    into.append(danger);
+  }));
+
+  row.append(actions, edit);
   return row;
 }
 

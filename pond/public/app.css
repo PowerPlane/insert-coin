@@ -1506,7 +1506,7 @@ h2:focus-visible {
  * keeper happens once per card. A form on every row would drown the list
  * it is attached to.
  */
-.a-edit {
+.a-fold {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -1515,7 +1515,7 @@ h2:focus-visible {
   border-top: 2px solid var(--quiet-shadow);
 }
 
-.a-edit[hidden] {
+.a-fold[hidden] {
   display: none;
 }
 
@@ -2245,8 +2245,21 @@ h2:focus-visible {
 .a-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   margin-top: 0.2rem;
+}
+
+/*
+ * ══ A WORD IS NOT A BUTTON, BUT IT STILL HAS TO LINE UP ══
+ * "no ducks yet" is a bare span in a row of chips. Chips are a tap tall
+ * and the span is one line, so with the default stretch it sat high and
+ * hard against the button beside it and read as broken layout rather than
+ * as an answer. Centred, and given the row's own breathing space.
+ */
+.a-actions > .a-row-meta {
+  align-self: center;
+  padding-right: 0.2rem;
 }
 
 /*
@@ -2419,6 +2432,145 @@ a.p-chip {
 .p-icon {
   image-rendering: pixelated;
   display: block;
+}
+
+
+/* ── the admin list, rebuilt ─────────────────────────────────────────────
+ *
+ * See docs/pond/ADMIN.md. Rows are summaries; the rare and dangerous
+ * things unfold. These rules carry the hierarchy that used to be missing:
+ * every control looked the same, so nothing said what it cost.
+ */
+
+/*
+ * ══ A WHITE FIELD ON A WHITE ROW IS NOT A FIELD ══
+ * `.p-input` is `background: #fff` with `border: 0`, which reads fine on
+ * the pond's pale water and disappears completely inside `.a-row`, which
+ * is also #fff. An empty "Label" was a caption above nothing — it only
+ * looked like somewhere to type once it already had text in it.
+ *
+ * An inset ring rather than a border, because every one of these wears
+ * `clip-path` for its pixel corners and clip-path cuts an outset edge away
+ * entirely. Same reason the focus ring is inset.
+ */
+.a-input,
+.a-search {
+  box-shadow: inset 0 0 0 2px var(--quiet-shadow);
+}
+.a-input:focus-visible,
+.a-search:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--focus);
+}
+
+/* The search box sits above the list it filters, full width. */
+.a-search {
+  margin: 0.2rem 0 0.1rem;
+}
+
+/* The counts, which are also the filters. */
+.a-flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/*
+ * A count that reports a problem carries the warm tone, so "3 reported"
+ * does not look like "12 cards". It is still a chip and still toggles.
+ */
+.a-chip-hot:not(.on) {
+  background: var(--danger);
+  color: var(--danger-text);
+}
+
+/*
+ * ══ THE SERIAL IS THE HEADING ══
+ * Monospace and fixed, so every card row starts with eight characters in
+ * the same shape. That is what makes the column scannable against a card
+ * held in the other hand.
+ */
+.a-row-serial {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  color: var(--p-ink);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/*
+ * ══ A LIST IS FOR SCANNING ══
+ * A long message pushed every other row off the screen. Two lines is
+ * enough to recognise one and to moderate it; the whole thing is one tap
+ * away on the duck itself.
+ */
+.a-row-msg {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/*
+ * A one-line explanation next to the control it explains. These were
+ * written as code comments, where the person deciding which button to
+ * press could not read them.
+ */
+.a-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--p-soft);
+}
+
+.a-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--danger-text);
+}
+
+/* A named group of controls inside an unfolded panel. */
+.a-section,
+.a-danger {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding-top: 0.6rem;
+  border-top: 2px solid var(--quiet-shadow);
+}
+
+/*
+ * ══ ORDERED BY WHAT THEY COST ══
+ * The destructive group is always last and always announces itself. It
+ * used to be a grey chip in a row of grey chips, and "Delete all 12
+ * ducks" sat above "Save card" in reading order.
+ */
+.a-danger {
+  border-top-color: var(--danger-shadow);
+}
+
+.a-section-title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+}
+
+.a-danger .a-section-title {
+  color: var(--danger-text);
+}
+
+/* Save is the one committing action in the panel, so it is the one button. */
+.a-save {
+  align-self: flex-start;
+  min-width: 8rem;
 }
 
 /*

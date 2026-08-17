@@ -121,7 +121,7 @@ var day = (t) => t ? new Date(t * 1e3).toLocaleDateString(void 0, { day: "numeri
 var EMPTY = {
   ducks: "No ducks yet. They appear here as people release them.",
   contacts: "Nobody has left a contact. They only appear when somebody chooses to share one.",
-  cards: "No cards claimed yet. A card appears here once somebody blows on it four times."
+  cards: "No cards yet. A card appears here the first time one of its taps reaches the pond."
 };
 function scopeLabel(scope, keeper) {
   if (!scope) return "";
@@ -166,7 +166,12 @@ function signIn() {
     pw.input.focus();
   });
 }
-var where = { tab: "ducks", card: null };
+var where = {
+  tab: "ducks",
+  card: null,
+  q: "",
+  flag: null
+};
 var cardSecretOk = true;
 async function load() {
   let state;
@@ -176,30 +181,38 @@ async function load() {
     return signIn();
   }
   cardSecretOk = state.cardSecret !== false;
-  view(state.ducks, state.cards, where.tab, where.card);
+  view(state.ducks, state.cards);
 }
 function provenance(d) {
   if (!d.card) return "no card";
   return d.keeper ? `${d.keeper} · ${d.card}` : d.card;
 }
-function view(ducks, cards, tab, cardFilter = null) {
-  where = { tab, card: cardFilter };
+function hit(haystack, q) {
+  if (!q) return true;
+  const needle = q.trim().toLowerCase();
+  if (!needle) return true;
+  return haystack.some((h) => (h ?? "").toLowerCase().includes(needle));
+}
+var waiting = (d) => Boolean(d.contact) && !d.replied;
+function view(ducks, cards) {
   screen(root, () => {
     root.replaceChildren();
     const wrap = el("div", "a-screen");
     const head = el("div", "a-head");
     head.append(el("h1", "a-title", "Admin"), el("span", "p-eyebrow", "ducky.davidyang.work"));
     wrap.append(head);
-    const tabs = el("div", "p-tabs");
     const withContacts = ducks.filter((d) => d.contact);
-    const reported = ducks.filter((d) => d.reports > 0).length;
+    const tabs = el("div", "p-tabs");
     for (const [key, label] of [
       ["ducks", `Ducks ${ducks.length}`],
       ["contacts", `Contacts ${withContacts.length}`],
       ["cards", `Cards ${cards.length}`]
     ]) {
-      const b = button("p-tab", label, () => view(ducks, cards, key, cardFilter));
-      b.classList.toggle("on", tab === key);
+      const b = button("p-tab", label, () => {
+        where = { ...where, tab: key, flag: null };
+        view(ducks, cards);
+      });
+      b.classList.toggle("on", where.tab === key);
       tabs.append(b);
     }
     wrap.append(tabs);
@@ -210,40 +223,105 @@ function view(ducks, cards, tab, cardFilter = null) {
         "CARD_SECRET is missing or malformed. No card can register, be claimed, or attribute a duck until it is set to 32 hex characters."
       ));
     }
-    if (reported && tab === "ducks") {
-      wrap.append(el("p", "a-flag", `${reported} reported`));
+    const search = el("input", "p-input a-search");
+    search.type = "search";
+    search.value = where.q;
+    search.placeholder = where.tab === "cards" ? "Search serial, keeper or label" : where.tab === "contacts" ? "Search name, contact or message" : "Search name, message, serial or link";
+    search.setAttribute("aria-label", "Search");
+    wrap.append(search);
+    const reported = ducks.filter((d) => d.reports > 0).length;
+    const unanswered = withContacts.filter(waiting).length;
+    const free = cards.filter((c) => !c.claimed).length;
+    const off = cards.filter((c) => c.disabled).length;
+    const flags = el("div", "a-flags");
+    const flagChip = (key, label, tone = "") => {
+      const b = button(`p-chip a-flag-chip ${tone}`.trim(), label, () => {
+        where = { ...where, flag: where.flag === key ? null : key };
+        view(ducks, cards);
+      });
+      b.classList.toggle("on", where.flag === key);
+      b.setAttribute("aria-pressed", String(where.flag === key));
+      flags.append(b);
+    };
+    if (where.tab === "ducks" && reported) {
+      flagChip("reported", `${reported} reported`, "a-chip-hot");
     }
-    const show = (next) => view(ducks, cards, "ducks", next);
-    if (cardFilter) {
-      const named = cards.find((c) => c.id === cardFilter);
+    if (where.tab === "contacts" && unanswered) {
+      flagChip("waiting", `${unanswered} waiting`);
+    }
+    if (where.tab === "cards") {
+      flags.append(el("span", "a-row-meta", `${cards.length} cards`));
+      if (free) flagChip("free", `${free} free`);
+      if (off) flagChip("disabled", `${off} off`);
+    }
+    if (flags.childElementCount) wrap.append(flags);
+    if (where.card) {
+      const named = cards.find((c) => c.id === where.card);
       const bar = el("div", "a-filter");
       bar.append(
         el(
           "span",
           "a-filter-who",
-          named?.keeper ? `${named.keeper} · ${cardFilter}` : cardFilter
+          named?.keeper ? `${named.keeper} · ${where.card}` : where.card
         ),
-        button("p-chip", "✕", () => show(null), "Show every card again")
+        button("p-chip", "✕", () => {
+          where = { ...where, card: null };
+          view(ducks, cards);
+        }, "Show every card again")
       );
       wrap.append(bar);
     }
-    const shown = cardFilter ? ducks.filter((d) => d.card === cardFilter) : ducks;
-    const shownContacts = withContacts.filter((d) => !cardFilter || d.card === cardFilter);
     const list = el("div", "a-list");
-    if (tab === "ducks") shown.forEach((d) => list.append(duckRow(d, show, cards)));
-    if (tab === "contacts") shownContacts.forEach((d) => list.append(contactRow(d, ducks, cards)));
-    if (tab === "cards") cards.forEach((c) => list.append(cardRow(c, show)));
-    if (!list.childElementCount) {
-      list.append(el("p", "a-empty", EMPTY[tab]));
-    }
     wrap.append(list);
-    if (tab === "contacts" && withContacts.length) {
+    const show = (card) => {
+      where = { ...where, tab: "ducks", card, flag: null };
+      view(ducks, cards);
+    };
+    function paint() {
+      const q = where.q;
+      let rows = [];
+      if (where.tab === "ducks") {
+        rows = ducks.filter((d) => !where.card || d.card === where.card).filter((d) => where.flag !== "reported" || d.reports > 0).filter((d) => hit([d.name, d.message, d.slug, d.card, d.keeper, d.contact], q)).map((d) => duckRow(d, show, cards));
+      }
+      if (where.tab === "contacts") {
+        rows = withContacts.filter((d) => !where.card || d.card === where.card).filter((d) => where.flag !== "waiting" || waiting(d)).filter((d) => hit([d.name, d.contact, d.message, d.card, d.keeper], q)).map((d) => contactRow(d, show));
+      }
+      if (where.tab === "cards") {
+        rows = cards.filter((c) => where.flag !== "free" || !c.claimed).filter((c) => where.flag !== "disabled" || c.disabled).filter((c) => hit([c.id, c.keeper, c.label], q)).map((c) => cardRow(c, show));
+      }
+      if (!rows.length) {
+        const searching = Boolean(q.trim()) || where.flag || where.card;
+        list.replaceChildren(el(
+          "p",
+          "a-empty",
+          searching ? "Nothing matched. Try fewer words." : EMPTY[where.tab]
+        ));
+        return;
+      }
+      list.replaceChildren(...rows);
+    }
+    search.addEventListener("input", () => {
+      where = { ...where, q: search.value };
+      paint();
+    });
+    paint();
+    if (where.tab === "contacts" && withContacts.length) {
       const csv = el("a", "p-btn p-btn-quiet", "Download CSV");
       csv.href = "/api/admin/csv";
       wrap.append(csv);
     }
     root.append(wrap);
   });
+}
+function foldout(panel, label, title, build) {
+  panel.hidden = true;
+  const chip = button("p-chip", label, () => {
+    if (!panel.childElementCount) build(panel);
+    panel.hidden = !panel.hidden;
+    chip.setAttribute("aria-expanded", String(!panel.hidden));
+  }, title);
+  chip.setAttribute("aria-expanded", "false");
+  return chip;
 }
 function meta(d) {
   return [FORTUNES[d.fortune] ?? "", d.keeper ? `via ${d.keeper}` : "", day(d.created)].filter(Boolean).join(" · ");
@@ -255,91 +333,98 @@ function duckRow(d, show, cardList) {
   if (d.reports) head.append(el("span", "a-badge a-badge-hot", `${d.reports} reported`));
   row.append(head, el("p", "a-row-meta", meta(d)));
   if (d.message) row.append(el("p", "a-row-msg", `“${d.message}”`));
-  const from = el("div", "a-from");
-  from.append(el("span", "a-from-label", "from"));
+  const actions = el("div", "a-actions");
   if (d.card) {
-    from.append(button(
+    actions.append(button(
       "p-chip",
       provenance(d),
       () => show(d.card),
       `Show every duck from card ${d.card}`
     ));
   } else {
-    from.append(el("span", "a-row-meta", provenance(d)));
-    const pick = el("select", "p-input a-attach");
-    const none = el("option", "", "attach to a card…");
-    none.value = "";
-    pick.append(none);
-    for (const c of cardList) {
-      const opt = el("option", "", `${c.id}${c.label ? ` · ${c.label}` : ""}`);
-      opt.value = c.id;
-      pick.append(opt);
-    }
-    pick.addEventListener("change", () => {
-      if (!pick.value) return;
-      void api("/card/attach", { card: pick.value, duck: d.id }).then(load);
-    });
-    from.append(pick);
+    actions.append(el("span", "a-row-meta", "no card"));
   }
-  row.append(from);
-  const actions = el("div", "a-actions");
-  actions.append(
-    button("p-chip", d.hidden ? "Unhide" : "Hide", () => {
-      void api("/hide", { id: d.id, hidden: !d.hidden }).then(load);
-    })
-  );
-  if (d.reports) {
-    actions.append(button("p-chip", "Clear reports", () => {
-      void api("/resolve", { id: d.id }).then(load);
-    }));
-  }
-  const gone = el("div", "a-actions");
-  gone.append(button("p-chip a-chip-danger", "Delete", () => {
-    gone.replaceChildren(
-      el(
-        "p",
-        "a-row-meta",
-        `Delete ${d.name || "this duck"}${d.contact ? " and its contact" : ""}? This cannot be undone.`
-      ),
-      button("p-chip a-chip-danger", "Yes, delete", () => {
-        void api("/duck/delete", { id: d.id }).then(load);
-      }),
-      button("p-chip", "Keep it", () => load())
-    );
-  }));
   const open = el("a", "p-chip", "Open");
   open.href = `/d/${d.slug}`;
   open.target = "_blank";
   open.rel = "noreferrer";
   actions.append(open);
-  const who = d.name || d.slug;
-  const recover = button("p-chip", "Copy link", () => {
-    void copyText(`${location.origin}/e/${d.editKey}`).then((ok) => {
-      recover.textContent = ok ? "Copied" : "Copy failed";
-      recover.setAttribute("aria-label", ok ? `Copied the private link for ${who}` : `Could not copy the private link for ${who}`);
-      window.setTimeout(() => {
-        recover.textContent = "Copy link";
-        recover.setAttribute("aria-label", `Copy the private link for ${who}`);
-      }, 1600);
-    });
-  }, `Copy the private link for ${who}`);
-  actions.append(recover);
-  row.append(actions, gone);
+  const panel = el("div", "a-fold");
+  actions.append(foldout(panel, "Manage", `Manage ${d.name || "this duck"}`, (into) => {
+    const safe = el("div", "a-actions");
+    safe.append(
+      button("p-chip", d.hidden ? "Unhide" : "Hide", () => {
+        void api("/hide", { id: d.id, hidden: !d.hidden }).then(load);
+      })
+    );
+    if (d.reports) {
+      safe.append(button("p-chip", "Clear reports", () => {
+        void api("/resolve", { id: d.id }).then(load);
+      }));
+    }
+    const who = d.name || d.slug;
+    const recover = button("p-chip", "Copy private link", () => {
+      void copyText(`${location.origin}/e/${d.editKey}`).then((ok) => {
+        recover.textContent = ok ? "Copied" : "Copy failed";
+        recover.setAttribute("aria-label", ok ? `Copied the private link for ${who}` : `Could not copy the private link for ${who}`);
+        window.setTimeout(() => {
+          recover.textContent = "Copy private link";
+          recover.setAttribute("aria-label", `Copy the private link for ${who}`);
+        }, 1600);
+      });
+    }, `Copy the private link for ${who}`);
+    safe.append(recover);
+    into.append(safe);
+    if (!d.card) {
+      into.append(el("p", "a-hint", "This duck predates its card being registered. Point it at the card it came from."));
+      const pick = el("select", "p-input a-attach");
+      const none = el("option", "", "attach to a card…");
+      none.value = "";
+      pick.append(none);
+      for (const c of cardList) {
+        const opt = el("option", "", `${c.id}${c.label ? ` · ${c.label}` : ""}`);
+        opt.value = c.id;
+        pick.append(opt);
+      }
+      pick.addEventListener("change", () => {
+        if (!pick.value) return;
+        void api("/card/attach", { card: pick.value, duck: d.id }).then(load);
+      });
+      into.append(pick);
+    }
+    const gone = el("div", "a-danger");
+    gone.append(el("p", "a-hint", "Deleting takes the duck and anything attached to it. There is no undo."));
+    const bar = el("div", "a-actions");
+    bar.append(button("p-chip a-chip-danger", "Delete this duck", () => {
+      bar.replaceChildren(
+        el(
+          "p",
+          "a-row-meta",
+          `Delete ${d.name || "this duck"}${d.contact ? " and its contact" : ""}?`
+        ),
+        button("p-chip a-chip-danger", "Yes, delete", () => {
+          void api("/duck/delete", { id: d.id }).then(load);
+        }),
+        button("p-chip", "Keep it", () => load())
+      );
+    }));
+    gone.append(bar);
+    into.append(gone);
+  }));
+  row.append(actions, panel);
   return row;
 }
-function contactRow(d, ducks, cards) {
+function contactRow(d, show) {
   const row = el("div", "a-row");
-  row.append(
-    el("p", "a-row-name", d.name || "(no name)"),
-    // The consent, in names, on every row it appears on.
-    el(
-      "p",
-      "a-row-meta",
-      `${scopeLabel(d.scope, d.contactKeeper ?? d.keeper)} · ${day(d.created)}`
-    )
-  );
-  if (d.message) row.append(el("p", "a-row-msg", `“${d.message}”`));
   row.append(el("p", "a-contact", d.contact ?? ""));
+  const who = el("p", "a-row-meta", "");
+  who.textContent = [
+    d.name || "(no name)",
+    scopeLabel(d.scope, d.contactKeeper ?? d.keeper),
+    day(d.created)
+  ].filter(Boolean).join(" · ");
+  row.append(who);
+  if (d.message) row.append(el("p", "a-row-msg", `“${d.message}”`));
   const actions = el("div", "a-actions");
   actions.append(
     button("p-chip", d.replied ? `✓ Replied ${day(d.replied)}` : "Mark replied", () => {
@@ -350,143 +435,194 @@ function contactRow(d, ducks, cards) {
     }),
     button("p-chip", "Copy", () => {
       void copyText(d.contact ?? "");
-    })
+    }, `Copy the contact for ${d.name || "this duck"}`)
   );
+  if (d.card) {
+    actions.append(button(
+      "p-chip",
+      d.card,
+      () => show(d.card),
+      `Show every duck from card ${d.card}`
+    ));
+  }
   row.append(actions);
-  void ducks;
-  void cards;
   return row;
 }
 var ducksWord = (n) => `${n} duck${n === 1 ? "" : "s"}`;
 function cardRow(c, show) {
   const row = el("div", "a-row");
-  const head = el(
-    "p",
-    "a-row-name",
-    c.keeper || c.label || (c.claimed ? "kept · no name" : "not claimed")
-  );
+  const head = el("p", "a-row-serial", c.id);
   if (!c.claimed) head.append(el("span", "a-badge", "free"));
-  if (c.disabled) head.append(el("span", "a-badge", "disabled"));
+  if (c.disabled) head.append(el("span", "a-badge a-badge-hot", "off"));
   row.append(head);
-  row.append(
-    el(
-      "p",
-      "a-row-meta",
-      [c.id, c.lang ?? "", `claim ${c.claimCounter}`, day(c.created)].filter(Boolean).join(" · ")
-    )
-  );
+  const state = c.keeper || (c.claimed ? "kept · no name" : "not claimed");
+  row.append(el(
+    "p",
+    "a-row-meta",
+    [
+      state,
+      c.label,
+      c.lang ?? "",
+      day(c.created),
+      /*
+       * The claim mark rides in the meta line rather than taking a line of
+       * its own. On its own row it cost a line on all hundred cards to
+       * answer a question asked while debugging one — the tab got TALLER.
+       * `> 7` is the whole fact: a claim is accepted only above it.
+       */
+      `claim > ${c.claimCounter}`
+    ].filter(Boolean).join(" · ")
+  ));
   const actions = el("div", "a-actions");
   if (c.ducks > 0) {
     actions.append(button(
       "p-chip",
-      `${c.ducks} ${c.ducks === 1 ? "duck" : "ducks"}`,
+      ducksWord(c.ducks),
       () => show(c.id),
       `Show every duck from card ${c.id}`
     ));
   } else {
     actions.append(el("span", "a-row-meta", "no ducks yet"));
   }
-  const edit = el("div", "a-edit");
-  edit.hidden = true;
-  actions.append(button("p-chip", "Edit", () => {
-    edit.hidden = !edit.hidden;
-  }, `Edit card ${c.id}`));
-  row.append(actions);
-  const note = el("p", "a-row-meta", "");
-  const field2 = (label2, value, max) => {
-    const wrap = el("label", "a-field");
-    const input = el("input", "p-input");
-    input.type = "text";
-    input.value = value;
-    input.maxLength = max;
-    wrap.append(el("span", "a-field-label", label2), input);
-    edit.append(wrap);
-    return input;
-  };
-  const label = field2("Label — admin only", c.label ?? "", 40);
-  const keeper = field2("Keeper name — shown as “via …”", c.keeper ?? "", 18);
-  let lang = c.lang === "zh-Hant" ? "zh-Hant" : "en";
-  const langs = el("div", "p-chip-row");
-  const langBtns = [["en", "English"], ["zh-Hant", "繁體中文"]];
-  const paintLangs = () => {
-    [...langs.children].forEach((b, i) => {
-      const on = langBtns[i][0] === lang;
-      b.classList.toggle("on", on);
-      b.setAttribute("aria-pressed", String(on));
+  const edit = el("div", "a-fold");
+  actions.append(foldout(edit, "Edit", `Edit card ${c.id}`, (into) => {
+    const note = el("p", "a-note", "");
+    const mkField = (label2, value, max, hint = "") => {
+      const wrap = el("label", "a-field");
+      const input = el("input", "p-input a-input");
+      input.type = "text";
+      input.value = value;
+      input.maxLength = max;
+      wrap.append(el("span", "a-field-label", label2), input);
+      if (hint) wrap.append(el("span", "a-hint", hint));
+      into.append(wrap);
+      return input;
+    };
+    const label = mkField("Label", c.label ?? "", 40, "A note to yourself. Nobody else sees it.");
+    const keeper = mkField(
+      "Keeper name",
+      c.keeper ?? "",
+      18,
+      "Shown on every duck from this card as “via …”. Leave blank for none."
+    );
+    let lang = c.lang === "zh-Hant" ? "zh-Hant" : "en";
+    const langs = el("div", "p-chip-row");
+    const langBtns = [["en", "English"], ["zh-Hant", "繁體中文"]];
+    const paintLangs = () => {
+      [...langs.children].forEach((b, i) => {
+        const on = langBtns[i][0] === lang;
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", String(on));
+      });
+    };
+    langBtns.forEach(([value, text]) => {
+      langs.append(button("p-chip", text, () => {
+        lang = value;
+        paintLangs();
+      }));
     });
-  };
-  langBtns.forEach(([value, text]) => {
-    langs.append(button("p-chip", text, () => {
-      lang = value;
-      paintLangs();
+    paintLangs();
+    into.append(el("span", "a-field-label", "Language this card opens in"), langs);
+    into.append(el(
+      "p",
+      "a-hint",
+      "A default, not a lock. A visitor whose phone asks for the other language gets it."
+    ));
+    const saveRow = el("div", "a-actions");
+    saveRow.append(button("p-btn a-save", "Save card", () => {
+      note.textContent = "";
+      void api("/card/label", { card: c.id, label: label.value }).then(() => api("/card/keeper", { card: c.id, name: keeper.value, lang })).then(load, (err) => {
+        note.textContent = String(err).includes("409") ? "That keeper name is kept for the pond itself. Try another." : "Could not save.";
+      });
     }));
-  });
-  paintLangs();
-  edit.append(el("span", "a-field-label", "Language this card opens in"), langs);
-  const save = el("div", "a-actions");
-  save.append(button("p-chip", "Save card", () => {
-    note.textContent = "";
-    void api("/card/label", { card: c.id, label: label.value }).then(() => api("/card/keeper", { card: c.id, name: keeper.value, lang })).then(load, async (err) => {
-      note.textContent = String(err).includes("409") ? "That keeper name is kept for the pond itself. Try another." : "Could not save.";
-    });
+    into.append(saveRow, note);
+    const stateOps = el("div", "a-section");
+    stateOps.append(el("p", "a-section-title", "Change this card"));
+    const ops = el("div", "a-actions");
+    ops.append(button("p-chip", c.disabled ? "Switch back on" : "Switch off", () => {
+      void api("/card/disabled", { card: c.id, disabled: !c.disabled }).then(load);
+    }));
+    if (c.claimed) {
+      ops.append(button("p-chip", "Reset keeper", () => {
+        void api("/card/reset", { card: c.id }).then(load);
+      }));
+    }
+    if (c.ducks > c.orphans) {
+      ops.append(button("p-chip", `Unlink ${ducksWord(c.ducks - c.orphans)}`, () => {
+        void api("/card/unlink", { card: c.id }).then(load);
+      }));
+    }
+    stateOps.append(ops);
+    stateOps.append(el(
+      "p",
+      "a-hint",
+      c.disabled ? "Switch back on — lets this card deal fortunes again." : "Switch off — stops this card dealing fortunes. Ducks it already made are untouched."
+    ));
+    if (c.claimed) {
+      stateOps.append(el(
+        "p",
+        "a-hint",
+        "Reset keeper — ends this keeper's turn so somebody else can claim it. Ducks stay in the pond and keep their “via”."
+      ));
+    }
+    if (c.ducks > c.orphans) {
+      stateOps.append(el(
+        "p",
+        "a-hint",
+        "Unlink — detaches ducks from every keeper's turn. They stay in the pond, lose the “via”, and can be adopted again."
+      ));
+    }
+    into.append(stateOps);
+    const danger = el("div", "a-danger");
+    danger.append(el("p", "a-section-title", "Cannot be undone"));
+    if (c.ducks > 0) {
+      danger.append(el(
+        "p",
+        "a-hint",
+        `Empty card — deletes all ${ducksWord(c.ducks)} from this card and every contact on them.`
+      ));
+      const empty = el("div", "a-actions");
+      empty.append(button("p-chip a-chip-danger", `Delete all ${ducksWord(c.ducks)}`, () => {
+        const typed = el("input", "p-input a-input");
+        typed.placeholder = c.id;
+        typed.setAttribute("aria-label", `Type ${c.id} to confirm`);
+        empty.replaceChildren(
+          el("p", "a-row-meta", `Type ${c.id} to confirm.`),
+          typed,
+          button("p-chip a-chip-danger", "Delete them", () => {
+            if (typed.value.trim().toUpperCase() !== c.id) {
+              note.textContent = "That is not the serial.";
+              return;
+            }
+            void api("/card/ducks/delete", { card: c.id }).then(load);
+          }),
+          button("p-chip", "Keep them", () => load())
+        );
+      }));
+      danger.append(empty);
+    } else {
+      danger.append(el(
+        "p",
+        "a-hint",
+        "Delete card — removes the serial entirely. Only possible because nothing hangs off it."
+      ));
+      const gone = el("div", "a-actions");
+      gone.append(button("p-chip a-chip-danger", "Delete card", () => {
+        gone.replaceChildren(
+          el("p", "a-row-meta", `Delete ${c.id}?`),
+          button("p-chip a-chip-danger", "Yes, delete", () => {
+            void api("/card/delete", { card: c.id }).then(load, () => {
+              note.textContent = "That card is in use. Switch it off instead.";
+            });
+          }),
+          button("p-chip", "Keep it", () => load())
+        );
+      }));
+      danger.append(gone);
+    }
+    into.append(danger);
   }));
-  save.append(button("p-chip", c.disabled ? "Switch back on" : "Switch off", () => {
-    void api("/card/disabled", { card: c.id, disabled: !c.disabled }).then(load);
-  }));
-  const reset = el("div", "a-actions");
-  if (c.claimed) {
-    reset.append(button("p-chip", "Reset keeper", () => {
-      void api("/card/reset", { card: c.id }).then(load);
-    }));
-  }
-  if (c.ducks > c.orphans) {
-    reset.append(button("p-chip", `Unlink ${ducksWord(c.ducks - c.orphans)}`, () => {
-      void api("/card/unlink", { card: c.id }).then(load);
-    }));
-  }
-  if (reset.children.length) save.append(...[...reset.children]);
-  if (c.ducks > 0) {
-    const empty = el("div", "a-actions");
-    empty.append(button("p-chip a-chip-danger", `Delete all ${ducksWord(c.ducks)}`, () => {
-      const typed = el("input", "p-input");
-      typed.placeholder = c.id;
-      empty.replaceChildren(
-        el(
-          "p",
-          "a-row-meta",
-          `Deletes ${ducksWord(c.ducks)} and every contact on them. Type ${c.id} to confirm.`
-        ),
-        typed,
-        button("p-chip a-chip-danger", "Delete them", () => {
-          if (typed.value.trim().toUpperCase() !== c.id) {
-            note.textContent = "That is not the serial.";
-            return;
-          }
-          void api("/card/ducks/delete", { card: c.id }).then(load);
-        }),
-        button("p-chip", "Keep them", () => load())
-      );
-    }));
-    edit.append(empty);
-  }
-  if (c.ducks === 0) {
-    const danger = el("div", "a-actions");
-    danger.append(button("p-chip a-chip-danger", "Delete card", () => {
-      danger.replaceChildren(
-        el("p", "a-row-meta", `Delete ${c.id}? Only possible because nothing hangs off it.`),
-        button("p-chip a-chip-danger", "Yes, delete", () => {
-          void api("/card/delete", { card: c.id }).then(load, () => {
-            note.textContent = "That card is in use. Switch it off instead.";
-          });
-        }),
-        button("p-chip", "Keep it", () => load())
-      );
-    }));
-    edit.append(save, danger, note);
-  } else {
-    edit.append(save, note);
-  }
-  row.append(edit);
+  row.append(actions, edit);
   return row;
 }
 void load();
