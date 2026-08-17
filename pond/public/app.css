@@ -1433,7 +1433,12 @@ h2:focus-visible {
   line-height: 1.45;
   color: var(--p-ink);
   background: #fff8e0;
-  border-left: 3px solid var(--duck);
+  /*
+   * No left rule. The warm fill already separates this from the notes
+   * around it, and the bar was a second, louder way of saying the same
+   * thing — on a screen whose whole job is to make a small ask look
+   * small. The stamp carries the postcard idea on its own.
+   */
   clip-path: var(--px-corner);
 }
 
