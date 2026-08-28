@@ -1,3 +1,6 @@
+// ABOUTME: Exchanges short-lived NFC fortune URLs for server-side sessions and signed cookies.
+// ABOUTME: Derives stable anonymous visitor identities without coupling them to secret rotation.
+
 /**
  * Sessions — turning a tap into a ticket.
  *
@@ -26,7 +29,7 @@ export interface Session {
   spentDuck: string | null;
 }
 
-/** HMAC-SHA256, hex. Used to sign cookies and to derive visitor hashes. */
+/** HMAC-SHA256, hex. Used to sign session cookies and card claims. */
 export async function hmac(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
@@ -40,13 +43,18 @@ export async function hmac(secret: string, message: string): Promise<string> {
 }
 
 /**
- * A visitor identity that is stable per browser but is NOT a device
- * fingerprint and is NOT an IP address. It exists only so rescues and
- * reports can be counted once per person instead of once per tap, and so
- * minting can be rate-limited without knowing who anybody is.
+ * A stable anonymous identity derived from the random browser cookie.
+ *
+ * This deliberately does not use SESSION_SECRET. That secret signs
+ * short-lived sessions and may be rotated; a rotation must not orphan the
+ * durable fortune entries belonging to every existing browser.
  */
-export async function visitorHash(env: Env, clientId: string): Promise<string> {
-  return (await hmac(env.SESSION_SECRET, `v:${clientId}`)).slice(0, 32);
+export async function visitorHash(clientId: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(clientId));
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 32);
 }
 
 export function parseCookies(req: Request): Record<string, string> {

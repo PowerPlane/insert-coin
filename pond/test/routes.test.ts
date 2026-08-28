@@ -1,3 +1,6 @@
+// ABOUTME: Exercises the complete Pond HTTP flow against a real in-memory libSQL database.
+// ABOUTME: Verifies private visitor ponds alongside retained card, admin, and historical routes.
+
 /**
  * The whole flow, through the real routes, against a real database.
  *
@@ -123,6 +126,12 @@ async function release(
   return (await res.json()) as Released;
 }
 
+/** Make a released fixture represent an entry from the historical public pond. */
+async function makePublic(e: Env, duck: Released): Promise<Released> {
+  await e.DB.prepare(`UPDATE ducks SET visitor = NULL WHERE id = ?1`).bind(duck.id).run();
+  return duck;
+}
+
 describe("GET /api/pond", () => {
   it("returns JSON — the phase's own done-when, minus the deploy", async () => {
     const e = await env();
@@ -150,7 +159,7 @@ describe("GET /api/pond", () => {
     const secret = testSecret();
     await release(v, {}, `?d=2&c=${card}&g=0000&t=${cardToken(secret, card, 0)}`);
 
-    const raw = await (await handle(new Request(`${ORIGIN}/api/pond`), e)).text();
+    const raw = await (await v.api("/api/pond")).text();
     expect(raw).toContain('"keeper":"Sam"');
     // The serial is half of what a card claim is keyed on. It must not
     // appear anywhere in a public response, under any key.
@@ -186,7 +195,7 @@ describe("the path the router dispatches on", () => {
 
   it("routes a multi-segment path — the one that 404'd in production", async () => {
     const e = await env();
-    const duck = await release(new Visitor(e));
+    const duck = await makePublic(e, await release(new Visitor(e)));
     const res = await handle(
       new Request(`${ORIGIN}/api/router?__path=duck/by-slug/${duck.slug}`),
       e,
@@ -219,6 +228,59 @@ describe("a tap becomes a session, exactly once", () => {
     const s = await v.json<{ fortune: number }>("/api/session");
     expect(s.fortune).toBe(0); // still the first one
     expect(await count(e.DB, `SELECT COUNT(*) AS n FROM sessions`)).toBe(1);
+  });
+
+  it("lets the same phone accrue another fortune after completing one", async () => {
+    const e = await env();
+    const v = new Visitor(e);
+    const first = await release(v, { message: "Begin gently" }, "?d=1");
+    const second = await release(v, { message: "Stay curious" }, "?d=4");
+
+    expect(second.id).not.toBe(first.id);
+    const pond = await v.json<{ ducks: { id: string; message: string }[] }>("/api/pond");
+    expect(pond.ducks.map((duck) => duck.id)).toEqual([second.id, first.id]);
+    expect(pond.ducks.map((duck) => duck.message)).toEqual(["Stay curious", "Begin gently"]);
+  });
+
+  it("keeps each browser's pond private", async () => {
+    const e = await env();
+    const owner = new Visitor(e);
+    const stranger = new Visitor(e);
+    await release(owner);
+
+    expect((await owner.json<{ ducks: unknown[] }>("/api/pond")).ducks).toHaveLength(1);
+    expect((await stranger.json<{ ducks: unknown[] }>("/api/pond")).ducks).toEqual([]);
+  });
+
+  it("keeps a personal pond reachable when the session-signing secret rotates", async () => {
+    const e = await env();
+    const owner = new Visitor(e);
+    const entry = await release(owner);
+    e.SESSION_SECRET = "rotated-session-secret";
+
+    const pond = await owner.json<{ ducks: { id: string }[] }>("/api/pond");
+    expect(pond.ducks.map((duck) => duck.id)).toEqual([entry.id]);
+  });
+
+  it("renews the personal pond cookie on a return visit", async () => {
+    const e = await env();
+    const owner = new Visitor(e);
+    await owner.api("/api/pond");
+
+    const returned = await owner.api("/api/pond");
+    expect(returned.headers.getSetCookie?.().some((cookie) =>
+      cookie.startsWith("pond_v=") && cookie.includes("Max-Age=31536000"),
+    )).toBe(true);
+  });
+
+  it("does not expose a personal fortune through its generated slug", async () => {
+    const e = await env();
+    const duck = await release(new Visitor(e));
+
+    expect((await handle(new Request(`${ORIGIN}/api/duck/by-slug/${duck.slug}`), e)).status)
+      .toBe(404);
+    expect((await duckPage(new Request(`${ORIGIN}/d/${duck.slug}`), e, duck.slug)).status)
+      .toBe(404);
   });
 
   it("gives a read-only pond to someone who just walked up", async () => {
@@ -590,7 +652,7 @@ describe("bumps", () => {
     expect(res.status).toBe(403);
   });
 
-  it("counts, and shows up in the pond", async () => {
+  it("counts, and stores the relationship", async () => {
     const e = await env();
     const [a, b] = await twoDucks(e);
     const v = new Visitor(e);
@@ -599,8 +661,10 @@ describe("bumps", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true, bumps: 1, unreturned: 1 });
 
-    const pond = await v.json<{ ducks: { id: string; bumps: number }[] }>("/api/pond");
-    expect(pond.ducks.find((d) => d.id === a.id)?.bumps).toBe(1);
+    const stored = await e.DB.prepare(
+      `SELECT total FROM bumps WHERE from_duck = ?1 AND to_duck = ?2`,
+    ).bind(b.id, a.id).first<{ total: number }>();
+    expect(stored?.total).toBe(1);
   });
 
   it("stops at ten unreturned, and a bump back frees a slot", async () => {
@@ -656,8 +720,10 @@ describe("bumps", () => {
 
   it("ranks who bumped a duck most, for the duck card", async () => {
     const e = await env();
-    const [target, one] = await twoDucks(e);
-    const two = await release(new Visitor(e), {}, "?d=3");
+    const [targetEntry, oneEntry] = await twoDucks(e);
+    const target = await makePublic(e, targetEntry);
+    const one = await makePublic(e, oneEntry);
+    const two = await makePublic(e, await release(new Visitor(e), {}, "?d=3"));
     const v = new Visitor(e);
 
     await v.post("/api/bump", { id: target.id, editKey: one.editKey });
@@ -675,7 +741,7 @@ describe("bumps", () => {
 describe("reports", () => {
   it("records the reason and the note", async () => {
     const e = await env();
-    const duck = await release(new Visitor(e));
+    const duck = await makePublic(e, await release(new Visitor(e)));
     const v = new Visitor(e);
 
     const res = await v.post("/api/report", {
@@ -765,7 +831,7 @@ describe("the HTML routes", () => {
 
   it("/d/<slug> renders the duck's own words for a link preview", async () => {
     const e = await env();
-    const duck = await release(new Visitor(e));
+    const duck = await makePublic(e, await release(new Visitor(e)));
     const res = await duckPage(new Request(`${ORIGIN}/d/${duck.slug}`), e, duck.slug);
     const html = await res.text();
 
@@ -780,7 +846,10 @@ describe("the HTML routes", () => {
   it("/d/<slug> escapes a duck's message rather than trusting it", async () => {
     const e = await env();
     const v = new Visitor(e);
-    const duck = await release(v, { message: `"><script>alert(1)</script>` });
+    const duck = await makePublic(
+      e,
+      await release(v, { message: `"><script>alert(1)</script>` }),
+    );
     const html = await (await duckPage(new Request(`${ORIGIN}/`), e, duck.slug)).text();
 
     expect(html).not.toContain("<script>alert");

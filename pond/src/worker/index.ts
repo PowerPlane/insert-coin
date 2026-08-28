@@ -1,3 +1,6 @@
+// ABOUTME: Routes Pond page and API requests across sessions, fortune entries, and administration.
+// ABOUTME: Exchanges signed NFC URLs for private visitor sessions and personal pond data.
+
 /**
  * The Pond — the API router.
  *
@@ -36,7 +39,7 @@ import {
 } from "./keeper.js";
 import { createDuck, setContact } from "./release.js";
 import { normaliseSlug, slugTaken } from "./slug.js";
-import { bump, extinguish, maybeIgnite, report, say } from "./social.js";
+import { bump, extinguish, report, say } from "./social.js";
 import { keeperNameOfCard } from "./keeper.js";
 import { loadSession, mintSession, readSessionCookie, sweep, visitorHash } from "./session.js";
 import type { Env } from "./types.js";
@@ -71,22 +74,29 @@ export function securityHeaders(extra?: HeadersInit): Headers {
  */
 export async function ensureVisitor(
   req: Request,
-  env: Env,
 ): Promise<{ visitor: string; setCookie: string | null }> {
   const cookies = req.headers.get("cookie") ?? "";
   const match = cookies.match(/(?:^|;\s*)pond_v=([A-Za-z0-9]{8,64})/);
-  if (match?.[1]) return { visitor: await visitorHash(env, match[1]), setCookie: null };
+  if (match?.[1]) {
+    return {
+      visitor: await visitorHash(match[1]),
+      setCookie: visitorCookieHeader(match[1]),
+    };
+  }
 
   const raw = randomId(24);
-  const setCookie = [
-    `${VISITOR_COOKIE}=${raw}`,
+  return { visitor: await visitorHash(raw), setCookie: visitorCookieHeader(raw) };
+}
+
+function visitorCookieHeader(value: string): string {
+  return [
+    `${VISITOR_COOKIE}=${value}`,
     "Path=/",
     "HttpOnly",
     "Secure",
     "SameSite=Lax",
     "Max-Age=31536000",
   ].join("; ");
-  return { visitor: await visitorHash(env, raw), setCookie };
 }
 
 async function readJson(req: Request): Promise<Record<string, unknown> | null> {
@@ -147,10 +157,11 @@ export async function mintFromQuery(
   const digit = intParam(url.searchParams.get("d"), 0, 4);
   if (!digit || digit < 1) return { cookie: null, card };
 
-  // Already holding a live session: leave it alone. Re-tapping a card
-  // mid-decoration must not hand out a second fortune and orphan the first.
+  // Preserve an unfinished fortune, but let a completed tap accrue another
+  // entry in this visitor's pond.
   const existing = await readSessionCookie(env, req);
-  if (existing && (await loadSession(env, existing))) return { cookie: null, card };
+  const held = existing ? await loadSession(env, existing) : null;
+  if (held && !held.spentDuck) return { cookie: null, card };
 
   const minted = await mintSession(env, {
     digit,
@@ -205,18 +216,13 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
   const url = new URL(req.url);
   const path = (pathname ?? url.pathname).replace(/\/+$/, "") || "/";
 
-  const { visitor, setCookie } = await ensureVisitor(req, env);
+  const { visitor, setCookie } = await ensureVisitor(req);
   const headers = securityHeaders();
   if (setCookie) headers.append("set-cookie", setCookie);
 
   // ── the pond ────────────────────────────────────────────────────────────
   if (path === "/api/pond" && req.method === "GET") {
-    // Ignition happens HERE, on read, not on a timer. Vercel Hobby crons
-    // run daily and a finer expression fails at deploy — but a fire nobody
-    // is present to see was never worth lighting, so this is the better
-    // design rather than a workaround. See docs/pond/HOSTING.md § 2.
-    await maybeIgnite(env);
-    const ducks = await listPond(env);
+    const ducks = await listPond(env, visitor);
     return json({ ducks, now: nowSec() }, { headers });
   }
 
@@ -308,7 +314,7 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
     // leak, nothing to have to delete later.
     const contact = value ? { value, scope: validateScope(body.scope) } : null;
 
-    const made = await createDuck(env, s.id, s.cardId, checked, contact);
+    const made = await createDuck(env, s.id, visitor, s.cardId, checked, contact);
     if ("error" in made) return json({ error: made.error }, { status: 409, headers });
 
     return json({ id: made.id, slug: made.slug, editKey: made.editKey },
