@@ -17,7 +17,7 @@ The visitor flow does not expose names, contact sharing, bumping, reporting, spe
 
 ## Identity and persistence
 
-The first implementation uses the existing signed `pond_v` browser cookie as the pond identity. The server hashes its opaque value before storing it on an entry. The cookie is not the fortune store: Turso stores the entries, while the cookie only tells the server which rows to return.
+The first implementation uses the existing opaque `pond_v` browser cookie as the pond identity. The server hashes its high-entropy random value before storing it on an entry. It deliberately does not derive this identity from `SESSION_SECRET`, because rotating an operational signing secret must not orphan durable ponds. The cookie is not the fortune store: Turso stores the entries, while the cookie only tells the server which rows to return.
 
 This gives one stable pond per browser profile:
 
@@ -81,6 +81,43 @@ Recommended integration:
 5. Require signed play ids and a pond-level recovery credential before calling cross-device persistence complete.
 
 The suite story is: Webstones catalogs the sculpture, `shrine.computer` gives it a stable public home, the physical Insert Coin object creates each event, and the private pond lets the event accumulate into a personal ritual over time.
+
+## Hosting and database decision
+
+Keep Vercel and Turso for the personal-pond release. The expected load is far below the free allowances of either platform, so a migration would not solve a capacity problem. The current choice also preserves `ducky.davidyang.work` as a single CNAME while the `davidyang.work` zone remains outside Cloudflare.
+
+Turso is the authoritative fortune store, not a backup for browser storage. The browser contains only the anonymous pond cookie, an unfinished one-hour draft, a cooldown display deadline, and the latest per-entry edit credential. Removing Turso without replacing it with another server database would remove the durable pond.
+
+Cloudflare D1 is a reasonable later destination because the application already speaks through a D1-shaped database interface and the Internet Sculptures server already runs on Cloudflare Workers. Move when the experience moves under a Cloudflare-controlled suite hostname and one operational owner is worth more than preserving the existing deployment. Do not move for anticipated load alone.
+
+Before any database migration:
+
+1. Add pond-level recovery so a user can prove that the rows survived the move from a second browser.
+2. Export and checksum a SQLite-compatible backup.
+3. Rehearse every migration and the database verification script against D1.
+4. Run Turso and D1 in a short, explicit cutover window; do not introduce indefinite dual writes.
+5. Verify the NFC URL, session exchange, release, recovery, and personal pond through the production hostname before retiring Turso.
+
+Keep an independent periodic export even though Turso provides point-in-time restore. Provider restore protects against recent mistakes; an export protects against account, retention-window, or provider-level loss.
+
+## Companion PWA boundary
+
+The companion PWA should recognize Insert Coin only after it has an owner operation worth exposing. A catalog tile or launcher is not enough. The first useful surface is pond recovery and transfer:
+
+- show a recovery QR or link
+- attach this browser to an existing pond after confirmation
+- rotate the recovery credential
+- export or delete the pond
+- show the card identity and last successful connection as diagnostics
+
+Language or a small set of curated intention prompts can follow if testing shows that owners need them. Do not expose arbitrary fortune editing by default; surprise is part of this sculpture's ritual, and the existing Fortune Webstone configuration model describes a different object.
+
+The current companion architecture needs two changes before it can safely own this configuration:
+
+- Registration currently prevents more than one instance of an object type, but people may own or administer multiple Insert Coin cards. Registration must be unique by physical card, not only by catalog object id.
+- The existing Fortune Webstone endpoint accepts configuration writes keyed by a tag id without authenticating ownership. Insert Coin recovery, deletion, and owner settings must require proof of physical custody, such as the signed four-blow keeper claim, followed by a revocable owner session. A scanned or typed tag id is not authority.
+
+Do not use Web NFC to rewrite the Insert Coin tag from the PWA. The microcontroller owns its changing signed URL, Web NFC is not available on iOS, and a browser-written static URL would bypass the physical fortune event. The PWA may consume a signed claim URL to establish ownership, but firmware remains responsible for NFC contents.
 
 ## Explicit non-goals for this slice
 

@@ -29,7 +29,7 @@ export interface Session {
   spentDuck: string | null;
 }
 
-/** HMAC-SHA256, hex. Used to sign cookies and to derive visitor hashes. */
+/** HMAC-SHA256, hex. Used to sign session cookies and card claims. */
 export async function hmac(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
