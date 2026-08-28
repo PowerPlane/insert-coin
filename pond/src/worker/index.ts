@@ -74,22 +74,29 @@ export function securityHeaders(extra?: HeadersInit): Headers {
  */
 export async function ensureVisitor(
   req: Request,
-  env: Env,
 ): Promise<{ visitor: string; setCookie: string | null }> {
   const cookies = req.headers.get("cookie") ?? "";
   const match = cookies.match(/(?:^|;\s*)pond_v=([A-Za-z0-9]{8,64})/);
-  if (match?.[1]) return { visitor: await visitorHash(env, match[1]), setCookie: null };
+  if (match?.[1]) {
+    return {
+      visitor: await visitorHash(match[1]),
+      setCookie: visitorCookieHeader(match[1]),
+    };
+  }
 
   const raw = randomId(24);
-  const setCookie = [
-    `${VISITOR_COOKIE}=${raw}`,
+  return { visitor: await visitorHash(raw), setCookie: visitorCookieHeader(raw) };
+}
+
+function visitorCookieHeader(value: string): string {
+  return [
+    `${VISITOR_COOKIE}=${value}`,
     "Path=/",
     "HttpOnly",
     "Secure",
     "SameSite=Lax",
     "Max-Age=31536000",
   ].join("; ");
-  return { visitor: await visitorHash(env, raw), setCookie };
 }
 
 async function readJson(req: Request): Promise<Record<string, unknown> | null> {
@@ -209,7 +216,7 @@ export async function handle(req: Request, env: Env, pathname?: string): Promise
   const url = new URL(req.url);
   const path = (pathname ?? url.pathname).replace(/\/+$/, "") || "/";
 
-  const { visitor, setCookie } = await ensureVisitor(req, env);
+  const { visitor, setCookie } = await ensureVisitor(req);
   const headers = securityHeaders();
   if (setCookie) headers.append("set-cookie", setCookie);
 

@@ -252,6 +252,27 @@ describe("a tap becomes a session, exactly once", () => {
     expect((await stranger.json<{ ducks: unknown[] }>("/api/pond")).ducks).toEqual([]);
   });
 
+  it("keeps a personal pond reachable when the session-signing secret rotates", async () => {
+    const e = await env();
+    const owner = new Visitor(e);
+    const entry = await release(owner);
+    e.SESSION_SECRET = "rotated-session-secret";
+
+    const pond = await owner.json<{ ducks: { id: string }[] }>("/api/pond");
+    expect(pond.ducks.map((duck) => duck.id)).toEqual([entry.id]);
+  });
+
+  it("renews the personal pond cookie on a return visit", async () => {
+    const e = await env();
+    const owner = new Visitor(e);
+    await owner.api("/api/pond");
+
+    const returned = await owner.api("/api/pond");
+    expect(returned.headers.getSetCookie?.().some((cookie) =>
+      cookie.startsWith("pond_v=") && cookie.includes("Max-Age=31536000"),
+    )).toBe(true);
+  });
+
   it("does not expose a personal fortune through its generated slug", async () => {
     const e = await env();
     const duck = await release(new Visitor(e));
