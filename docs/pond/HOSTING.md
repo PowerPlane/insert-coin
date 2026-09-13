@@ -94,7 +94,7 @@ Set in Vercel → Settings → Environment Variables, Production scope:
 
 | Name | What it is |
 | --- | --- |
-| `SESSION_SECRET` | HMAC key for session cookies and visitor hashes. 32 random bytes. |
+| `SESSION_SECRET` | HMAC key for short-lived session cookies and card claims. 32 random bytes. |
 | `ADMIN_PASSWORD` | The actual auth on `/pondkeeper`. The path is obscurity, this is the lock. |
 | `TURSO_URL` | libSQL connection URL. |
 | `TURSO_TOKEN` | libSQL auth token. |
