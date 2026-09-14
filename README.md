@@ -19,7 +19,7 @@ insert-coin/
 ├── shared/                     # things reused across variants
 │   ├── kicad/                  # symbols, footprints, 3D models
 │   ├── firmware/               # shared HAL/drivers (LED matrix, NFC, mic)
-│   └── tools/                  # flashing scripts, gerber gen helpers
+│   └── tools/                  # build-hex.sh, gerber gen helpers
 └── variants/<slug>/
     ├── hardware/               # KiCad project + fab outputs
     ├── firmware/               # PlatformIO project (bringup + production envs)
@@ -37,3 +37,5 @@ Copy the structure of `variants/business-card-v1/` (without the KiCad files) as 
 ## Firmware toolchain
 
 [PlatformIO](https://platformio.org/) + [megaTinyCore](https://github.com/SpenceKonde/megaTinyCore) targeting the ATtiny1616 over **UPDI**. Default programmer: SerialUPDI through an FTDI USB-serial adapter (one 4.7 kΩ resistor between TX and RX). Per-variant `firmware/README.md` has the wiring diagram and build commands.
+
+No PlatformIO on the machine? [`docs/flasher/`](docs/flasher/README.md) is a browser page at `ducky.davidyang.work/flash` that flashes a card through an Adafruit UPDI Friend. David builds the `.hex` with `shared/tools/build-hex.sh` and sends it; the page does the rest.

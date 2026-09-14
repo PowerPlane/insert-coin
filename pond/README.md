@@ -30,8 +30,10 @@ pond/
     social.ts              bumps, fires, speech, reports. Atomic SQL only.
     limits.ts              rate limits, because SECURITY.md promised them
     shell.ts / pages.ts    the server-rendered HTML
+    flash-shell.ts         /flash, the one page that needs no database
     util.ts                text cleaning, ids, constant-time compare
   src/client/              the pond itself (canvas)
+  src/flasher/             /flash — flashes a card over Web Serial. docs/flasher/
   test/                    contact isolation is enforced here, not promised
   tools/                   db-apply, db-verify, sprites, the prototypes
   public/                  served verbatim by the CDN. NOT generated, not ignored.

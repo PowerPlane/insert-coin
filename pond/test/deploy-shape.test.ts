@@ -175,16 +175,27 @@ describe("the committed bundle is in step with its source", () => {
    * and compare. esbuild does this in tens of milliseconds.
    */
   it("rebuilding produces byte-identical output", () => {
-    const bundle = join(root, "public", "main.js");
-    const before = readFileSync(bundle);
+    // Every bundle the build script emits, read from the script itself so
+    // a fourth entry point is guarded the day it is added. The first
+    // version checked main.js alone, which let a stale flash.js ship.
+    const script = readFileSync(join(root, "tools", "build-client.mjs"), "utf8");
+    const bundles = [...script.matchAll(/^\s+(\w+): "src\/[^"]+\.ts",?$/gm)].map((m) => `${m[1]}.js`);
+    expect(bundles).toContain("main.js");
+    // The scrape cannot under-count silently: every .js in public/ is a
+    // bundle, and every bundle must have been scraped.
+    const shipped = readdirSync(join(root, "public")).filter((f) => f.endsWith(".js")).sort();
+    expect(bundles.slice().sort()).toEqual(shipped);
 
+    const before = new Map(bundles.map((b) => [b, readFileSync(join(root, "public", b))]));
     execFileSync("node", ["tools/build-client.mjs"], { cwd: root, stdio: "pipe" });
-    const after = readFileSync(bundle);
 
-    expect(
-      after.equals(before),
-      "public/main.js is stale — run `npm run build:client` and commit the result",
-    ).toBe(true);
+    for (const [name, was] of before) {
+      const now = readFileSync(join(root, "public", name));
+      expect(
+        now.equals(was),
+        `public/${name} is stale — run \`npm run build:client\` and commit the result`,
+      ).toBe(true);
+    }
   });
 
   it("the shell asks for the bundle it actually builds", () => {
