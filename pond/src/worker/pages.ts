@@ -17,6 +17,7 @@
 import { duckBySlug } from "./ducks.js";
 import { ensureVisitor, mintFromQuery, securityHeaders } from "./index.js";
 import { adminShell, duckShell, editShell, pickLanguage, pondShell } from "./shell.js";
+import { flashShell } from "./flash-shell.js";
 import type { Env } from "./types.js";
 
 function html(body: string, headers: Headers, status = 200): Response {
@@ -123,4 +124,16 @@ export async function adminPage(req: Request, _env: Env): Promise<Response> {
   // The admin stays English — one reader, and it is David. COPY.md § 09.
   void lang;
   return html(adminShell(), headers);
+}
+
+/**
+ * `/flash` — the card flasher. English only: the two people who open it
+ * are David and whoever is holding the UPDI Friend. Not indexed, for the
+ * same belt-and-braces reason as the admin page. `req` is unused but kept
+ * so every page route has the same shape.
+ */
+export async function flashPage(_req: Request): Promise<Response> {
+  const headers = securityHeaders();
+  headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+  return html(flashShell(), headers);
 }

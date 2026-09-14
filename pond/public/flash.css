@@ -1,0 +1,335 @@
+/*
+ * /flash — the card flasher.
+ *
+ * ══ TOKENS ARE LIFTED FROM app.css, NOT IMPORTED ══
+ * app.css is the pond: a fixed, non-scrolling stage with water behind it.
+ * This is a page that scrolls, on a laptop, so it takes the tokens and
+ * the handful of components it uses (button, chip, hint, wordmark, the
+ * dithered edge) and nothing else. Where a value here disagrees with
+ * app.css, app.css is right — docs/pond/UI.md is the rule book for both.
+ */
+
+:root {
+  --p-water: #8ecae6;
+  --p-ink: #0b3d52;
+  --p-soft: #2d6076;
+  --p-faint: #5b8699;
+  --p-surface: #f2fbfe;
+  --duck: #ffca00;
+  --duck-shadow: #c08508;
+  --duck-text: #4a3a06;
+  --quiet: #dff2fb;
+  --quiet-shadow: #b9d9e6;
+  --danger: #ffdcd6;
+  --danger-shadow: #efb0a5;
+  --danger-text: #8f2b20;
+  --focus: #3fb5d8;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --serif: "Young Serif", Georgia, serif;
+  --body: system-ui, sans-serif;
+  --step-fade: 0.18s steps(3, end);
+  --tap: 44px;
+  --px-corner: polygon(
+    0 6px, 3px 6px, 3px 3px, 6px 3px, 6px 0,
+    calc(100% - 6px) 0, calc(100% - 6px) 3px, calc(100% - 3px) 3px,
+    calc(100% - 3px) 6px, 100% 6px,
+    100% calc(100% - 6px), calc(100% - 3px) calc(100% - 6px),
+    calc(100% - 3px) calc(100% - 3px), calc(100% - 6px) calc(100% - 3px),
+    calc(100% - 6px) 100%,
+    6px 100%, 6px calc(100% - 3px), 3px calc(100% - 3px),
+    3px calc(100% - 6px), 0 calc(100% - 6px)
+  );
+}
+
+* { box-sizing: border-box; }
+
+/* The script toggles `hidden`; the flex containers below would outrank the
+   browser's own [hidden] rule without this. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--p-water);
+  color: var(--p-ink);
+  font: 16px/1.45 var(--body);
+  font-synthesis: none;
+}
+
+/* ── page ──────────────────────────────────────────────────────────────── */
+
+.f-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 20px 20px;
+  gap: 0;
+}
+
+.f-sheet {
+  width: 100%;
+  max-width: 480px;
+  padding: 22px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  background: var(--p-surface);
+  clip-path: var(--px-corner);
+}
+
+.f-head { display: flex; flex-direction: column; gap: 8px; }
+
+/* The waterline. Three 4px strips at 25/50/75% coverage, as in app.css. */
+.p-edge { width: 100%; max-width: 480px; height: 12px; }
+.p-edge > i { display: block; height: 4px; }
+.p-d25{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='1' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='0' y='2' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
+.p-d50{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='1' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='0' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='2' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='3' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='3' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
+.p-d75{background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='4' height='1' x='0' y='0' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='1' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='1' fill='%23f2fbfe'/><rect width='4' height='1' x='0' y='2' fill='%23f2fbfe'/><rect width='1' height='1' x='1' y='3' fill='%23f2fbfe'/><rect width='1' height='1' x='3' y='3' fill='%23f2fbfe'/></svg>") repeat;background-size:4px 4px}
+
+/* ── type, as app.css ──────────────────────────────────────────────────── */
+
+.p-eyebrow, .p-field-label, .p-hint, .p-btn, .p-chip, .p-linkish, .p-wordmark, .f-stepnum, .f-check, .f-mono {
+  font-family: var(--mono);
+}
+.p-eyebrow, .p-field-label, .p-btn, .p-chip, .p-linkish, .f-stepnum, .f-check { text-transform: uppercase; }
+
+.p-eyebrow { margin: 0; font-size: 0.68rem; letter-spacing: 0.15em; color: var(--p-soft); }
+.p-title { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 1.55rem; line-height: 1.12; color: var(--p-ink); }
+.p-body { margin: 0; font-size: 0.92rem; line-height: 1.6; color: var(--p-soft); }
+.p-field-label { font-size: 0.68rem; letter-spacing: 0.12em; color: var(--p-soft); }
+.p-hint { margin: 0; font-size: 0.66rem; letter-spacing: 0.05em; color: var(--p-soft); }
+.f-mono { font-size: 0.8rem; color: var(--p-ink); overflow-wrap: anywhere; }
+
+.p-wordmark {
+  margin: 18px 0 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--p-ink);
+  opacity: 0.55;
+  text-align: center;
+}
+
+/* Screen-reader only: the real file input behind the drop zone. */
+.p-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ── steps ─────────────────────────────────────────────────────────────── */
+
+.f-step { display: flex; flex-direction: column; gap: 10px; }
+
+.f-stepnum {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--p-ink);
+}
+.f-stepnum b {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: var(--p-ink);
+  color: var(--p-surface);
+  font-weight: 500;
+  clip-path: var(--px-corner);
+}
+
+.f-wiring { display: block; width: 100%; height: auto; max-width: 440px; margin: 0 auto; }
+.f-hints { display: flex; flex-direction: column; gap: 4px; }
+
+/* ── the drop zone ─────────────────────────────────────────────────────── */
+
+.f-drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 16px;
+  text-align: center;
+  background: #fff;
+  clip-path: var(--px-corner);
+  cursor: pointer;
+}
+.f-drop-label { color: var(--p-ink); }
+.f-drop.is-over { background: var(--quiet); }
+.f-drop:focus-within { box-shadow: inset 0 0 0 3px var(--focus); }
+.f-drop-chip { min-height: 36px; }
+
+.f-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  clip-path: var(--px-corner);
+}
+.f-file-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.f-file .p-linkish { min-height: 32px; }
+
+/* ── progress ──────────────────────────────────────────────────────────── */
+
+.f-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.f-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--p-faint);
+}
+.f-box {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: var(--quiet);
+  clip-path: var(--px-corner);
+  transition: background var(--step-fade);
+}
+.f-check.is-done { color: var(--p-ink); }
+.f-check.is-done .f-box { background: var(--p-ink); }
+.f-check.is-now { color: var(--p-ink); }
+.f-check.is-now .f-box { background: var(--duck); }
+.f-check.is-failed { color: var(--danger-text); }
+.f-check.is-failed .f-box { background: var(--danger-shadow); }
+
+.f-bar { height: 12px; background: #fff; clip-path: var(--px-corner); }
+.f-bar > i { display: block; height: 100%; width: 0; background: var(--duck); }
+
+/* ── the error block ───────────────────────────────────────────────────── */
+
+.f-danger {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--danger);
+  color: var(--danger-text);
+  clip-path: var(--px-corner);
+}
+.f-danger-label { color: var(--danger-text); }
+.f-danger-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* ── controls, as app.css ──────────────────────────────────────────────── */
+
+.p-btn {
+  all: unset;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  box-sizing: border-box;
+  cursor: pointer;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-height: var(--tap);
+  padding: 0.85rem 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: var(--duck-text);
+}
+.p-btn::before, .p-btn::after { content: ""; position: absolute; clip-path: var(--px-corner); }
+.p-btn::before { inset: 0; background: var(--duck); z-index: -1; }
+.p-btn::after { inset: 4px 0 -4px 0; background: var(--duck-shadow); z-index: -2; }
+.p-btn:active { transform: translateY(3px); }
+.p-btn:active::after { inset: 1px 0 -1px 0; }
+.p-btn[disabled] { opacity: 0.5; cursor: default; }
+.p-btn[disabled]:active { transform: none; }
+
+.p-chip {
+  all: unset;
+  clip-path: var(--px-corner);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0 0.85rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.09em;
+  color: var(--p-ink);
+  background: var(--quiet);
+}
+
+.p-linkish {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--p-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.f-utils { display: flex; justify-content: center; }
+
+.f-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  font-size: 0.85rem;
+  color: var(--p-soft);
+}
+.f-option input { width: 18px; height: 18px; accent-color: var(--p-ink); }
+
+.f-log {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  background: #fff;
+  clip-path: var(--px-corner);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--p-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+/* Clipped controls cut an outset ring away; the ring goes inside. UI.md § 3. */
+.p-btn:focus-visible, .p-chip:focus-visible, .p-linkish:focus-visible, .f-option input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--focus);
+}
+.p-linkish:focus-visible { box-shadow: 0 0 0 3px var(--focus); }
+
+@media (prefers-reduced-motion: reduce) {
+  .f-box { transition: none; }
+}

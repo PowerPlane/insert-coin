@@ -10,6 +10,7 @@
  * every duck dies on the submit button.
  */
 
+import { bytesToHex } from "../card/bytes.js";
 import { consume, mintBuckets, sweepRateLimits } from "./limits.js";
 import type { Env } from "./types.js";
 import { nowSec, randomId, timingSafeEqual } from "./util.js";
@@ -36,7 +37,7 @@ export async function hmac(secret: string, message: string): Promise<string> {
     ["sign"],
   );
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return bytesToHex(new Uint8Array(sig));
 }
 
 /**

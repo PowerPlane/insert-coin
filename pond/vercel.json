@@ -22,6 +22,10 @@
       "destination": "/api/duck-edit?key=:key"
     },
     {
+      "source": "/flash",
+      "destination": "/api/flash"
+    },
+    {
       "source": "/pondkeeper",
       "destination": "/api/pondkeeper"
     },
@@ -32,7 +36,20 @@
   ],
   "headers": [
     {
-      "source": "/(app\\.js|app\\.css)",
+      "source": "/(main|admin|flash)\\.js",
+      "headers": [
+        {
+          "key": "cache-control",
+          "value": "no-cache"
+        },
+        {
+          "key": "x-content-type-options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/(app|flash|fonts)\\.css",
       "headers": [
         {
           "key": "cache-control",
@@ -68,6 +85,15 @@
     },
     {
       "source": "/e/(.*)",
+      "headers": [
+        {
+          "key": "x-robots-tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/flash",
       "headers": [
         {
           "key": "x-robots-tag",

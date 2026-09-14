@@ -81,7 +81,7 @@ The failure modes are real:
 | Link lost | The duck stays and can no longer be edited by its owner. Admin can copy the link back to them — `/pondkeeper` is the only place that can, and it is the reason the key is in the admin payload at all. Nothing automatic recovers it, because there is no account to recover from. |
 | Link leaked | Whoever has it can edit or delete that duck. Nothing else. The page itself server-renders **nothing** about the duck, so the document in a cache or a screenshot is not the leak. |
 | Leaks via `Referer` | Prevented: `Referrer-Policy: no-referrer` on every response |
-| Leaks via search engines | Prevented: `X-Robots-Tag: noindex, nofollow` on `/e/*`, set both by the function and in `vercel.json` — this is the one header whose absence cannot be noticed until a bearer URL is already indexed. `/pondkeeper` gets the same, set by the function and in `vercel.json`. `/d/<slug>` is public on purpose and stays indexable. |
+| Leaks via search engines | Prevented: `X-Robots-Tag: noindex, nofollow` on `/e/*`, set both by the function and in `vercel.json` — this is the one header whose absence cannot be noticed until a bearer URL is already indexed. `/pondkeeper` gets the same, set by the function and in `vercel.json`. So does `/flash`, which carries nothing secret but has no business in a search index. `/d/<slug>` is public on purpose and stays indexable. |
 | Leaks via server logs | The key is in the path, so **do not log full URLs**. |
 | Shared device / history | Not defended. It is a link in a browser. |
 

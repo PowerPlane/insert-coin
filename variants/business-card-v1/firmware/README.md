@@ -16,6 +16,8 @@ The actual source code is **not yet written** — that's the next session. The `
 
 ## Programmer wiring
 
+> **No PlatformIO handy?** `docs/flasher/README.md` describes a browser page that flashes a built `.hex` through an Adafruit UPDI Friend. Same fuses, same result. Build the file here with `shared/tools/build-hex.sh`.
+
 The ATtiny1616 uses **UPDI**, Microchip's 1-wire programming protocol. No bootloader is required (and no bootloader is on the board) — UPDI talks directly to the chip's NVM controller.
 
 ### Primary path: SerialUPDI via FTDI (recommended)
