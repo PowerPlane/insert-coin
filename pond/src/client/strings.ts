@@ -1,3 +1,6 @@
+// ABOUTME: Holds every translated string used by the Pond client.
+// ABOUTME: Keeps fortune, intention, and personal pond copy aligned across supported languages.
+
 /**
  * Every word the product says, keyed by its id in docs/pond/COPY.md.
  *
@@ -58,9 +61,9 @@ export const SCOPE_STRINGS = {
  * against the real client is a Phase 3 exit task.
  */
 export const LIVE_STRINGS = {
-  "live.count": "{n} ducks",
-  "live.count.one": "1 duck",
-  "live.count.none": "no ducks yet",
+  "live.count": "{n} fortunes",
+  "live.count.one": "1 fortune",
+  "live.count.none": "your pond is waiting",
   // Distinguished on purpose: "try again" is true and useful when the
   // network is gone; "something went wrong" is what you say when it is not.
   "live.offline": "no signal",
@@ -193,9 +196,9 @@ export const KEEPER_STRINGS = {
 export const EN = {
   "arrival.01": "Your fortune", // Body
   "arrival.02": "大吉 · Great luck", // Heading
-  "arrival.03": "No one else got this duck today. Decorate it or release it as is.", // Body
-  "arrival.04": "Decorate it", // Button
-  "arrival.05": "Just look around", // Button
+  "arrival.03": "Keep this fortune as it is, or give it an intention for today.", // Body
+  "arrival.04": "Set an intention", // Button
+  "arrival.05": "Keep the fortune", // Button
   "studio.01": "Back", // Button
   "studio.02": "Make it yours", // Body
   "studio.03": "Skip", // Button
@@ -212,7 +215,7 @@ export const EN = {
   "studio.14": "2×", // Button
   "studio.15": "Erase", // Button
   "studio.16": "Colour", // Body
-  "studio.17": "Next", // Button
+  "studio.17": "Save to my pond", // Button
   "studio.18": "Drag stickers to move them. Nothing is required.", // Body
   "studio.19": "Nothing here is required.", // Body, on the other tabs
   "sign.01": "Sign it", // Body
@@ -376,6 +379,20 @@ export const EN = {
   "code.05": "Reported ✓", // Set from code
   "code.06": "Slide a coin in to get one", // Set from code
   "code.07": "This one is yours", // Set from code
+
+  "personal.01": "Your fortune",
+  "personal.02": "An intention for today",
+  "personal.03": "My intention",
+  "personal.04": "Move gently",
+  "personal.05": "A few words are enough. Only you can see this.",
+  "personal.06": "Decorate my intention",
+  "personal.07": "Save without decorating",
+  "personal.08": "Saving to your pond…",
+  "personal.09": "Try saving again",
+  "personal.10": "Saved",
+  "personal.11": "Your fortune is in your pond",
+  "personal.12": "Come back on this phone to see your fortunes gather.",
+  "personal.13": "See my pond",
 } as const;
 
 export type StringKey =
@@ -425,9 +442,9 @@ export const ZH_HANT: Record<StringKey, string> = {
   "scope.05": "David 經營這個池塘，也會回信。",
 
   // ── counts, states, and the words for a network that is not there ────
-  "live.count": "{n} 隻鴨子",
-  "live.count.one": "1 隻鴨子",
-  "live.count.none": "還沒有鴨子",
+  "live.count": "{n} 個運勢",
+  "live.count.one": "1 個運勢",
+  "live.count.none": "你的池塘在等你",
   "live.offline": "沒有訊號",
   "live.error": "池塘沒有回應",
   "live.via": "來自 {keeper}",
@@ -508,9 +525,9 @@ export const ZH_HANT: Record<StringKey, string> = {
   // ── the arrival ───────────────────────────────────────────────────────
   "arrival.01": "你的運勢",
   "arrival.02": "大吉",
-  "arrival.03": "今天沒有人抽到這隻鴨子。裝飾一下，或直接放進池塘。",
-  "arrival.04": "裝飾它",
-  "arrival.05": "先看看就好",
+  "arrival.03": "直接留下這個運勢，或為今天寫下一個心意。",
+  "arrival.04": "寫下心意",
+  "arrival.05": "留下這個運勢",
 
   // ── the studio ────────────────────────────────────────────────────────
   "studio.01": "返回",
@@ -529,7 +546,7 @@ export const ZH_HANT: Record<StringKey, string> = {
   "studio.14": "2×",
   "studio.15": "擦掉",
   "studio.16": "顏色",
-  "studio.17": "下一步",
+  "studio.17": "存進我的池塘",
   "studio.18": "拖曳貼紙可以移動。不加也可以。",
   "studio.19": "這裡什麼都不用改也可以。",
 
@@ -656,6 +673,20 @@ export const ZH_HANT: Record<StringKey, string> = {
   "code.05": "已檢舉 ✓",
   "code.06": "投幣就能拿到一隻",
   "code.07": "這隻是你的",
+
+  "personal.01": "你的運勢",
+  "personal.02": "今天的心意",
+  "personal.03": "我的心意",
+  "personal.04": "溫柔前進",
+  "personal.05": "幾個字就夠了。只有你看得到。",
+  "personal.06": "裝飾我的心意",
+  "personal.07": "不裝飾，直接儲存",
+  "personal.08": "正在存進你的池塘…",
+  "personal.09": "再試一次",
+  "personal.10": "已儲存",
+  "personal.11": "你的運勢已經在池塘裡",
+  "personal.12": "下次用這支手機回來，就會看到運勢慢慢聚在一起。",
+  "personal.13": "看看我的池塘",
 };
 
 const TABLES: Record<Lang, Partial<Record<StringKey, string>>> = {

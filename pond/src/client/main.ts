@@ -1,3 +1,6 @@
+// ABOUTME: Runs the animated personal pond and the NFC fortune interaction in the browser.
+// ABOUTME: Coordinates arrivals, intentions, saved entries, and card setup without page navigation.
+
 /**
  * The client entry point.
  *
@@ -873,11 +876,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<PondHandle> {
     try {
       const res = await api.pond();
       ducks = res.ducks;
-      if (mineId) {
-        // The tag over your own duck — drawTag already knows how to draw
-        // it; nothing had ever told it which duck to draw it over.
-        for (const d of ducks) if (d.id === mineId) d.mine = true;
-      }
+      for (const duck of ducks) duck.mine = true;
       view.setDucks(ducks);
       syncSays(ducks);
       syncCount();
@@ -979,12 +978,6 @@ async function pondScreen(bootstrap: Bootstrap): Promise<PondHandle> {
         root: overlay,
         fortune: session.fortune ?? 1,
         playArrival,
-        // The keeper of the card that was TAPPED — from the session, which
-        // knows the card. It used to be inferred from the ducks on screen,
-        // which quietly stopped working the moment the pond held ducks from
-        // two different keepers: the inference gave up and returned null, so
-        // the option to share with a keeper never appeared at all.
-        keeper: session.keeper ?? null,
         onBrowse: () => {
           releasing = false;
           overlay.replaceChildren();
@@ -1025,9 +1018,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<PondHandle> {
   }
 
   function buildCta(session: SessionState): void {
-    // Only the two-glyph state is a row; every other state is a wide button.
     cta.classList.remove("p-cta-glyphs");
-    const mine = hasDuck();
     if (session.active && !session.spent) {
     // A fortune is waiting. This is the only CTA that ever appears, and it
     // is the whole reason the pond can be the default screen: someone with
@@ -1064,57 +1055,7 @@ async function pondScreen(bootstrap: Bootstrap): Promise<PondHandle> {
     go.type = "button";
     go.addEventListener("click", () => beginRelease(session));
     cta.append(go);
-    if (session.keeperOffer && !offerDismissed()) cta.append(keeperGlyph());
-    return;
-  }
-
-    /*
-     * No fortune waiting, and no duck of your own: the card is the only way
-     * to get one, and saying so is kinder than an empty bar that leaves
-     * somebody wondering what the pond wants from them.
-     */
-    if (!mine) {
-      const hint = el("button", "p-btn p-btn-quiet", t("code.06"));
-      hint.type = "button";
-      hint.disabled = true;
-      cta.append(hint);
-      return;
     }
-
-    /*
-     * ══ ONCE YOUR DUCK IS IN, THE BAR GETS OUT OF THE WAY ══
-     * There is nothing you still owe it — the pond IS the destination —
-     * so the wide button goes and leaves two quiet glyphs: say something,
-     * and your duck's settings. A CTA here would be asking for an action
-     * that does not exist.
-     *
-     * This used to append a "Back to the pond" button while the comment
-     * beside it said the CTA hides entirely. The comment was right.
-     */
-    cta.classList.add("p-cta-glyphs");
-    cta.append(sayButton(), settingsButton());
-
-    /*
-     * ══ AN INVITATION NEEDS WORDS — AND THE SHEET IS WHERE THEY GO ══
-     * The first version was a wide labelled row above the glyphs, on the
-     * argument that a glyph cannot explain an action nobody has heard of.
-     * Seen on a phone it was wrong in two ways at once: it dominated a bar
-     * whose whole job is to get out of the way, and its dismiss sat in the
-     * row as a third control competing with the two that matter.
-     *
-     * The words were never the problem — their PLACE was. They belong in
-     * the sheet, which is where somebody who taps has actually stopped to
-     * read. So the bar gets a third glyph the same size as the other two,
-     * and the explanation, the decision and the way to decline all live
-     * one tap in.
-     *
-     * That also fixes something worse than layout: the row CLAIMED the
-     * card the moment it was pressed and explained afterwards. The sheet's
-     * primary claims now, after the reading — and "no thanks" has an
-     * honest place to be, which it could not have once the card was
-     * already taken.
-     */
-    if (session.keeperOffer && !offerDismissed()) cta.append(keeperGlyph());
   }
 
   /*
@@ -1673,7 +1614,12 @@ function openDuckCard(view: PondView, duck: Placed): void {
   head.append(thumb, headText);
   card.append(head);
 
-  if (duck.message) card.append(el("p", "p-card-msg", duck.message));
+  if (duck.message) {
+    card.append(
+      el("p", "p-eyebrow", t("personal.02")),
+      el("p", "p-card-msg", duck.message),
+    );
+  }
 
   const stats = el("p", "p-card-stats");
   const showStats = (bumps: number) => {
@@ -1683,6 +1629,7 @@ function openDuckCard(view: PondView, duck: Placed): void {
       : t("live.bumps", { n: String(bumps) });
   };
   showStats(duck.bumps);
+  stats.hidden = Boolean(duck.mine);
   card.append(stats);
 
   /*
@@ -1699,7 +1646,7 @@ function openDuckCard(view: PondView, duck: Placed): void {
   card.append(bumpers);
   void api.bumpers(duck.id).then(
     (res) => {
-      if (!res.bumpers.length || !panel.isConnected) return;
+      if (duck.mine || !res.bumpers.length || !panel.isConnected) return;
       /*
        * ══ TWO VIEWS OF ONE FACT, FROM TWO SOURCES ══
        * The sentence above comes from `duck.bumps`, polled with the pond
@@ -1828,6 +1775,7 @@ function openDuckCard(view: PondView, duck: Placed): void {
   );
 
   const actions = el("div", "p-actions");
+  actions.hidden = Boolean(duck.mine);
 
   /**
    * Bump.
