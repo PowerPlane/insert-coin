@@ -90,7 +90,7 @@ constexpr uint8_t FLAME_GUST_CHANCE = 64; // 25 %
 // so AC zero-crossings don't reset the streak). The envelope's
 // peak-and-decay shape would let a single clap mimic a long blow, so
 // the detector uses raw samples instead.
-constexpr int16_t BLOW_THRESHOLD_ADC = 100;
+constexpr int16_t BLOW_THRESHOLD_ADC = 150;
 constexpr uint16_t BLOW_DWELL_MS = 100;
 constexpr uint16_t BLOW_GAP_MS = 20;
 // After this long without a blow, the fire times out and the card
