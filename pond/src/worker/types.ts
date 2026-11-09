@@ -1,6 +1,3 @@
-// ABOUTME: Defines the environment bindings and visitor-safe data returned by the Pond worker.
-// ABOUTME: Keeps database, session-signing, and public fortune shapes explicit at module boundaries.
-
 import type { Db } from "../db/types.js";
 
 /**
@@ -19,7 +16,7 @@ import type { Db } from "../db/types.js";
  */
 export interface Env {
   DB: Db;
-  /** HMAC key for short-lived session cookies and card claims. */
+  /** HMAC key for session cookies and visitor hashes. */
   SESSION_SECRET: string;
   /** Admin password. The secret path is obscurity; this is the actual auth. */
   ADMIN_PASSWORD: string;

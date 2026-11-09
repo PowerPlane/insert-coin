@@ -1,6 +1,3 @@
-// ABOUTME: Enforces that visitor-facing reads cannot reach private contact data.
-// ABOUTME: Audits both the SQL table surface and response behavior of personal ponds.
-
 /**
  * The privacy claim, enforced.
  *
