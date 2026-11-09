@@ -1,7 +1,7 @@
 # Ducky Card repo split: design
 
 Date: 2026-11-09
-Status: draft, waiting for David's review
+Status: approved by David on 2026-11-09
 
 ## Goal
 
@@ -9,7 +9,8 @@ One repo per card project. Each repo holds the hardware, the firmware and the
 pond web app for one card, and can be built, flashed and deployed on its own.
 
 - `ducky-card` is David's card with the **shared pond**.
-- `ducky-card-spencer` is the collab with Spencer, with the **personal pond**.
+- `ducky-card-spencer-collab` ("Ducky Card Spencer Collab") is the collab with
+  Spencer, with the **personal pond**.
 - Future collabs start as a copy of `ducky-card` (GitHub "Use this template").
 
 Success looks like:
@@ -89,10 +90,10 @@ Path references to update (from `grep business-card-v1`): `build-hex.sh`,
 
 ## What each repo owns
 
-| | `ducky-card` | `ducky-card-spencer` |
+| | `ducky-card` | `ducky-card-spencer-collab` |
 | --- | --- | --- |
 | Pond | Shared (restored from `d939f87`) | Personal (current `main`) |
-| NFC host | `ducky.davidyang.work` | Open decision 1 |
+| NFC host | `ducky.davidyang.work` | Its Vercel `*.vercel.app` domain for now (see Decisions) |
 | `CARD_SECRET` | Existing value | New value, generated for this repo |
 | Vercel project | Existing one | New |
 | Database | Existing Turso DB | New Turso DB |
@@ -144,8 +145,9 @@ Before the shared pond is deployed again:
 | # | Step | Who |
 | --- | --- | --- |
 | 0 | Safety tags: `shared-pond-final` at `d939f87`, `personal-pond-final` at `8e1ab56` | Claude |
-| 1 | Create empty private repo `ducky-card-spencer`, add Spencer as collaborator | David (GitHub UI) |
-| 2 | Push current `main` history to it; flatten layout; change NFC host; README notes "started from insert-coin at 8e1ab56" | Claude, once the repo is added to the session |
+| 1 | Create empty public repo `ducky-card-spencer-collab`, add Spencer as collaborator | David (GitHub UI) |
+| 2 | Push current `main` history to it; flatten layout; README notes "started from insert-coin at 8e1ab56" | Claude, once the repo is added to the session |
+| 2b | Firmware NFC host change (section "Spencer's repo: firmware change") | David, in a local Claude Code session after the move, once the host is known |
 | 3 | In this repo, on the working branch: restore `pond/` and `docs/pond/HOSTING.md` from `d939f87`, remove the personal-pond doc, flatten layout, delete tracked junk, rename README to Ducky Card, write `COLLABS.md` | Claude, as a draft PR |
 | 4 | Merge the PR; rename repo to `ducky-card`; tick "Template repository"; confirm Vercel is still linked; update local remotes | David |
 | 5 | Run the DB check above and move rows if needed | David, with Claude drafting the SQL |
@@ -179,14 +181,21 @@ check it is rejected.
   rev 0-2 until someone copies the new KiCad files over. This is intended: a
   collab's card does not change under it.
 
-## Open decisions (need David)
+## Decisions from review (2026-11-09)
 
-1. **Spencer's pond host.** It must be a root-level `/?d=` URL, because the
-   pond routes `/` to the shell. Proposal: a new subdomain of
-   `davidyang.work` (same Vercel CNAME pattern as today). `shrine.computer/pond`
-   from Spencer's doc would need a routing change and is out of scope.
-2. **Repo name** for Spencer's repo. Default: `ducky-card-spencer`.
-3. **Visibility.** Default: both private.
+1. **Spencer's pond host: pending.** Host it on Vercel under the project's
+   default `*.vercel.app` domain for now. The host is baked into every card's
+   NFC tag, so moving to a custom domain later means reflashing Spencer's
+   cards (possible through the `/flash` page, but every card). Pick a short
+   Vercel project name: each extra character is one more byte written at
+   first boot. Do not flash Spencer's cards until the host is final.
+2. **Repo name:** `ducky-card-spencer-collab` ("Ducky Card Spencer Collab").
+3. **Visibility:** both public. Git history was scanned on 2026-11-09: only
+   `secrets.h.example` (all-zero template) and a test fixture string were ever
+   committed; no real `CARD_SECRET`, tokens or database URLs. `secrets.h`,
+   `cards.csv` and `.env*.local` stay gitignored.
+4. **Firmware edits** happen in David's local Claude Code session after the
+   repo move, where PlatformIO and the programmer are available.
 
 ## Out of scope
 
