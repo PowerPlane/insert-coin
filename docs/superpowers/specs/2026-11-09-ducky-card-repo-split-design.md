@@ -53,6 +53,23 @@ Success looks like:
 - Two generated files are tracked by mistake:
   `node_modules/.vite/vitest/.../results.json` and `pond/audit-out.txt`.
 
+## Live Vercel setup (read 2026-11-09)
+
+- Project `pond` (`prj_KJVQOF2kmsbcfS9vQGq8hCPoA0xR`), root directory `pond/`,
+  domains `ducky.davidyang.work` and `pond-rho.vercel.app`.
+- Production is commit `d939f87` from branch `backup/shared-pond`: the
+  **shared pond + web flasher**. That branch has since been deleted on GitHub.
+- `main` has **never been deployed**, so Spencer's personal pond has never run
+  in this project's production.
+- Production env var names: `TURSO_URL`, `TURSO_TOKEN`, `CARD_SECRET`,
+  `SESSION_SECRET`, `CRON_SECRET`, `ADMIN_PASSWORD`. Spencer's project needs
+  the same six names with new values.
+- Preview deployments are behind Vercel login; the custom domain is public.
+
+Consequence: restoring the shared pond on `main` makes `main` match what is
+already live. Before merging, set the project's production branch to `main`
+(Settings, Git), since `backup/shared-pond` no longer exists.
+
 ## Target layout (same in every card repo)
 
 The `variants/` level goes away: one repo is one card, so there is nothing to
@@ -119,15 +136,13 @@ host grows past ~10 bytes.
 
 ## Database split
 
-Unknown today: whether the personal pond was deployed to
-`ducky.davidyang.work`, so whether the live Turso DB has migration `0003` and
-rows with `visitor` set. The shared pond code does not know the `visitor`
-column, so any personal rows would show up in its public lookups.
-
-Before the shared pond is deployed again:
+The personal pond never ran in this project's production (see "Live Vercel
+setup"), so the live Turso DB most likely has no `visitor` column and no
+personal rows. One confirmation before merging, since migrations can be run
+by hand:
 
 1. Run `SELECT COUNT(*) FROM ducks WHERE visitor IS NOT NULL;` on the live DB.
-2. If 0: nothing to move. The unused column stays; it is harmless.
+2. If it errors with "no such column" or returns 0: nothing to move.
 3. If more than 0: export those rows into Spencer's new DB, check the counts
    match, then set `hidden = 1` on them in the shared DB. Hiding is
    reversible; deleting is not, so nothing is deleted.
@@ -149,7 +164,7 @@ Before the shared pond is deployed again:
 | 2 | Push current `main` history to it; flatten layout; README notes "started from insert-coin at 8e1ab56" | Claude, once the repo is added to the session |
 | 2b | Firmware NFC host change (section "Spencer's repo: firmware change") | David, in a local Claude Code session after the move, once the host is known |
 | 3 | In this repo, on the working branch: restore `pond/` and `docs/pond/HOSTING.md` from `d939f87`, remove the personal-pond doc, flatten layout, delete tracked junk, rename README to Ducky Card, write `COLLABS.md` | Claude, as a draft PR |
-| 4 | Merge the PR; rename repo to `ducky-card`; tick "Template repository"; confirm Vercel is still linked; update local remotes | David |
+| 4 | Set Vercel production branch to `main`; merge the PR; rename repo to `ducky-card`; tick "Template repository"; confirm Vercel is still linked; update local remotes | David |
 | 5 | Run the DB check above and move rows if needed | David, with Claude drafting the SQL |
 | 6 | New Vercel project + Turso DB + `CARD_SECRET` + DNS for Spencer's pond | David |
 
