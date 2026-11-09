@@ -11,7 +11,7 @@
  * and nothing on fire to tell anyone.
  *
  * So this file does not test TypeScript against C. It tests TypeScript
- * against `shared/firmware/card-identity/card-identity.json`, which is
+ * against `firmware/lib/card-identity/card-identity.json`, which is
  * GENERATED from the C by `regenerate.sh`. The C is tested against the same
  * file by `test_card_identity.c`. Neither implementation gets to be the
  * reference for the other.
@@ -38,7 +38,7 @@ import {
 
 const SPEC = JSON.parse(
   readFileSync(
-    join(__dirname, "..", "..", "shared", "firmware", "card-identity", "card-identity.json"),
+    join(__dirname, "..", "..", "firmware", "lib", "card-identity", "card-identity.json"),
     "utf8",
   ),
 ) as {
@@ -73,7 +73,7 @@ describe("SipHash-2-4, against the reference implementation's own vectors", () =
   // being wrong.
   const REFERENCE: string[] = JSON.parse(
     readFileSync(
-      join(__dirname, "..", "..", "shared", "firmware", "card-identity", "siphash_reference_vectors.h"),
+      join(__dirname, "..", "..", "firmware", "lib", "card-identity", "siphash_reference_vectors.h"),
       "utf8",
     )
       .replace(/[\s\S]*?\{/, "[")
@@ -212,7 +212,7 @@ describe("the layout, in the third place it appears", () => {
    */
   const CONFIG = readFileSync(
     join(
-      __dirname, "..", "..", "variants", "business-card-v1",
+      __dirname, "..", "..",
       "firmware", "production-pond", "src", "config.h",
     ),
     "utf8",

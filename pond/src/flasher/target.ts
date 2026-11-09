@@ -64,7 +64,7 @@ export interface FuseSpec {
  * ══ THIS TABLE IS platformio.ini, BYTE FOR BYTE ══
  *
  * PlatformIO's `pio run -t fuses` computes these from the `board_*` lines
- * in variants/business-card-v1/firmware/platformio.ini through
+ * in firmware/platformio.ini through
  * platform-atmelmegaavr's builder/fuses.py. The web flasher writes the
  * same bytes so a card flashed by a friend is indistinguishable from one
  * flashed at David's bench.

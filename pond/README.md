@@ -94,5 +94,5 @@ once with foreign keys on, once with them off.
 - `docs/pond/PROVISIONING.md` — making the cards
 - `docs/pond/HOSTING.md` — Vercel, Turso, and the CNAME at Cargo
 - `docs/pond/SECURITY.md` — threat model
-- `variants/business-card-v1/firmware/production-pond/` — the firmware that
+- `firmware/production-pond/` — the firmware that
   points a card here

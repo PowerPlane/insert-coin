@@ -2,7 +2,7 @@
  * The host half of a card's identity.
  *
  * ══ THIS IS A SECOND IMPLEMENTATION, ON PURPOSE AND UNDER PROTEST ══
- * `shared/firmware/card-identity/card_identity.c` derives these same values
+ * `firmware/lib/card-identity/card_identity.c` derives these same values
  * on the ATtiny1616 as it writes its own tag. This file derives them again,
  * in TypeScript, because the flashing script has to record the serial and
  * the server has to verify the claim, and neither can run AVR C.
@@ -14,7 +14,7 @@
  * fortune; the duck is simply unattributed, on all hundred cards, forever.
  *
  * So neither side is tested against the other. Both are tested against
- * `shared/firmware/card-identity/card-identity.json`, which is GENERATED
+ * `firmware/lib/card-identity/card-identity.json`, which is GENERATED
  * from the C and consumed by `test/card-identity.test.ts`. Change the spec
  * and this file goes red until it is brought back into step — which is the
  * entire reason the file exists.

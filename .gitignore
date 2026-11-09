@@ -67,7 +67,7 @@ pond/*.db-journal
 # the real one never enters the repository, and the server's CARD_SECRET
 # must be set to the same sixteen bytes.
 **/production-pond/src/secrets.h
-variants/business-card-v1/cards.csv
+/cards.csv
 
 # esbuild's bundle analysis. Useful locally, not worth shipping.
 pond/public/.build.meta

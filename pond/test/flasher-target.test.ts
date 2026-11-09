@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { ATTINY1616, FUSE_PLAN, updiPinStaysUpdi } from "../src/flasher/target.js";
 
 const ini = readFileSync(
-  join(__dirname, "..", "..", "variants", "business-card-v1", "firmware", "platformio.ini"),
+  join(__dirname, "..", "..", "firmware", "platformio.ini"),
   "utf8",
 );
 

@@ -21,7 +21,7 @@ never touched again except to change the one fortune digit.
    hundred cards the chance of any collision is about 4 in a billion, and
    the alphabet has no I, L, O or U so nothing reads as a typo. */
 void card_serial(const uint8_t sernum[10], char out[9]);
-/* shared/firmware/card-identity/ — one definition, compiled for both the
+/* firmware/lib/card-identity/ — one definition, compiled for both the
    AVR and the host, because deriving this twice is what would make every
    card unknown to the server at once. */
 ```
@@ -79,7 +79,7 @@ pio run -e production-pond -t upload   # the same binary every time
 # battery in, tap once — the card registers itself
 ```
 
-`variants/business-card-v1/cards.csv` is still on disk. It is a record of
+`cards.csv` is still on disk. It is a record of
 what was flashed and when; nothing reads it any more.
 
 ---
