@@ -233,6 +233,22 @@ describe("the layout, in the third place it appears", () => {
     expect(derived).toBe(0x0023);
   });
 
+  it("the C record builder writes the same host the spec pins", () => {
+    // The offset test above compares lengths only. A host of the same length
+    // with different text would pass it, and every card from that build
+    // would point at the wrong pond. So compare the text itself.
+    const header = readFileSync(
+      join(__dirname, "..", "..", "firmware", "lib", "card-identity", "ndef_record.h"),
+      "utf8",
+    );
+    const m = header.match(/#define\s+NDEF_URL_PREFIX\s+"([^"]+)"/);
+    expect(m, "NDEF_URL_PREFIX not found in ndef_record.h").not.toBeNull();
+
+    const url = SPEC.url.template;
+    const prefix = url.slice("https://".length, url.indexOf("<digit>"));
+    expect(m![1]).toBe(prefix);
+  });
+
   it("puts every per-card field after the digit, so one binary fits all cards", () => {
     const url = SPEC.url.template;
     // If a serial ever moved ahead of the digit, the patch target would

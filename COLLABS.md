@@ -9,12 +9,13 @@ A collab is its own repo: same kind of card, its own firmware build, its own pon
 2. **Record where it started.** Add one line near the top of the new README:
    "Started from ducky-card at `<sha>`." (`git rev-parse HEAD` on ducky-card at the time.)
 
-3. **Pick the pond host first.** It is written into every card's NFC tag, so changing it later means reflashing every card. It must serve the pond at the root (`/?d=`). Change it in all five places that pin it; both test suites fail if any one is missed:
+3. **Pick the pond host first.** It is written into every card's NFC tag, so changing it later means reflashing every card. It must serve the pond at the root (`/?d=`). Change it in all six places that pin it. If any of the first five is missed, at least one test fails:
    - `firmware/lib/card-identity/ndef_record.h`: `NDEF_URL_PREFIX`
    - `firmware/production-pond/src/config.h`: `NDEF_DIGIT_OFFSET` (the new derived value)
    - `firmware/lib/card-identity/card-identity.json`: the URL `template`
    - `firmware/lib/card-identity/test_card_identity.c`: expected offset
    - `pond/test/card-identity.test.ts`: expected prefix and offset
+   - `firmware/lib/card-identity/spec-header.json.part`: the URL `template`. `regenerate.sh` rebuilds `card-identity.json` from it, so missing it only shows up the next time someone regenerates.
 
    Check with:
    ```bash

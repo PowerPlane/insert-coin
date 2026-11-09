@@ -42,6 +42,16 @@ cd firmware && pio run -e production-pond
 
 `production-pond` needs `firmware/production-pond/src/secrets.h` (copy `secrets.h.example`); its key must match the pond's `CARD_SECRET`. It is gitignored and never committed.
 
+**Coming from the old layout** (`variants/business-card-v1/`)? git moves tracked files but not ignored ones, so after pulling, move your key and card list yourself. Do not make a new key: cards flashed with it would never verify against the live pond.
+
+```bash
+mv variants/business-card-v1/firmware/production-pond/src/secrets.h firmware/production-pond/src/secrets.h
+```
+
+```bash
+mv variants/business-card-v1/cards.csv cards.csv
+```
+
 No PlatformIO on the machine? [`tools/build-hex.sh`](tools/build-hex.sh) builds a `.hex` to send, and [`ducky.davidyang.work/flash`](docs/flasher/README.md) flashes it from a browser through an Adafruit UPDI Friend.
 
 ## The pond

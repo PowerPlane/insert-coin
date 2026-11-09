@@ -74,7 +74,9 @@ pond/*.db-journal
 # the real one never enters the repository, and the server's CARD_SECRET
 # must be set to the same sixteen bytes.
 **/production-pond/src/secrets.h
-/cards.csv
+# The card registry: serials and labels, kept local. Unanchored so a copy
+# left at the pre-move path (variants/business-card-v1/) stays ignored too.
+cards.csv
 
 # esbuild's bundle analysis. Useful locally, not worth shipping.
 pond/public/.build.meta
