@@ -1,7 +1,8 @@
 // Pin map for business-card-v1 (ATtiny1616 VQFN-20).
 // Production copy of bringup/src/pins.h -- verified against
-// hardware/production/netlist.ipc. Keep these two in sync until they get
-// hoisted into firmware/lib/.
+// hardware/<revision>/production/netlist.ipc (V0-1 and V0-2 share the
+// same MCU nets). Keep these two in sync until they get hoisted into
+// firmware/lib/.
 
 #pragma once
 

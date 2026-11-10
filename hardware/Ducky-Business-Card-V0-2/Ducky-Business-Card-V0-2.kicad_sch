@@ -4,6 +4,12 @@
 	(generator_version "10.0")
 	(uuid "e088f94f-c07d-4aad-9ed5-0a552f1b9750")
 	(paper "A4")
+	(title_block
+		(title "Ducky Business Card")
+		(date "2026-07-15")
+		(rev "0-2")
+		(company "ByProduct Lab")
+	)
 	(lib_symbols
 		(symbol "Connector_Generic:Conn_01x02"
 			(pin_names
@@ -4030,7 +4036,7 @@
 			(uuid "5bd7316a-0061-48af-8017-d264cfd06861")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR018")
 					(unit 1)
@@ -4310,7 +4316,7 @@
 			(uuid "41fffd0d-6c44-4f9f-88ca-79e8075c83cb")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED7")
 					(unit 1)
@@ -4387,7 +4393,7 @@
 			(uuid "9e9487b0-d170-45e1-aebe-4d1ae4fea56a")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR021")
 					(unit 1)
@@ -4465,7 +4471,7 @@
 			(uuid "cf48f714-04be-4210-b4d2-4ac95e10147a")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "TP1")
 					(unit 1)
@@ -4543,7 +4549,7 @@
 			(uuid "0182ed04-77e9-4609-9083-9568ab6fe215")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR054")
 					(unit 1)
@@ -4823,7 +4829,7 @@
 			(uuid "2880565c-56fa-4586-ab35-5c24ef1826b8")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED15")
 					(unit 1)
@@ -4901,7 +4907,7 @@
 			(uuid "e0817eca-d9da-4622-8e59-5cd80e74f9a4")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "TP3")
 					(unit 1)
@@ -5009,7 +5015,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C965861"
+		(property "LCSC" "C965860"
 			(at 162.56 106.68 90)
 			(hide yes)
 			(show_name no)
@@ -5181,7 +5187,7 @@
 			(uuid "6cd99328-c244-47f4-a381-0271c626d0f0")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED22")
 					(unit 1)
@@ -5463,7 +5469,7 @@
 			(uuid "a31ad465-4af5-443b-b10f-6fbd83655db4")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "Q3")
 					(unit 1)
@@ -5743,7 +5749,7 @@
 			(uuid "0abc3b1a-aebe-4ca5-a749-779415962c85")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED20")
 					(unit 1)
@@ -6025,7 +6031,7 @@
 			(uuid "a22b9466-9f68-4eb3-8c4f-89067c43fab0")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "Q2")
 					(unit 1)
@@ -6305,7 +6311,7 @@
 			(uuid "c3221bc1-8d50-4b01-b4e9-4a7ecadb4d59")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED16")
 					(unit 1)
@@ -6573,7 +6579,7 @@
 			(uuid "eb973fd0-22fe-4464-84b2-5e56449aff44")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "U2")
 					(unit 1)
@@ -6853,7 +6859,7 @@
 			(uuid "ba557509-8a25-4258-b172-e5a3806372d6")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED8")
 					(unit 1)
@@ -6931,7 +6937,7 @@
 			(uuid "068a6ad3-31ca-45d2-a0d8-e1ddd30f4bb1")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR034")
 					(unit 1)
@@ -7009,7 +7015,7 @@
 			(uuid "316956a0-d002-4c61-b2ba-dd4ba475dee6")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR04")
 					(unit 1)
@@ -7129,7 +7135,7 @@
 			(uuid "f6ef6558-166c-459d-b647-fd5d96f4083e")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "U3")
 					(unit 1)
@@ -7207,7 +7213,7 @@
 			(uuid "711067ce-131b-42a4-bdc9-637ca138f116")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR023")
 					(unit 1)
@@ -7285,7 +7291,7 @@
 			(uuid "d59ec3bd-9cdf-4cc0-ad49-36ac2fa2c4a3")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR036")
 					(unit 1)
@@ -7565,7 +7571,7 @@
 			(uuid "093f6600-446a-47b7-9a98-2c768707824d")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED4")
 					(unit 1)
@@ -7643,7 +7649,7 @@
 			(uuid "988c2248-8613-4746-b4f7-8457605de923")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR031")
 					(unit 1)
@@ -7925,7 +7931,7 @@
 			(uuid "bce7a275-dcbf-4f6f-a00a-bcb8e8d6a4fd")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "Q4")
 					(unit 1)
@@ -8003,7 +8009,7 @@
 			(uuid "4c8ad64e-70a5-4139-94a3-675d294a3e00")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR045")
 					(unit 1)
@@ -8081,7 +8087,7 @@
 			(uuid "bf31e9fe-539b-4f5e-937c-809358c23802")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR08")
 					(unit 1)
@@ -8361,7 +8367,7 @@
 			(uuid "8b19d4f0-c697-48ea-806a-5ace9b70df1e")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED9")
 					(unit 1)
@@ -8439,7 +8445,7 @@
 			(uuid "9984ffe7-4634-4100-aac7-4a0c6ba75e98")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR024")
 					(unit 1)
@@ -8719,7 +8725,7 @@
 			(uuid "e965bcc2-0c19-43a9-afbb-ae94d187aca5")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED18")
 					(unit 1)
@@ -8797,7 +8803,7 @@
 			(uuid "06c5bd2a-e278-44f4-acbd-1e53f9200e3a")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR033")
 					(unit 1)
@@ -8905,7 +8911,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C965860"
+		(property "LCSC" "C965861"
 			(at 173.99 106.68 90)
 			(hide yes)
 			(show_name no)
@@ -8916,7 +8922,7 @@
 				)
 			)
 		)
-		(property "Attrition Qty" "C965860"
+		(property "Attrition Qty" ""
 			(at 173.99 106.68 90)
 			(hide yes)
 			(show_name no)
@@ -9077,7 +9083,7 @@
 			(uuid "287a684c-d053-4cf0-a2e8-c589e63a351c")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED23")
 					(unit 1)
@@ -9155,7 +9161,7 @@
 			(uuid "a1592810-9352-4ad9-a53b-43f0c909b4ab")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR019")
 					(unit 1)
@@ -9263,7 +9269,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C965861"
+		(property "LCSC" "C965860"
 			(at 152.4 106.68 90)
 			(hide yes)
 			(show_name no)
@@ -9435,7 +9441,7 @@
 			(uuid "02f133dd-15b7-4a37-b01f-e829b1f4b046")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED21")
 					(unit 1)
@@ -9513,7 +9519,7 @@
 			(uuid "f9d425f6-cd0f-41c2-a93d-2d3ae71b6812")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR026")
 					(unit 1)
@@ -9591,7 +9597,7 @@
 			(uuid "4e3e647b-c4e6-4ad2-8e30-b3aeb44dfe37")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR032")
 					(unit 1)
@@ -9873,7 +9879,7 @@
 			(uuid "12c82536-2522-4c75-a35f-5430c32bdd6b")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "Q7")
 					(unit 1)
@@ -10155,7 +10161,7 @@
 			(uuid "db9683dd-048c-4370-9107-1b236c3d0269")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "Q8")
 					(unit 1)
@@ -10233,7 +10239,7 @@
 			(uuid "ffb00fa5-cd10-4666-ade7-0b7ca3bcc8ef")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR029")
 					(unit 1)
@@ -10515,7 +10521,7 @@
 			(uuid "924a39d1-2bff-40c1-98de-992716ed8e85")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "Q5")
 					(unit 1)
@@ -10593,7 +10599,7 @@
 			(uuid "26ca0fcb-c7bb-4aca-8a5e-e9219fa9fb18")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR012")
 					(unit 1)
@@ -10671,7 +10677,7 @@
 			(uuid "510949a7-f854-4430-90b2-a98c108b373c")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR027")
 					(unit 1)
@@ -10749,7 +10755,7 @@
 			(uuid "f7c74edf-9070-4e44-99fa-a11860597281")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR028")
 					(unit 1)
@@ -11029,7 +11035,7 @@
 			(uuid "d4834583-a508-4c34-94e6-4ef9dae43492")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED19")
 					(unit 1)
@@ -11334,7 +11340,7 @@
 			(uuid "2a455d86-0d9e-4ecf-b296-0def0bd1c887")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "U1")
 					(unit 1)
@@ -11614,7 +11620,7 @@
 			(uuid "45aa55ef-5fc0-4cdf-ac44-b5764f99f239")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED6")
 					(unit 1)
@@ -11692,7 +11698,7 @@
 			(uuid "8a27d538-791f-4bb5-bc10-1e985d9baa28")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR035")
 					(unit 1)
@@ -11972,7 +11978,7 @@
 			(uuid "0d62da6b-847a-4aa6-99de-3b4f4e2449cb")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED2")
 					(unit 1)
@@ -12050,7 +12056,7 @@
 			(uuid "48e3eb0f-d2e0-4cf0-90a6-8362ed17fd30")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR03")
 					(unit 1)
@@ -12128,7 +12134,7 @@
 			(uuid "0ed60823-2faa-49b1-bc4d-d2e5c4a10adc")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR013")
 					(unit 1)
@@ -12206,7 +12212,7 @@
 			(uuid "b354ab81-7b17-4e0f-a079-8db81e029254")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR058")
 					(unit 1)
@@ -12284,7 +12290,7 @@
 			(uuid "342da9c7-dd14-45e7-8aaf-bc30dba3c10d")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR061")
 					(unit 1)
@@ -12564,7 +12570,7 @@
 			(uuid "115b0153-444e-4853-af00-d53aa703d3e5")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED13")
 					(unit 1)
@@ -12844,7 +12850,7 @@
 			(uuid "43bd1a30-3237-4f18-83cb-5ba229620c7d")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED3")
 					(unit 1)
@@ -12922,7 +12928,7 @@
 			(uuid "5b6fa6bc-7774-4f78-8c1a-b783d9f66cb8")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR055")
 					(unit 1)
@@ -13000,7 +13006,7 @@
 			(uuid "6786af30-ddaf-4515-ba86-e7924ee3d764")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR015")
 					(unit 1)
@@ -13280,7 +13286,7 @@
 			(uuid "89d5f61a-e9e5-4c1b-9ab1-c8ee2eea5fbf")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED1")
 					(unit 1)
@@ -13358,7 +13364,7 @@
 			(uuid "fcf0d72a-2afa-4ca7-a87f-6eea8aecd4e5")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR011")
 					(unit 1)
@@ -13435,7 +13441,7 @@
 			(uuid "8214c7fc-7014-418c-a319-3a712e286164")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR020")
 					(unit 1)
@@ -13513,7 +13519,7 @@
 			(uuid "caa8901f-1441-45da-9faa-376f966d4883")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR025")
 					(unit 1)
@@ -13591,7 +13597,7 @@
 			(uuid "ad5455ab-56f8-49d8-a4dd-84c0d3d96591")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR07")
 					(unit 1)
@@ -13669,7 +13675,7 @@
 			(uuid "e7fcda9b-0493-4f17-90ef-d7934ec80dfb")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR030")
 					(unit 1)
@@ -13747,7 +13753,7 @@
 			(uuid "f1238fce-a9a9-447f-af76-d1b310026b62")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR044")
 					(unit 1)
@@ -14028,7 +14034,7 @@
 			(uuid "7938ab95-4bc1-4410-888c-d52b51af6941")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "C2")
 					(unit 1)
@@ -14106,7 +14112,7 @@
 			(uuid "1c759ff8-9f99-44b8-a6be-9551641ef487")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR014")
 					(unit 1)
@@ -14184,7 +14190,7 @@
 			(uuid "de7f4f7d-3089-485f-9cc7-43e1e57477c4")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR022")
 					(unit 1)
@@ -14292,7 +14298,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C965860"
+		(property "LCSC" "C965861"
 			(at 184.15 106.68 90)
 			(hide yes)
 			(show_name no)
@@ -14303,7 +14309,7 @@
 				)
 			)
 		)
-		(property "Attrition Qty" "C965860"
+		(property "Attrition Qty" ""
 			(at 184.15 106.68 90)
 			(hide yes)
 			(show_name no)
@@ -14464,7 +14470,7 @@
 			(uuid "213f0a22-2b71-4ce2-b328-b81155e81166")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED24")
 					(unit 1)
@@ -14542,7 +14548,7 @@
 			(uuid "ec44e141-9af7-4b19-9dbd-3ab8c5f8ee52")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR09")
 					(unit 1)
@@ -14620,7 +14626,7 @@
 			(uuid "66162687-cf74-4fee-920a-594d582f3bd9")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR01")
 					(unit 1)
@@ -14856,7 +14862,7 @@
 			(uuid "b2d2a97f-e842-43c7-ad59-3899dabcbe10")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "J1")
 					(unit 1)
@@ -15138,7 +15144,7 @@
 			(uuid "e5647398-486c-4037-b6ed-01a224a043a6")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "Q9")
 					(unit 1)
@@ -15216,7 +15222,7 @@
 			(uuid "d7851beb-e067-4c87-b906-600a222b04b9")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR010")
 					(unit 1)
@@ -15496,7 +15502,7 @@
 			(uuid "3a55c48c-3c1c-409d-aa49-85d143ac55a5")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED11")
 					(unit 1)
@@ -15733,7 +15739,7 @@
 			(uuid "797dd4b7-3ff1-4d0c-9b0f-0b67c27bf8ee")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "BT1")
 					(unit 1)
@@ -15811,7 +15817,7 @@
 			(uuid "1153bb9c-d08c-4fb7-b2c8-050e6810a009")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR047")
 					(unit 1)
@@ -16093,7 +16099,7 @@
 			(uuid "083995db-27fa-4070-b3c5-65988941e2fb")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "Q1")
 					(unit 1)
@@ -16171,7 +16177,7 @@
 			(uuid "134047df-467d-4474-bc3d-c52307038cf4")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR02")
 					(unit 1)
@@ -16451,7 +16457,7 @@
 			(uuid "e5ebf121-9e1a-4cea-94ec-6e96b2b2bb2c")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED5")
 					(unit 1)
@@ -16731,7 +16737,7 @@
 			(uuid "14af966f-303a-4c17-a4fc-072ad0bdcbc3")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED10")
 					(unit 1)
@@ -17011,7 +17017,7 @@
 			(uuid "c2b7af18-68b5-4c1f-a467-a14920461264")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED12")
 					(unit 1)
@@ -17291,7 +17297,7 @@
 			(uuid "bdc14029-de51-4901-8021-4ed72b7cb00c")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED14")
 					(unit 1)
@@ -17369,7 +17375,7 @@
 			(uuid "5b2d7ebe-e54e-4bbc-8e0d-fa40c04f8cd1")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR057")
 					(unit 1)
@@ -17446,7 +17452,7 @@
 			(uuid "c2febeba-2232-4d7f-8eb8-6c7408cc102e")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR059")
 					(unit 1)
@@ -17524,7 +17530,7 @@
 			(uuid "e2232bb2-19f8-4b57-9142-bf21a1999cf9")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR016")
 					(unit 1)
@@ -17806,7 +17812,7 @@
 			(uuid "427dcdb2-1725-4e4f-9e63-c0212e018d1f")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "Q10")
 					(unit 1)
@@ -17884,7 +17890,7 @@
 			(uuid "78fac96f-aee7-4c4a-9c7c-baf2a6c5dd0a")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR06")
 					(unit 1)
@@ -18165,7 +18171,7 @@
 			(uuid "44f653a9-4c03-42ab-a29d-a21d6d12051f")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "C1")
 					(unit 1)
@@ -18445,7 +18451,7 @@
 			(uuid "e96734c9-4444-4c0d-8f9d-3a673b8835b0")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "LED17")
 					(unit 1)
@@ -18523,7 +18529,7 @@
 			(uuid "8289a374-0a48-49a9-8c70-00fce02fc073")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR060")
 					(unit 1)
@@ -18601,7 +18607,7 @@
 			(uuid "2b9d4e5c-8028-4481-97e2-f93c49ca54e9")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR05")
 					(unit 1)
@@ -18679,7 +18685,7 @@
 			(uuid "8dab1054-86ea-4326-abae-3096dfc097bb")
 		)
 		(instances
-			(project "Insert-Coin-Business-Card"
+			(project "Ducky-Business-Card-V0-2"
 				(path "/e088f94f-c07d-4aad-9ed5-0a552f1b9750"
 					(reference "#PWR056")
 					(unit 1)
