@@ -259,7 +259,7 @@ firmware is useless — chicken-and-egg.
 - **Why:** Bringup needs to be flashed to run.
 - **How to apply:** The first step of any bring-up is **verifying
   UPDI handshake** with the multimeter procedure documented in
-  `variants/business-card-v1/firmware/README.md`. Only after the
+  `firmware/README.md`. Only after the
   chip responds to a `pymcuprog ping` should you reach for bring-up
   firmware.
 
@@ -343,7 +343,7 @@ sources.
 
 - **How to apply:** Set `src_dir = .` at the project level, then use
   `build_src_filter = -<*> +<env-specific/src/>` inside each `[env:*]`
-  block. See `variants/business-card-v1/firmware/platformio.ini`.
+  block. See `firmware/platformio.ini`.
 
 ---
 
@@ -353,16 +353,16 @@ Things this bring-up firmware proved out that production should
 inherit directly:
 
 - Pin map (`bringup/src/pins.h`) — extract to
-  `shared/firmware/pins/business-card-v1.h` once a second variant
+  `firmware/lib/pins/business-card-v1.h` once a second variant
   exists.
 - LED bank driver (`leds.cpp` with batched port writes) — extract
-  to `shared/firmware/leds_bank.{h,cpp}`.
+  to `firmware/lib/leds_bank/`.
 - Mic envelope tracker with seeded EMA (`test_mic_envelope.cpp`
-  post-fix) — extract to `shared/firmware/mic_envelope.{h,cpp}`.
+  post-fix) — extract to `firmware/lib/mic_envelope/`.
   Pattern is well-tuned for this mic; new mic parts will need
   re-tuning but the structure carries.
 - Sleep/wake skeleton (RTC PIT + input-buffer + ADC disable) —
-  extract to `shared/firmware/sleep_wake.{h,cpp}`.
+  extract to `firmware/lib/sleep_wake/`.
 - `unused_pins.h` discipline — apply to every variant.
 
 Things production will need that bring-up deliberately deferred:

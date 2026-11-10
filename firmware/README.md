@@ -1,5 +1,7 @@
 # business-card-v1 firmware
 
+> **Read first:** [`LEARNINGS.md`](LEARNINGS.md) collects what the bring-up taught: ATtiny1616 pin-map quirks, the EMA bias-tracker stall, ADC0 vs ADC1, sleep-current discipline and programmer fragility.
+
 Two PlatformIO environments in one project share the same `platformio.ini`:
 
 | Env | Purpose |
