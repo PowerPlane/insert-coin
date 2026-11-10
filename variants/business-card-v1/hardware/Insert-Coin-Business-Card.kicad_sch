@@ -4428,7 +4428,7 @@
 				)
 			)
 		)
-		(property "Footprint" "DavidLib_Graphics:DUCKY_ICON_2.54_Spacing"
+		(property "Footprint" "DavidLib_Mechanical:DUCKY_ICON_2.54_Spacing"
 			(at 265.43 77.47 0)
 			(hide yes)
 			(show_name no)
@@ -4864,7 +4864,7 @@
 				)
 			)
 		)
-		(property "Footprint" "DavidLib_Graphics:DUCKY_ICON_2.54_Spacing"
+		(property "Footprint" "DavidLib_Mechanical:DUCKY_ICON_2.54_Spacing"
 			(at 265.43 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -14662,7 +14662,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "DavidLib_Graphics:NFC_Mini_Antenna_22x22_ST25DV04K"
+		(property "Footprint" "DavidLib_Mechanical:NFC_Mini_Antenna_22x22_ST25DV04K"
 			(at 151.13 180.34 0)
 			(hide yes)
 			(show_name no)
