@@ -69,4 +69,4 @@ A collab is a separate repo made from this one with GitHub's "Use this template"
 | Repo | Pond |
 |---|---|
 | `PowerPlane/ducky-card` (this one) | Shared pond |
-| `PowerPlane/ducky-card-spencer-collab` | Personal pond, with Spencer Chang |
+| [`Dav1dyang/ducky-card-spencer-collab`](https://github.com/Dav1dyang/ducky-card-spencer-collab) | Personal pond, with Spencer Chang |
