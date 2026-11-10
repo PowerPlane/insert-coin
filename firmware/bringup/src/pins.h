@@ -1,6 +1,7 @@
 // Pin map for business-card-v1 (ATtiny1616 VQFN-20).
-// Verified against hardware/production/netlist.ipc — do not edit without
-// re-checking the netlist.
+// Verified against hardware/<revision>/production/netlist.ipc (V0-1 and
+// V0-2 share the same MCU nets) — do not edit without re-checking the
+// netlist.
 //
 // TODO: extract to firmware/lib/ when production firmware
 // is written and a second consumer exists.

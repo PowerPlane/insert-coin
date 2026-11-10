@@ -13,7 +13,7 @@ This repo is one card project: the board, its firmware and its pond. Collaborati
 ducky-card/
 ├── README.md
 ├── COLLABS.md             how to start a collab repo from this one
-├── hardware/              KiCad project + production/ fab outputs
+├── hardware/              one KiCad project per board revision, each with production/
 ├── firmware/              PlatformIO project (bringup, production,
 │   │                      production-nfc, production-pond envs)
 │   └── lib/card-identity/ card serial, signing and NFC record, shared with pond/
@@ -30,7 +30,7 @@ Business card size (about 85 × 54 mm), ATtiny1616, 24 LEDs, a MEMS microphone a
 - ATtiny1616: [datasheet](https://ww1.microchip.com/downloads/en/DeviceDoc/ATtiny1614-16-17-DataSheet-DS40002204A.pdf)
 - ST25DV04K: [datasheet](https://www.st.com/resource/en/datasheet/st25dv04k.pdf)
 
-Open `hardware/Insert-Coin-Business-Card.kicad_pro` in KiCad 10. Board revisions are tagged in git (`hw-0.2`).
+`hardware/` holds one folder per board revision (V0-1, V0-2, V0-3); open the `.kicad_pro` inside one in KiCad 10. The revision table is in [`docs/board.md`](docs/board.md#hardware-files).
 
 ## Build and flash
 
