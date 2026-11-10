@@ -1,6 +1,3 @@
-// ABOUTME: Releases a fortune entry and performs the isolated writes that may touch contacts.
-// ABOUTME: Stores the visitor identity that owns each entry's private pond.
-
 /**
  * Releasing a duck, and every other write that touches `contacts`.
  *
@@ -108,7 +105,6 @@ export interface CreatedDuck {
 export async function createDuck(
   env: Env,
   sessionId: string,
-  visitor: string,
   cardId: string | null,
   duck: ValidatedDuck,
   contact?: { value: string; scope: ContactScope } | null,
@@ -127,19 +123,18 @@ export async function createDuck(
   const writes = [
     env.DB.prepare(
       `INSERT INTO ducks
-         (id, slug, edit_key, visitor, card_id, epoch_id, fortune, tint, stickers,
+         (id, slug, edit_key, card_id, epoch_id, fortune, tint, stickers,
           paint, name, message, created, updated)
-       SELECT ?1, ?2, ?3, ?4, ?5,
+       SELECT ?1, ?2, ?3, ?4,
               (SELECT e.id FROM card_epochs e
-                WHERE e.card_id = ?5 AND e.ended IS NULL),
-              ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12
+                WHERE e.card_id = ?4 AND e.ended IS NULL),
+              ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11
         WHERE EXISTS (SELECT 1 FROM sessions
-                       WHERE id = ?13 AND spent_duck IS NULL AND expires >= ?12)`,
+                       WHERE id = ?12 AND spent_duck IS NULL AND expires >= ?11)`,
     ).bind(
       id,
       slug,
       editKey,
-      visitor,
       cardId,
       duck.fortune,
       duck.tint,
@@ -188,7 +183,7 @@ export async function createDuck(
     // One retry with a fresh name. Two collisions in a row is not a race,
     // it is something else, and pretending otherwise would hide it.
     if (attempt > 0) throw err;
-    return createDuck(env, sessionId, visitor, cardId, duck, contact, attempt + 1);
+    return createDuck(env, sessionId, cardId, duck, contact, attempt + 1);
   }
 
   return { id, slug, editKey };

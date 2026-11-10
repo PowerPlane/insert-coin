@@ -103,7 +103,7 @@ where the digit landed, and update `NDEF_DIGIT_OFFSET` in
 ## Flash and run
 
 ```bash
-cd variants/business-card-v1/firmware
+cd firmware
 pio run -e production-nfc -t upload
 ```
 

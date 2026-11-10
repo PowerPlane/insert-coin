@@ -1,41 +1,72 @@
-# Insert Coin
+# Ducky Card
 
-> A series of interactive business cards that come to life when you insert a CR2032 coin cell.
+> An interactive business card that comes to life when you insert a CR2032 coin cell.
 > Inspired by the Target gift cards of the early 2000s.
 
-The "Insert Coin" cards are PCB-as-business-card builds where the coin cell is the *user interaction*: slide it into the holder and the card boots, blinks, listens, taps NFC, then sleeps. Different variants explore different form factors, sensor sets, and animations under the same playful idea.
+The card is a PCB cut to business-card size. The coin cell is the interaction: slide it into the holder and the card boots, blinks, listens for a blow, writes a fortune to its NFC tag, then sleeps. Tap it with a phone and the fortune opens in the pond, a small web app where the ducks you collect live.
 
-## Variants
+This repo is one card project: the board, its firmware and its pond. Collaborations live in their own repos, started from this one (see [Collabs](#collabs)).
 
-| Slug | Form factor | MCU | Status | Notes |
-|---|---|---|---|---|
-| [`business-card-v1`](variants/business-card-v1/) | Business card (85 × 54 mm) | ATtiny1616 | Hardware done, firmware pending | 24-LED matrix, MEMS mic, ST25DV04K NFC tag |
-
-## Repo layout
+## Layout
 
 ```
-insert-coin/
-├── docs/                       # cross-variant notes, photos, renders
-├── shared/                     # things reused across variants
-│   ├── kicad/                  # symbols, footprints, 3D models
-│   ├── firmware/               # shared HAL/drivers (LED matrix, NFC, mic)
-│   └── tools/                  # build-hex.sh, gerber gen helpers
-└── variants/<slug>/
-    ├── hardware/               # KiCad project + fab outputs
-    ├── firmware/               # PlatformIO project (bringup + production envs)
-    └── enclosure/              # 3D-printed sleeves / holders (CAD)
+ducky-card/
+├── README.md
+├── COLLABS.md             how to start a collab repo from this one
+├── hardware/              KiCad project + production/ fab outputs
+├── firmware/              PlatformIO project (bringup, production,
+│   │                      production-nfc, production-pond envs)
+│   └── lib/card-identity/ card serial, signing and NFC record, shared with pond/
+├── enclosure/             3D-printed sleeves and holders
+├── tools/                 build-hex.sh and its test
+├── pond/                  web app on Vercel, including the /flash page
+└── docs/                  board notes, flasher, NFC, pond docs
 ```
 
-## Adding a new variant
+## The board
 
-Use the slug pattern `<form-factor>-v<n>`:
-- `business-card-v2` — next rev of the business-card form factor
-- `keychain-v1`, `coaster-v1`, `badge-v1` — new form factors
+Business card size (about 85 × 54 mm), ATtiny1616, 24 LEDs, a MEMS microphone and an ST25DV04K NFC tag. Details in [`docs/board.md`](docs/board.md).
 
-Copy the structure of `variants/business-card-v1/` (without the KiCad files) as a starting point.
+- ATtiny1616: [datasheet](https://ww1.microchip.com/downloads/en/DeviceDoc/ATtiny1614-16-17-DataSheet-DS40002204A.pdf)
+- ST25DV04K: [datasheet](https://www.st.com/resource/en/datasheet/st25dv04k.pdf)
 
-## Firmware toolchain
+Open `hardware/Insert-Coin-Business-Card.kicad_pro` in KiCad 10. Board revisions are tagged in git (`hw-0.2`).
 
-[PlatformIO](https://platformio.org/) + [megaTinyCore](https://github.com/SpenceKonde/megaTinyCore) targeting the ATtiny1616 over **UPDI**. Default programmer: SerialUPDI through an FTDI USB-serial adapter (one 4.7 kΩ resistor between TX and RX). Per-variant `firmware/README.md` has the wiring diagram and build commands.
+## Build and flash
 
-No PlatformIO on the machine? [`docs/flasher/`](docs/flasher/README.md) is a browser page at `ducky.davidyang.work/flash` that flashes a card through an Adafruit UPDI Friend. David builds the `.hex` with `shared/tools/build-hex.sh` and sends it; the page does the rest.
+[PlatformIO](https://platformio.org/) + [megaTinyCore](https://github.com/SpenceKonde/megaTinyCore), flashed over UPDI. Wiring, environments and build commands are in [`firmware/README.md`](firmware/README.md).
+
+```bash
+cd firmware && pio run -e production-pond
+```
+
+`production-pond` needs `firmware/production-pond/src/secrets.h` (copy `secrets.h.example`); its key must match the pond's `CARD_SECRET`. It is gitignored and never committed.
+
+**Coming from the old layout** (`variants/business-card-v1/`)? git moves tracked files but not ignored ones, so after pulling, move your key and card list yourself. Do not make a new key: cards flashed with it would never verify against the live pond.
+
+```bash
+mv variants/business-card-v1/firmware/production-pond/src/secrets.h firmware/production-pond/src/secrets.h
+```
+
+```bash
+mv variants/business-card-v1/cards.csv cards.csv
+```
+
+No PlatformIO on the machine? [`tools/build-hex.sh`](tools/build-hex.sh) builds a `.hex` to send, and [`ducky.davidyang.work/flash`](docs/flasher/README.md) flashes it from a browser through an Adafruit UPDI Friend.
+
+## The pond
+
+`pond/` is deployed to [ducky.davidyang.work](https://ducky.davidyang.work) on Vercel, backed by Turso. Hosting: [`docs/pond/HOSTING.md`](docs/pond/HOSTING.md). Everything else about the pond: [`docs/pond/README.md`](docs/pond/README.md).
+
+```bash
+cd pond && npm ci && npm run verify
+```
+
+## Collabs
+
+A collab is a separate repo made from this one with GitHub's "Use this template", with its own pond, its own NFC host and its own card secret. Steps: [`COLLABS.md`](COLLABS.md).
+
+| Repo | Pond |
+|---|---|
+| `PowerPlane/ducky-card` (this one) | Shared pond |
+| `PowerPlane/ducky-card-spencer-collab` | Personal pond, with Spencer Chang |

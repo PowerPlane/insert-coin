@@ -1,6 +1,3 @@
-// ABOUTME: Renders Pond HTML routes and exchanges NFC query data before the client starts.
-// ABOUTME: Applies visitor identity, language, and private-route metadata to each page shell.
-
 /**
  * The three HTML routes.
  *
@@ -51,7 +48,7 @@ async function keeperLanguage(env: Env, cardId: string | null): Promise<string |
  */
 export async function pondPage(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url);
-  const { visitor, setCookie } = await ensureVisitor(req);
+  const { visitor, setCookie } = await ensureVisitor(req, env);
   const headers = securityHeaders();
   if (setCookie) headers.append("set-cookie", setCookie);
 

@@ -1,6 +1,3 @@
-// ABOUTME: Provides the browser's typed Pond API and resilient local interaction state.
-// ABOUTME: Keeps unfinished intention artwork across mobile reloads without treating it as durable identity.
-
 /**
  * Talking to the Worker.
  *
@@ -303,14 +300,17 @@ export const api = {
  * backgrounded Safari tab while they're picking a hat. Every change writes
  * here; nothing is cleared until the server has confirmed the release.
  */
-const DRAFT_KEY = "pond.intention-draft.v1";
+const DRAFT_KEY = "pond.draft.v1";
 const DRAFT_TTL_MS = 60 * 60 * 1000;
 
 export interface Draft {
   tint: number;
   stickers: { id: string; x: number; y: number }[];
   paint: string;
-  intention: string;
+  name: string;
+  message: string;
+  contact: string;
+  scope: ContactScope;
   savedAt: number;
 }
 

@@ -50,8 +50,8 @@ and what to check. **Show details** has the log if David asks for it.
 ## 2 · Making the file (for David)
 
 ```bash
-shared/tools/build-hex.sh                 # production-pond → ~/Desktop
-shared/tools/build-hex.sh bringup ~/tmp   # any env, any folder
+tools/build-hex.sh                 # production-pond → ~/Desktop
+tools/build-hex.sh bringup ~/tmp   # any env, any folder
 ```
 
 It runs `pio run -e <env>`, copies the result out of `.pio/build/` with
@@ -130,7 +130,7 @@ target.
 - **Lock bits.** Not written; a locked chip is refused rather than erased.
 - **The user row.** Nothing on the card uses it.
 - **The firmware sources.** This feature adds a page, a script and docs.
-  No file under `variants/*/firmware/` changed.
+  No file under `firmware/` changed.
 
 ---
 
@@ -152,7 +152,7 @@ pond/
   public/flash.js, flash.css   the committed bundle and stylesheet
   test/flasher-*.test.ts       hex, plan, fuse table vs platformio.ini, the flow
                                against a fake chip, the page against its script
-shared/tools/build-hex.sh      David's side: build, name, hash, hand over
+tools/build-hex.sh      David's side: build, name, hash, hand over
 ```
 
 Design canvas (the screens, in the pond's language):
@@ -186,7 +186,7 @@ https://claude.ai/code/artifact/b278c922-17a4-4562-9c67-462ab4460528
 | Date | Change | Why |
 | --- | --- | --- |
 | 2026-09-14 | Web flasher added at `/flash` | Flash cards from a browser with a UPDI Friend, no PlatformIO. |
-| 2026-09-14 | `shared/tools/build-hex.sh` | One command to build, name and hash the file to send. Refuses the placeholder key. |
+| 2026-09-14 | `tools/build-hex.sh` | One command to build, name and hash the file to send. Refuses the placeholder key. |
 | 2026-09-14 | Vendored WebUPDI with fixes | Double break was not awaited (one break, not two); read timeouts were never cleared; `device` typed instead of `any`. |
 | 2026-09-14 | Baud fallback releases the port between attempts | A leaked port made the second attempt report "port busy" for a loose wire. Found in review. |
 | 2026-09-14 | Extended addresses multiplied, not shifted | `0x8000 << 16` is negative in JavaScript, and the data silently vanished. Found in review. |

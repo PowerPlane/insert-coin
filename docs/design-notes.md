@@ -1,6 +1,6 @@
 # Insert Coin — design notes
 
-Concept and constraints that apply across variants. Variant-specific notes belong in `variants/<slug>/README.md`.
+Concept and constraints for the Ducky card. Board details live in [`board.md`](board.md).
 
 ## The concept
 

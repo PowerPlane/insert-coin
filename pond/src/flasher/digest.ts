@@ -1,7 +1,7 @@
 /**
  * The one number two people can read to each other over a call.
  *
- * David runs `shared/tools/build-hex.sh` and it prints the SHA-256 of the
+ * David runs `tools/build-hex.sh` and it prints the SHA-256 of the
  * file it produced. The page prints the SHA-256 of the file that was
  * dropped on it. If the first eight characters agree, it is the same
  * file, whatever it was renamed to on the way.

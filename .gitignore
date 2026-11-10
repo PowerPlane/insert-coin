@@ -12,6 +12,9 @@ _autosave-*.kicad_sch
 *.bak
 fp-info-cache
 
+# KiCad per-user view state (open sheets, layer visibility)
+*.kicad_prl
+
 # KiCad "project is open" lock files (machine-specific, never useful in git)
 ~*.lck
 *.lck
@@ -39,6 +42,9 @@ build/
 *.lst
 *.map
 
+# Test caches written at the repo root (vitest)
+/node_modules/
+
 # Python venvs (if any tooling needs one later)
 .venv/
 __pycache__/
@@ -53,6 +59,7 @@ __pycache__/
 
 # Pond web app
 pond/node_modules/
+pond/audit-out.txt
 pond/.vercel/
 pond/.env*.local
 pond/*.db
@@ -67,7 +74,9 @@ pond/*.db-journal
 # the real one never enters the repository, and the server's CARD_SECRET
 # must be set to the same sixteen bytes.
 **/production-pond/src/secrets.h
-variants/business-card-v1/cards.csv
+# The card registry: serials and labels, kept local. Unanchored so a copy
+# left at the pre-move path (variants/business-card-v1/) stays ignored too.
+cards.csv
 
 # esbuild's bundle analysis. Useful locally, not worth shipping.
 pond/public/.build.meta

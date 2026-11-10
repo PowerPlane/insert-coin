@@ -1,6 +1,3 @@
-// ABOUTME: Validates fortune entries and reads them without exposing private contact or card data.
-// ABOUTME: Keeps each visitor's personal pond separate while retaining historical public ducks.
-
 /**
  * Duck reads and writes.
  *
@@ -240,22 +237,22 @@ function toPublicDuck(r: Record<string, unknown>): PublicDuck {
 }
 
 /**
- * One visitor's personal pond.
+ * The public pond.
  *
  * Reads only from `ducks` plus the derived bits the client needs to draw.
  * No join reaches anything private. Capped and ordered so the response size
  * is bounded no matter how large the pond gets.
  */
-export async function listPond(env: Env, visitor: string, limit = 200): Promise<PublicDuck[]> {
+export async function listPond(env: Env, limit = 200): Promise<PublicDuck[]> {
   const ts = nowSec();
   const { results } = await env.DB.prepare(
     `SELECT ${PUBLIC_COLUMNS}
        FROM ducks d
-      WHERE d.hidden = 0 AND d.visitor = ?3
-      ORDER BY d.created DESC, d.rowid DESC
-      LIMIT ?4`,
+      WHERE d.hidden = 0
+      ORDER BY d.created DESC
+      LIMIT ?3`,
   )
-    .bind(ts, ts - SAY_VISIBLE_SEC, visitor, limit)
+    .bind(ts, ts - SAY_VISIBLE_SEC, limit)
     .all<Record<string, unknown>>();
 
   return (results ?? []).map(toPublicDuck);
@@ -288,15 +285,13 @@ export async function duckByEditKey(env: Env, editKey: string): Promise<PublicDu
   return row ? toPublicDuck(row) : null;
 }
 
-/** Historical public duck page. Personal entries never have public pages. */
+/** The public duck page. Read-only — a slug is an address, not a key. */
 export async function duckBySlug(env: Env, slug: string): Promise<PublicDuck | null> {
   const clean = normaliseSlug(slug);
   if (!clean) return null;
   const ts = nowSec();
   const row = await env.DB.prepare(
-    `SELECT ${PUBLIC_COLUMNS}
-       FROM ducks d
-      WHERE d.slug = ?3 AND d.hidden = 0 AND d.visitor IS NULL`,
+    `SELECT ${PUBLIC_COLUMNS} FROM ducks d WHERE d.slug = ?3 AND d.hidden = 0`,
   )
     .bind(ts, ts - SAY_VISIBLE_SEC, clean)
     .first<Record<string, unknown>>();

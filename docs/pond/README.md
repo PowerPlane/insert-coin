@@ -97,5 +97,5 @@ pond/
 ```
 
 The firmware is a separate PlatformIO environment at
-`variants/business-card-v1/firmware/production-pond/`. The older `production`
+`firmware/production-pond/`. The older `production`
 and `production-nfc` environments are never touched.

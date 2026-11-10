@@ -11,7 +11,7 @@
  * and nothing on fire to tell anyone.
  *
  * So this file does not test TypeScript against C. It tests TypeScript
- * against `shared/firmware/card-identity/card-identity.json`, which is
+ * against `firmware/lib/card-identity/card-identity.json`, which is
  * GENERATED from the C by `regenerate.sh`. The C is tested against the same
  * file by `test_card_identity.c`. Neither implementation gets to be the
  * reference for the other.
@@ -38,7 +38,7 @@ import {
 
 const SPEC = JSON.parse(
   readFileSync(
-    join(__dirname, "..", "..", "shared", "firmware", "card-identity", "card-identity.json"),
+    join(__dirname, "..", "..", "firmware", "lib", "card-identity", "card-identity.json"),
     "utf8",
   ),
 ) as {
@@ -73,7 +73,7 @@ describe("SipHash-2-4, against the reference implementation's own vectors", () =
   // being wrong.
   const REFERENCE: string[] = JSON.parse(
     readFileSync(
-      join(__dirname, "..", "..", "shared", "firmware", "card-identity", "siphash_reference_vectors.h"),
+      join(__dirname, "..", "..", "firmware", "lib", "card-identity", "siphash_reference_vectors.h"),
       "utf8",
     )
       .replace(/[\s\S]*?\{/, "[")
@@ -212,7 +212,7 @@ describe("the layout, in the third place it appears", () => {
    */
   const CONFIG = readFileSync(
     join(
-      __dirname, "..", "..", "variants", "business-card-v1",
+      __dirname, "..", "..",
       "firmware", "production-pond", "src", "config.h",
     ),
     "utf8",
@@ -231,6 +231,22 @@ describe("the layout, in the third place it appears", () => {
     expect(prefix).toBe("ducky.davidyang.work/?d=");
     expect(Number(m![1])).toBe(derived);
     expect(derived).toBe(0x0023);
+  });
+
+  it("the C record builder writes the same host the spec pins", () => {
+    // The offset test above compares lengths only. A host of the same length
+    // with different text would pass it, and every card from that build
+    // would point at the wrong pond. So compare the text itself.
+    const header = readFileSync(
+      join(__dirname, "..", "..", "firmware", "lib", "card-identity", "ndef_record.h"),
+      "utf8",
+    );
+    const m = header.match(/#define\s+NDEF_URL_PREFIX\s+"([^"]+)"/);
+    expect(m, "NDEF_URL_PREFIX not found in ndef_record.h").not.toBeNull();
+
+    const url = SPEC.url.template;
+    const prefix = url.slice("https://".length, url.indexOf("<digit>"));
+    expect(m![1]).toBe(prefix);
   });
 
   it("puts every per-card field after the digit, so one binary fits all cards", () => {

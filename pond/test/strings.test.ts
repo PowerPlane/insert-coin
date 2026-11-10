@@ -1,6 +1,3 @@
-// ABOUTME: Verifies translation parity and fortune naming across supported Pond languages.
-// ABOUTME: Protects personal pond copy from missing placeholders or untranslated values.
-
 /**
  * The two languages, held level.
  *
@@ -85,7 +82,7 @@ describe("t()", () => {
   // The default language, since setLang needs a document and this does not.
   it("substitutes by name and leaves unknown braces alone", () => {
     expect(t("live.via", { keeper: "Sam" })).toBe("via Sam");
-    expect(t("live.count", {})).toBe("{n} fortunes");
+    expect(t("live.count", {})).toBe("{n} ducks");
   });
 
   it("returns English for a key with no translation, never the key itself", () => {
