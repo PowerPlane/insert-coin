@@ -10713,7 +10713,7 @@
 			)
 		)
 	)
-	(footprint "DavidLib_Graphics:DUCKY_ICON_2.54_Spacing"
+	(footprint "DavidLib_Mechanical:DUCKY_ICON_2.54_Spacing"
 		(layer "B.Cu")
 		(uuid "8b657f8c-1f22-476b-9bdb-9a206f4dc9a9")
 		(at 132.021697 82.661016 180)
@@ -12886,7 +12886,7 @@
 			)
 		)
 	)
-	(footprint "DavidLib_Graphics:DUCKY_ICON_2.54_Spacing"
+	(footprint "DavidLib_Mechanical:DUCKY_ICON_2.54_Spacing"
 		(layer "B.Cu")
 		(uuid "a4be03b5-2355-4ee3-9f43-f6902c975b7f")
 		(at 129.481697 82.661017 180)
@@ -14540,7 +14540,7 @@
 			)
 		)
 	)
-	(footprint "DavidLib_Graphics:NFC_Mini_Antenna_22x22_ST25DV04K"
+	(footprint "DavidLib_Mechanical:NFC_Mini_Antenna_22x22_ST25DV04K"
 		(layer "B.Cu")
 		(uuid "ae336c82-f7e4-4660-9750-a5afa7acf79e")
 		(at 180.915 95.497658 -90)
